@@ -1,0 +1,30 @@
+---
+layout: base.njk
+title: Publications
+description: Peer-reviewed publications and research data by Joaquín De Ferrari.
+permalink: /publications/
+---
+{% from "macros.njk" import publication %}
+<div class="wrap">
+  <header class="page-head">
+    <h1>Publications</h1>
+    <p>Peer-reviewed work on medical imaging, clinical language and learning from imperfect supervision.</p>
+  </header>
+
+  {% set groups = [["journal", "Journal articles"], ["conference", "Conference proceedings"], ["dataset", "Research data"]] %}
+  {%- for g in groups %}
+  {% set items = publications | byType(g[0]) %}
+  {%- if items.length %}
+  <section class="pub-group" aria-labelledby="g-{{ g[0] }}">
+    <h2 id="g-{{ g[0] }}">{{ g[1] }}</h2>
+    <ul class="pubs">
+      {%- for p in items %}
+      {{ publication(p) }}
+      {%- endfor %}
+    </ul>
+  </section>
+  {%- endif %}
+  {%- endfor %}
+
+  <p class="footnote">* Equal contribution. My name appears in bold.</p>
+</div>

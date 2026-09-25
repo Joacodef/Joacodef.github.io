@@ -1,0 +1,22 @@
+---
+layout: base.njk
+styles:
+  - /assets/css/notes.css
+---
+<article class="note">
+  <div class="wrap">
+    <header class="note-head prose">
+      <p class="crumbs"><a href="/notes/">Notes</a> / {{ course }}</p>
+      <h1>{{ title }}</h1>
+      {%- if description %}
+      <p class="note-lede">{{ description }}</p>
+      {%- endif %}
+    </header>
+    {{ content | safe }}
+    <footer class="note-foot">
+      <p>Personal study notes, written with AI assistance. They may contain errors; corrections are welcome.</p>
+      {%- if source %}<p>{{ source | safe }}</p>{% endif %}
+      <p><a href="/notes/">Back to all notes</a></p>
+    </footer>
+  </div>
+</article>

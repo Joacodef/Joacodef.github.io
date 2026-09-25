@@ -1,0 +1,32 @@
+---
+layout: base.njk
+title: Notes
+description: Study notes from my courses, with interactive figures.
+permalink: /notes/
+---
+<div class="wrap">
+  <header class="page-head">
+    <h1>Notes</h1>
+    <p>Study notes from my courses, with interactive figures you can play with.</p>
+  </header>
+
+  {%- set courses = [] %}
+  {%- for n in collections.notes %}{% if not (n.data.course in courses) %}{% set courses = (courses.push(n.data.course), courses) %}{% endif %}{% endfor %}
+
+  {%- for course in courses %}
+  <section class="section" aria-labelledby="c-{{ loop.index }}">
+    <div class="section-head"><h2 id="c-{{ loop.index }}">{{ course }}</h2></div>
+    <ul class="cards">
+      {%- for note in collections.notes %}{% if note.data.course == course %}
+      <li class="card">
+        <p class="course">{{ note.data.module }}</p>
+        <h3><a href="{{ note.url }}">{{ note.data.title }}</a></h3>
+        <p>{{ note.data.description }}</p>
+      </li>
+      {%- endif %}{% endfor %}
+    </ul>
+  </section>
+  {%- endfor %}
+
+  <p class="notice">These are personal study notes, written with AI assistance. They may contain errors.</p>
+</div>

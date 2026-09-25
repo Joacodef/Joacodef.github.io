@@ -1,0 +1,158 @@
+---
+title: Homogeneous coordinates
+module: Geometry
+order: 1
+description: Points and lines in the plane, summarized for review, with interactive figures.
+scripts:
+  - /assets/js/notes/homogeneous-coordinates.js
+---
+<div class="prose">
+  <div class="duo">
+    <div>
+      <p class="big"><i class="ln">ℓ</i> = <span class="pt"><i>m</i><sub>1</sub></span> × <span class="pt"><i>m</i><sub>2</sub></span></p>
+      <p class="cap">The line through two points.</p>
+    </div>
+    <div>
+      <p class="big"><span class="pt"><i>m</i></span> = <span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span></p>
+      <p class="cap">The point where two lines meet.</p>
+    </div>
+  </div>
+  <p class="legend">Throughout this page, <span class="dot" aria-hidden="true"></span>points are drawn in red ink and <span class="bar" aria-hidden="true"></span>lines in blue ink.</p>
+</div>
+
+<section id="point">
+  <div class="prose">
+    <h2><span class="n">1</span>The homogeneous point</h2>
+    <p>A point of the plane with Cartesian coordinates (<i>x</i>, <i>y</i>) is written in homogeneous coordinates by appending a third component equal to 1:</p>
+    <div class="disp"><span class="pt"><i>m</i></span> = <span class="col pt"><span><i>x</i></span><span><i>y</i></span><span>1</span></span></div>
+    <p>The payoff is that points and lines both become three-component vectors, and the geometric operations of the plane reduce to dot and cross products.</p>
+
+    <h3>Scale does not matter</h3>
+    <p>Any multiple λ<i>m</i> with λ ≠ 0 represents the same point. All three of these vectors are the point (2, 3):</p>
+    <div class="disp num"><span class="col pt"><span>2</span><span>3</span><span>1</span></span> ∼ <span class="col pt"><span>4</span><span>6</span><span>2</span></span> ∼ <span class="col pt"><span>−1</span><span>−1.5</span><span>−0.5</span></span></div>
+    <p>The reason is how we return to Cartesian coordinates: we divide by the third component. If <span class="pt"><i>m</i></span> = [<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup>, the point is</p>
+    <div class="disp">(<i>x</i>, <i>y</i>) = <span class="nowrap">(<span class="frac"><span><i>p</i></span><span><i>r</i></span></span>, <span class="frac"><span><i>q</i></span><span><i>r</i></span></span>)</span></div>
+    <p>and the division cancels the factor λ: λ<i>p</i> / λ<i>r</i> = <i>p</i> / <i>r</i>. That is why the result of an operation does not need to end in 1; you only have to divide by <i>r</i> before reading it.</p>
+  </div>
+</section>
+
+<section id="line">
+  <div class="prose">
+    <h2><span class="n">2</span>The line as a vector</h2>
+    <p>The line <i>ax</i> + <i>by</i> + <i>c</i> = 0 is fully described by its three coefficients, so it can also be written as a vector:</p>
+    <div class="disp"><span class="ln"><i>ℓ</i></span> = <span class="col ln"><span><i>a</i></span><span><i>b</i></span><span><i>c</i></span></span>&ensp;⟷&ensp;<span class="nowrap"><i>ax</i> + <i>by</i> + <i>c</i> = 0</span></div>
+    <p>As with points, λ<i>ℓ</i> is the same line: multiplying the whole equation by λ does not change which points satisfy it.</p>
+
+    <h3>When a point lies on a line</h3>
+    <p>If you substitute <span class="pt"><i>m</i></span> = [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup> into the equation of the line, what you get is exactly a dot product:</p>
+    <div class="disp"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = <i>ax</i> + <i>by</i> + <i>c</i> = 0</div>
+    <p>For example, the lab's line <span class="ln nowrap">[1&ensp;−1&ensp;10]<sup class="t">T</sup></span> is <i>x</i> − <i>y</i> + 10 = 0. The point (10, 20) lies on it because 1·10 + (−1)·20 + 10·1 = 0.</p>
+
+    <h3>Evaluating the line at a given <i>x</i></h3>
+    <p>Solving the equation for <i>y</i>:</p>
+    <div class="disp"><i>y</i> = <span class="nowrap">−(<i>ax</i> + <i>c</i>) / <i>b</i></span></div>
+    <p>This holds when <i>b</i> ≠ 0; if <i>b</i> = 0, the line is vertical. The lab uses it at <i>x</i> = 14 with the line above: <i>y</i> = −(14 + 10) / (−1) = 24.</p>
+  </div>
+</section>
+
+<section id="line-through-points">
+  <div class="prose">
+    <h2><span class="n">3</span>The line through two points</h2>
+    <div class="disp hero-f"><span class="ln"><i>ℓ</i></span> = <span class="pt"><i>m</i><sub>1</sub></span> × <span class="pt"><i>m</i><sub>2</sub></span></div>
+    <p>Why does this work? The cross product returns a vector perpendicular to both factors, and perpendicular means a zero dot product. So <span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i><sub>1</sub></span> = 0 and <span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i><sub>2</sub></span> = 0, which is exactly the condition for both points to lie on <span class="ln"><i>ℓ</i></span>.</p>
+    <p>For points of the form [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup>, the cross product becomes:</p>
+    <div class="disp"><span class="ln"><i>ℓ</i></span> = <span class="col ln"><span><i>y</i><sub>1</sub> − <i>y</i><sub>2</sub></span><span><i>x</i><sub>2</sub> − <i>x</i><sub>1</sub></span><span><i>x</i><sub>1</sub><i>y</i><sub>2</sub> − <i>x</i><sub>2</sub><i>y</i><sub>1</sub></span></span></div>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-line" role="img" aria-label="Plane with two draggable points and the line through them"></svg>
+    <div class="ro" id="fig-line-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Drag <span class="pt"><i>m</i><sub>1</sub></span> and <span class="pt"><i>m</i><sub>2</sub></span>. With a keyboard, select a point with Tab and move it with the arrow keys.</p>
+      <button type="button" class="btn" id="fig-line-reset">Back to the lab example</button>
+    </div>
+  </div>
+</section>
+
+<section id="intersection">
+  <div class="prose">
+    <h2><span class="n">4</span>The intersection of two lines</h2>
+    <div class="disp hero-f"><span class="pt"><i>m</i></span> = <span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span></div>
+    <p>It is the same operation with the roles swapped. The vector <span class="pt"><i>m</i></span> is perpendicular to both <span class="ln"><i>ℓ</i><sub>1</sub></span> and <span class="ln"><i>ℓ</i><sub>2</sub></span>, so <span class="ln"><i>ℓ</i><sub>1</sub></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0 and <span class="ln"><i>ℓ</i><sub>2</sub></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0: the point lies on both lines.</p>
+    <p>The result [<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup> almost never comes with <i>r</i> = 1, so dividing by <i>r</i> is a required step before reading the coordinates.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-meet" role="img" aria-label="Plane with two adjustable lines and their intersection point"></svg>
+    <div class="ro" id="fig-meet-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Drag the endpoint circles to move each line. The lines are simplified before the cross product; any multiple would give the same point. Try making them parallel and watch <i>r</i>.</p>
+      <button type="button" class="btn" id="fig-meet-reset">Back to the lab example</button>
+    </div>
+  </div>
+</section>
+
+<section id="example">
+  <div class="prose">
+    <h2><span class="n">5</span>The lab example, step by step</h2>
+    <p>The points and lines lab chains everything above into a single example.</p>
+    <ol class="steps">
+      <li><b>The points.</b>
+        <span class="f"><span class="pt"><i>m</i><sub>1</sub></span> = <span class="pt nowrap">[10&ensp;20&ensp;1]<sup class="t">T</sup></span>, &ensp;<span class="pt"><i>m</i><sub>2</sub></span> = <span class="pt nowrap">[20&ensp;30&ensp;1]<sup class="t">T</sup></span></span></li>
+      <li><b>The line through them.</b>
+        <span class="f"><span class="ln"><i>ℓ</i></span> = <span class="pt"><i>m</i><sub>1</sub></span> × <span class="pt"><i>m</i><sub>2</sub></span> = <span class="col"><span>20 − 30</span><span>20 − 10</span><span>10·30 − 20·20</span></span> = <span class="col ln"><span>−10</span><span>10</span><span>−100</span></span></span></li>
+      <li><b>Simplify.</b> Dividing by −10 gives the same line, <span class="ln nowrap">[1&ensp;−1&ensp;10]<sup class="t">T</sup></span>, that is <span class="nowrap"><i>x</i> − <i>y</i> + 10 = 0</span>. This is the form the lab stores as <code>ell_1</code>.</li>
+      <li><b>Evaluate at <i>x</i> = 14.</b>
+        <span class="f"><i>y</i> = −(1·14 + 10) / (−1) = 24</span></li>
+      <li><b>Intersect with a second line.</b> The lab uses <span class="ln nowrap"><i>ℓ</i><sub>2</sub> = [1&ensp;1&ensp;−40]<sup class="t">T</sup></span>, that is <span class="nowrap"><i>x</i> + <i>y</i> = 40</span>.
+        <span class="f"><span class="pt"><i>m</i></span> = <span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span> = <span class="col"><span>(−1)(−40) − 10·1</span><span>10·1 − 1·(−40)</span><span>1·1 − (−1)·1</span></span> = <span class="col pt"><span>30</span><span>50</span><span>2</span></span></span></li>
+      <li><b>Back to Cartesian.</b> Here <i>r</i> = 2, so we divide:
+        <span class="f">(<span class="frac"><span>30</span><span>2</span></span>, <span class="frac"><span>50</span><span>2</span></span>) = <span class="pt">(15, 25)</span></span>
+        Check: <span class="nowrap">15 − 25 + 10 = 0</span> and <span class="nowrap">15 + 25 − 40 = 0</span>.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">6</span>Summary</h2>
+    <p>The key ideas next to their NumPy equivalents, using the same variable names as the lab.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Point in homogeneous form</div>
+      <div class="f"><span class="pt"><i>m</i></span> = [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup></div>
+      <div class="c"><code>m = np.array([x, y, 1])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Back to Cartesian</div>
+      <div class="f">(<i>p</i>/<i>r</i>, <i>q</i>/<i>r</i>)</div>
+      <div class="c"><code>x, y = m[0]/m[2], m[1]/m[2]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Scale does not matter</div>
+      <div class="f">λ<span class="pt"><i>m</i></span> ∼ <span class="pt"><i>m</i></span>,&ensp;λ<span class="ln"><i>ℓ</i></span> ∼ <span class="ln"><i>ℓ</i></span>&ensp;(λ ≠ 0)</div>
+      <div class="c"><span class="none">No code: it is a property, not an operation.</span></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Point on a line</div>
+      <div class="f"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0</div>
+      <div class="c"><code>np.isclose(np.dot(ell, m), 0)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Line through two points</div>
+      <div class="f"><span class="ln"><i>ℓ</i></span> = <span class="pt"><i>m</i><sub>1</sub></span> × <span class="pt"><i>m</i><sub>2</sub></span></div>
+      <div class="c"><code>ell = np.cross(m1, m2)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Intersection of two lines</div>
+      <div class="f"><span class="pt"><i>m</i></span> = <span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span>, then divide by <i>r</i></div>
+      <div class="c"><code>mi = np.cross(ell_1, ell_2)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k"><i>y</i> for a given <i>x</i></div>
+      <div class="f"><i>y</i> = −(<i>ax</i> + <i>c</i>) / <i>b</i></div>
+      <div class="c"><code>y = -(a*x + c)/b</code></div>
+    </div>
+  </div>
+</section>

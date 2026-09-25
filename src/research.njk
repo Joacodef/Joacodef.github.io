@@ -1,0 +1,38 @@
+---
+layout: base.njk
+title: Research
+description: Research lines of Joaquín De Ferrari in medical imaging, imperfect supervision and clinical language.
+permalink: /research/
+---
+<div class="wrap">
+  <header class="page-head">
+    <h1>Research</h1>
+    <p>{{ site.tagline }}</p>
+  </header>
+
+  {%- for theme in research %}
+  <section class="theme" aria-labelledby="theme-{{ loop.index }}">
+    <div>
+      <span class="n">{{ loop.index }}</span>
+      <h2 id="theme-{{ loop.index }}">{{ theme.title }}</h2>
+    </div>
+    <div>
+      {%- for para in theme.paragraphs %}
+      <p>{{ para }}</p>
+      {%- endfor %}
+      {%- if theme.related.length or theme.extra.length %}
+      <ul class="related">
+        {%- for id in theme.related %}
+          {%- for p in publications %}{% if p.id == id %}
+          <li><a href="https://doi.org/{{ p.doi }}">{{ p.title }}</a> <span>{{ p.venue | truncate(60) }}, {{ p.year }}</span></li>
+          {%- endif %}{% endfor %}
+        {%- endfor %}
+        {%- for item in theme.extra %}
+        <li><span>{{ item }}</span></li>
+        {%- endfor %}
+      </ul>
+      {%- endif %}
+    </div>
+  </section>
+  {%- endfor %}
+</div>

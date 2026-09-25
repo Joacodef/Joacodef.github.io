@@ -1,0 +1,15 @@
+{% macro publication(p) %}
+<li class="pub">
+  <p class="pub-title">{% if p.doi %}<a href="https://doi.org/{{ p.doi }}">{{ p.title }}</a>{% else %}{{ p.title }}{% endif %}</p>
+  <p class="pub-authors">
+    {%- for a in p.authors -%}
+      {%- if a | isMe %}<span class="me">{{ a }}</span>{% else %}{{ a }}{% endif %}{% if not loop.last %}, {% endif -%}
+    {%- endfor -%}
+  </p>
+  <p class="pub-venue"><i>{{ p.venue }}</i>{% if p.details %}, {{ p.details }}{% endif %}, {{ p.year }}.</p>
+  <div class="pub-meta">
+    {%- for b in p.badges %}<span class="badge{% if b == 'Oral presentation' or b == 'First author' %} accent{% endif %}">{{ b }}</span>{% endfor %}
+    {%- if p.doi %}<a href="https://doi.org/{{ p.doi }}">DOI: {{ p.doi }}</a>{% endif %}
+  </div>
+</li>
+{% endmacro %}

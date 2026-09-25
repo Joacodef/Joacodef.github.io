@@ -1,0 +1,69 @@
+[
+  {
+    "id": "bmc2026",
+    "type": "journal",
+    "year": 2026,
+    "title": "A Framework for Extraction of Clinical Information from Radiological Mammography Reports Using Large Language Models and Retrieval Augmented Generation",
+    "authors": ["Godoy, E.*", "De Ferrari, J.*", "Lazo, S.", "Pacheco, C.", "Mellado, D.", "Saez, A.", "Chabert, S.", "Salas, R."],
+    "venue": "BMC Medical Informatics and Decision Making",
+    "details": "Vol. 26, Article 345",
+    "doi": "10.1186/s12911-026-03633-8",
+    "badges": ["Co-first author", "WoS Q1"],
+    "selected": true
+  },
+  {
+    "id": "csbj2025",
+    "type": "journal",
+    "year": 2025,
+    "title": "Hybrid framework for automated generation of mammography radiology reports",
+    "authors": ["Godoy, E.", "Mellado, D.", "De Ferrari, J.", "Querales, M.", "Saez, A.", "Chabert, S.", "Parra, D.", "Salas, R."],
+    "venue": "Computational and Structural Biotechnology Journal",
+    "details": "Vol. 27, pp. 3229–3239",
+    "doi": "10.1016/j.csbj.2025.07.018",
+    "badges": ["WoS Q1"]
+  },
+  {
+    "id": "icaart2026",
+    "type": "conference",
+    "year": 2026,
+    "title": "Multilingual Minimal Contrastive Editing",
+    "authors": ["Benoit-Cea, D.", "Ñanculef, R.", "De Ferrari, J."],
+    "venue": "18th International Conference on Agents and Artificial Intelligence (ICAART 2026)",
+    "details": "Vol. 5, pp. 4590–4598, SCITEPRESS",
+    "doi": "10.5220/0014474800004052"
+  },
+  {
+    "id": "aime2025",
+    "type": "conference",
+    "year": 2025,
+    "title": "Assessing GPT as a Weak Oracle for Annotating Radiological Studies",
+    "authors": ["De Ferrari, J.", "Ñanculef, R.", "Benoit, D.", "Araya, M.", "Solar, M."],
+    "venue": "Artificial Intelligence in Medicine (AIME 2025), Pavia, Italy",
+    "details": "LNCS vol. 15734, pp. 98–109, Springer",
+    "doi": "10.1007/978-3-031-95838-0_10",
+    "badges": ["First author", "Oral presentation"],
+    "selected": true
+  },
+  {
+    "id": "icprs2024",
+    "type": "conference",
+    "year": 2024,
+    "title": "Automatic detection of contextual laterality in Mammography Reports using Large Language Models",
+    "authors": ["Godoy, E.*", "De Ferrari, J.*", "Chabert, S.", "Mellado, D.", "Salas, R."],
+    "venue": "IEEE International Conference on Pattern Recognition Systems (ICPRS 2024), London, UK",
+    "details": "pp. 1–6",
+    "doi": "10.1109/ICPRS62101.2024.10677842",
+    "badges": ["Co-first author"],
+    "selected": true
+  },
+  {
+    "id": "zenodo2025",
+    "type": "dataset",
+    "year": 2025,
+    "title": "Chilean Radiological Reports – AIME 2025",
+    "authors": ["De Ferrari, J.", "Araya, M.", "Solar, M.", "Ñanculef, R."],
+    "venue": "Zenodo",
+    "details": "42,605 Spanish chest CT reports labelled with GPT, plus 217 reports labelled by four radiologists",
+    "doi": "10.5281/zenodo.14791071"
+  }
+]

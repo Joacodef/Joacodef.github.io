@@ -1,0 +1,22 @@
+{
+  "title": "Joaquín De Ferrari",
+  "url": "https://joacodef.github.io",
+  "lang": "en",
+  "role": "PhD student in Computer Science at UC Chile.",
+  "tagline": "I work on machine learning for medical imaging and clinical language, with a focus on models that learn from the imperfect supervision real hospitals produce.",
+  "currently": "3D vision-language models for chest CT at the Millennium Institute iHealth.",
+  "description": "Joaquín De Ferrari, PhD student in Computer Science at UC Chile. Machine learning for medical imaging and clinical language.",
+  "cv": "/assets/cv/joaquin-de-ferrari-cv.pdf",
+  "links": [
+    { "label": "Email", "href": "mailto:jdeferrari@estudiante.uc.cl" },
+    { "label": "GitHub", "href": "https://github.com/Joacodef" },
+    { "label": "ORCID", "href": "https://orcid.org/0009-0009-5885-888X" },
+    { "label": "LinkedIn", "href": "https://www.linkedin.com/in/joaquin-de-ferrari-84a175215" }
+  ],
+  "nav": [
+    { "label": "Research", "href": "/research/" },
+    { "label": "Publications", "href": "/publications/" },
+    { "label": "Notes", "href": "/notes/" },
+    { "label": "CV", "href": "/assets/cv/joaquin-de-ferrari-cv.pdf" }
+  ]
+}
