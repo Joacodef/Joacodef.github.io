@@ -19,9 +19,9 @@ permalink: /notes/
     <ul class="cards">
       {%- for note in collections.notes %}{% if note.data.course == course %}
       <li class="card">
-        <p class="course">{{ note.data.module }}</p>
         <h3><a href="{{ note.url }}">{{ note.data.title }}</a></h3>
         <p>{{ note.data.description }}</p>
+        <p class="meta">{{ note.data.module }}</p>
       </li>
       {%- endif %}{% endfor %}
     </ul>

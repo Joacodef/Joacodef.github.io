@@ -32,7 +32,20 @@ scripts:
     <div class="disp num"><span class="col pt"><span>2</span><span>3</span><span>1</span></span> ∼ <span class="col pt"><span>4</span><span>6</span><span>2</span></span> ∼ <span class="col pt"><span>−1</span><span>−1.5</span><span>−0.5</span></span></div>
     <p>The reason is how we return to Cartesian coordinates: we divide by the third component. If <span class="pt"><i>m</i></span> = [<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup>, the point is</p>
     <div class="disp">(<i>x</i>, <i>y</i>) = <span class="nowrap">(<span class="frac"><span><i>p</i></span><span><i>r</i></span></span>, <span class="frac"><span><i>q</i></span><span><i>r</i></span></span>)</span></div>
-    <p>and the division cancels the factor λ: λ<i>p</i> / λ<i>r</i> = <i>p</i> / <i>r</i>. That is why the result of an operation does not need to end in 1; you only have to divide by <i>r</i> before reading it.</p>
+    <p>and the division cancels the factor λ: <span class="nowrap">λ<i>p</i> / λ<i>r</i> = <i>p</i> / <i>r</i></span>. That is why the result of an operation does not need to end in 1; you only have to divide by <i>r</i> before reading it.</p>
+
+    <h3>Each point is a line through the origin</h3>
+    <p>Read a vector [<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup> as a position in a space with axes <i>p</i>, <i>q</i> and <i>r</i>. The Cartesian plane sits in that space as the plane <span class="nowrap"><i>r</i> = 1</span>, and <span class="pt"><i>m</i></span> = [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup> is a point on it. Every multiple λ<span class="pt"><i>m</i></span> lies on the line through the origin and <span class="pt"><i>m</i></span>, and that line crosses the plane only once, at <span class="pt"><i>m</i></span>. Dividing by <i>r</i> slides a vector along its line, back to the plane.</p>
+    <p>The third axis only gives the third component somewhere to be drawn. The points we care about all live on the plane <span class="nowrap"><i>r</i> = 1</span>.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-scale" role="group" aria-label="Space with axes p, q and r. The plane r = 1 holds the point m, and a red line through the origin holds every multiple of m. Use the arrow keys to turn the view."></svg>
+    <div class="ro" id="fig-scale-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Drag λ<span class="pt"><i>m</i></span> along the line and <span class="pt"><i>m</i></span> across the plane, and drag the background to turn the view. With a keyboard, select the figure, λ<span class="pt"><i>m</i></span> or <span class="pt"><i>m</i></span> with Tab and use the arrow keys. The red line is not a line of the plane: it holds every vector that stands for <span class="pt"><i>m</i></span>.</p>
+      <button type="button" class="btn" id="fig-scale-reset">Reset</button>
+    </div>
   </div>
 </section>
 
@@ -41,17 +54,34 @@ scripts:
     <h2><span class="n">2</span>The line as a vector</h2>
     <p>The line <i>ax</i> + <i>by</i> + <i>c</i> = 0 is fully described by its three coefficients, so it can also be written as a vector:</p>
     <div class="disp"><span class="ln"><i>ℓ</i></span> = <span class="col ln"><span><i>a</i></span><span><i>b</i></span><span><i>c</i></span></span>&ensp;⟷&ensp;<span class="nowrap"><i>ax</i> + <i>by</i> + <i>c</i> = 0</span></div>
-    <p>As with points, λ<i>ℓ</i> is the same line: multiplying the whole equation by λ does not change which points satisfy it.</p>
+    <p>As with points, λ<i>ℓ</i> is the same line: multiplying the whole equation by λ does not change which points satisfy it. All three of these vectors are the line <span class="nowrap"><i>x</i> + <i>y</i> = 3</span>:</p>
+    <div class="disp num"><span class="col ln"><span>1</span><span>1</span><span>−3</span></span> ∼ <span class="col ln"><span>2</span><span>2</span><span>−6</span></span> ∼ <span class="col ln"><span>−1</span><span>−1</span><span>3</span></span></div>
 
     <h3>When a point lies on a line</h3>
     <p>If you substitute <span class="pt"><i>m</i></span> = [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup> into the equation of the line, what you get is exactly a dot product:</p>
     <div class="disp"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = <i>ax</i> + <i>by</i> + <i>c</i> = 0</div>
-    <p>For example, the lab's line <span class="ln nowrap">[1&ensp;−1&ensp;10]<sup class="t">T</sup></span> is <i>x</i> − <i>y</i> + 10 = 0. The point (10, 20) lies on it because 1·10 + (−1)·20 + 10·1 = 0.</p>
+    <p>For example, the line <span class="ln nowrap">[1&ensp;−1&ensp;10]<sup class="t">T</sup></span> is <i>x</i> − <i>y</i> + 10 = 0. The point (10, 20) lies on it because 1·10 + (−1)·20 + 10·1 = 0.</p>
 
     <h3>Evaluating the line at a given <i>x</i></h3>
     <p>Solving the equation for <i>y</i>:</p>
     <div class="disp"><i>y</i> = <span class="nowrap">−(<i>ax</i> + <i>c</i>) / <i>b</i></span></div>
-    <p>This holds when <i>b</i> ≠ 0; if <i>b</i> = 0, the line is vertical. The lab uses it at <i>x</i> = 14 with the line above: <i>y</i> = −(14 + 10) / (−1) = 24.</p>
+    <p>This holds when <i>b</i> ≠ 0; if <i>b</i> = 0, the line is vertical. With the line above and <i>x</i> = 14, <span class="nowrap"><i>y</i> = −(14 + 10) / (−1) = 24</span>.</p>
+
+    <h3>Each line is a plane through the origin</h3>
+    <p>Go back to the space of section 1, with axes <i>p</i>, <i>q</i> and <i>r</i>. The vectors [<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup> with <span class="nowrap"><i>ap</i> + <i>bq</i> + <i>cr</i> = 0</span> form a plane through the origin, and <span class="ln"><i>ℓ</i></span> = [<i>a</i>&ensp;<i>b</i>&ensp;<i>c</i>]<sup class="t">T</sup> is perpendicular to it, since its dot product with every vector in the plane is zero. That plane meets <span class="nowrap"><i>r</i> = 1</span> exactly in the line <span class="nowrap"><i>ax</i> + <i>by</i> + <i>c</i> = 0</span>. Scaling <span class="ln"><i>ℓ</i></span> stretches or flips the perpendicular vector, but the plane stays the same, and so does the line.</p>
+    <p>So a point is a line through the origin, and a line is a plane through the origin. The point <span class="pt"><i>m</i></span> lies on <span class="ln"><i>ℓ</i></span> when the line of <span class="pt"><i>m</i></span> lies inside the plane of <span class="ln"><i>ℓ</i></span>, which is what <span class="nowrap"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0</span> says.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-plane" role="group" aria-label="Space with axes p, q and r and the plane r = 1. The line ℓ lies on that plane, a blue plane through the origin holds it, and the vector λℓ is perpendicular to the blue plane. Use the arrow keys to turn the view."></svg>
+    <div class="ro">
+      <p class="coef-row"><span class="ln"><i>ℓ</i></span> = <span class="col ln coef"><input id="fig-plane-a" type="number" step="1" min="-9" max="9" value="1" aria-label="a, the coefficient of x"><input id="fig-plane-b" type="number" step="1" min="-9" max="9" value="1" aria-label="b, the coefficient of y"><input id="fig-plane-c" type="number" step="1" min="-9" max="9" value="-3" aria-label="c, the constant term"></span> <span class="nowrap">⟷ <span id="fig-plane-eq"></span></span></p>
+      <div id="fig-plane-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Drag λ<span class="ln"><i>ℓ</i></span> along its line, change <i>a</i>, <i>b</i> and <i>c</i> to move the line, and drag the background to turn the view. Turn it until the blue plane shrinks to a line: λ<span class="ln"><i>ℓ</i></span> then meets it at a right angle. With a keyboard, select the figure, λ<span class="ln"><i>ℓ</i></span> or a coefficient with Tab and use the arrow keys.</p>
+      <button type="button" class="btn" id="fig-plane-reset">Reset</button>
+    </div>
   </div>
 </section>
 
@@ -65,11 +95,11 @@ scripts:
   </div>
 
   <div class="fig">
-    <svg id="fig-line" role="img" aria-label="Plane with two draggable points and the line through them"></svg>
+    <svg id="fig-line" role="group" aria-label="Plane with two draggable points and the line through them"></svg>
     <div class="ro" id="fig-line-out" aria-live="polite"></div>
     <div class="fig-foot">
       <p>Drag <span class="pt"><i>m</i><sub>1</sub></span> and <span class="pt"><i>m</i><sub>2</sub></span>. With a keyboard, select a point with Tab and move it with the arrow keys.</p>
-      <button type="button" class="btn" id="fig-line-reset">Back to the lab example</button>
+      <button type="button" class="btn" id="fig-line-reset">Reset</button>
     </div>
   </div>
 </section>
@@ -83,29 +113,29 @@ scripts:
   </div>
 
   <div class="fig">
-    <svg id="fig-meet" role="img" aria-label="Plane with two adjustable lines and their intersection point"></svg>
+    <svg id="fig-meet" role="group" aria-label="Plane with two adjustable lines and their intersection point"></svg>
     <div class="ro" id="fig-meet-out" aria-live="polite"></div>
     <div class="fig-foot">
       <p>Drag the endpoint circles to move each line. The lines are simplified before the cross product; any multiple would give the same point. Try making them parallel and watch <i>r</i>.</p>
-      <button type="button" class="btn" id="fig-meet-reset">Back to the lab example</button>
+      <button type="button" class="btn" id="fig-meet-reset">Reset</button>
     </div>
   </div>
 </section>
 
 <section id="example">
   <div class="prose">
-    <h2><span class="n">5</span>The lab example, step by step</h2>
-    <p>The points and lines lab chains everything above into a single example.</p>
+    <h2><span class="n">5</span>A worked example</h2>
+    <p>One example chains everything above: two points, the line through them, and where that line meets a second line.</p>
     <ol class="steps">
       <li><b>The points.</b>
-        <span class="f"><span class="pt"><i>m</i><sub>1</sub></span> = <span class="pt nowrap">[10&ensp;20&ensp;1]<sup class="t">T</sup></span>, &ensp;<span class="pt"><i>m</i><sub>2</sub></span> = <span class="pt nowrap">[20&ensp;30&ensp;1]<sup class="t">T</sup></span></span></li>
+        <span class="f"><span class="nowrap"><span class="pt"><i>m</i><sub>1</sub></span> = <span class="pt">[10&ensp;20&ensp;1]<sup class="t">T</sup></span>,</span> &ensp;<span class="nowrap"><span class="pt"><i>m</i><sub>2</sub></span> = <span class="pt">[20&ensp;30&ensp;1]<sup class="t">T</sup></span></span></span></li>
       <li><b>The line through them.</b>
-        <span class="f"><span class="ln"><i>ℓ</i></span> = <span class="pt"><i>m</i><sub>1</sub></span> × <span class="pt"><i>m</i><sub>2</sub></span> = <span class="col"><span>20 − 30</span><span>20 − 10</span><span>10·30 − 20·20</span></span> = <span class="col ln"><span>−10</span><span>10</span><span>−100</span></span></span></li>
-      <li><b>Simplify.</b> Dividing by −10 gives the same line, <span class="ln nowrap">[1&ensp;−1&ensp;10]<sup class="t">T</sup></span>, that is <span class="nowrap"><i>x</i> − <i>y</i> + 10 = 0</span>. This is the form the lab stores as <code>ell_1</code>.</li>
+        <span class="f"><span class="nowrap"><span class="ln"><i>ℓ</i></span> = <span class="pt"><i>m</i><sub>1</sub></span> × <span class="pt"><i>m</i><sub>2</sub></span></span> <span class="nowrap">= <span class="col"><span>20 − 30</span><span>20 − 10</span><span>10·30 − 20·20</span></span></span> <span class="nowrap">= <span class="col ln"><span>−10</span><span>10</span><span>−100</span></span></span></span></li>
+      <li><b>Simplify.</b> Dividing by −10 gives the same line, <span class="ln nowrap"><i>ℓ</i><sub>1</sub> = [1&ensp;−1&ensp;10]<sup class="t">T</sup></span>, that is <span class="nowrap"><i>x</i> − <i>y</i> + 10 = 0</span>.</li>
       <li><b>Evaluate at <i>x</i> = 14.</b>
         <span class="f"><i>y</i> = −(1·14 + 10) / (−1) = 24</span></li>
-      <li><b>Intersect with a second line.</b> The lab uses <span class="ln nowrap"><i>ℓ</i><sub>2</sub> = [1&ensp;1&ensp;−40]<sup class="t">T</sup></span>, that is <span class="nowrap"><i>x</i> + <i>y</i> = 40</span>.
-        <span class="f"><span class="pt"><i>m</i></span> = <span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span> = <span class="col"><span>(−1)(−40) − 10·1</span><span>10·1 − 1·(−40)</span><span>1·1 − (−1)·1</span></span> = <span class="col pt"><span>30</span><span>50</span><span>2</span></span></span></li>
+      <li><b>Intersect with a second line.</b> Take <span class="ln nowrap"><i>ℓ</i><sub>2</sub> = [1&ensp;1&ensp;−40]<sup class="t">T</sup></span>, that is <span class="nowrap"><i>x</i> + <i>y</i> = 40</span>.
+        <span class="f"><span class="nowrap"><span class="pt"><i>m</i></span> = <span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span></span> <span class="nowrap">= <span class="col"><span>(−1)(−40) − 10·1</span><span>10·1 − 1·(−40)</span><span>1·1 − (−1)·1</span></span></span> <span class="nowrap">= <span class="col pt"><span>30</span><span>50</span><span>2</span></span></span></span></li>
       <li><b>Back to Cartesian.</b> Here <i>r</i> = 2, so we divide:
         <span class="f">(<span class="frac"><span>30</span><span>2</span></span>, <span class="frac"><span>50</span><span>2</span></span>) = <span class="pt">(15, 25)</span></span>
         Check: <span class="nowrap">15 − 25 + 10 = 0</span> and <span class="nowrap">15 + 25 − 40 = 0</span>.</li>
@@ -116,7 +146,7 @@ scripts:
 <section id="summary">
   <div class="prose">
     <h2><span class="n">6</span>Summary</h2>
-    <p>The key ideas next to their NumPy equivalents, using the same variable names as the lab.</p>
+    <p>The key ideas next to their NumPy equivalents.</p>
   </div>
   <div class="sum">
     <div class="sum-row">

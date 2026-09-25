@@ -12,10 +12,7 @@ permalink: /research/
 
   {%- for theme in research %}
   <section class="theme" aria-labelledby="theme-{{ loop.index }}">
-    <div>
-      <span class="n">{{ loop.index }}</span>
-      <h2 id="theme-{{ loop.index }}">{{ theme.title }}</h2>
-    </div>
+    <h2 id="theme-{{ loop.index }}">{{ theme.title }}</h2>
     <div>
       {%- for para in theme.paragraphs %}
       <p>{{ para }}</p>

@@ -136,7 +136,7 @@ function readPalette() {
     blue,
     glass: blue.clone().lerp(paper, 0.6),
     red: new Color(get("--red", "#B0303F")),
-    airway: new Color(get("--ink-3", "#8E897F")),
+    airway: new Color(get("--ink-3", "#6F6A61")),
     lobes: [blue.clone(), blue.clone().lerp(paper, 0.38), blue.clone().lerp(paper, 0.18)],
   };
 }
@@ -219,7 +219,14 @@ export function mount(container) {
   }
   function render() { renderer.render(scene, camera); }
 
-  // Drag to rotate. Horizontal drags spin the volume; vertical drags tilt it.
+  // The volume never moves on its own: it rotates only while the user drags it or presses the arrow keys,
+  // and it is redrawn only when something changes. Horizontal moves spin it; vertical moves tilt it.
+  function rotate(dx, dy) {
+    root.rotation.y += dx;
+    root.rotation.x = Math.max(-0.9, Math.min(0.9, root.rotation.x + dy));
+    render();
+  }
+
   let dragging = false, px = 0, py = 0;
   container.addEventListener("pointerdown", (e) => {
     dragging = true; px = e.clientX; py = e.clientY;
@@ -228,34 +235,25 @@ export function mount(container) {
   });
   container.addEventListener("pointermove", (e) => {
     if (!dragging) return;
-    root.rotation.y += (e.clientX - px) * 0.01;
-    root.rotation.x = Math.max(-0.9, Math.min(0.9, root.rotation.x + (e.clientY - py) * 0.01));
+    rotate((e.clientX - px) * 0.01, (e.clientY - py) * 0.01);
     px = e.clientX; py = e.clientY;
-    if (!animating) render();
   });
   const stop = () => { dragging = false; container.style.cursor = ""; };
   container.addEventListener("pointerup", stop);
   container.addEventListener("pointercancel", stop);
 
-  // Slow rotation, only while the figure is on screen and motion is allowed.
-  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let visible = true, animating = false;
-  function loop() {
-    if (!visible || reduceMotion) { animating = false; return; }
-    animating = true;
-    if (!dragging) root.rotation.y += 0.0035;
-    render();
-    requestAnimationFrame(loop);
-  }
-  if ("IntersectionObserver" in window) {
-    new IntersectionObserver(([entry]) => {
-      visible = entry.isIntersecting;
-      if (visible && !animating) loop();
-    }).observe(container);
-  }
+  // Keyboard: Tab to the figure, then the arrow keys turn it in the same directions as dragging.
+  container.tabIndex = 0;
+  container.setAttribute("aria-label", `${container.getAttribute("aria-label")} Use the arrow keys to rotate it.`);
+  container.addEventListener("keydown", (e) => {
+    const step = 0.12;
+    const d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+    if (!d) return;
+    e.preventDefault();
+    rotate(d[0], d[1]);
+  });
 
   if ("ResizeObserver" in window) new ResizeObserver(resize).observe(container);
   resize();
   container.classList.add("is-ready");
-  loop();
 }

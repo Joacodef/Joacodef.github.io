@@ -1,13 +1,12 @@
-# joacodef.github.io
+# joaquindeferrari.com
 
-Personal academic website of Joaquín De Ferrari, built with [Eleventy](https://www.11ty.dev/) and published on GitHub Pages.
+Personal academic website of Joaquín De Ferrari, built with [Eleventy](https://www.11ty.dev/) and published on GitHub Pages at [joaquindeferrari.com](https://joaquindeferrari.com).
 
-## First-time setup
+## Deployment
 
-1. Create a **public** GitHub repository named exactly `Joacodef.github.io` and push this project to its `main` branch.
-2. In the repository, go to **Settings → Pages** and set **Source** to **GitHub Actions**.
-3. Add your public CV at `src/assets/cv/joaquin-de-ferrari-cv.pdf` (ideally without your phone number) and delete `PLACE-YOUR-CV-HERE.txt`.
-4. Push. The workflow in `.github/workflows/deploy.yml` builds the site and publishes it at `https://joacodef.github.io`.
+Every push to `main` runs `.github/workflows/deploy.yml`, which builds the site and publishes it to GitHub Pages (**Settings → Pages → Source** is set to **GitHub Actions**).
+
+The custom domain `joaquindeferrari.com` is set under **Settings → Pages → Custom domain**, so the repository needs no `CNAME` file. Its DNS lives on Cloudflare as DNS-only records; never switch them to proxied. The same address is the `url` in `src/_data/site.json`.
 
 ## Working locally
 
@@ -26,10 +25,14 @@ npm run build    # production build into _site/
 | Name, tagline, "Currently" line, links, menu | `src/_data/site.json` |
 | Publications (set `"selected": true` to show one on the homepage) | `src/_data/publications.json` |
 | Research lines | `src/_data/research.json` |
+| Public CV (without the phone number) | `src/assets/cv/joaquin-de-ferrari-cv.pdf` |
+| Link preview image (1200×630) and its alt text | `src/assets/og-image.png`, `image` in `src/_data/site.json` |
+| Home-screen icon for phones (180×180) | `src/apple-touch-icon.png` |
+| Page shown for broken links | `src/404.njk` |
 | Global styles and color tokens (light and dark) | `src/assets/css/site.css` |
 | Styles for notes (math, interactive figures) | `src/assets/css/notes.css` |
 | Homepage 3D figure (bundled with esbuild at build time) | `scripts/lung-volume.js` |
-| Shared toolkit for interactive planes in notes | `src/assets/js/plane.js` |
+| Shared toolkit for interactive figures in notes (2D planes, 3D views, draggable handles) | `src/assets/js/plane.js` |
 
 ## Adding a note
 
@@ -47,10 +50,6 @@ npm run build    # production build into _site/
    ---
    ```
 
-3. For a new course, add a folder with a `<folder-name>.json` file like `src/notes/computer-vision/computer-vision.json`, setting `layout`, `course` and an optional `source` credit.
+3. For a new course, add a folder with a `<folder-name>.json` file like `src/notes/computer-vision/computer-vision.json`, setting `layout`, `course` and a `source` credit for the course materials.
 
-Notes appear automatically on the notes index and on the homepage. Interactive figures can import helpers from `/assets/js/plane.js`, as `src/assets/js/notes/homogeneous-coordinates.js` does.
-
-## Custom domain (optional)
-
-Buy a domain, add it under **Settings → Pages → Custom domain**, and update `url` in `src/_data/site.json`. Nothing else changes.
+Notes appear automatically on the notes index, and the first three by `order` also appear on the homepage. Interactive figures can import helpers from `/assets/js/plane.js`, as `src/assets/js/notes/homogeneous-coordinates.js` does.

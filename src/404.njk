@@ -1,0 +1,20 @@
+---
+layout: base.njk
+title: Page not found
+description: This page does not exist.
+permalink: /404.html
+noindex: true
+eleventyExcludeFromCollections: true
+---
+<div class="wrap">
+  <header class="page-head">
+    <h1>Page not found</h1>
+    <p>This page does not exist or has moved. These pages are a good place to start.</p>
+  </header>
+  <ul class="links">
+    <li><a href="/">Home</a></li>
+    {%- for item in site.nav %}
+    <li><a href="{{ item.href }}">{{ item.label }}</a></li>
+    {%- endfor %}
+  </ul>
+</div>

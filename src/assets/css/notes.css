@@ -22,7 +22,8 @@
 
 /* Math */
 .m, .note .prose i { font-family: var(--serif); }
-.note .prose p i, .ro p i { font-size: 1.06em; }
+/* Serif variables are slightly larger than the text; line-height 1 keeps them from pushing lines apart. */
+.note .prose p i, .ro p i { font-size: 1.06em; line-height: 1; }
 .pt { color: var(--red); }
 .ln { color: var(--blue); }
 .nowrap { white-space: nowrap; }
@@ -61,15 +62,43 @@ sup.t { font-style: normal; font-size: 0.62em; margin-left: 0.06em; line-height:
 .fig-foot p { margin: 0; max-width: 36em; }
 .btn { font: inherit; font-size: 0.9rem; color: var(--ink); background: transparent; border: 1px solid var(--ink-3); border-radius: 999px; padding: 0.35em 1.05em; cursor: pointer; }
 .btn:hover { background: var(--card); }
+.fig-foot i { font-family: var(--serif); }
+
+/* Editable vectors: whole-number inputs stacked inside a column-vector bracket. */
+.coef-row { font-family: var(--serif); font-size: 1.18rem; line-height: 1.6; margin: 0 0 0.9rem; }
+.coef input { font: inherit; color: inherit; width: 3.4em; margin: 0.1em 0; padding: 0.05em 0.25em; text-align: center; background: var(--card); border: 1px solid var(--rule); border-radius: 6px; }
+.coef input:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
 
 .axes line { stroke: var(--ink-3); stroke-width: 1; }
 .tick { fill: var(--ink-2); font-family: var(--sans); font-size: 14px; }
 .axl { fill: var(--ink-2); font-family: var(--serif); font-style: italic; font-size: 18px; }
+/* On phones the plane is drawn at about two thirds of its size, so axis text is enlarged to stay readable. */
+@media (max-width: 560px) {
+  .tick { font-size: 18px; }
+  .axl { font-size: 22px; }
+}
 .ln-path { stroke: var(--blue); stroke-width: 2.6; fill: none; stroke-linecap: round; }
 .ln-path.dash { stroke-dasharray: 9 7; stroke-linecap: butt; }
 .ln-lab { fill: var(--blue); font-family: var(--serif); font-size: 22px; }
 .pt-dot { fill: var(--red); }
 .pt-lab { fill: var(--red); font-family: var(--serif); font-size: 22px; }
+/* 3D figures. The plane r = 1 is a translucent panel, so whatever lies below it shows through, dimmed. */
+.panel { fill: var(--paper-2); fill-opacity: 0.78; stroke: var(--ink-3); stroke-width: 1; }
+.grid line { stroke: var(--ink-3); stroke-opacity: 0.32; stroke-width: 1; }
+.ray { stroke: var(--red); stroke-width: 1.8; stroke-linecap: round; }
+.pt-ring { fill: var(--card); stroke: var(--red); stroke-width: 2.4; }
+.origin { fill: var(--ink-2); }
+.plane-lab { fill: var(--ink-2); font-family: var(--serif); font-size: 18px; }
+.fan { fill: var(--blue); fill-opacity: 0.14; }
+.fan-edge { stroke: var(--blue); stroke-opacity: 0.55; stroke-width: 1.2; }
+.vec { stroke: var(--blue); stroke-width: 2.6; stroke-linecap: round; }
+.ln-ring { fill: var(--card); stroke: var(--blue); stroke-width: 2.4; }
+.right-angle { fill: none; stroke: var(--ink-2); stroke-width: 1.2; }
+/* A 3D view turns when its background is dragged. On touch screens only sideways drags turn it, so the page still scrolls. */
+.turnable { cursor: grab; touch-action: pan-y; }
+.turnable.turning { cursor: grabbing; }
+@media (max-width: 560px) { .plane-lab { font-size: 21px; } }
+
 .handle { outline: none; touch-action: none; cursor: grab; }
 .handle .hit { fill: transparent; }
 .handle .ring { fill: none; stroke: var(--ink); stroke-width: 1.5; opacity: 0; }

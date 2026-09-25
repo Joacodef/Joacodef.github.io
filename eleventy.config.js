@@ -4,6 +4,7 @@ export default function (eleventyConfig) {
   // Static assets (CSS, JS, images, CV) are copied as-is.
   eleventyConfig.addPassthroughCopy({ "src/assets": "assets" });
   eleventyConfig.addPassthroughCopy({ "src/favicon.svg": "favicon.svg" });
+  eleventyConfig.addPassthroughCopy({ "src/apple-touch-icon.png": "apple-touch-icon.png" });
 
   // The 3D lung volume imports three.js from npm. esbuild bundles only the
   // parts of three.js it actually uses, so the homepage stays light.
