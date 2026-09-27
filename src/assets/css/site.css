@@ -10,6 +10,9 @@
   --blue: #27466F;
   --red: #B0303F;
   --ok: #3B6D11;
+  /* Gray values in figures: 0 is drawn in --img-lo and 255 in --img-hi, so bright pixels look bright in both themes. */
+  --img-lo: var(--ink);
+  --img-hi: var(--card);
 
   --serif: "Newsreader", "Iowan Old Style", Georgia, "Times New Roman", serif;
   --sans: "Public Sans", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
@@ -37,6 +40,8 @@
     --blue: #93B3DB;
     --red: #E48A8F;
     --ok: #9CC66B;
+    --img-lo: var(--card);
+    --img-hi: var(--ink);
     color-scheme: dark;
   }
 }
@@ -51,6 +56,8 @@
   --blue: #93B3DB;
   --red: #E48A8F;
   --ok: #9CC66B;
+  --img-lo: var(--card);
+  --img-hi: var(--ink);
   color-scheme: dark;
 }
 

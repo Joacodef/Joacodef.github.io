@@ -1,6 +1,7 @@
 // Shared toolkit for the interactive figures in the notes.
 // createPlane maps 2D data coordinates in [0, max] x [0, max] to an SVG viewBox, with the y axis pointing up.
 // createSpace draws 3D vectors with a parallel (oblique) projection.
+// The matrix helpers apply, invert and estimate 3×3 transformations, such as a homography from point pairs.
 // Colors come from CSS classes (see notes.css).
 
 const NS = "http://www.w3.org/2000/svg";
@@ -28,6 +29,59 @@ export function simplify(l) {
   return { v: l.map((x) => (x / d === 0 ? 0 : x / d)), d };
 }
 
+/* ---------- Matrices ---------- */
+
+// Matrices are arrays of rows. apply(H, v) is the product Hv of a 3×3 matrix and a 3-vector.
+export const apply = (H, v) => H.map((r) => dot(r, v));
+export const transpose = (A) => A[0].map((_, j) => A.map((r) => r[j]));
+export const matMul = (A, B) => A.map((r) => B[0].map((_, j) => r.reduce((s, x, k) => s + x * B[k][j], 0)));
+
+// The inverse of a 3×3 matrix: its columns are cross products of the rows, divided by the determinant. Null when singular.
+export function inverse(A) {
+  const cols = [cross(A[1], A[2]), cross(A[2], A[0]), cross(A[0], A[1])];
+  const det = dot(A[0], cols[0]);
+  if (Math.abs(det) <= 1e-12 * A.reduce((p, r) => p * Math.hypot(...r), 1)) return null;
+  return transpose(cols).map((r) => r.map((x) => x / det));
+}
+
+// Solves the square system Ax = b by Gaussian elimination with partial pivoting. Null when A is singular.
+export function solve(A, b) {
+  const n = b.length, M = A.map((r, i) => [...r, b[i]]);
+  const tol = 1e-12 * Math.max(...A.flat().map(Math.abs));
+  for (let k = 0; k < n; k++) {
+    let p = k;
+    for (let i = k + 1; i < n; i++) if (Math.abs(M[i][k]) > Math.abs(M[p][k])) p = i;
+    if (Math.abs(M[p][k]) <= tol) return null;
+    [M[k], M[p]] = [M[p], M[k]];
+    for (let i = k + 1; i < n; i++) {
+      const f = M[i][k] / M[k][k];
+      for (let j = k; j <= n; j++) M[i][j] -= f * M[k][j];
+    }
+  }
+  const x = new Array(n);
+  for (let i = n - 1; i >= 0; i--) {
+    let s = M[i][n];
+    for (let j = i + 1; j < n; j++) s -= M[i][j] * x[j];
+    x[i] = s / M[i][i];
+  }
+  return x;
+}
+
+// The homography H, scaled so that h33 = 1, with λm′ = Hm for every pair [m, m′] of Cartesian points [x, y].
+// Each pair gives two rows of Ah = b; four pairs are solved exactly, more by least squares, (AᵀA)h = Aᵀb.
+// Null when the pairs do not fix one H with h33 = 1 (three of the m on one line, or an H whose h33 is 0).
+// If three of the m′ are on one line, the H returned is singular.
+export function homography(pairs) {
+  const A = [], b = [];
+  for (const [[x, y], [xp, yp]] of pairs) {
+    A.push([x, y, 1, 0, 0, 0, -x * xp, -y * xp]); b.push(xp);
+    A.push([0, 0, 0, x, y, 1, -x * yp, -y * yp]); b.push(yp);
+  }
+  const At = transpose(A);
+  const h = pairs.length === 4 ? solve(A, b) : solve(matMul(At, A), At.map((r) => r.reduce((s, x, k) => s + x * b[k], 0)));
+  return h && [h.slice(0, 3), h.slice(3, 6), [h[6], h[7], 1]];
+}
+
 /* ---------- Math formatting (HTML strings) ---------- */
 
 const MINUS = "\u2212";
@@ -37,12 +91,26 @@ export function fmt(n) {
   return (r < 0 ? MINUS : "") + String(Math.abs(r));
 }
 export const isRounded = (n) => Math.round(n * 100) !== n * 100;
+// Like fmt, but numbers below 1 keep `digits` significant digits, so an entry such as −0.000585 does not
+// round to 0. Below 0.001 it writes a power of ten.
+export function fmtSig(n, digits = 3) {
+  const a = Math.abs(n);
+  if (a >= 1 || a === 0) return fmt(n);
+  const sign = n < 0 ? MINUS : "";
+  if (a >= 1e-3) return sign + String(Number(a.toPrecision(digits)));
+  let e = Math.floor(Math.log10(a)), m = Number((a / 10 ** e).toPrecision(digits));
+  if (m >= 10) { m = Number((m / 10).toPrecision(digits)); e += 1; }
+  return `${sign}${m}·10<sup>${MINUS}${-e}</sup>`;
+}
 export const paren = (n) => (n < 0 ? `(${fmt(n)})` : fmt(n));
 export const T = '<sup class="t">T</sup>';
 export const sym = (name, sub, cls) => `<span class="${cls}"><i>${name}</i>${sub ? `<sub>${sub}</sub>` : ""}</span>`;
 export const col = (arr, cls = "") => `<span class="col ${cls}">${arr.map((v) => `<span>${fmt(v)}</span>`).join("")}</span>`;
 export const row = (arr, cls = "") => `<span class="nowrap ${cls}">[${arr.map(fmt).join("&ensp;")}]${T}</span>`;
 export const frac = (a, b) => `<span class="frac"><span>${a}</span><span>${b}</span></span>`;
+// A matrix as a bracketed grid, from an array of rows. Numbers are written with f, strings are kept as HTML.
+export const mat = (rows, cls = "", f = fmt) =>
+  `<span class="mat ${cls}"${rows[0].length !== 3 ? ` style="--cols: ${rows[0].length}"` : ""}>${rows.flat().map((v) => `<span>${typeof v === "number" ? f(v) : v}</span>`).join("")}</span>`;
 
 // "ax + by + c = 0" with clean signs and unit coefficients. With vars = ["p", "q", "r"] it writes the
 // plane "ap + bq + cr = 0"; an empty name marks the constant term.
@@ -205,7 +273,18 @@ export function createPlane(svg, { max = 40 } = {}) {
     });
   }
 
-  return { max, X, Y, el: (tag, attrs) => el(tag, attrs, svg), clip, drawSegment, label, placeAlong, placeLineLabel, handle: (kind) => makeHandle(svg, kind), place, draggable };
+  return { max, X, Y, toData, el: (tag, attrs) => el(tag, attrs, svg), clip, drawSegment, label, placeAlong, placeLineLabel, handle: (kind) => makeHandle(svg, kind), place, draggable };
+}
+
+/* ---------- Controls ---------- */
+
+// Toggle buttons with a data-mode attribute inside `group`, one pressed at a time. A click presses its button and
+// calls onChange(mode); the returned function presses a mode without calling onChange, for Reset.
+export function modeButtons(group, onChange) {
+  const buttons = [...group.querySelectorAll("button[data-mode]")];
+  const press = (mode) => buttons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
+  for (const b of buttons) b.addEventListener("click", () => { press(b.dataset.mode); onChange(b.dataset.mode); });
+  return press;
 }
 
 /* ---------- Space (3D view the reader can turn) ---------- */

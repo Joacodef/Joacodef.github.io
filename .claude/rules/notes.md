@@ -24,7 +24,8 @@ paths:
 
 ## Math markup
 
-- Components in `notes.css`: `.disp` for display math, `.col` for column vectors, `.frac` for fractions, `sup.t` for the transpose, `.pt` for points (carmine) and `.ln` for lines (blue).
+- Components in `notes.css`: `.disp` for display math, `.col` for column vectors, `.mat` for matrices (3 columns unless `style="--cols: N"`; `mat()` in `plane.js` writes one), `.frac` for fractions, `sup.t` for the transpose and other superscripts, `.pt` for points (carmine) and `.ln` for lines (blue).
+- A heading that contains math wraps its text in a `<span>` after the number (`<h2><span class="n">4</span><span>Estimating <i>H</i> …</span></h2>`): the `h2` is a flex row, and loose text and `<i>` would become separate items with gaps between them.
 - Variables in `<i>`, subscripts in `<sub>`, and the real minus sign `−` (U+2212) in numbers.
 - Follow the course notation (Prof. Domingo Mery, github.com/domingomery/cv): `m` for points, `ℓ` for lines, homogeneous vectors as `[p q r]ᵀ`, projection as `λm = PM`.
 - In code snippets, use the variable names from the course labs (`m1`, `ell`, `ell_1`, `np.cross`).
@@ -33,6 +34,9 @@ paths:
 ## Interactive figures
 
 - Snap draggable points to integers so readouts stay clean.
+- To let readers pick a mode (a kind of transformation, an interpolation method), use a `.modes` group of buttons with `data-mode` and `aria-pressed`, wired with `modeButtons` from `plane.js`.
+- `plane.js` also has 3×3 matrix helpers (`apply`, `matMul`, `inverse`, `transpose`), `solve` for square linear systems, `homography(pairs)` (h33 = 1; exact for 4 pairs, least squares for more) and `fmtSig` for matrix entries far below 1.
+- Gray values of images are drawn with `color-mix()` between `--img-lo` (0) and `--img-hi` (255), so bright pixels stay bright in both themes. Mark pixels with no value explicitly (the warping figure crosses them out), since an empty cell looks like black or white.
 - To let readers edit a vector, put number inputs inside a `.col.coef` bracket, as the line-as-vector figure does. Accept whole numbers only, and leave the figure unchanged while a field holds something else (a lone minus sign, say).
 - Readouts show the actual computation with the current numbers, not only the result.
 - Handle degenerate cases with a clear message: coincident points, parallel lines (`r = 0`), coincident lines, points outside the view.

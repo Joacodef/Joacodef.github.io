@@ -24,13 +24,12 @@ Custom domain `joaquindeferrari.com`: DNS lives on Cloudflare as DNS-only record
 - Publication and research facts must match his CV exactly. Never invent venues, metrics, rankings or claims. Mark equal contribution with `*` and keep every DOI.
 - Positioning: the tagline describes a broad identity (machine learning for medical imaging and clinical language, learning from imperfect supervision). The specific current project belongs only in the "Currently" line.
 - Notes keep the AI-assistance and "may contain errors" notice from `src/_includes/note.njk`.
-- Notes summarize concepts. Never publish solutions to graded coursework (assignments, problem sets) while a course is running.
 - Credit course sources through the `source` field of each course folder's JSON file.
 
 ## Design system: "notebook"
 
 - Fonts: Newsreader for headings, formulas and ledes; Public Sans for body text and UI; JetBrains Mono only for code.
-- Colors come only from the tokens in `src/assets/css/site.css` (`--paper`, `--paper-2`, `--card`, `--ink`, `--ink-2`, `--ink-3`, `--rule`, `--blue`, `--red`, `--ok`). Never hardcode hex values in components. Any new token needs both a light and a dark value.
+- Colors come only from the tokens in `src/assets/css/site.css` (`--paper`, `--paper-2`, `--card`, `--ink`, `--ink-2`, `--ink-3`, `--rule`, `--blue`, `--red`, `--ok`, and `--img-lo`/`--img-hi` for gray values in figures). Never hardcode hex values in components. Any new token needs both a light and a dark value.
 - Semantic ink, one fixed color per concept across the whole site:
   - Blue ink: lines, links, anatomy.
   - Carmine (`--red`): points, findings, segmentation masks, "what we look for".

@@ -1,0 +1,261 @@
+---
+title: 2D transformations
+module: Geometry
+order: 2
+description: The four kinds of 2D transformation, estimating a homography from point pairs, and warping images, with interactive figures.
+scripts:
+  - /assets/js/notes/2d-transformations.js
+---
+<div class="prose">
+  <div class="duo">
+    <div>
+      <p class="big">λ<span class="pt"><i>m</i>′</span> = <i>H</i><span class="pt"><i>m</i></span></p>
+      <p class="cap">A 3 × 3 matrix moves every point of the plane.</p>
+    </div>
+    <div>
+      <p class="big"><i>Ah</i> = <i>b</i></p>
+      <p class="cap">Four pairs of points are enough to find it.</p>
+    </div>
+  </div>
+  <p class="legend">Throughout this page, <span class="dot" aria-hidden="true"></span>points are drawn in red ink and <span class="bar" aria-hidden="true"></span>lines in blue ink. It builds on the note on <a href="/notes/computer-vision/homogeneous-coordinates/">homogeneous coordinates</a>.</p>
+</div>
+
+<section id="frames">
+  <div class="prose">
+    <h2><span class="n">1</span>A point in two coordinate systems</h2>
+    <p>Put a second coordinate system on the plane, with axes <i>x</i>′ and <i>y</i>′. Its origin sits at <i>t</i> = (<i>t</i><sub><i>x</i></sub>, <i>t</i><sub><i>y</i></sub>) and its axes are turned by an angle θ. A point then has two sets of coordinates, <span class="pt"><i>m</i>′</span> = [<i>x</i>′&ensp;<i>y</i>′&ensp;1]<sup class="t">T</sup> in the new system and <span class="pt"><i>m</i></span> = [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup> in the old one, and one matrix converts between them:</p>
+    <div class="disp"><span class="nowrap"><span class="pt"><i>m</i></span> = <i>H</i><span class="pt"><i>m</i>′</span>,</span>&ensp; <span class="nowrap"><i>H</i> = <span class="mat"><span>cos θ</span><span>−sin θ</span><span><i>t</i><sub><i>x</i></sub></span><span>sin θ</span><span>cos θ</span><span><i>t</i><sub><i>y</i></sub></span><span>0</span><span>0</span><span>1</span></span></span></div>
+    <p>Read <i>H</i> column by column. The first column, (cos θ, sin θ), is the unit vector of the <i>x</i>′ axis written in the old coordinates, and the second, (−sin θ, cos θ), is the unit vector of the <i>y</i>′ axis. The third is the new origin <i>t</i>. So <i>H</i><span class="pt"><i>m</i>′</span> says: start at <i>t</i>, walk <i>x</i>′ units along the <i>x</i>′ axis and <i>y</i>′ units along the <i>y</i>′ axis. The 1 at the end of <span class="pt"><i>m</i>′</span> is what adds <i>t</i>. Without that third component, a shift could not be written as a matrix product.</p>
+    <p>In blocks, with <i>R</i> the 2 × 2 rotation by θ:</p>
+    <div class="disp"><span class="nowrap"><i>H</i> = <span class="mat" style="--cols: 2"><span><i>R</i></span><span><i>t</i></span><span>0<sup class="t">T</sup></span><span>1</span></span>,</span>&ensp; <span class="nowrap"><i>R</i> = <span class="mat" style="--cols: 2"><span>cos θ</span><span>−sin θ</span><span>sin θ</span><span>cos θ</span></span></span></div>
+
+    <h3>Going the other way</h3>
+    <p>To get <span class="pt"><i>m</i>′</span> from <span class="pt"><i>m</i></span>, invert <i>H</i>: <span class="nowrap"><span class="pt"><i>m</i>′</span> = <i>H</i><sup class="t">−1</sup><span class="pt"><i>m</i></span></span>. No general inversion is needed. The columns of <i>R</i> are perpendicular unit vectors, so <span class="nowrap"><i>R</i><sup class="t">T</sup><i>R</i> = <i>I</i></span>: the inverse of a rotation is its transpose, a turn by −θ. Undoing the shift and then the turn gives</p>
+    <div class="disp"><span class="nowrap"><i>H</i><sup class="t">−1</sup> = <span class="mat" style="--cols: 2"><span><i>R</i><sup class="t">T</sup></span><span>−<i>R</i><sup class="t">T</sup><i>t</i></span><span>0<sup class="t">T</sup></span><span>1</span></span></span></div>
+    <p>For example, take θ = 35°, <i>t</i> = (4.1, 3.2) and the point (<i>x</i>, <i>y</i>) = (4.9, 5.5). Subtracting <i>t</i> leaves (0.8, 2.3). Turning that by −35°, with cos 35° ≈ 0.8192 and sin 35° ≈ 0.5736, gives</p>
+    <div class="disp num"><span class="nowrap"><i>x</i>′ ≈ 0.8192·0.8 + 0.5736·2.3</span> <span class="nowrap">≈ 1.97</span><br><span class="nowrap"><i>y</i>′ ≈ −0.5736·0.8 + 0.8192·2.3</span> <span class="nowrap">≈ 1.43</span></div>
+    <p>so in the new system the point is at <span class="pt">(1.97, 1.43)</span>.</p>
+
+    <h3>Adding a scale</h3>
+    <p>If the new system also uses a different unit, so that one unit along <i>x</i>′ or <i>y</i>′ is <i>s</i> units long in the old system, both unit vectors in <i>H</i> grow by <i>s</i>:</p>
+    <div class="disp"><span class="nowrap"><i>H</i> = <span class="mat"><span><i>s</i> cos θ</span><span>−<i>s</i> sin θ</span><span><i>t</i><sub><i>x</i></sub></span><span><i>s</i> sin θ</span><span><i>s</i> cos θ</span><span><i>t</i><sub><i>y</i></sub></span><span>0</span><span>0</span><span>1</span></span></span> <span class="nowrap">= <span class="mat" style="--cols: 2"><span><i>sR</i></span><span><i>t</i></span><span>0<sup class="t">T</sup></span><span>1</span></span></span></div>
+    <p>This is a <em>similarity</em>. It multiplies every length by <i>s</i> but keeps angles, so shapes keep their shape. With <span class="nowrap"><i>s</i> = 1</span> it is the <em>Euclidean</em> transformation above, which keeps lengths as well.</p>
+
+    <h3>Converting coordinates or moving points</h3>
+    <p>So far the point stayed where it was and <i>H</i> converted its coordinates. The same product can be read with a single coordinate system: <i>H</i> moves the point at <span class="pt"><i>m</i>′</span> to the point at <span class="pt"><i>m</i></span>. The rest of this page uses that reading, with the names swapped so that <i>H</i> moves <span class="pt"><i>m</i></span> to <span class="pt"><i>m</i>′</span>. Which way <i>H</i> points is a choice: <i>H</i><sup class="t">−1</sup> moves points back, and it is a transformation of the same kind.</p>
+  </div>
+</section>
+
+<section id="kinds">
+  <div class="prose">
+    <h2><span class="n">2</span>Four kinds of transformation</h2>
+    <p>In general, <i>H</i> can be any invertible 3 × 3 matrix. It moves the point <span class="pt"><i>m</i></span> = [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup> to the point <span class="pt"><i>m</i>′</span> given by</p>
+    <div class="disp hero-f">λ<span class="pt"><i>m</i>′</span> = <i>H</i><span class="pt"><i>m</i></span></div>
+    <p>The factor λ is there because <i>H</i><span class="pt"><i>m</i></span> need not end in 1. As with any homogeneous vector, divide by the third component to read the point; λ is that third component.</p>
+    <p>The matrices of section 1 keep the bottom row [0&ensp;0&ensp;1]. Freeing more entries gives looser transformations, four kinds in all, each named by what it still keeps:</p>
+  </div>
+  <div class="prose kinds">
+    <div class="kind">
+      <h3>Euclidean</h3>
+      <div class="f"><span class="mat"><span>cos θ</span><span>−sin θ</span><span><i>t</i><sub><i>x</i></sub></span><span>sin θ</span><span>cos θ</span><span><i>t</i><sub><i>y</i></sub></span><span>0</span><span>0</span><span>1</span></span></div>
+      <p>3 free numbers: θ, <i>t</i><sub><i>x</i></sub> and <i>t</i><sub><i>y</i></sub>. Keeps lengths.</p>
+    </div>
+    <div class="kind">
+      <h3>Similarity</h3>
+      <div class="f"><span class="mat"><span><i>s</i> cos θ</span><span>−<i>s</i> sin θ</span><span><i>t</i><sub><i>x</i></sub></span><span><i>s</i> sin θ</span><span><i>s</i> cos θ</span><span><i>t</i><sub><i>y</i></sub></span><span>0</span><span>0</span><span>1</span></span></div>
+      <p>4 free numbers: adds the scale <i>s</i>. Keeps angles, so a shape keeps its shape.</p>
+    </div>
+    <div class="kind">
+      <h3>Affine</h3>
+      <div class="f"><span class="mat"><span><i>a</i><sub>11</sub></span><span><i>a</i><sub>12</sub></span><span><i>t</i><sub><i>x</i></sub></span><span><i>a</i><sub>21</sub></span><span><i>a</i><sub>22</sub></span><span><i>t</i><sub><i>y</i></sub></span><span>0</span><span>0</span><span>1</span></span></div>
+      <p>6 free numbers: the top two rows. Keeps parallel lines, and ratios along a line, so midpoints stay midpoints.</p>
+    </div>
+    <div class="kind">
+      <h3>Projective</h3>
+      <div class="f"><span class="mat"><span><i>h</i><sub>11</sub></span><span><i>h</i><sub>12</sub></span><span><i>h</i><sub>13</sub></span><span><i>h</i><sub>21</sub></span><span><i>h</i><sub>22</sub></span><span><i>h</i><sub>23</sub></span><span><i>h</i><sub>31</sub></span><span><i>h</i><sub>32</sub></span><span><i>h</i><sub>33</sub></span></span></div>
+      <p>8 free numbers: nine entries, less one for scale. Keeps straight lines. Also called a homography.</p>
+    </div>
+  </div>
+  <div class="prose">
+    <p>Each kind also keeps everything the looser kinds keep: a Euclidean transformation keeps angles, parallel lines and straight lines too.</p>
+    <p>Where do the counts come from? The Euclidean matrix has three free numbers, the similarity adds <i>s</i>, and the affine matrix frees all six entries of its top two rows. The projective matrix has nine entries, but λ<i>H</i> moves every point exactly where <i>H</i> does, because the division by the third component cancels λ. Only eight numbers matter.</p>
+    <p>Why each kind keeps what it keeps: a turn and a shift move the plane as a rigid piece, so lengths survive. A scale multiplies every length by the same <i>s</i>, so ratios of lengths survive, and with them angles. With the bottom row [0&ensp;0&ensp;1], <i>H</i><span class="pt"><i>m</i></span> always ends in 1 and nothing is divided. The transformation is then a linear map plus a shift, which sends every direction <i>d</i> to one new direction <i>Ad</i>, with <i>A</i> the top-left 2 × 2 block. Lines that shared a direction still share one, so they stay parallel. But <i>A</i> can stretch some directions more than others, so angles change. A projective bottom row makes the final division depend on the point, and section 3 shows what that does to parallel lines.</p>
+    <p>Applying one transformation after another is a matrix product: first <i>H</i><sub>1</sub>, then <i>H</i><sub>2</sub>, is <i>H</i><sub>2</sub><i>H</i><sub>1</sub>. Two transformations of one kind make a third of the same kind, just as two rotations make a rotation.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-kinds" role="group" aria-label="Plane with a dashed square, its image under the chosen kind of transformation drawn as a blue grid, and draggable corners"></svg>
+    <div class="ro">
+      <div class="modes" id="fig-kinds-modes" role="group" aria-label="Kind of transformation">
+        <button type="button" data-mode="euclidean" aria-pressed="true">Euclidean</button>
+        <button type="button" data-mode="similarity" aria-pressed="false">Similarity</button>
+        <button type="button" data-mode="affine" aria-pressed="false">Affine</button>
+        <button type="button" data-mode="projective" aria-pressed="false">Projective</button>
+      </div>
+      <div id="fig-kinds-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Pick a kind and drag the solid red corners; the hollow ones follow. The dashed square is the shape before the transformation. With a keyboard, select a corner with Tab and move it with the arrow keys. In the Euclidean kind, the arrow keys on <span class="pt"><i>m</i>′<sub>4</sub></span> turn the square around <span class="pt"><i>m</i>′<sub>1</sub></span>.</p>
+      <button type="button" class="btn" id="fig-kinds-reset">Reset</button>
+    </div>
+  </div>
+</section>
+
+<section id="lines">
+  <div class="prose">
+    <h2><span class="n">3</span>Why straight lines stay straight</h2>
+    <p>Even the loosest kind keeps straight lines, and the dot product shows why. A point <span class="pt"><i>m</i></span> lies on the line <span class="ln"><i>ℓ</i></span> when <span class="nowrap"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0</span>. Put <span class="nowrap"><i>H</i><sup class="t">−1</sup><i>H</i> = <i>I</i></span> in the middle:</p>
+    <div class="disp"><span class="nowrap"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span></span> <span class="nowrap">= <span class="ln"><i>ℓ</i></span><sup class="t">T</sup><i>H</i><sup class="t">−1</sup><i>H</i><span class="pt"><i>m</i></span></span> <span class="nowrap">= (<i>H</i><sup class="t">−T</sup><span class="ln"><i>ℓ</i></span>)<sup class="t">T</sup>(<i>H</i><span class="pt"><i>m</i></span>)</span> <span class="nowrap">= 0</span></div>
+    <p>So every point of <span class="ln"><i>ℓ</i></span> lands on one line, <span class="nowrap"><span class="ln"><i>ℓ</i>′</span> = <i>H</i><sup class="t">−T</sup><span class="ln"><i>ℓ</i></span></span>, where <i>H</i><sup class="t">−T</sup> is the transpose of <i>H</i><sup class="t">−1</sup>. Points move with <i>H</i>, and lines move with <i>H</i><sup class="t">−T</sup>.</p>
+    <p>The same fact can be seen in the picture of homogeneous coordinates, where a point is a line through the origin of the space with axes <i>p</i>, <i>q</i> and <i>r</i>, and a line is a plane through the origin. An invertible 3 × 3 matrix is a linear map of that space. It sends lines through the origin to lines through the origin, and planes through the origin to planes through the origin: points to points, and lines to lines.</p>
+
+    <h3>Parallel lines can meet</h3>
+    <p>The cross product of two parallel lines has <span class="nowrap"><i>r</i> = 0</span>: a vector [<i>p</i>&ensp;<i>q</i>&ensp;0]<sup class="t">T</sup> that no division brings back to the plane. It is called the point at infinity in the direction (<i>p</i>, <i>q</i>), and every line with that direction passes through it. Now apply <i>H</i>:</p>
+    <div class="disp"><span class="nowrap"><i>H</i><span class="col pt"><span><i>p</i></span><span><i>q</i></span><span>0</span></span></span> <span class="nowrap">= <span class="col pt"><span><i>h</i><sub>11</sub><i>p</i> + <i>h</i><sub>12</sub><i>q</i></span><span><i>h</i><sub>21</sub><i>p</i> + <i>h</i><sub>22</sub><i>q</i></span><span><i>h</i><sub>31</sub><i>p</i> + <i>h</i><sub>32</sub><i>q</i></span></span></span></div>
+    <p>If the bottom row of <i>H</i> is [0&ensp;0&ensp;1], as in the first three kinds, the third component stays 0 and the lines stay parallel. That is why affine transformations keep parallels. When <i>h</i><sub>31</sub> or <i>h</i><sub>32</sub> is nonzero, the third component is 0 for only one direction, (<i>p</i>, <i>q</i>) = (<i>h</i><sub>32</sub>, −<i>h</i><sub>31</sub>). Parallel lines in any other direction are sent to lines that meet at an ordinary point, their <em>vanishing point</em>: the point in a photo where the rails of a straight track meet. In the projective kind of the figure above, the readout finds that point with a cross product.</p>
+
+    <h3>Where homographies come from</h3>
+    <p>Projective transformations are the ones cameras produce. Photograph a flat scene, such as a wall or a page: each point of it reaches the image along a straight ray through the camera's center, and the scene's plane and the image are related by a homography. If the two planes are parallel, the rays only change the scale, and the transformation is a similarity. If they are tilted, parallel edges of the scene converge in the photo, and <i>H</i> needs its bottom row. Two photos taken from one spot with the camera turned are also related by a homography, whatever the depth of the scene, because the rays through the shared center are the same for both photos.</p>
+  </div>
+</section>
+
+<section id="estimate">
+  <div class="prose">
+    <h2><span class="n">4</span><span>Estimating <i>H</i> from point pairs</span></h2>
+    <p>Often <i>H</i> is unknown, but some pairs of matching points are known: the corners of a sign in a photo and the corners of the rectangle it should become, or one landmark seen in two photos. Each pair <span class="nowrap"><span class="pt"><i>m</i></span> ↔ <span class="pt"><i>m</i>′</span></span> gives two equations. Since <i>H</i> only matters up to scale, fix <span class="nowrap"><i>h</i><sub>33</sub> = 1</span>, which leaves 8 unknowns, and divide by the third component of <i>H</i><span class="pt"><i>m</i></span>:</p>
+    <div class="disp"><span class="nowrap"><i>x</i>′ = <span class="frac"><span><i>h</i><sub>11</sub><i>x</i> + <i>h</i><sub>12</sub><i>y</i> + <i>h</i><sub>13</sub></span><span><i>h</i><sub>31</sub><i>x</i> + <i>h</i><sub>32</sub><i>y</i> + 1</span></span>,</span>&ensp; <span class="nowrap"><i>y</i>′ = <span class="frac"><span><i>h</i><sub>21</sub><i>x</i> + <i>h</i><sub>22</sub><i>y</i> + <i>h</i><sub>23</sub></span><span><i>h</i><sub>31</sub><i>x</i> + <i>h</i><sub>32</sub><i>y</i> + 1</span></span></span></div>
+    <p>The division makes these equations nonlinear in the unknowns, but multiplying both sides by the denominator makes them linear:</p>
+    <div class="disp"><span class="nowrap"><i>h</i><sub>11</sub><i>x</i> + <i>h</i><sub>12</sub><i>y</i> + <i>h</i><sub>13</sub></span> <span class="nowrap">− <i>h</i><sub>31</sub><i>xx</i>′ − <i>h</i><sub>32</sub><i>yx</i>′</span> <span class="nowrap">= <i>x</i>′</span><br><span class="nowrap"><i>h</i><sub>21</sub><i>x</i> + <i>h</i><sub>22</sub><i>y</i> + <i>h</i><sub>23</sub></span> <span class="nowrap">− <i>h</i><sub>31</sub><i>xy</i>′ − <i>h</i><sub>32</sub><i>yy</i>′</span> <span class="nowrap">= <i>y</i>′</span></div>
+    <p>Stack the unknowns in <span class="nowrap"><i>h</i> = [<i>h</i><sub>11</sub>&ensp;<i>h</i><sub>12</sub>&ensp;<i>h</i><sub>13</sub>&ensp;<i>h</i><sub>21</sub>&ensp;<i>h</i><sub>22</sub>&ensp;<i>h</i><sub>23</sub>&ensp;<i>h</i><sub>31</sub>&ensp;<i>h</i><sub>32</sub>]<sup class="t">T</sup></span>. Each pair then adds two rows to a linear system <span class="nowrap"><i>Ah</i> = <i>b</i></span>:</p>
+    <div class="disp"><span class="nowrap">[<i>x</i>&ensp;<i>y</i>&ensp;1&ensp;0&ensp;0&ensp;0&ensp;−<i>xx</i>′&ensp;−<i>yx</i>′]&thinsp;<i>h</i></span> <span class="nowrap">= <i>x</i>′</span><br><span class="nowrap">[0&ensp;0&ensp;0&ensp;<i>x</i>&ensp;<i>y</i>&ensp;1&ensp;−<i>xy</i>′&ensp;−<i>yy</i>′]&thinsp;<i>h</i></span> <span class="nowrap">= <i>y</i>′</span></div>
+    <p>Four pairs give eight equations for the eight unknowns, so four is the minimum, and then <span class="nowrap"><i>h</i> = <i>A</i><sup class="t">−1</sup><i>b</i></span>. No three of the four points may lie on one line; if they do, <i>A</i> is singular and no single <i>H</i> is found. In the projective kind of the figure in section 2, this is the system solved each time a corner moves: the corners of the dashed square and the red corners are the four pairs.</p>
+
+    <h3>More than four pairs</h3>
+    <p>Measured points are never exact, so in practice more pairs are used than needed. With <span class="nowrap"><i>n</i> &gt; 4</span> pairs, <i>A</i> has 2<i>n</i> rows and no <i>h</i> satisfies all of them. The best choice is the <i>h</i> that makes the squared errors ‖<i>Ah</i> − <i>b</i>‖<sup class="t">2</sup> smallest. Setting their derivative to zero gives <span class="nowrap"><i>A</i><sup class="t">T</sup><i>Ah</i> = <i>A</i><sup class="t">T</sup><i>b</i></span>, and so the least-squares solution</p>
+    <div class="disp"><i>h</i> = (<i>A</i><sup class="t">T</sup><i>A</i>)<sup class="t">−1</sup><i>A</i><sup class="t">T</sup><i>b</i></div>
+    <p>The matrix <i>A</i><sup class="t">T</sup><i>A</i> is 8 × 8 however many pairs there are, so the system to solve stays small.</p>
+    <p>Fixing <span class="nowrap"><i>h</i><sub>33</sub> = 1</span> fails in one case: when the true <i>h</i><sub>33</sub> is 0, which happens when <i>H</i> sends the origin of the coordinates to infinity. The general method keeps all nine entries as unknowns, adds −<i>x</i>′ and −<i>y</i>′ as a ninth column of <i>A</i>, and solves <span class="nowrap"><i>Ah</i> = 0</span>. The answer is the right singular vector of <i>A</i> with the smallest singular value, the last row of <i>V</i><sup class="t">T</sup> in the SVD. When <span class="nowrap"><i>h</i><sub>33</sub> ≠ 0</span>, it gives the same <i>H</i> up to scale.</p>
+  </div>
+</section>
+
+<section id="warp">
+  <div class="prose">
+    <h2><span class="n">5</span>Warping an image</h2>
+    <p>To transform a whole image, every pixel of the output needs a gray value. In pixel coordinates, <i>x</i> counts columns to the right and <i>y</i> counts rows downward. Let <i>I</i>′ be the source image and <i>I</i> the output, and write <i>H</i> so that <span class="nowrap">λ<span class="pt"><i>m</i>′</span> = <i>H</i><span class="pt"><i>m</i></span></span> takes each output pixel <span class="pt"><i>m</i></span> to the place <span class="pt"><i>m</i>′</span> of the source it shows.</p>
+    <p>The algorithm goes backward: for each pixel of the output, compute <span class="pt"><i>m</i>′</span> and read the source there. Going forward, sending each source pixel to the output, seems more natural, but its landing spot is rarely the center of a pixel. After rounding, some output pixels receive two source pixels and others receive none, which leaves holes, most of all when the image is enlarged. Going backward, each output pixel asks where it comes from and gets exactly one answer.</p>
+    <p>That answer, <span class="nowrap"><span class="pt"><i>m</i>′</span> = (<i>x</i>′, <i>y</i>′)</span>, is rarely the center of a pixel either, so the value has to be read between the four source pixels around it. Call them <i>I</i>′<sub>1</sub> (top left), <i>I</i>′<sub>2</sub> (top right), <i>I</i>′<sub>3</sub> (bottom left) and <i>I</i>′<sub>4</sub> (bottom right). There are two common ways.</p>
+    <p><b>Nearest pixel.</b> Take the value of whichever of the four is closest. It is fast, but edges come out jagged.</p>
+    <p><b>Bilinear interpolation.</b> Blend all four. The point <span class="pt"><i>m</i>′</span> splits the square between their centers into four rectangles, with areas <i>A</i> (top left), <i>B</i> (top right), <i>C</i> (bottom left) and <i>D</i> (bottom right). Each pixel is weighted by the area of the rectangle opposite it:</p>
+    <div class="disp"><span class="nowrap"><i>I</i>(<i>x</i>, <i>y</i>)</span> <span class="nowrap">= <i>A</i>&thinsp;<i>I</i>′<sub>4</sub> + <i>B</i>&thinsp;<i>I</i>′<sub>3</sub></span> <span class="nowrap">+ <i>C</i>&thinsp;<i>I</i>′<sub>2</sub> + <i>D</i>&thinsp;<i>I</i>′<sub>1</sub>,</span>&ensp; <span class="nowrap"><i>A</i> + <i>B</i> + <i>C</i> + <i>D</i> = 1</span></div>
+    <p>Why the opposite rectangle? As <span class="pt"><i>m</i>′</span> moves toward <i>I</i>′<sub>1</sub>, the rectangle <i>D</i> opposite it grows until it fills the whole square. So a point on top of a pixel gets exactly that pixel's value, and in between the value changes smoothly. The four areas add up to the whole square, 1, so a region of constant gray keeps its gray.</p>
+    <p>When <span class="pt"><i>m</i>′</span> falls outside the source image, there is nothing to read, and the output pixel is left empty, usually as 0.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-warp" role="group" aria-label="Two pixel grids: the source image on the left and the output on the right, which shows the source turned by 30 degrees. A draggable point picks one output pixel."></svg>
+    <div class="ro">
+      <div class="modes" id="fig-warp-modes" role="group" aria-label="Interpolation">
+        <button type="button" data-mode="nearest" aria-pressed="false">Nearest pixel</button>
+        <button type="button" data-mode="bilinear" aria-pressed="true">Bilinear</button>
+      </div>
+      <div id="fig-warp-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Drag the red point across the output. Its pixel reads the source at <span class="nowrap"><span class="pt"><i>m</i>′</span> = <i>H</i><span class="pt"><i>m</i></span></span>, between the four outlined pixels. Crossed-out pixels read outside the source and have no value. Switch the interpolation to compare the two outputs. With a keyboard, select the point with Tab and move it with the arrow keys.</p>
+      <button type="button" class="btn" id="fig-warp-reset">Reset</button>
+    </div>
+  </div>
+</section>
+
+<section id="stitch">
+  <div class="prose">
+    <h2><span class="n">6</span>Stitching photos into a mosaic</h2>
+    <p>A panorama is made from photos taken from one spot while the camera turns. As section 3 showed, such photos are related by a homography, so one can be warped onto the other. It takes four steps.</p>
+    <ol class="steps">
+      <li><b>Find distinctive points.</b> A keypoint detector such as SIFT finds corners and blobs in each photo, and describes the patch around each one with a vector. The vectors are built so that the same spot seen in the other photo gets a similar one.</li>
+      <li><b>Match them.</b> For each keypoint of one photo, find the two most similar vectors in the other. Keep the match only if the best is much closer than the second best. This ratio test drops spots that look like many others, such as one window in a row of windows.</li>
+      <li><b>Estimate <i>H</i> robustly.</b> Some matches are still wrong after the ratio test, and one wrong pair can pull the least-squares <i>H</i> far off. RANSAC avoids this. Pick four matches at random, compute <i>H</i> from them exactly, and count how many of all the matches this <i>H</i> maps to within a few pixels (5, say) of their partners. Repeat many times, keep the <i>H</i> with the most such inliers, and refine it by least squares on those inliers only. After enough tries, some sample of four is likely to hold only good matches, and the right <i>H</i> is the one that most matches agree with.</li>
+      <li><b>Warp onto a larger canvas.</b> Write <i>H</i> so that it takes points of the second photo to the first. Sending the corners of the second photo through <i>H</i> shows where it lands, and some corners may land at negative coordinates or beyond the edges of the first photo. A shift <i>T</i> that brings every corner into view fixes this. A shift is itself a homography, so the second photo goes onto the canvas through the product <i>TH</i>, and the first photo through <i>T</i> alone. To fill the canvas, each of its pixels reads the second photo through (<i>TH</i>)<sup class="t">−1</sup>, backward as in section 5.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="example">
+  <div class="prose">
+    <h2><span class="n">7</span>A worked example</h2>
+    <p>A photo shows a rectangular panel at an angle, and we want a straight 440 × 600 image of it, with a 20-pixel margin. The example uses every section: four point pairs, the system <span class="nowrap"><i>Ah</i> = <i>b</i></span>, the homography itself, and a check with cross products. Coordinates are in pixels, with <i>y</i> pointing down.</p>
+    <ol class="steps">
+      <li><b>The pairs.</b> Each corner of the output, <span class="pt"><i>m</i><sub><i>i</i></sub></span>, and the place in the photo where that corner of the panel appears, <span class="pt"><i>m</i>′<sub><i>i</i></sub></span>:
+        <span class="f"><span class="nowrap"><span class="pt">(20, 20)</span> ↔ <span class="pt">(74, 120)</span>,</span>&ensp; <span class="nowrap"><span class="pt">(20, 620)</span> ↔ <span class="pt">(94, 500)</span>,</span> <span class="nowrap"><span class="pt">(460, 620)</span> ↔ <span class="pt">(385, 535)</span>,</span>&ensp; <span class="nowrap"><span class="pt">(460, 20)</span> ↔ <span class="pt">(350, 20)</span></span></span></li>
+      <li><b>Two rows per pair.</b> For the first pair, <span class="nowrap"><i>x</i> = <i>y</i> = 20</span>, <span class="nowrap"><i>x</i>′ = 74</span> and <span class="nowrap"><i>y</i>′ = 120</span>, so <span class="nowrap">−<i>xx</i>′ = −<i>yx</i>′ = −1480</span> and <span class="nowrap">−<i>xy</i>′ = −<i>yy</i>′ = −2400</span>:
+        <span class="f"><span class="nowrap">[20&nbsp;20&nbsp;1&nbsp;0&nbsp;0&nbsp;0&nbsp;−1480&nbsp;−1480]&thinsp;<i>h</i></span> <span class="nowrap">= 74</span><br><span class="nowrap">[0&nbsp;0&nbsp;0&nbsp;20&nbsp;20&nbsp;1&nbsp;−2400&nbsp;−2400]&thinsp;<i>h</i></span> <span class="nowrap">= 120</span></span>
+        The other three pairs add six more rows.</li>
+      <li><b>Solve.</b> With <span class="nowrap"><i>h</i> = <i>A</i><sup class="t">−1</sup><i>b</i></span> and <span class="nowrap"><i>h</i><sub>33</sub> = 1</span>:
+        <span class="f"><span class="nowrap"><i>H</i> ≈</span> <span class="mat"><span>0.415</span><span>0.0298</span><span>64.2</span><span>−0.236</span><span>0.609</span><span>111</span><span>−5.85·10<sup class="t">−4</sup></span><span>−3.32·10<sup class="t">−5</sup></span><span>1</span></span></span></li>
+      <li><b>Check a corner.</b> The first corner goes where it should:
+        <span class="f"><span class="nowrap"><i>H</i><span class="col pt"><span>20</span><span>20</span><span>1</span></span></span> <span class="nowrap">≈ <span class="col pt"><span>73.08</span><span>118.52</span><span>0.9876</span></span></span> <span class="nowrap">→ (<span class="frac"><span>73.08</span><span>0.9876</span></span>, <span class="frac"><span>118.52</span><span>0.9876</span></span>)</span> <span class="nowrap">≈ <span class="pt">(74.00, 120.00)</span></span></span></li>
+      <li><b>Find where the center comes from.</b> The center of the output is (240, 320):
+        <span class="f"><span class="nowrap"><i>H</i><span class="col pt"><span>240</span><span>320</span><span>1</span></span></span> <span class="nowrap">≈ <span class="col pt"><span>173.25</span><span>249.22</span><span>0.8489</span></span></span> <span class="nowrap">→ <span class="pt">(204.09, 293.59)</span></span></span>
+        so that pixel of the output shows the photo at (204.09, 293.59).</li>
+      <li><b>Check with lines.</b> The center of a rectangle is where its diagonals cross, and <i>H</i> keeps lines, so the answer must be where the diagonals of the panel cross in the photo. With cross products, and each line simplified:
+        <span class="f"><span class="nowrap"><span class="ln"><i>ℓ</i><sub>1</sub></span> = <span class="pt"><i>m</i>′<sub>1</sub></span> × <span class="pt"><i>m</i>′<sub>3</sub></span></span> <span class="nowrap">∼ <span class="ln">[415&ensp;−311&ensp;6610]<sup class="t">T</sup></span>,</span>&ensp; <span class="nowrap"><span class="ln"><i>ℓ</i><sub>2</sub></span> = <span class="pt"><i>m</i>′<sub>2</sub></span> × <span class="pt"><i>m</i>′<sub>4</sub></span></span> <span class="nowrap">∼ <span class="ln">[15&ensp;8&ensp;−5410]<sup class="t">T</sup></span></span></span>
+        <span class="f"><span class="nowrap"><span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span> = <span class="col pt"><span>1629630</span><span>2344300</span><span>7985</span></span></span> <span class="nowrap">→ (<span class="frac"><span>1629630</span><span>7985</span></span>, <span class="frac"><span>2344300</span><span>7985</span></span>)</span> <span class="nowrap">≈ <span class="pt">(204.09, 293.59)</span> <span class="ok">✓</span></span></span>
+        The same point. It is not the average of the four corners in the photo, (225.75, 293.75): a projective transformation keeps lines, but not midpoints.</li>
+      <li><b>Build the image.</b> Doing step 5 for every pixel of the output, and interpolating the photo there as in section 5, gives the straightened image.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">8</span>Summary</h2>
+    <p>The key ideas next to their NumPy and OpenCV equivalents.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Euclidean transformation</div>
+      <div class="f"><i>H</i> = [<i>R</i>&ensp;<i>t</i>;&ensp;0<sup class="t">T</sup>&ensp;1]</div>
+      <div class="c"><code>H = np.block([[R, t], [0, 0, 1]])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Change of coordinates</div>
+      <div class="f"><span class="pt"><i>m</i>′</span> = <i>H</i><sup class="t">−1</sup><span class="pt"><i>m</i></span></div>
+      <div class="c"><code>mp = np.linalg.inv(H) @ m</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Apply a homography</div>
+      <div class="f">λ<span class="pt"><i>m</i>′</span> = <i>H</i><span class="pt"><i>m</i></span>, then divide by <i>r</i></div>
+      <div class="c"><code>mp = H @ m</code><br><code>mp = mp / mp[2]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Lines under a homography</div>
+      <div class="f"><span class="ln"><i>ℓ</i>′</span> = <i>H</i><sup class="t">−T</sup><span class="ln"><i>ℓ</i></span></div>
+      <div class="c"><code>ell_p = np.linalg.inv(H).T @ ell</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k"><i>H</i> from four pairs</div>
+      <div class="f"><i>h</i> = <i>A</i><sup class="t">−1</sup><i>b</i>, with <i>h</i><sub>33</sub> = 1</div>
+      <div class="c"><code>h = np.linalg.solve(A, b)</code><br><code>H = np.append(h, 1).reshape(3, 3)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k"><i>H</i> from more pairs</div>
+      <div class="f"><i>h</i> = (<i>A</i><sup class="t">T</sup><i>A</i>)<sup class="t">−1</sup><i>A</i><sup class="t">T</sup><i>b</i></div>
+      <div class="c"><code>h = np.linalg.pinv(A) @ b</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k"><i>H</i> despite wrong matches</div>
+      <div class="f">RANSAC</div>
+      <div class="c"><code>H, mask = cv2.findHomography(</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;m, mp, cv2.RANSAC, 5.0)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Warp an image</div>
+      <div class="f">Read the source at <span class="pt"><i>m</i>′</span> for every output pixel <span class="pt"><i>m</i></span></div>
+      <div class="c"><code>Y = cv2.warpPerspective(</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;X, np.linalg.inv(H), (M, N))</code><br><span class="none">OpenCV takes the map from the source to the output, and the output's width and height.</span></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Bilinear interpolation</div>
+      <div class="f"><i>A</i>&thinsp;<i>I</i>′<sub>4</sub> + <i>B</i>&thinsp;<i>I</i>′<sub>3</sub> + <i>C</i>&thinsp;<i>I</i>′<sub>2</sub> + <i>D</i>&thinsp;<i>I</i>′<sub>1</sub></div>
+      <div class="c"><code>flags=cv2.INTER_LINEAR</code> <span class="none">(the default; <code>cv2.INTER_NEAREST</code> for the nearest pixel)</span></div>
+    </div>
+  </div>
+</section>
