@@ -1,7 +1,8 @@
 // Shared toolkit for the interactive figures in the notes.
 // createPlane maps 2D data coordinates in [0, max] x [0, max] to an SVG viewBox, with the y axis pointing up.
 // createSpace draws 3D vectors with a parallel (oblique) projection.
-// The matrix helpers apply, invert and estimate 3×3 transformations, such as a homography from point pairs.
+// The matrix helpers apply, invert and estimate 3×3 transformations, such as a homography from point pairs,
+// and build 3D rotations from three angles.
 // Colors come from CSS classes (see notes.css).
 
 const NS = "http://www.w3.org/2000/svg";
@@ -31,8 +32,9 @@ export function simplify(l) {
 
 /* ---------- Matrices ---------- */
 
-// Matrices are arrays of rows. apply(H, v) is the product Hv of a 3×3 matrix and a 3-vector.
-export const apply = (H, v) => H.map((r) => dot(r, v));
+// Matrices are arrays of rows. apply(H, v) is the product Hv of a matrix and a vector of matching length,
+// such as a 3×3 homography and a 3-vector, or a 3×4 projection and a 4-vector.
+export const apply = (H, v) => H.map((r) => r.reduce((s, x, k) => s + x * v[k], 0));
 export const transpose = (A) => A[0].map((_, j) => A.map((r) => r[j]));
 export const matMul = (A, B) => A.map((r) => B[0].map((_, j) => r.reduce((s, x, k) => s + x * B[k][j], 0)));
 
@@ -82,11 +84,21 @@ export function homography(pairs) {
   return h && [h.slice(0, 3), h.slice(3, 6), [h[6], h[7], 1]];
 }
 
+// Turns by w radians about the X, Y or Z axis, counterclockwise when the axis points at the viewer
+// (the right-hand rule). The columns are the turned axes.
+export const rotX = (w) => [[1, 0, 0], [0, Math.cos(w), -Math.sin(w)], [0, Math.sin(w), Math.cos(w)]];
+export const rotY = (w) => [[Math.cos(w), 0, Math.sin(w)], [0, 1, 0], [-Math.sin(w), 0, Math.cos(w)]];
+export const rotZ = (w) => [[Math.cos(w), -Math.sin(w), 0], [Math.sin(w), Math.cos(w), 0], [0, 0, 1]];
+// The rotation R = R_X R_Y R_Z from three angles in radians.
+export const rotation3d = (wx, wy, wz) => matMul(matMul(rotX(wx), rotY(wy)), rotZ(wz));
+
 /* ---------- Math formatting (HTML strings) ---------- */
 
 const MINUS = "\u2212";
-export function fmt(n) {
-  let r = Math.round(n * 100) / 100;
+// A number rounded to d decimals, with a real minus sign.
+export function fmt(n, d = 2) {
+  const k = 10 ** d;
+  let r = Math.round(n * k) / k;
   if (Object.is(r, -0)) r = 0;
   return (r < 0 ? MINUS : "") + String(Math.abs(r));
 }
@@ -105,8 +117,8 @@ export function fmtSig(n, digits = 3) {
 export const paren = (n) => (n < 0 ? `(${fmt(n)})` : fmt(n));
 export const T = '<sup class="t">T</sup>';
 export const sym = (name, sub, cls) => `<span class="${cls}"><i>${name}</i>${sub ? `<sub>${sub}</sub>` : ""}</span>`;
-export const col = (arr, cls = "") => `<span class="col ${cls}">${arr.map((v) => `<span>${fmt(v)}</span>`).join("")}</span>`;
-export const row = (arr, cls = "") => `<span class="nowrap ${cls}">[${arr.map(fmt).join("&ensp;")}]${T}</span>`;
+export const col = (arr, cls = "", f = fmt) => `<span class="col ${cls}">${arr.map((v) => `<span>${f(v)}</span>`).join("")}</span>`;
+export const row = (arr, cls = "") => `<span class="nowrap ${cls}">[${arr.map((v) => fmt(v)).join("&ensp;")}]${T}</span>`;
 export const frac = (a, b) => `<span class="frac"><span>${a}</span><span>${b}</span></span>`;
 // A matrix as a bracketed grid, from an array of rows. Numbers are written with f, strings are kept as HTML.
 export const mat = (rows, cls = "", f = fmt) =>
@@ -287,6 +299,19 @@ export function modeButtons(group, onChange) {
   return press;
 }
 
+// A number input that accepts whole numbers from min to max. Only such a number calls set(v); while the field
+// holds anything else (a lone minus sign, say), the figure waits. Leaving the field writes back get().
+// The returned function shows a value in the field, unless the reader is typing in it.
+export function wholeNumberInput(input, { min, max, get, set }) {
+  input.addEventListener("input", () => {
+    const v = Number(input.value);
+    if (input.value.trim() === "" || !Number.isInteger(v) || v < min || v > max) return;
+    set(v || 0);
+  });
+  input.addEventListener("change", () => { input.value = get(); });
+  return (v) => { if (document.activeElement !== input) input.value = v; };
+}
+
 /* ---------- Space (3D view the reader can turn) ---------- */
 
 // Draws 3D vectors [p q r] with an orthographic view: the scene turns by `yaw` degrees about the vertical
@@ -340,6 +365,17 @@ export function createSpace(svg, { width = 460, height = 456, pivot = [0, 0, 0],
   function along(p, d, s) {
     const o = project(p), ds = offset(d), nn = ds[0] ** 2 + ds[1] ** 2;
     return nn ? ((s.x - o[0]) * ds[0] + (s.y - o[1]) * ds[1]) / nn : 0;
+  }
+
+  // Of the directions dirs in space, the one drawn closest to an arrow key's direction [dx, dy] (ArrowUp is
+  // [0, 1]), so an arrow key moves a point the way it looks on screen however the view is turned.
+  function closest(dirs, [dx, dy]) {
+    let best = dirs[0], score = -Infinity;
+    for (const d of dirs) {
+      const o = offset(d), s = (o[0] * dx - o[1] * dy) / (Math.hypot(o[0], o[1]) || 1);
+      if (s > score) { score = s; best = d; }
+    }
+    return best;
   }
 
   function setLine(line, p, q) {
@@ -421,8 +457,55 @@ export function createSpace(svg, { width = 460, height = 456, pivot = [0, 0, 0],
   }
 
   return {
-    width, height, view, project, offset, toward, onPlane, span, along,
+    width, height, view, project, offset, toward, onPlane, span, along, closest,
     line, poly, dot, pin, setLine, setPoly, placeLabel, place, setView, turnable,
     el: (tag, attrs, parent = svg) => el(tag, attrs, parent),
   };
 }
+
+/* ---------- Labels and steps in 3D figures ---------- */
+
+// An SVG label from [text, italic] parts, such as λm with an upright λ and an italic m.
+export function mathLabel(parent, cls, parts) {
+  const t = el("text", { class: cls }, parent);
+  for (const [s, italic] of parts) el("tspan", italic ? { "font-style": "italic" } : null, t).textContent = s;
+  return t;
+}
+
+// Gap between two boxes (0 when they overlap), and the box of a point's mark.
+const gap = (a, b) => Math.hypot(Math.max(b.x - a.x - a.width, 0, a.x - b.x - b.width), Math.max(b.y - a.y - a.height, 0, a.y - b.y - b.height));
+export const markBox = ([x, y], r) => ({ x: x - r, y: y - r, width: 2 * r, height: 2 * r });
+const DIRS = Array.from({ length: 8 }, (_, k) => [Math.cos((k * Math.PI) / 4), Math.sin((k * Math.PI) / 4)]);
+
+// Places label t dist units from point p of space S, trying eight directions but skipping the two along
+// `line` (a screen direction the drawn line itself occupies). It keeps the most perpendicular direction
+// that leaves the label clear of the obstacles and the edges. With `away`, a longer label is anchored
+// on the side away from its point, so it grows outward.
+export function placeClear(S, t, p, dist, line, obstacles, away = false) {
+  const ln = Math.hypot(line[0], line[1]) || 1;
+  const put = (dir) => {
+    S.placeLabel(t, p, dir, dist);
+    if (away) t.setAttribute("text-anchor", dir[0] < -0.3 ? "end" : dir[0] > 0.3 ? "start" : "middle");
+  };
+  const candidates = DIRS.map((dir) => ({ dir, along: Math.abs(dir[0] * line[0] + dir[1] * line[1]) / ln }))
+    .filter((c) => c.along < 0.9)
+    .sort((a, b) => a.along - b.along);
+  let best = null;
+  for (const { dir } of candidates) {
+    put(dir);
+    const b = t.getBBox();
+    let clear = Math.min(b.x, S.width - b.x - b.width, b.y, S.height - b.y - b.height);
+    for (const o of obstacles) clear = Math.min(clear, gap(b, o));
+    const score = Math.min(clear, 6);   // 6 units of room is enough; among those, the order prefers perpendicular
+    if (!best || score > best.score) best = { dir, score };
+  }
+  put(best.dir);
+}
+
+// The multiples of `step` for which t·v stays inside the figure of space S, within [lo, hi].
+export function stepRange(S, v, step, lo, hi) {
+  const s = S.span([0, 0, 0], v, 26) ?? [0, 0];
+  return [Math.max(lo, Math.ceil(s[0] / step) * step), Math.min(hi, Math.floor(s[1] / step) * step)];
+}
+// x rounded to a multiple of step and kept within [lo, hi].
+export const clampTo = (x, [lo, hi], step) => Math.max(lo, Math.min(hi, Math.round(x / step) * step));

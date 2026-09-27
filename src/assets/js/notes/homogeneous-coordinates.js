@@ -1,54 +1,8 @@
-import { el, createPlane, createSpace, makeHandle, makeDraggable, cross, dot, simplify, clipLine, fmt, isRounded, paren, T, sym, col, row, frac, equation } from "../plane.js";
+import { createPlane, createSpace, makeHandle, makeDraggable, cross, dot, simplify, clipLine, fmt, isRounded, paren, T, sym, col, row, frac, equation, wholeNumberInput, mathLabel, markBox, placeClear, stepRange, clampTo } from "../plane.js";
 
 const ELL = "ℓ";
-
-// An SVG label from [text, italic] parts, such as λm with an upright λ and an italic m.
-function mathLabel(parent, cls, parts) {
-  const t = el("text", { class: cls }, parent);
-  for (const [s, italic] of parts) el("tspan", italic ? { "font-style": "italic" } : null, t).textContent = s;
-  return t;
-}
-
-/* ---------- Shared by the 3D figures ---------- */
-
-// Gap between two boxes (0 when they overlap), and the box of a point's mark.
-const gap = (a, b) => Math.hypot(Math.max(b.x - a.x - a.width, 0, a.x - b.x - b.width), Math.max(b.y - a.y - a.height, 0, a.y - b.y - b.height));
-const markBox = ([x, y], r) => ({ x: x - r, y: y - r, width: 2 * r, height: 2 * r });
-const DIRS = Array.from({ length: 8 }, (_, k) => [Math.cos((k * Math.PI) / 4), Math.sin((k * Math.PI) / 4)]);
 const scaleVec = (v, t) => v.map((c) => c * t);
 const unit = (v) => { const n = Math.hypot(...v) || 1; return v.map((c) => c / n); };
-
-// Places label t dist units from point p of space S, trying eight directions but skipping the two along
-// `line` (a screen direction the drawn line itself occupies). It keeps the most perpendicular direction
-// that leaves the label clear of the obstacles and the edges. With `away`, a longer label is anchored
-// on the side away from its point, so it grows outward.
-function placeClear(S, t, p, dist, line, obstacles, away = false) {
-  const ln = Math.hypot(line[0], line[1]) || 1;
-  const put = (dir) => {
-    S.placeLabel(t, p, dir, dist);
-    if (away) t.setAttribute("text-anchor", dir[0] < -0.3 ? "end" : dir[0] > 0.3 ? "start" : "middle");
-  };
-  const candidates = DIRS.map((dir) => ({ dir, along: Math.abs(dir[0] * line[0] + dir[1] * line[1]) / ln }))
-    .filter((c) => c.along < 0.9)
-    .sort((a, b) => a.along - b.along);
-  let best = null;
-  for (const { dir } of candidates) {
-    put(dir);
-    const b = t.getBBox();
-    let clear = Math.min(b.x, S.width - b.x - b.width, b.y, S.height - b.y - b.height);
-    for (const o of obstacles) clear = Math.min(clear, gap(b, o));
-    const score = Math.min(clear, 6);   // 6 units of room is enough; among those, the order prefers perpendicular
-    if (!best || score > best.score) best = { dir, score };
-  }
-  put(best.dir);
-}
-
-// The multiples of `step` for which t·v stays inside the figure, within [lo, hi].
-function stepRange(S, v, step, lo, hi) {
-  const s = S.span([0, 0, 0], v, 26) ?? [0, 0];
-  return [Math.max(lo, Math.ceil(s[0] / step) * step), Math.min(hi, Math.floor(s[1] / step) * step)];
-}
-const clampTo = (x, [lo, hi], step) => Math.max(lo, Math.min(hi, Math.round(x / step) * step));
 
 /* Figure 1: every multiple λm lies on one line through the origin, which crosses the plane r = 1 at m */
 function scaledPoint() {
@@ -242,9 +196,12 @@ function lineAsPlane() {
     return { step, range: stepRange(S, l, step, -3, 3) };
   }
 
+  // Only whole numbers change the line; while a field holds anything else (a lone minus sign, say), the figure waits.
+  const shows = inputs.map((inp, i) => wholeNumberInput(inp, { min: -LIMIT, max: LIMIT, get: () => st.l[i], set: (v) => { st.l[i] = v; render(); } }));
+
   function render() {
     const l = st.l;
-    inputs.forEach((inp, i) => { if (document.activeElement !== inp) inp.value = l[i]; });
+    shows.forEach((show, i) => show(l[i]));
     const zero = l.every((c) => c === 0), flat = !zero && l[0] === 0 && l[1] === 0;
     const { step, range } = zero ? { step: 0.5, range: [0, 0] } : lambdaSteps(l);
     const L = zero ? 0 : clampTo(st.lambda, range, step);
@@ -326,16 +283,6 @@ function lineAsPlane() {
     out.innerHTML = html;
   }
 
-  inputs.forEach((inp, i) => {
-    // Only whole numbers change the line; while the field holds anything else (a lone minus sign, say), the figure waits.
-    inp.addEventListener("input", () => {
-      const v = Number(inp.value);
-      if (inp.value.trim() === "" || !Number.isInteger(v) || Math.abs(v) > LIMIT) return;
-      st.l[i] = v || 0;
-      render();
-    });
-    inp.addEventListener("change", () => { inp.value = st.l[i]; });
-  });
   // st.lambda keeps the λ the reader chose; the drawing clamps it to what fits.
   makeDraggable(hL, {
     move: (s) => { const { step, range } = lambdaSteps(st.l); st.lambda = clampTo(S.along([0, 0, 0], st.l, s), range, step); render(); },
