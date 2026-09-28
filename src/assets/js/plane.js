@@ -2,7 +2,7 @@
 // createPlane maps 2D data coordinates in [0, max] x [0, max] to an SVG viewBox, with the y axis pointing up.
 // createSpace draws 3D vectors with a parallel (oblique) projection.
 // The matrix helpers apply, invert and estimate 3×3 transformations, such as a homography from point pairs,
-// and build 3D rotations from three angles.
+// build 3D rotations from three angles, and relate two views of a scene through their fundamental matrix.
 // Colors come from CSS classes (see notes.css).
 
 const NS = "http://www.w3.org/2000/svg";
@@ -139,6 +139,30 @@ export function projectionMatrix(pairs) {
 // Null when the left 3×3 block of A is singular (a camera with its center at infinity).
 export const opticalCenter = (A) => solve(A.map((r) => r.slice(0, 3)), A.map((r) => -r[3]));
 
+/* ---------- Two views ---------- */
+
+// [u]×, the matrix whose product with any v is the cross product u × v.
+export const skew = (u) => [[0, -u[2], u[1]], [u[2], 0, -u[0]], [-u[1], u[0], 0]];
+// The pseudo-inverse A⁺ = Aᵀ(AAᵀ)⁻¹ of a 3×4 matrix A of rank 3: a 4×3 matrix with AA⁺ = I. In a camera measured in
+// millimeters the last column of A dwarfs the others, so its rows are nearly parallel and AAᵀ is poorly conditioned;
+// AAᵀ is inverted here without inverse()'s test for singular matrices, which would reject it. AAᵀ is positive
+// semidefinite, so a determinant that is not positive means A has rank below 3, and the result is null.
+export function pinv(A) {
+  const G = matMul(A, transpose(A));
+  const cols = [cross(G[1], G[2]), cross(G[2], G[0]), cross(G[0], G[1])];
+  const det = dot(G[0], cols[0]);
+  return det > 0 ? matMul(transpose(A), transpose(cols).map((r) => r.map((x) => x / det))) : null;
+}
+// The fundamental matrix F = [BC₁]× B A⁺ of the cameras A (view 1) and B (view 2). The epipolar line of a pixel m₁
+// of view 1 is ℓ₂ = Fm₁ in view 2, and a pixel m₂ that matches m₁ has m₂ᵀFm₁ = 0. F is the zero matrix when both
+// cameras share their optical center. Null when A's center is at infinity or A has rank below 3.
+export function fundamental(A, B) {
+  const C = opticalCenter(A), Ap = pinv(A);
+  return C && Ap ? matMul(matMul(skew(apply(B, [...C, 1])), B), Ap) : null;
+}
+// The distance from the point m = [x, y, 1] (or any multiple of it) to the line ℓ = [a, b, c]: |ℓᵀm| / √(a² + b²).
+export const lineDistance = (l, m) => Math.abs(dot(l, m) / m[2]) / Math.hypot(l[0], l[1]);
+
 // Splits the camera A = k[K | 0]S′ = kK[R′ | t′] into the calibration matrix K = [α γ u0; 0 β v0; 0 0 1], the turn
 // R′ (its rows are the camera's axes X, Y and Z written in the object's system) and t′ (the object's origin seen from
 // the camera). The rows of R′ are perpendicular unit vectors and K is upper triangular, so they come off the rows of
@@ -225,14 +249,16 @@ export function equation(l, vars = ["x", "y", ""]) {
 }
 
 // Clips the line ax + by + c = 0 to the square [lo, hi] x [lo, hi]; returns its two endpoints, or null.
+// lo and hi may also be [x, y] corners, for a rectangle such as an image of W × H pixels: [0, 0] and [W, H].
 export function clipLine(l, lo, hi) {
   const [a, b, c] = l, nn = a * a + b * b;
   if (nn === 0) return null;
+  const L = typeof lo === "number" ? [lo, lo] : lo, U = typeof hi === "number" ? [hi, hi] : hi;
   const p0 = [(-a * c) / nn, (-b * c) / nn], len = Math.sqrt(nn), d = [b / len, -a / len];
   let tmin = -Infinity, tmax = Infinity;
   for (let i = 0; i < 2; i++) {
-    if (Math.abs(d[i]) < 1e-12) { if (p0[i] < lo || p0[i] > hi) return null; continue; }
-    const t1 = (lo - p0[i]) / d[i], t2 = (hi - p0[i]) / d[i];
+    if (Math.abs(d[i]) < 1e-12) { if (p0[i] < L[i] || p0[i] > U[i]) return null; continue; }
+    const t1 = (L[i] - p0[i]) / d[i], t2 = (U[i] - p0[i]) / d[i];
     tmin = Math.max(tmin, Math.min(t1, t2));
     tmax = Math.min(tmax, Math.max(t1, t2));
   }
@@ -371,6 +397,34 @@ export function createPlane(svg, { max = 40 } = {}) {
   }
 
   return { max, X, Y, toData, el: (tag, attrs) => el(tag, attrs, svg), clip, drawSegment, label, placeAlong, placeLineLabel, handle: (kind) => makeHandle(svg, kind), place, draggable };
+}
+
+/* ---------- Images in pixels ---------- */
+
+// Draws an image of W × H pixels into svg at `scale` SVG units per pixel, with its top left corner at [ox, oy] and,
+// as an image is read, u to the right and v down: the frame, ticks with their values along the top and left edges,
+// and the axis names u and v. `id` names the clip path of the group `inside`, which keeps drawings within the image.
+// Returns that group and the mapping X(u), Y(v) to SVG units, with toPixel for the way back.
+export function pixelFrame(svg, { W, H, scale, ox, oy, id, uTicks = [], vTicks = [], axisNames = true }) {
+  const X = (u) => ox + scale * u, Y = (v) => oy + scale * v;
+  const clip = el("clipPath", { id }, el("defs", null, svg));
+  el("rect", { x: ox, y: oy, width: W * scale, height: H * scale }, clip);
+  el("rect", { x: ox, y: oy, width: W * scale, height: H * scale, class: "px-frame" }, svg);
+  const ticks = el("g", { class: "axes" }, svg);
+  for (const u of uTicks) {
+    el("line", { x1: X(u), y1: oy, x2: X(u), y2: oy - 5 }, ticks);
+    el("text", { x: X(u), y: oy - 9, "text-anchor": "middle", class: "tick" }, svg).textContent = u;
+  }
+  for (const v of vTicks) {
+    el("line", { x1: ox, y1: Y(v), x2: ox - 5, y2: Y(v) }, ticks);
+    el("text", { x: ox - 9, y: Y(v) + 5, "text-anchor": "end", class: "tick" }, svg).textContent = v;
+  }
+  if (axisNames) {
+    mathLabel(svg, "axl", [["u", true]]).setAttribute("transform", `translate(${X(W) - 8},${oy - 9})`);
+    mathLabel(svg, "axl", [["v", true]]).setAttribute("transform", `translate(${ox - 16},${Y(H) - 4})`);
+  }
+  const inside = el("g", { "clip-path": `url(#${id})` }, svg);
+  return { X, Y, toPixel: (s) => [(s.x - ox) / scale, (s.y - oy) / scale], inside };
 }
 
 /* ---------- Controls ---------- */
@@ -550,10 +604,22 @@ export function createSpace(svg, { width = 460, height = 456, pivot = [0, 0, 0],
 
 /* ---------- Labels and steps in 3D figures ---------- */
 
-// An SVG label from [text, italic] parts, such as λm with an upright λ and an italic m.
+// An SVG label from [text, italic, position] parts, such as λm with an upright λ and an italic m, C₁ as
+// [["C", true], ["1", false, "sub"]] or M⁺ as [["M", true], ["+", false, "sup"]]. A subscript or superscript is set
+// smaller, lower or higher, and the next part returns to the baseline.
 export function mathLabel(parent, cls, parts) {
   const t = el("text", { class: cls }, parent);
-  for (const [s, italic] of parts) el("tspan", italic ? { "font-style": "italic" } : null, t).textContent = s;
+  const SIZE = 0.72, SHIFT = { sub: 0.3, sup: -0.45 };   // their size, and how far they move, in ems of the label
+  let at = 0;
+  for (const [s, italic, pos] of parts) {
+    const to = SHIFT[pos] ?? 0, small = to !== 0;
+    const a = italic ? { "font-style": "italic" } : {};
+    if (small) a["font-size"] = `${SIZE * 100}%`;
+    // dy is in ems of the part's own size, so a small part's move is scaled up to match.
+    if (to !== at) a.dy = `${(to - at) / (small ? SIZE : 1)}em`;
+    at = to;
+    el("tspan", Object.keys(a).length ? a : null, t).textContent = s;
+  }
   return t;
 }
 

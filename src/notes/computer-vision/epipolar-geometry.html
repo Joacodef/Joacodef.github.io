@@ -1,0 +1,272 @@
+---
+title: Epipolar geometry
+module: Geometry
+order: 5
+description: Where a point seen in one image can appear in a second one, the fundamental matrix that says it, and how to estimate it, with interactive figures.
+scripts:
+  - /assets/js/notes/epipolar-geometry.js
+---
+<div class="prose">
+  <div class="duo">
+    <div>
+      <p class="big"><span class="pt"><i>m</i><sub>2</sub></span><sup class="t">T</sup><i>F</i><span class="pt"><i>m</i><sub>1</sub></span> = 0</p>
+      <p class="cap">Two pixels can be images of the same point of space only if they pass this test.</p>
+    </div>
+    <div>
+      <p class="big"><i>F</i> = [<i>BC</i><sub>1</sub>]<sub>×</sub><i>BA</i><sup class="t">+</sup></p>
+      <p class="cap">The fundamental matrix comes from the two cameras, or from eight pairs of matching points.</p>
+    </div>
+  </div>
+  <p class="legend">Throughout this page, <span class="dot" aria-hidden="true"></span>points are drawn in red ink and <span class="bar" aria-hidden="true"></span>lines in blue ink. It uses the point on a line and the line through two points from the note on <a href="/notes/computer-vision/homogeneous-coordinates/">homogeneous coordinates</a>, the camera model from the note on <a href="/notes/computer-vision/3d-transformations/">3D transformations</a>, and the projection matrix and its optical center from the note on <a href="/notes/computer-vision/camera-calibration/">camera calibration</a>.</p>
+</div>
+
+<section id="two-views">
+  <div class="prose">
+    <h2><span class="n">1</span>Two images of one point</h2>
+    <p>One image cannot tell how far away a point is. A pixel <span class="pt"><i>m</i><sub>1</sub></span> fixes the ray on which its point of space lies, the ray from the optical center <i>C</i><sub>1</sub> through <span class="pt"><i>m</i><sub>1</sub></span>, but not where on that ray. Now take a second image from another place. A point <span class="pt"><i>M</i></span> of space appears in both, as <span class="pt"><i>m</i><sub>1</sub></span> in the first and <span class="pt"><i>m</i><sub>2</sub></span> in the second. Two such pixels are called <em>corresponding points</em>: images of the same point of space.</p>
+    <p>Given <span class="pt"><i>m</i><sub>1</sub></span> alone, where can <span class="pt"><i>m</i><sub>2</sub></span> be? <span class="pt"><i>M</i></span> is somewhere on the ray of <span class="pt"><i>m</i><sub>1</sub></span>, and every point of that ray is a candidate. The second camera sees each candidate from its own optical center <i>C</i><sub>2</sub>. A camera takes a straight line of space to a straight line of the image, so the images of all the candidates lie on one line of the second image. That line is the <em>epipolar line</em> of <span class="pt"><i>m</i><sub>1</sub></span>, <span class="ln"><i>ℓ</i><sub>2</sub></span>.</p>
+    <p>This is the <em>epipolar constraint</em>: if <span class="pt"><i>m</i><sub>1</sub></span> and <span class="pt"><i>m</i><sub>2</sub></span> are corresponding points, then <span class="pt"><i>m</i><sub>2</sub></span> lies on the epipolar line of <span class="pt"><i>m</i><sub>1</sub></span>. The constraint is necessary, but not sufficient. Every pixel of the line passes it, and only one of them is the image of <span class="pt"><i>M</i></span>. Still, it turns a search for <span class="pt"><i>m</i><sub>2</sub></span> over the whole second image into a search along one line. In an image of <i>N</i> × <i>N</i> pixels, that is <i>N</i> candidates instead of <i>N</i><sup class="t">2</sup>.</p>
+  </div>
+</section>
+
+<section id="epipoles">
+  <div class="prose">
+    <h2><span class="n">2</span>The epipolar plane and the epipoles</h2>
+    <p>The two optical centers and <span class="pt"><i>M</i></span> lie on one plane, the <em>epipolar plane</em> π. Both rays lie on it: the ray of <span class="pt"><i>m</i><sub>1</sub></span> joins <i>C</i><sub>1</sub> and <span class="pt"><i>M</i></span>, and the ray of <span class="pt"><i>m</i><sub>2</sub></span> joins <i>C</i><sub>2</sub> and <span class="pt"><i>M</i></span>. Each image plane cuts π along a line, and those two lines are the epipolar lines. With <i>R</i><sub>1</sub> and <i>R</i><sub>2</sub> for the two image planes,</p>
+    <div class="disp"><span class="nowrap"><span class="ln"><i>ℓ</i><sub>1</sub></span> = π ∩ <i>R</i><sub>1</sub>,</span>&ensp; <span class="nowrap"><span class="ln"><i>ℓ</i><sub>2</sub></span> = π ∩ <i>R</i><sub>2</sub></span></div>
+    <p>So the constraint works both ways. <span class="pt"><i>m</i><sub>1</sub></span> lies on <span class="ln"><i>ℓ</i><sub>1</sub></span>, the epipolar line of <span class="pt"><i>m</i><sub>2</sub></span> in the first image.</p>
+    <p>The line through the two optical centers is the <em>baseline</em>. Another point <span class="pt"><i>M</i>′</span> of space has an epipolar plane π′ of its own, with other epipolar lines. But every epipolar plane contains <i>C</i><sub>1</sub> and <i>C</i><sub>2</sub>, so every one contains the baseline. So all the epipolar lines of an image pass through one point, where the baseline crosses its image plane. That point is the image's <em>epipole</em>:</p>
+    <div class="disp"><span class="nowrap"><span class="pt"><i>e</i><sub>1</sub></span> = ⟨<i>C</i><sub>1</sub>, <i>C</i><sub>2</sub>⟩ ∩ <i>R</i><sub>1</sub>,</span>&ensp; <span class="nowrap"><span class="pt"><i>e</i><sub>2</sub></span> = ⟨<i>C</i><sub>1</sub>, <i>C</i><sub>2</sub>⟩ ∩ <i>R</i><sub>2</sub></span></div>
+    <p>The baseline passes through both centers, so <span class="pt"><i>e</i><sub>1</sub></span> is where the first camera sees <i>C</i><sub>2</sub>, and <span class="pt"><i>e</i><sub>2</sub></span> is where the second camera sees <i>C</i><sub>1</sub>.</p>
+
+    <h3>The example</h3>
+    <p>The example on this page is a series of X-ray images, 2688 × 2208 pixels each, of an object that turns 2° about a vertical axis between one image and the next. The X-ray source plays the part of the optical center, as in the note on 3D transformations. Seen from the object, the source moves around a horizontal circle. Images 1 and 82 are 162° apart on that circle, so their sources almost face each other. Two things follow.</p>
+    <ul>
+      <li>The plane of the circle contains both optical centers, so it is an epipolar plane. Both epipoles lie on the line where it crosses the images, which is almost a row of pixels, at <span class="nowrap"><i>v</i> ≈ 1285</span>.</li>
+      <li>Each source lies almost straight ahead of the other, so each image sees the other source, near its edge: both epipoles fall inside their images.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="fundamental">
+  <div class="prose">
+    <h2><span class="n">3</span>The fundamental matrix from the two cameras</h2>
+    <p>Now in equations. Call the general projection matrices of the two cameras <i>A</i> and <i>B</i>, as in the note on camera calibration. A point <span class="nowrap"><span class="pt"><i>M</i></span> = [<i>X</i>&ensp;<i>Y</i>&ensp;<i>Z</i>&ensp;1]<sup class="t">T</sup></span>, in the same coordinates for both cameras, appears at</p>
+    <div class="disp"><span class="nowrap">λ<sub>1</sub><span class="pt"><i>m</i><sub>1</sub></span> = <i>A</i><span class="pt"><i>M</i></span>,</span>&ensp; <span class="nowrap">λ<sub>2</sub><span class="pt"><i>m</i><sub>2</sub></span> = <i>B</i><span class="pt"><i>M</i></span></span></div>
+    <p>The goal is the epipolar line <span class="ln"><i>ℓ</i><sub>2</sub></span> from <span class="pt"><i>m</i><sub>1</sub></span>, <i>A</i> and <i>B</i> alone.</p>
+
+    <h3>Two points of the ray</h3>
+    <p><span class="ln"><i>ℓ</i><sub>2</sub></span> is the image of the ray of <span class="pt"><i>m</i><sub>1</sub></span>, and a line is fixed by two of its points, so two points of the ray are enough. One is <i>C</i><sub>1</sub>. Every ray of the first camera starts there, so <i>A</i> sends it to the zero vector, <span class="nowrap"><i>AC</i><sub>1</sub> = 0</span>, and it can be found from <i>A</i> alone, as in the note on camera calibration.</p>
+    <p>The other point comes from <span class="pt"><i>m</i><sub>1</sub></span>. Any <span class="pt"><i>M</i></span> with <span class="nowrap"><i>A</i><span class="pt"><i>M</i></span> = <span class="pt"><i>m</i><sub>1</sub></span></span> projects onto <span class="pt"><i>m</i><sub>1</sub></span>, so it lies on the ray. Three equations do not fix four unknowns, but the <em>pseudo-inverse</em> of <i>A</i> picks one solution:</p>
+    <div class="disp"><span class="nowrap"><span class="pt"><i>M</i><sup class="t">+</sup></span> = <i>A</i><sup class="t">+</sup><span class="pt"><i>m</i><sub>1</sub></span>,</span>&ensp; <span class="nowrap"><i>A</i><sup class="t">+</sup> = <i>A</i><sup class="t">T</sup>(<i>AA</i><sup class="t">T</sup>)<sup class="t">−1</sup></span></div>
+    <p><i>AA</i><sup class="t">T</sup> is a 3 × 3 matrix, invertible because <i>A</i> has rank 3. Then <span class="nowrap"><i>AA</i><sup class="t">+</sup> = <i>AA</i><sup class="t">T</sup>(<i>AA</i><sup class="t">T</sup>)<sup class="t">−1</sup> = <i>I</i></span>, so <span class="nowrap"><i>A</i><span class="pt"><i>M</i><sup class="t">+</sup></span> = <span class="pt"><i>m</i><sub>1</sub></span></span>. The product the other way round, <i>A</i><sup class="t">T</sup><i>A</i>, would not do: it is 4 × 4 but still has rank 3, so it has no inverse.</p>
+    <p><span class="pt"><i>M</i><sup class="t">+</sup></span> is a different point from <i>C</i><sub>1</sub>, since <i>A</i> sends it to <span class="pt"><i>m</i><sub>1</sub></span>, not to 0. Of all the points of the ray, it is the one whose vector [<i>X</i>&ensp;<i>Y</i>&ensp;<i>Z</i>&ensp;<i>W</i>]<sup class="t">T</sup> is shortest, which makes it perpendicular to <i>C</i><sub>1</sub> as a vector of four numbers. That choice is a matter of algebra: any other point of the ray would give the same line.</p>
+
+    <h3>Their images in the second view</h3>
+    <p><i>B</i> projects both points into the second image:</p>
+    <div class="disp"><span class="nowrap"><span class="pt"><i>e</i><sub>2</sub></span> = <i>BC</i><sub>1</sub>,</span>&ensp; <span class="nowrap"><span class="pt"><i>m</i><sub>2</sub><sup class="t">+</sup></span> = <i>B</i><span class="pt"><i>M</i><sup class="t">+</sup></span></span></div>
+    <p>The first is the epipole, the image of <i>C</i><sub>1</sub>. The second is some point of <span class="ln"><i>ℓ</i><sub>2</sub></span>.</p>
+
+    <h3>The line through them</h3>
+    <p>The line through two points is their cross product, as in the note on homogeneous coordinates:</p>
+    <div class="disp"><span class="nowrap"><span class="ln"><i>ℓ</i><sub>2</sub></span> = <span class="pt"><i>e</i><sub>2</sub></span> × <span class="pt"><i>m</i><sub>2</sub><sup class="t">+</sup></span></span> <span class="nowrap">= <i>BC</i><sub>1</sub> × <i>BA</i><sup class="t">+</sup><span class="pt"><i>m</i><sub>1</sub></span></span></div>
+    <p>A cross product with a fixed vector <i>u</i> is linear in the other factor, so it is a matrix product, <span class="nowrap"><i>u</i> × <i>v</i> = [<i>u</i>]<sub>×</sub><i>v</i></span>, with</p>
+    <div class="disp"><span class="nowrap">[<i>u</i>]<sub>×</sub> = <span class="mat"><span>0</span><span>−<i>u</i><sub>3</sub></span><span><i>u</i><sub>2</sub></span><span><i>u</i><sub>3</sub></span><span>0</span><span>−<i>u</i><sub>1</sub></span><span>−<i>u</i><sub>2</sub></span><span><i>u</i><sub>1</sub></span><span>0</span></span></span></div>
+    <p>Multiplying it by <span class="nowrap"><i>v</i> = [<i>v</i><sub>1</sub>&ensp;<i>v</i><sub>2</sub>&ensp;<i>v</i><sub>3</sub>]<sup class="t">T</sup></span> gives the three components of <i>u</i> × <i>v</i>; the first is <span class="nowrap"><i>u</i><sub>2</sub><i>v</i><sub>3</sub> − <i>u</i><sub>3</sub><i>v</i><sub>2</sub></span>. With <span class="nowrap"><i>u</i> = <i>BC</i><sub>1</sub></span>, the line becomes a matrix times <span class="pt"><i>m</i><sub>1</sub></span>:</p>
+    <div class="disp hero-f"><span class="nowrap"><span class="ln"><i>ℓ</i><sub>2</sub></span> = <i>F</i><span class="pt"><i>m</i><sub>1</sub></span>,</span>&ensp; <span class="nowrap"><i>F</i> = [<i>BC</i><sub>1</sub>]<sub>×</sub><i>BA</i><sup class="t">+</sup></span></div>
+    <p>The 3 × 3 matrix <i>F</i> is the <em>fundamental matrix</em>. It depends only on <i>A</i> and <i>B</i>, not on <span class="pt"><i>m</i><sub>1</sub></span>, <span class="pt"><i>m</i><sub>2</sub></span> or <span class="pt"><i>M</i></span>: one matrix gives the epipolar line of every pixel of the first image.</p>
+
+    <h3>The epipolar constraint</h3>
+    <p>A point lies on a line when their dot product is zero, <span class="nowrap"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0</span>, as in the note on homogeneous coordinates. So <span class="pt"><i>m</i><sub>2</sub></span> lies on <span class="nowrap"><span class="ln"><i>ℓ</i><sub>2</sub></span> = <i>F</i><span class="pt"><i>m</i><sub>1</sub></span></span> exactly when</p>
+    <div class="disp hero-f"><span class="pt"><i>m</i><sub>2</sub></span><sup class="t">T</sup><i>F</i><span class="pt"><i>m</i><sub>1</sub></span> = 0</div>
+    <p>That is the epipolar constraint as one equation, which every pair of corresponding points satisfies.</p>
+  </div>
+
+  <div class="fig">
+    <div class="panels">
+      <svg id="fig-epi-images" role="group" aria-label="Image 1 and a second image of the same object, 2688 by 2208 pixels each. Image 1 shows the point m1, which can be dragged, its epipolar line ℓ1 and the epipole e1. The second image shows the epipolar line ℓ2 of m1, the epipole e2 and the point m2, which can be dragged."></svg>
+      <svg id="fig-epi-space" role="group" aria-label="The axis Z that the object turns about, the circle on which the X-ray source moves, the optical centers C1 and C2, the ray from C1 through m1 with the point M on it, the ray from C2, the epipolar plane π and both images. Use the arrow keys to turn the view."></svg>
+    </div>
+    <div class="ro">
+      <p class="coef-row">Second image: <span class="coef"><input id="fig-epi-view" type="number" step="1" min="0" max="177" value="82" aria-label="The second image, from 0 to 177. The object turns 2° from one image to the next."></span></p>
+      <div id="fig-epi-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Drag <span class="pt"><i>m</i><sub>1</sub></span> in image 1, and <span class="ln"><i>ℓ</i><sub>2</sub></span> turns about <span class="pt"><i>e</i><sub>2</sub></span>. Slide <span class="pt"><i>M</i></span> along its ray in the lower view, and <span class="pt"><i>m</i><sub>2</sub></span> slides along <span class="ln"><i>ℓ</i><sub>2</sub></span>. Drag <span class="pt"><i>m</i><sub>2</sub></span> off the line, and the two rays no longer meet. Change the second image to move <i>C</i><sub>2</sub> around the circle, and drag the background of the lower view to turn it. Each image is drawn in front of its source, where the camera model puts it. With a keyboard, select a point, the lower view or the field with Tab and use the arrow keys.</p>
+      <button type="button" class="btn" id="fig-epi-reset">Reset</button>
+    </div>
+  </div>
+</section>
+
+<section id="properties">
+  <div class="prose">
+    <h2><span class="n">4</span><span>Properties of <i>F</i></span></h2>
+
+    <h3>Epipolar lines in the first image</h3>
+    <p>Transposing the constraint gives <span class="nowrap"><span class="pt"><i>m</i><sub>1</sub></span><sup class="t">T</sup><i>F</i><sup class="t">T</sup><span class="pt"><i>m</i><sub>2</sub></span> = 0</span>, which says that <span class="pt"><i>m</i><sub>1</sub></span> lies on the line <i>F</i><sup class="t">T</sup><span class="pt"><i>m</i><sub>2</sub></span>. So</p>
+    <div class="disp"><span class="nowrap"><span class="ln"><i>ℓ</i><sub>2</sub></span> = <i>F</i><span class="pt"><i>m</i><sub>1</sub></span>,</span>&ensp; <span class="nowrap"><span class="ln"><i>ℓ</i><sub>1</sub></span> = <i>F</i><sup class="t">T</sup><span class="pt"><i>m</i><sub>2</sub></span></span></div>
+    <p><i>F</i> takes points of the first image to lines of the second, and <i>F</i><sup class="t">T</sup> goes the other way. Swapping the cameras, with <i>B</i> as the first and <i>A</i> as the second, gives <i>F</i><sup class="t">T</sup>, up to scale.</p>
+
+    <h3>Scale</h3>
+    <p>For any number <span class="nowrap"><i>k</i> ≠ 0</span>, <i>kF</i> gives the same lines and the same constraint. So <i>F</i> is homogeneous, like <i>A</i> and <i>B</i>.</p>
+
+    <h3>Its determinant is 0</h3>
+    <p>[<i>u</i>]<sub>×</sub><i>u</i> = <i>u</i> × <i>u</i> = 0, so [<i>u</i>]<sub>×</sub> sends a vector other than 0 to 0, and it is singular. <i>F</i> has it as a factor, so <span class="nowrap">det <i>F</i> = det [<i>BC</i><sub>1</sub>]<sub>×</sub> · det <i>BA</i><sup class="t">+</sup> = 0</span>. A homogeneous 3 × 3 matrix has eight free numbers, and <span class="nowrap">det <i>F</i> = 0</span> takes one more away: <i>F</i> has seven degrees of freedom.</p>
+
+    <h3>The epipoles</h3>
+    <p>Every epipolar line of the second image passes through <span class="pt"><i>e</i><sub>2</sub></span>, so <span class="nowrap"><span class="pt"><i>e</i><sub>2</sub></span><sup class="t">T</sup><i>F</i><span class="pt"><i>m</i><sub>1</sub></span> = 0</span> for every <span class="pt"><i>m</i><sub>1</sub></span>. That can only happen if <span class="pt"><i>e</i><sub>2</sub></span><sup class="t">T</sup><i>F</i> is the zero row, and in the same way for the other epipole:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>F</i><span class="pt"><i>e</i><sub>1</sub></span> = 0,</span>&ensp; <span class="nowrap"><i>F</i><sup class="t">T</sup><span class="pt"><i>e</i><sub>2</sub></span> = 0</span></div>
+    <p><i>F</i><span class="pt"><i>e</i><sub>1</sub></span> = 0 has a picture too. The ray of <span class="pt"><i>e</i><sub>1</sub></span> is the baseline itself, which passes through <i>C</i><sub>2</sub>, so the second camera sees the whole ray as one point, <span class="pt"><i>e</i><sub>2</sub></span>, not as a line. And the zero vector stands for no line.</p>
+    <p>These equations find the epipoles from <i>F</i> alone. <span class="nowrap"><i>F</i><sup class="t">T</sup><span class="pt"><i>e</i><sub>2</sub></span> = 0</span> says that <span class="pt"><i>e</i><sub>2</sub></span> is perpendicular to every column of <i>F</i>, so it is the cross product of two columns of <i>F</i>, divided by its third component to read it. In the same way, <span class="pt"><i>e</i><sub>1</sub></span> is the cross product of two rows of <i>F</i>.</p>
+
+    <h3>Two images from one optical center</h3>
+    <p>If <span class="nowrap"><i>C</i><sub>2</sub> = <i>C</i><sub>1</sub></span>, then <span class="nowrap"><i>BC</i><sub>1</sub> = 0</span> and <span class="nowrap"><i>F</i> = 0</span>: there is no baseline, no epipole and no epipolar line. Both images then show the same rays, and they are related by a homography instead, as in the note on <a href="/notes/computer-vision/2d-transformations/">2D transformations</a>.</p>
+  </div>
+</section>
+
+<section id="determinant">
+  <div class="prose">
+    <h2><span class="n">5</span><span>The same <i>F</i> from one determinant</span></h2>
+    <p>The same <i>F</i> comes out of the two projection equations without drawing any line. Move all their terms to the left, <span class="nowrap"><i>A</i><span class="pt"><i>M</i></span> − λ<sub>1</sub><span class="pt"><i>m</i><sub>1</sub></span> = 0</span> and <span class="nowrap"><i>B</i><span class="pt"><i>M</i></span> − λ<sub>2</sub><span class="pt"><i>m</i><sub>2</sub></span> = 0</span>. That is six equations in six unknowns, the four components of <span class="pt"><i>M</i></span>, λ<sub>1</sub> and λ<sub>2</sub>, and they form one system <span class="nowrap"><i>G</i><i>v</i> = 0</span>:</p>
+    <div class="disp"><span class="nowrap"><span class="mat"><span><i>A</i></span><span><span class="pt"><i>m</i><sub>1</sub></span></span><span>0</span><span><i>B</i></span><span>0</span><span><span class="pt"><i>m</i><sub>2</sub></span></span></span><span class="col"><span><span class="pt"><i>M</i></span></span><span>−λ<sub>1</sub></span><span>−λ<sub>2</sub></span></span></span> <span class="nowrap">= 0</span></div>
+    <p>Here <i>G</i> is 6 × 6: <i>A</i> and <i>B</i> fill its first four columns, <span class="pt"><i>m</i><sub>1</sub></span> and <span class="pt"><i>m</i><sub>2</sub></span> its last two. If <span class="pt"><i>m</i><sub>1</sub></span> and <span class="pt"><i>m</i><sub>2</sub></span> correspond, the point <span class="pt"><i>M</i></span> they come from gives a solution <span class="nowrap"><i>v</i> ≠ 0</span>. A square system with right side 0 has a solution other than 0 only when its determinant is 0, so <span class="nowrap">det <i>G</i> = 0</span>.</p>
+    <p>Expand det <i>G</i> along its last two columns, the only ones that hold the pixels. Picking component <i>j</i> of <span class="pt"><i>m</i><sub>1</sub></span> strikes out row <i>j</i> of <i>A</i>, and picking component <i>i</i> of <span class="pt"><i>m</i><sub>2</sub></span> strikes out row <i>i</i> of <i>B</i>. Each term is those two components times the 4 × 4 determinant of the rows left: two rows of <i>A</i> and two of <i>B</i>. So det <i>G</i> is linear in <span class="pt"><i>m</i><sub>1</sub></span> and linear in <span class="pt"><i>m</i><sub>2</sub></span>, which is exactly the form <span class="nowrap"><span class="pt"><i>m</i><sub>2</sub></span><sup class="t">T</sup><i>F</i><span class="pt"><i>m</i><sub>1</sub></span></span>, with</p>
+    <div class="disp"><span class="nowrap"><i>F</i><sub><i>ij</i></sub> = (−1)<sup class="t"><i>i</i>+<i>j</i></sup> det</span> <span class="nowrap"><span class="mat" style="--cols: 1"><span><i>A</i> without row <i>j</i></span><span><i>B</i> without row <i>i</i></span></span></span></div>
+    <p>For the two images of the example, this <i>F</i> equals [<i>BC</i><sub>1</sub>]<sub>×</sub><i>BA</i><sup class="t">+</sup> up to scale, to eleven significant digits. It also shows why the constraint has this form and no other: det <i>G</i> is linear in each pixel, however the cameras are placed.</p>
+  </div>
+</section>
+
+<section id="practical">
+  <div class="prose">
+    <h2><span class="n">6</span>Measured points miss the line</h2>
+    <p>Real pixels are measured and <i>A</i> and <i>B</i> are estimated, so a pair of corresponding points almost never satisfies <span class="nowrap"><span class="pt"><i>m</i><sub>2</sub></span><sup class="t">T</sup><i>F</i><span class="pt"><i>m</i><sub>1</sub></span> = 0</span> exactly: <span class="pt"><i>m</i><sub>2</sub></span> lies near its epipolar line, not on it. So the constraint is used with a tolerance. <span class="pt"><i>m</i><sub>2</sub></span> is accepted as a possible match when its distance to <span class="nowrap"><span class="ln"><i>ℓ</i><sub>2</sub></span> = <i>F</i><span class="pt"><i>m</i><sub>1</sub></span> = [<i>a</i>&ensp;<i>b</i>&ensp;<i>c</i>]<sup class="t">T</sup></span> is below some <i>d</i><sub>0</sub>:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>d</i> = <span class="frac"><span>|<span class="pt"><i>m</i><sub>2</sub></span><sup class="t">T</sup><i>F</i><span class="pt"><i>m</i><sub>1</sub></span>|</span><span>√(<i>a</i><sup class="t">2</sup> + <i>b</i><sup class="t">2</sup>)</span></span> &lt; <i>d</i><sub>0</sub></span></div>
+    <p>Why this is the distance: (<i>a</i>, <i>b</i>) is perpendicular to the line <span class="nowrap"><i>ax</i> + <i>by</i> + <i>c</i> = 0</span>. Moving a point by a distance <i>t</i> along the unit vector (<i>a</i>, <i>b</i>)/√(<i>a</i><sup class="t">2</sup> + <i>b</i><sup class="t">2</sup>) changes <span class="nowrap"><i>ax</i> + <i>by</i> + <i>c</i></span> by <span class="nowrap"><i>t</i>√(<i>a</i><sup class="t">2</sup> + <i>b</i><sup class="t">2</sup>)</span>, and the value is 0 on the line. So the value at <span class="pt"><i>m</i><sub>2</sub></span>, which is <span class="nowrap"><span class="pt"><i>m</i><sub>2</sub></span><sup class="t">T</sup><i>F</i><span class="pt"><i>m</i><sub>1</sub></span></span>, divided by √(<i>a</i><sup class="t">2</sup> + <i>b</i><sup class="t">2</sup>), is how far <span class="pt"><i>m</i><sub>2</sub></span> is from the line. A line scaled so that <span class="nowrap"><i>a</i><sup class="t">2</sup> + <i>b</i><sup class="t">2</sup> = 1</span> gives the distance directly, with a sign for the side.</p>
+    <p>The tolerance depends on how well the pixels and the cameras are known: a pixel or two for corners found by a program, more for points clicked by hand. Section 8 tries it on clicked points.</p>
+  </div>
+</section>
+
+<section id="estimation">
+  <div class="prose">
+    <h2><span class="n">7</span><span>Estimating <i>F</i> from corresponding points</span></h2>
+    <p>So far <i>F</i> came from <i>A</i> and <i>B</i>. When the cameras are not calibrated, <i>F</i> can be estimated from the images alone, from pairs of points known to correspond, such as the same corner found in both. Each pair <span class="nowrap"><span class="pt"><i>m</i><sub>1</sub></span> = [<i>x</i><sub>1</sub>&ensp;<i>y</i><sub>1</sub>&ensp;1]<sup class="t">T</sup></span>, <span class="nowrap"><span class="pt"><i>m</i><sub>2</sub></span> = [<i>x</i><sub>2</sub>&ensp;<i>y</i><sub>2</sub>&ensp;1]<sup class="t">T</sup></span> satisfies <span class="nowrap"><span class="pt"><i>m</i><sub>2</sub></span><sup class="t">T</sup><i>F</i><span class="pt"><i>m</i><sub>1</sub></span> = 0</span>. Multiplied out,</p>
+    <div class="disp"><span class="nowrap">(<i>F</i><sub>11</sub><i>x</i><sub>1</sub> + <i>F</i><sub>12</sub><i>y</i><sub>1</sub> + <i>F</i><sub>13</sub>)<i>x</i><sub>2</sub></span> <span class="nowrap">+ (<i>F</i><sub>21</sub><i>x</i><sub>1</sub> + <i>F</i><sub>22</sub><i>y</i><sub>1</sub> + <i>F</i><sub>23</sub>)<i>y</i><sub>2</sub></span> <span class="nowrap">+ <i>F</i><sub>31</sub><i>x</i><sub>1</sub> + <i>F</i><sub>32</sub><i>y</i><sub>1</sub> + <i>F</i><sub>33</sub></span> <span class="nowrap">= 0</span></div>
+    <p><i>F</i><sub><i>ij</i></sub> multiplies component <i>i</i> of <span class="pt"><i>m</i><sub>2</sub></span> and component <i>j</i> of <span class="pt"><i>m</i><sub>1</sub></span>, and the pixels are known numbers, so the equation is linear in the nine entries of <i>F</i>. Stacking them row by row in <span class="nowrap"><i>f</i> = [<i>F</i><sub>11</sub>&ensp;<i>F</i><sub>12</sub>&ensp;…&ensp;<i>F</i><sub>33</sub>]<sup class="t">T</sup></span>, each pair gives one row:</p>
+    <div class="disp"><span class="nowrap">[<i>x</i><sub>1</sub><i>x</i><sub>2</sub>&ensp;<i>y</i><sub>1</sub><i>x</i><sub>2</sub>&ensp;<i>x</i><sub>2</sub>&ensp;<i>x</i><sub>1</sub><i>y</i><sub>2</sub></span> <span class="nowrap"><i>y</i><sub>1</sub><i>y</i><sub>2</sub>&ensp;<i>y</i><sub>2</sub>&ensp;<i>x</i><sub>1</sub>&ensp;<i>y</i><sub>1</sub>&ensp;1]&thinsp;<i>f</i></span> <span class="nowrap">= 0</span></div>
+
+    <h3>Eight pairs</h3>
+    <p><i>F</i> is homogeneous, so one entry can be fixed, as <i>a</i><sub>34</sub> was in calibration: <span class="nowrap"><i>F</i><sub>33</sub> = 1</span>. The last term of each row moves to the right side, and the eight unknowns left, <span class="nowrap"><i>f</i>′ = [<i>F</i><sub>11</sub>&ensp;…&ensp;<i>F</i><sub>32</sub>]<sup class="t">T</sup></span>, satisfy</p>
+    <div class="disp hero-f"><i>Qf</i>′ = <i>r</i></div>
+    <p>where each row of <i>Q</i> is [<i>x</i><sub>1</sub><i>x</i><sub>2</sub>&ensp;<i>y</i><sub>1</sub><i>x</i><sub>2</sub>&ensp;<i>x</i><sub>2</sub>&ensp;<i>x</i><sub>1</sub><i>y</i><sub>2</sub>&ensp;<i>y</i><sub>1</sub><i>y</i><sub>2</sub>&ensp;<i>y</i><sub>2</sub>&ensp;<i>x</i><sub>1</sub>&ensp;<i>y</i><sub>1</sub>] and each entry of <i>r</i> is −1. Eight pairs give a square system, solved as <span class="nowrap"><i>f</i>′ = <i>Q</i><sup class="t">−1</sup><i>r</i></span>. More pairs are fitted by least squares, as in calibration: <span class="nowrap"><i>f</i>′ = (<i>Q</i><sup class="t">T</sup><i>Q</i>)<sup class="t">−1</sup><i>Q</i><sup class="t">T</sup><i>r</i></span>.</p>
+    <p>Fixing <span class="nowrap"><i>F</i><sub>33</sub> = 1</span> fails only if the true <i>F</i><sub>33</sub> is 0. <i>F</i><sub>33</sub> is <span class="nowrap"><span class="pt"><i>m</i><sub>2</sub></span><sup class="t">T</sup><i>F</i><span class="pt"><i>m</i><sub>1</sub></span></span> for <span class="nowrap"><span class="pt"><i>m</i><sub>1</sub></span> = <span class="pt"><i>m</i><sub>2</sub></span> = [0&ensp;0&ensp;1]<sup class="t">T</sup></span>, so that happens when pixel (0, 0) of the second image lies on the epipolar line of pixel (0, 0) of the first. The choice can also be avoided, as for homographies and calibration: keep all nine unknowns and solve <span class="nowrap"><i>Qf</i> = 0</span> with <span class="nowrap">‖<i>f</i>‖ = 1</span>, whose answer is the right singular vector of <i>Q</i> with the smallest singular value.</p>
+
+    <h3>Why eight, when <i>F</i> has seven degrees of freedom</h3>
+    <p>The linear method treats the eight ratios of <i>F</i> as independent. It cannot also impose <span class="nowrap">det <i>F</i> = 0</span>, which is not a linear condition on the entries of <i>F</i>, so it needs eight equations. And an estimate from measured pixels is not exactly singular.</p>
+
+    <h3>Which pairs</h3>
+    <p>Eight pairs are not enough if their points of space all lie on one plane. The pixels of a plane in two images are related by a homography, as in the note on 2D transformations, and then <i>Q</i> has rank 6 at most: a whole family of matrices satisfies every equation. The points must spread in depth, off any single plane.</p>
+
+    <h3>How sensitive it is</h3>
+    <p>In pixels, the columns of <i>Q</i> differ enormously in size: <i>x</i><sub>1</sub><i>x</i><sub>2</sub> reaches 7·10<sup class="t">6</sup> in images of this size, while <i>x</i><sub>1</sub> stays below 3000. The entries of <i>F</i> differ in the opposite way, and small errors in the pixels are magnified. With exactly eight pairs, the estimate passes each epipolar line exactly through its <span class="pt"><i>m</i><sub>2</sub></span>, a wrong one included, and the lines of all the other points pay for it. More pairs, fitted by least squares, let the fit notice the wrong one: its line no longer follows it, and the others move less.</p>
+    <p>In the figure below, the pairs are points of the object, projected into images 1 and 82 and rounded to whole pixels. The rounding alone leaves the lines of other points of the object 1.10 pixels from their true matches on average with eight pairs, and 0.47 with sixteen. Moving the point of pair 3 in image 82 down by 30 pixels makes the difference plain. With eight pairs, its line follows it exactly, and the lines of the other points move off by 22.38 pixels on average. With sixteen, its line stays 21.12 pixels from it, and the others move off by only 2.90.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-eight" role="group" aria-label="Image 1 and image 82 with numbered pairs of corresponding points, and in image 82 the epipolar lines that the estimated F gives for the points of image 1. Below, a close-up of image 82 around the selected pair, where its point m2 can be dragged."></svg>
+    <div class="ro">
+      <div class="modes" id="fig-eight-modes" role="group" aria-label="How many pairs">
+        <button type="button" data-mode="8" aria-pressed="true">8 pairs</button>
+        <button type="button" data-mode="16" aria-pressed="false">16 pairs</button>
+      </div>
+      <div id="fig-eight-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Select a pair by clicking its point in image 82, then drag that point in the close-up, up to 30 pixels, as if it had been clicked in the wrong place. The blue lines are the epipolar lines that the estimated <i>F</i> gives in image 82 for the points of image 1. The dashed line is the true one for the selected pair, from the two cameras. In the close-up, the grid lines are 10 pixels apart. With a keyboard, select a pair's point with Tab and press Enter, then select the point in the close-up and use the arrow keys; it moves one pixel per press.</p>
+      <button type="button" class="btn" id="fig-eight-reset">Reset</button>
+    </div>
+  </div>
+</section>
+
+<section id="example">
+  <div class="prose">
+    <h2><span class="n">8</span>A worked example</h2>
+    <p>Images 1 and 82 of the X-ray series, and the pixel <span class="nowrap"><span class="pt"><i>m</i><sub>1</sub></span> = (1080, 1256)</span> of image 1. Lengths are in millimeters and image coordinates in pixels.</p>
+    <ol class="steps">
+      <li><b>The two cameras.</b> The projection matrices of images 1 and 82:
+        <span class="f fit"><span class="nowrap"><i>A</i> ≈</span> <span class="mat" style="--cols: 4"><span>−7966</span><span>−1201</span><span>5.36</span><span>1297865</span><span>−21.6</span><span>−1285</span><span>−7958</span><span>1064266</span><span>−0.0144</span><span>−1.000</span><span>0.00169</span><span>964.1</span></span></span>
+        <span class="f fit"><span class="nowrap"><i>B</i> ≈</span> <span class="mat" style="--cols: 4"><span>7205</span><span>3604</span><span>5.36</span><span>1297865</span><span>−376.5</span><span>1229</span><span>−7958</span><span>1064266</span><span>−0.295</span><span>0.955</span><span>0.00169</span><span>964.1</span></span></span>
+        The first three entries of each third row form a unit vector, so λ is the depth of a point in millimeters. Only the object turned between the two images, so both cameras have the same calibration matrix, with <span class="nowrap">α ≈ 7947.88</span>, <span class="nowrap">β ≈ 7960.40</span>, <span class="nowrap">γ ≈ 0</span>, <span class="nowrap"><i>u</i><sub>0</sub> ≈ 1315.04</span> and <span class="nowrap"><i>v</i><sub>0</sub> ≈ 1271.65</span>.</li>
+      <li><b>The optical centers.</b> Solving <span class="nowrap"><i>AC</i><sub>1</sub> = 0</span> and <span class="nowrap"><i>BC</i><sub>2</sub> = 0</span>:
+        <span class="f"><span class="nowrap"><i>C</i><sub>1</sub> ≈ (17.62, 963.87, −21.94),</span>&ensp; <span class="nowrap"><i>C</i><sub>2</sub> ≈ (281.10, −922.14, −21.94)</span></span>
+        Both are 964.03 mm from the turning axis <i>Z</i>, at the same height and 162° apart around it. The baseline between them is 1904.32 mm long.</li>
+      <li><b>A second point of the ray.</b> With <span class="nowrap"><i>A</i><sup class="t">+</sup> = <i>A</i><sup class="t">T</sup>(<i>AA</i><sup class="t">T</sup>)<sup class="t">−1</sup></span>:
+        <span class="f"><span class="nowrap"><span class="pt"><i>M</i><sup class="t">+</sup></span> = <i>A</i><sup class="t">+</sup><span class="pt"><i>m</i><sub>1</sub></span></span> <span class="nowrap">≈ <span class="col pt"><span>0.03348</span><span>−0.001048</span><span>−0.01910</span><span>0.001037</span></span></span></span>
+        Divided by its last component, that is the point <span class="pt nowrap">(32.29, −1.01, −18.43)</span>, at a depth of 964.57 mm, near the turning axis. As a check, <i>A</i><span class="pt"><i>M</i><sup class="t">+</sup></span> gives back <span class="nowrap">[1080&ensp;1256&ensp;1]<sup class="t">T</sup></span>, up to rounding.</li>
+      <li><b>Both points in image 82.</b> <i>B</i> projects them:
+        <span class="f"><span class="nowrap"><span class="pt"><i>e</i><sub>2</sub></span> = <i>BC</i><sub>1</sub> ≈ <span class="col pt"><span>4898106</span><span>2416528</span><span>1879.69</span></span></span> <span class="nowrap">→ <span class="pt">(2605.81, 1285.60)</span></span><br><span class="nowrap"><i>B</i><span class="pt"><i>M</i><sup class="t">+</sup></span> ≈ <span class="col pt"><span>1582.87</span><span>1241.48</span><span>0.9885</span></span></span> <span class="nowrap">→ <span class="pt">(1601.21, 1255.87)</span></span></span>
+        The epipole lies inside image 82, 82 pixels from its right edge. Its λ says that <i>C</i><sub>1</sub> is 1879.69 mm in front of the second source.</li>
+      <li><b>The epipolar line.</b> The cross product of the two, scaled so that <span class="nowrap"><i>a</i><sup class="t">2</sup> + <i>b</i><sup class="t">2</sup> = 1</span>:
+        <span class="f"><span class="nowrap"><span class="ln"><i>ℓ</i><sub>2</sub></span> = <span class="pt"><i>e</i><sub>2</sub></span> × <i>B</i><span class="pt"><i>M</i><sup class="t">+</sup></span></span> <span class="nowrap">∝ <span class="col ln"><span>0.02958</span><span>−0.99956</span><span>1207.95</span></span></span></span>
+        or <span class="nowrap"><i>v</i> ≈ 1208.48 + 0.0296<i>u</i></span>. It crosses image 82 almost along a row, from (0, 1208.48) to (2688, 1288.03), because <span class="pt"><i>m</i><sub>1</sub></span> lies close to the row of the epipoles: its epipolar plane is nearly the plane of the circle.</li>
+      <li><b>The fundamental matrix.</b> <span class="nowrap"><i>F</i> = [<i>BC</i><sub>1</sub>]<sub>×</sub><i>BA</i><sup class="t">+</sup></span>, scaled so that <span class="nowrap"><i>F</i><sub>33</sub> = 1</span>:
+        <span class="f fit"><span class="nowrap"><i>F</i> ≈</span> <span class="mat"><span>−2.28·10<sup class="t">−10</sup></span><span>2.89·10<sup class="t">−7</sup></span><span>−3.71·10<sup class="t">−4</sup></span><span>2.89·10<sup class="t">−7</sup></span><span>2.24·10<sup class="t">−10</sup></span><span>−2.58·10<sup class="t">−5</sup></span><span>−3.71·10<sup class="t">−4</sup></span><span>−7.53·10<sup class="t">−4</sup></span><span>1</span></span></span>
+        The entries run from 10<sup class="t">−10</sup> to 1 because they multiply terms of very different sizes: <i>F</i><sub>11</sub> multiplies <i>x</i><sub>1</sub><i>x</i><sub>2</sub>, about a million, and <i>F</i><sub>33</sub> multiplies 1. Then
+        <span class="f"><span class="nowrap"><i>F</i><span class="pt"><i>m</i><sub>1</sub></span> ≈ <span class="col ln"><span>−8.490·10<sup class="t">−6</sup></span><span>2.869·10<sup class="t">−4</sup></span><span>−0.3467</span></span></span></span>
+        which is the line of step 5 times a negative number.</li>
+      <li><b>The epipoles from <i>F</i>.</b> With all the digits of <i>F</i>, the cross product of its first two columns, divided by its third component, is <span class="pt nowrap">(2605.81, 1285.60)</span>, which is <span class="pt"><i>e</i><sub>2</sub></span>. That of its first two rows is <span class="pt nowrap">(88.12, 1284.61)</span>, which is <span class="nowrap"><span class="pt"><i>e</i><sub>1</sub></span> = <i>AC</i><sub>2</sub></span>, 88 pixels from the left edge of image 1. Both epipoles are on the row <span class="nowrap"><i>v</i> ≈ 1285</span>. And <i>F</i> is singular: its singular values are 1, 3.1·10<sup class="t">−7</sup> and 4.5·10<sup class="t">−20</sup>, the last one rounding error.</li>
+      <li><b>The same <i>F</i> by determinants.</b> Building <i>F</i> entry by entry from the 4 × 4 determinants of section 5, and scaling it so that <span class="nowrap"><i>F</i><sub>33</sub> = 1</span>, gives the matrix of step 6 in every digit shown.</li>
+      <li><b>Is it a match?</b> Images 1 and 40 are 78° apart. The two ends of an object were clicked by hand in both: (1012, 919) and (1081, 1271) in image 1, and (833, 910) and (839, 1283) in image 40. With <i>F</i> for these two images, each click in image 40 lies
+        <span class="f"><span class="nowrap"><i>d</i> ≈ 23.75</span> <span class="nowrap">and <i>d</i> ≈ 13.23 pixels</span></span>
+        from the epipolar line of its partner. Paired the other way round, (1012, 919) with (839, 1283) and (1081, 1271) with (833, 910), the distances are 396.23 and 359.76 pixels. A tolerance <i>d</i><sub>0</sub> of 30 pixels accepts the right pairs and rejects the swapped ones.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">9</span>Summary</h2>
+    <p>The key ideas next to their NumPy equivalents. In code, <i>A</i>, <i>B</i> and <i>F</i> are <code>mat_a</code>, <code>mat_b</code> and <code>mat_f</code>, and pixels are homogeneous vectors such as <code>m1 = np.array([x1, y1, 1])</code>.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Optical center</div>
+      <div class="f"><i>AC</i><sub>1</sub> = 0</div>
+      <div class="c"><code>c1 = np.linalg.svd(mat_a)[2][-1]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Pseudo-inverse</div>
+      <div class="f"><i>A</i><sup class="t">+</sup> = <i>A</i><sup class="t">T</sup>(<i>AA</i><sup class="t">T</sup>)<sup class="t">−1</sup>,&ensp;<i>AA</i><sup class="t">+</sup> = <i>I</i></div>
+      <div class="c"><code>np.linalg.pinv(mat_a)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Cross product as a matrix</div>
+      <div class="f">[<i>u</i>]<sub>×</sub><i>v</i> = <i>u</i> × <i>v</i></div>
+      <div class="c"><code>def skew(u):</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;return np.array([</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[0, -u[2], u[1]],</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[u[2], 0, -u[0]],</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[-u[1], u[0], 0]])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Fundamental matrix</div>
+      <div class="f"><i>F</i> = [<i>BC</i><sub>1</sub>]<sub>×</sub><i>BA</i><sup class="t">+</sup></div>
+      <div class="c"><code>mat_f = skew(mat_b @ c1) @ mat_b \</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;@ np.linalg.pinv(mat_a)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Epipolar lines</div>
+      <div class="f"><span class="ln"><i>ℓ</i><sub>2</sub></span> = <i>F</i><span class="pt"><i>m</i><sub>1</sub></span>,&ensp;<span class="ln"><i>ℓ</i><sub>1</sub></span> = <i>F</i><sup class="t">T</sup><span class="pt"><i>m</i><sub>2</sub></span></div>
+      <div class="c"><code>ell_2 = mat_f @ m1</code><br><code>ell_1 = mat_f.T @ m2</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Is it a match?</div>
+      <div class="f">|<span class="pt"><i>m</i><sub>2</sub></span><sup class="t">T</sup><i>F</i><span class="pt"><i>m</i><sub>1</sub></span>| / √(<i>a</i><sup class="t">2</sup> + <i>b</i><sup class="t">2</sup>) &lt; <i>d</i><sub>0</sub></div>
+      <div class="c"><code>d = abs(m2 @ ell_2) / np.hypot(</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;ell_2[0], ell_2[1])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Epipoles</div>
+      <div class="f"><i>F</i><span class="pt"><i>e</i><sub>1</sub></span> = 0,&ensp;<i>F</i><sup class="t">T</sup><span class="pt"><i>e</i><sub>2</sub></span> = 0</div>
+      <div class="c"><code>e2 = np.cross(mat_f[:, 0],</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;mat_f[:, 1])</code><br><code>e2 = e2 / e2[2]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Eight or more pairs, <i>F</i><sub>33</sub> = 1</div>
+      <div class="f"><i>Qf</i>′ = <i>r</i>,&ensp;<i>f</i>′ = (<i>Q</i><sup class="t">T</sup><i>Q</i>)<sup class="t">−1</sup><i>Q</i><sup class="t">T</sup><i>r</i></div>
+      <div class="c"><code>Q = np.column_stack([</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;x1*x2, y1*x2, x2, x1*y2,</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;y1*y2, y2, x1, y1])</code><br><code>f = np.linalg.lstsq(</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;Q, -np.ones(len(Q)),</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;rcond=None)[0]</code><br><code>mat_f = np.append(f, 1)</code><br><code>mat_f = mat_f.reshape(3, 3)</code></div>
+    </div>
+  </div>
+</section>
