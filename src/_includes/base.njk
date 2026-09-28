@@ -1,5 +1,8 @@
+{%- set L = lang or site.lang -%}
+{%- set t = i18n[L] -%}
+{%- set other = page.url | otherLanguage(collections.all) -%}
 <!DOCTYPE html>
-<html lang="{{ site.lang }}">
+<html lang="{{ L }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -19,6 +22,10 @@
   {%- else %}
   <meta property="og:url" content="{{ site.url }}{{ page.url }}">
   <link rel="canonical" href="{{ site.url }}{{ page.url }}">
+  {%- if other %}
+  <link rel="alternate" hreflang="{{ L }}" href="{{ site.url }}{{ page.url }}">
+  <link rel="alternate" hreflang="{{ 'en' if L == 'es' else 'es' }}" href="{{ site.url }}{{ other }}">
+  {%- endif %}
   {%- endif %}
   {#- Browser bar colors on phones. Meta tags cannot read CSS variables, so these repeat --paper from site.css. #}
   <meta name="theme-color" content="#F6F4EF" media="(prefers-color-scheme: light)">
@@ -34,12 +41,13 @@
   {%- endfor %}
 </head>
 <body class="{{ bodyClass }}">
-  <a class="skip" href="#main">Skip to content</a>
+  <a class="skip" href="#main">{{ t.skip }}</a>
   <header class="site-header">
     <div class="wrap header-inner">
       {% if page.url != "/" %}<a class="site-name" href="/">{{ site.title }}</a>{% else %}<span></span>{% endif %}
-      <nav aria-label="Main">
-        <ul class="nav">
+      {#- The menu and the footer links stay in English on every page. #}
+      <nav aria-label="{{ t.mainNav }}">
+        <ul class="nav"{% if L != "en" %} lang="en"{% endif %}>
           {%- for item in site.nav %}
           <li><a href="{{ item.href }}"{% if page.url.startsWith(item.href) %} aria-current="page"{% endif %}>{{ item.label }}</a></li>
           {%- endfor %}
@@ -54,12 +62,12 @@
 
   <footer class="site-footer">
     <div class="wrap footer-inner">
-      <ul class="links">
+      <ul class="links"{% if L != "en" %} lang="en"{% endif %}>
         {%- for link in site.links %}
         <li><a href="{{ link.href }}">{{ link.label }}</a></li>
         {%- endfor %}
       </ul>
-      <p>© {{ "" | year }} {{ site.title }}. Built with Eleventy.</p>
+      <p>© {{ "" | year }} {{ site.title }}. {{ t.built }}</p>
     </div>
   </footer>
 

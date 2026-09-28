@@ -1,4 +1,4 @@
-import { createSpace, makeHandle, makeDraggable, apply, matMul, transpose, dot, rotX, rotY, rotZ, rotation3d, fmt, T, sym, col, mat, frac, modeButtons, wholeNumberInput, mathLabel, markBox, placeClear, stepRange, clampTo } from "../plane.js";
+import { createSpace, makeHandle, makeDraggable, apply, matMul, transpose, dot, rotX, rotY, rotZ, rotation3d, fmt, T, sym, col, mat, frac, modeButtons, wholeNumberInput, mathLabel, markBox, placeClear, stepRange, clampTo, tr } from "../plane.js";
 
 const rad = (d) => (d * Math.PI) / 180;
 const add = (a, b) => a.map((x, i) => x + b[i]);
@@ -87,7 +87,7 @@ function twoFrames() {
     if (fits(next)) { st = next; refused = ""; } else refused = msg;
     render();
   }
-  const keep = (name, v, old, unit) => `With ${name} = ${fmt(v)}${unit}, part of the box would leave the drawn space, so the figure keeps ${name} = ${fmt(old)}${unit}.`;
+  const keep = (name, v, old, unit) => tr(`With ${name} = ${fmt(v)}${unit}, part of the box would leave the drawn space, so the figure keeps ${name} = ${fmt(old)}${unit}.`, `Con ${name} = ${fmt(v)}${unit}, parte de la caja saldría del espacio dibujado, así que la figura mantiene ${name} = ${fmt(old)}${unit}.`);
   const showW = wIn.map((inp, i) => wholeNumberInput(inp, {
     min: -180, max: 180, get: () => st.w[i],
     set: (v) => { const w = [...st.w]; w[i] = v; tryState({ ...st, w }, keep(w_(AX[i]), v, st.w[i], "°")); },
@@ -138,33 +138,37 @@ function twoFrames() {
       placeClear(S, labT, times(st.tp, 0.5), 16, S.offset(st.tp), [...fixed, labM].map((l) => l.getBBox()));
     }
     S.place(hT, st.tp);
-    hT.setAttribute("aria-label", `Origin of the box's coordinate system at t′ = (${list(st.tp)}). Use the arrow keys to move it across the level plane Z = ${fmt(st.tp[2])}.`);
+    hT.setAttribute("aria-label", tr(`Origin of the box's coordinate system at t′ = (${list(st.tp)}). Use the arrow keys to move it across the level plane Z = ${fmt(st.tp[2])}.`, `Origen del sistema de coordenadas de la caja en t′ = (${list(st.tp)}). Usa las flechas del teclado para moverlo por el plano horizontal Z = ${fmt(st.tp[2])}.`));
 
     // The readout, with the numbers shown to 4 decimals.
     const RpM = apply(Rp, MP), Mv = add(RpM, st.tp);
     const approxR = R.flat().some((v) => rounded(v, 4)) ? "≈" : "=";
     const approxM = [...RpM, ...Mv].some((v) => rounded(v, 4)) ? "≈" : "=";
-    let html = '<span class="lbl">The rotation</span>';
+    let html = `<span class="lbl">${tr("The rotation", "La rotación")}</span>`;
     html += `<p class="eq"><span class="nowrap"><i>R</i> = ${R_("X")}${R_("Y")}${R_("Z")}</span> <span class="nowrap">${approxR} ${mat(R, "", f4)}</span></p>`;
     if (Math.abs(st.w[1]) === 90) {
-      const only = st.w[1] > 0 ? `their difference, ${w_("X")} − ${w_("Z")}` : `their sum, ${w_("X")} + ${w_("Z")}`;
-      html += `<p class="muted">At ${w_("Y")} = ${fmt(st.w[1])}°, the turn about <i>Y</i> lays the <i>X</i> axis along the <i>Z</i> axis, so the turns by ${w_("Z")} and by ${w_("X")} happen about the same line, and only ${only}, matters: a change in one can be undone by the other. This is called gimbal lock.</p>`;
+      const only = st.w[1] > 0 ? tr(`their difference, ${w_("X")} − ${w_("Z")}`, `su diferencia, ${w_("X")} − ${w_("Z")}`) : tr(`their sum, ${w_("X")} + ${w_("Z")}`, `su suma, ${w_("X")} + ${w_("Z")}`);
+      html += `<p class="muted">${tr(`At ${w_("Y")} = ${fmt(st.w[1])}°, the turn about <i>Y</i> lays the <i>X</i> axis along the <i>Z</i> axis, so the turns by ${w_("Z")} and by ${w_("X")} happen about the same line, and only ${only}, matters: a change in one can be undone by the other. This is called gimbal lock.`, `Con ${w_("Y")} = ${fmt(st.w[1])}°, el giro en torno a <i>Y</i> deja el eje <i>X</i> sobre el eje <i>Z</i>, así que los giros por ${w_("Z")} y por ${w_("X")} ocurren en torno a la misma recta, y solo importa ${only}: un cambio en uno se puede deshacer con el otro. Esto se llama bloqueo del cardán (<i lang="en">gimbal lock</i>).`)}</p>`;
     }
-    html += '<span class="lbl">The red corner, in <i>X</i>, <i>Y</i> and <i>Z</i></span>';
+    html += `<span class="lbl">${tr("The red corner, in <i>X</i>, <i>Y</i> and <i>Z</i>", "La esquina roja, en <i>X</i>, <i>Y</i> y <i>Z</i>")}</span>`;
     html += `<p class="eq"><span class="nowrap">${Mh} = <i>R</i>′${MPh} + <i>t</i>′</span> <span class="nowrap">${approxM} ${col(RpM, "", f4)} + ${col(st.tp)}</span> <span class="nowrap">${approxM} ${col(Mv, "pt", f4)}</span></p>`;
-    html += `<p>Here <span class="nowrap"><i>R</i>′ = <i>R</i>${T}</span>: its columns are the blue axes, and it takes the box's coordinates back to <i>X</i>, <i>Y</i> and <i>Z</i>.</p>`;
-    html += '<span class="lbl">Lengths are kept</span>';
-    html += `<p><span class="nowrap">‖${Mh} − <i>t</i>′‖ ≈ ${f4(Math.hypot(...RpM))},</span> the same as <span class="nowrap">‖${MPh}‖ = √6 ≈ ${f4(Math.sqrt(6))}</span> <span class="ok">✓</span></p>`;
+    html += tr(`<p>Here <span class="nowrap"><i>R</i>′ = <i>R</i>${T}</span>: its columns are the blue axes, and it takes the box's coordinates back to <i>X</i>, <i>Y</i> and <i>Z</i>.</p>`, `<p>Aquí <span class="nowrap"><i>R</i>′ = <i>R</i>${T}</span>: sus columnas son los ejes azules, y lleva las coordenadas de la caja de vuelta a <i>X</i>, <i>Y</i> y <i>Z</i>.</p>`);
+    html += `<span class="lbl">${tr("Lengths are kept", "Las longitudes se conservan")}</span>`;
+    html += `<p><span class="nowrap">‖${Mh} − <i>t</i>′‖ ≈ ${f4(Math.hypot(...RpM))},</span> ${tr("the same as", "igual que")} <span class="nowrap">‖${MPh}‖ = √6 ≈ ${f4(Math.sqrt(6))}</span> <span class="ok">✓</span></p>`;
 
     // The same angles applied in the other order: first X, then Y, then Z.
     const R2 = matMul(matMul(rotZ(rad(st.w[2])), rotY(rad(st.w[1]))), rotX(rad(st.w[0])));
     const M2 = add(apply(transpose(R2), MP), st.tp);
     const same = M2.every((v, i) => Math.abs(v - Mv[i]) < 5e-5);
     const turns = st.w.filter((v) => v % 360 !== 0).length;
-    const other = `Turning first about <i>X</i>, then <i>Y</i>, then <i>Z</i>, so that <span class="nowrap"><i>R</i> = ${R_("Z")}${R_("Y")}${R_("X")}</span>,`;
-    html += '<span class="lbl">In the other order</span>';
-    if (same) html += `<p>${other} puts the corner in the same place${turns <= 1 ? ": with only one turn, there is no order to change" : " here"}.</p>`;
-    else html += `<p>${other} would put the corner at <span class="nowrap">${M2.some((v) => rounded(v, 4)) ? "≈ " : ""}<span class="pt">(${list(M2, f4)})</span></span> instead.</p>`;
+    const Rzyx = `<span class="nowrap"><i>R</i> = ${R_("Z")}${R_("Y")}${R_("X")}</span>`;
+    const other = tr(`Turning first about <i>X</i>, then <i>Y</i>, then <i>Z</i>, so that ${Rzyx},`, `Girar primero en torno a <i>X</i>, luego <i>Y</i> y luego <i>Z</i>, de modo que ${Rzyx},`);
+    html += `<span class="lbl">${tr("In the other order", "En el otro orden")}</span>`;
+    if (same) html += `<p>${other} ${turns <= 1 ? tr("puts the corner in the same place: with only one turn, there is no order to change.", "deja la esquina en el mismo lugar: con un solo giro, no hay orden que cambiar.") : tr("puts the corner in the same place here.", "deja la esquina en el mismo lugar en este caso.")}</p>`;
+    else {
+      const at = `<span class="nowrap">${M2.some((v) => rounded(v, 4)) ? "≈ " : ""}<span class="pt">(${list(M2, f4)})</span></span>`;
+      html += `<p>${other} ${tr(`would put the corner at ${at} instead.`, `pondría la esquina en ${at}.`)}</p>`;
+    }
     if (refused) html += `<p class="muted">${refused}</p>`;
     out.innerHTML = html;
   }
@@ -302,7 +306,7 @@ function projection() {
     dotM.setAttribute("cx", mx); dotM.setAttribute("cy", my);
     put(dotM, Z);
     S.place(hM, Ms);
-    hM.setAttribute("aria-label", `Point M at (${list(M)}). Use the arrow keys to move it sideways or in depth.`);
+    hM.setAttribute("aria-label", tr(`Point M at (${list(M)}). Use the arrow keys to move it sideways or in depth.`, `Punto M en (${list(M)}). Usa las flechas del teclado para moverlo hacia los lados o en profundidad.`));
     const seen = Z > 0;
     const range = seen ? kRange(Ms) : [1, 0];
     const hasK = range[0] <= range[1];
@@ -314,7 +318,7 @@ function projection() {
       ring.setAttribute("cx", kx); ring.setAttribute("cy", ky);
       put(ring, K * Z);
       S.place(hK, KMs);
-      hK.setAttribute("aria-label", `Point kM with k = ${fmt(K)}, on the ray through C and M. Use the arrow keys to slide it along the ray.`);
+      hK.setAttribute("aria-label", tr(`Point kM with k = ${fmt(K)}, on the ray through C and M. Use the arrow keys to slide it along the ray.`, `Punto kM con k = ${fmt(K)}, sobre el rayo que pasa por C y M. Usa las flechas del teclado para deslizarlo por el rayo.`));
     }
     const x = (sign * f * X) / Z, y = (sign * f * Y) / Z;
     const onPlane = seen && Math.abs(x) <= W + 1e-9 && Math.abs(y) <= H + 1e-9;
@@ -333,23 +337,25 @@ function projection() {
     // The readout.
     const P = [[sign * f, 0, 0, 0], [0, sign * f, 0, 0], [0, 0, 1, 0]];
     const PM = apply(P, [...M, 1]);
-    let html = '<span class="lbl">Projecting <i>M</i></span>';
+    let html = `<span class="lbl">${tr("Projecting <i>M</i>", "Proyección de <i>M</i>")}</span>`;
     html += `<p class="eq"><span class="nowrap">λ${mh} = <i>P</i>${Mh}</span> <span class="nowrap">= ${mat(P)}${col([...M, 1], "pt")}</span> <span class="nowrap">= ${col(PM)}</span></p>`;
     if (atC) {
-      html += `<p class="muted">${Mh} is the optical center itself. <i>P</i>${Mh} is the zero vector, which stands for no point: every ray starts at <i>C</i>, so <i>C</i> has no image.</p>`;
+      html += `<p class="muted">${tr(`${Mh} is the optical center itself. <i>P</i>${Mh} is the zero vector, which stands for no point: every ray starts at <i>C</i>, so <i>C</i> has no image.`, `${Mh} es el propio centro óptico. <i>P</i>${Mh} es el vector cero, que no representa ningún punto: todos los rayos parten de <i>C</i>, así que <i>C</i> no tiene imagen.`)}</p>`;
     } else if (Z === 0) {
-      html += `<p class="muted">Here λ = <i>Z</i> = 0: ${Mh} is level with <i>C</i>, so its ray runs parallel to the image plane and never meets it. There is nothing to divide by, and ${Mh} has no image.</p>`;
+      html += `<p class="muted">${tr(`Here λ = <i>Z</i> = 0: ${Mh} is level with <i>C</i>, so its ray runs parallel to the image plane and never meets it. There is nothing to divide by, and ${Mh} has no image.`, `Aquí λ = <i>Z</i> = 0: ${Mh} está a la altura de <i>C</i>, así que su rayo corre paralelo al plano de imagen y nunca lo corta. No hay nada por lo cual dividir, y ${Mh} no tiene imagen.`)}</p>`;
     } else {
       const eq = rounded(x) || rounded(y) ? "≈" : "=";
-      html += `<p>Dividing by λ = <i>Z</i> = ${fmt(Z)}: <span class="nowrap">(${frac(fmt(PM[0]), fmt(Z))}, ${frac(fmt(PM[1]), fmt(Z))})</span> <span class="nowrap">${eq} <span class="pt">(${fmt(x)}, ${fmt(y)})</span>.</span></p>`;
-      if (!seen) html += `<p class="muted">But ${Mh} is behind the camera (<i>Z</i> &lt; 0), and no ray from it reaches the image through <i>C</i>. The division still gives numbers, but the camera does not see ${Mh}.</p>`;
+      html += `<p>${tr("Dividing by", "Al dividir por")} λ = <i>Z</i> = ${fmt(Z)}: <span class="nowrap">(${frac(fmt(PM[0]), fmt(Z))}, ${frac(fmt(PM[1]), fmt(Z))})</span> <span class="nowrap">${eq} <span class="pt">(${fmt(x)}, ${fmt(y)})</span>.</span></p>`;
+      if (!seen) html += `<p class="muted">${tr(`But ${Mh} is behind the camera (<i>Z</i> &lt; 0), and no ray from it reaches the image through <i>C</i>. The division still gives numbers, but the camera does not see ${Mh}.`, `Pero ${Mh} está detrás de la cámara (<i>Z</i> &lt; 0), y ningún rayo suyo llega a la imagen a través de <i>C</i>. La división igual da números, pero la cámara no ve ${Mh}.`)}</p>`;
       else {
-        if (sign < 0) html += `<p class="muted">Behind <i>C</i>, <i>P</i> has −<i>f</i>, so both coordinates change sign: the image is upside down.</p>`;
-        if (!onPlane) html += `<p class="muted">${mh} lies outside the part of the image plane that is drawn.</p>`;
+        if (sign < 0) html += `<p class="muted">${tr("Behind <i>C</i>, <i>P</i> has −<i>f</i>, so both coordinates change sign: the image is upside down.", "Detrás de <i>C</i>, <i>P</i> tiene −<i>f</i>, así que ambas coordenadas cambian de signo: la imagen queda invertida.")}</p>`;
+        if (!onPlane) html += `<p class="muted">${tr(`${mh} lies outside the part of the image plane that is drawn.`, `${mh} queda fuera de la parte dibujada del plano de imagen.`)}</p>`;
         if (hasK) {
           const KM = times(M, K), PKM = times(PM, K);
-          html += '<span class="lbl">Every point of the ray</span>';
-          html += `<p>With <i>k</i> = ${fmt(K)}, <span class="nowrap"><i>k</i>${Mh} = <span class="pt">(${list(KM)})</span></span> and <span class="nowrap"><i>P</i>(<i>k</i>${Mh}) = ${fmt(K)}&thinsp;<i>P</i>${Mh}</span> <span class="nowrap">= ${col(PKM)}.</span> Dividing by its third component, ${fmt(K * Z)}, gives the same ${mh}: the image cannot tell ${Mh} from <i>k</i>${Mh}.</p>`;
+          html += `<span class="lbl">${tr("Every point of the ray", "Todos los puntos del rayo")}</span>`;
+          const kM = `<span class="nowrap"><i>k</i>${Mh} = <span class="pt">(${list(KM)})</span></span>`;
+          const PkM = `<span class="nowrap"><i>P</i>(<i>k</i>${Mh}) = ${fmt(K)}&thinsp;<i>P</i>${Mh}</span> <span class="nowrap">= ${col(PKM)}.</span>`;
+          html += tr(`<p>With <i>k</i> = ${fmt(K)}, ${kM} and ${PkM} Dividing by its third component, ${fmt(K * Z)}, gives the same ${mh}: the image cannot tell ${Mh} from <i>k</i>${Mh}.</p>`, `<p>Con <i>k</i> = ${fmt(K)}, ${kM} y ${PkM} Al dividir por su tercera componente, ${fmt(K * Z)}, se obtiene el mismo ${mh}: la imagen no distingue ${Mh} de <i>k</i>${Mh}.</p>`);
         }
       }
     }

@@ -14,6 +14,13 @@ export function el(tag, attrs, parent) {
   return e;
 }
 
+/* ---------- Language ---------- */
+
+// Every note has an English and a Spanish page that load the same script. tr(en, es) gives the text for the
+// page's language, so each readout keeps both versions side by side: tr("Cross product", "Producto cruz").
+export const lang = document.documentElement.lang === "es" ? "es" : "en";
+export const tr = (en, es) => (lang === "es" ? es : en);
+
 /* ---------- Homogeneous-coordinate helpers ---------- */
 
 export const cross = (u, v) => [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];

@@ -48,8 +48,9 @@ scripts:
     <p class="prose" style="color:var(--ink-2)">Study notes from my courses, with interactive figures you can play with.</p>
     <ul class="cards">
       {%- for note in collections.notes %}{% if loop.index <= 3 %}
+      {%- set seq = collections.notes | noteSequence(note.url) %}
       <li class="card">
-        <h3><a href="{{ note.url }}">{{ note.data.title }}</a></h3>
+        <h3><span class="n">{{ seq.number }}</span><a href="{{ note.url }}">{{ note.data.title }}</a></h3>
         <p>{{ note.data.description }}</p>
         <p class="meta">{{ note.data.course }} · {{ note.data.module }}</p>
       </li>

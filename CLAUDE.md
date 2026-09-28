@@ -8,18 +8,19 @@ Custom domain `joaquindeferrari.com`: DNS lives on Cloudflare as DNS-only record
 
 - `npm install`, then `npm start` for a live-reload server at http://localhost:8080
 - `npm run build` writes the site to `_site/`. Run it before every commit and fix any error it reports.
-- Check changes at desktop width and at 390px wide, in both light and dark mode.
+- Check changes at desktop width and at 390px wide, in both light and dark mode, and for notes in both languages.
 
 ## Where content lives
 
 - Tagline, "Currently" line, links, menu: `src/_data/site.json`
 - Publications: `src/_data/publications.json` (`"selected": true` puts one on the homepage)
 - Research lines: `src/_data/research.json`
+- Notes: `src/notes/<course>/`, and their Spanish versions in `src/es/notes/<course>/`. The note layout's text in each language: `src/_data/i18n.json`.
 - Prefer editing these JSON files over templates when the change is about content.
 
 ## Content rules
 
-- The site is in English.
+- The site is in English. The exception is the study notes: every note also has a Spanish version under `/es/notes/`, linked from the top of the page (see `.claude/rules/notes.md`). The rest of the site, including the header and footer, stays English-only.
 - Never publish Joaquín's phone number. Public contact is the institutional email, GitHub, ORCID and LinkedIn.
 - Publication and research facts must match his CV exactly. Never invent venues, metrics, rankings or claims. Mark equal contribution with `*` and keep every DOI.
 - Positioning: the tagline describes a broad identity (machine learning for medical imaging and clinical language, learning from imperfect supervision). The specific current project belongs only in the "Currently" line.

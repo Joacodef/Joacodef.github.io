@@ -1,4 +1,4 @@
-import { createPlane, createSpace, makeHandle, makeDraggable, cross, dot, simplify, clipLine, fmt, isRounded, paren, T, sym, col, row, frac, equation, wholeNumberInput, mathLabel, markBox, placeClear, stepRange, clampTo } from "../plane.js";
+import { createPlane, createSpace, makeHandle, makeDraggable, cross, dot, simplify, clipLine, fmt, isRounded, paren, T, sym, col, row, frac, equation, wholeNumberInput, mathLabel, markBox, placeClear, stepRange, clampTo, tr } from "../plane.js";
 
 const ELL = "ℓ";
 const scaleVec = (v, t) => v.map((c) => c * t);
@@ -93,19 +93,19 @@ function scaledPoint() {
     }
 
     S.place(hM, m3); S.place(hL, v);
-    hM.setAttribute("aria-label", `Point m at (${fmt(x)}, ${fmt(y)}) on the plane r = 1. Use the arrow keys to move it.`);
-    hL.setAttribute("aria-label", `Vector λm with λ = ${fmt(L)}. Use the arrow keys to slide it along the line.`);
+    hM.setAttribute("aria-label", tr(`Point m at (${fmt(x)}, ${fmt(y)}) on the plane r = 1. Use the arrow keys to move it.`, `Punto m en (${fmt(x)}, ${fmt(y)}), sobre el plano r = 1. Usa las flechas del teclado para moverlo.`));
+    hL.setAttribute("aria-label", tr(`Vector λm with λ = ${fmt(L)}. Use the arrow keys to slide it along the line.`, `Vector λm con λ = ${fmt(L)}. Usa las flechas del teclado para deslizarlo por la recta.`));
 
     const lm = `λ${sym("m", "", "pt")}`;
-    let html = `<span class="lbl">Scaling by λ = ${fmt(L)}</span>`;
+    let html = `<span class="lbl">${tr("Scaling by", "Escalado por")} λ = ${fmt(L)}</span>`;
     html += `<p class="eq"><span class="nowrap">${lm} = ${fmt(L)}&thinsp;${col(m3, "pt")}</span> <span class="nowrap">= ${col(v, "pt")}</span></p>`;
     if (L === 0) {
-      html += '<p class="muted">λ = 0 gives the zero vector, at the origin. The origin lies on the line of every point, so it stands for none of them, and with <i>r</i> = 0 there is nothing to divide by. That is why λ must be nonzero.</p>';
+      html += `<p class="muted">${tr("λ = 0 gives the zero vector, at the origin. The origin lies on the line of every point, so it stands for none of them, and with <i>r</i> = 0 there is nothing to divide by. That is why λ must be nonzero.", "λ = 0 da el vector cero, en el origen. El origen está en la recta de todos los puntos, así que no representa a ninguno, y con <i>r</i> = 0 no hay nada por lo cual dividir. Por eso λ debe ser distinto de cero.")}</p>`;
     } else {
-      html += '<span class="lbl">Back to Cartesian coordinates</span>';
-      if (L === 1) html += `<p>Here <i>r</i> = 1 already: ${lm} is ${sym("m", "", "pt")} itself, where the line crosses the plane.</p>`;
-      else html += `<p>Dividing by <i>r</i> = ${fmt(L)}: <span class="nowrap">(${frac(fmt(v[0]), fmt(L))}, ${frac(fmt(v[1]), fmt(L))})</span> <span class="nowrap">= <span class="pt">(${fmt(x)}, ${fmt(y)})</span>,</span> the same point.</p>`;
-      if (L < 0) html += '<p class="muted">A negative λ puts the vector on the other side of the origin, still on the same line.</p>';
+      html += `<span class="lbl">${tr("Back to Cartesian coordinates", "De vuelta a coordenadas cartesianas")}</span>`;
+      if (L === 1) html += tr(`<p>Here <i>r</i> = 1 already: ${lm} is ${sym("m", "", "pt")} itself, where the line crosses the plane.</p>`, `<p>Aquí ya <i>r</i> = 1: ${lm} es el mismo ${sym("m", "", "pt")}, donde la recta cruza el plano.</p>`);
+      else html += `<p>${tr("Dividing by", "Al dividir por")} <i>r</i> = ${fmt(L)}: <span class="nowrap">(${frac(fmt(v[0]), fmt(L))}, ${frac(fmt(v[1]), fmt(L))})</span> <span class="nowrap">= <span class="pt">(${fmt(x)}, ${fmt(y)})</span>,</span> ${tr("the same point.", "el mismo punto.")}</p>`;
+      if (L < 0) html += `<p class="muted">${tr("A negative λ puts the vector on the other side of the origin, still on the same line.", "Un λ negativo deja el vector al otro lado del origen, siempre en la misma recta.")}</p>`;
     }
     out.innerHTML = html;
   }
@@ -260,24 +260,24 @@ function lineAsPlane() {
     ring.setAttribute("cx", vx); ring.setAttribute("cy", vy);
     S.place(hL, v);
     if (!zero) placeClear(S, labVec, v, 32, S.offset(l), [...fixed.map((t) => t.getBBox()), ...(lineBox ? [lineBox] : [])]);
-    hL.setAttribute("aria-label", `Vector λℓ with λ = ${fmt(L)}. Use the arrow keys to slide it along its line.`);
+    hL.setAttribute("aria-label", tr(`Vector λℓ with λ = ${fmt(L)}. Use the arrow keys to slide it along its line.`, `Vector λℓ con λ = ${fmt(L)}. Usa las flechas del teclado para deslizarlo por su recta.`));
 
     const lv = `λ${sym(ELL, "", "ln")}`, PQR = ["p", "q", "r"];
     let html;
     if (zero) {
-      html = '<p class="muted">The zero vector is perpendicular to every vector, so it picks out no plane and no line. Make at least one coefficient nonzero.</p>';
+      html = `<p class="muted">${tr("The zero vector is perpendicular to every vector, so it picks out no plane and no line. Make at least one coefficient nonzero.", "El vector cero es perpendicular a todos los vectores, así que no define ningún plano ni ninguna recta. Haz que al menos un coeficiente sea distinto de cero.")}</p>`;
     } else {
-      html = `<span class="lbl">Scaling by λ = ${fmt(L)}</span>`;
+      html = `<span class="lbl">${tr("Scaling by", "Escalado por")} λ = ${fmt(L)}</span>`;
       html += `<p class="eq"><span class="nowrap">${lv} = ${fmt(L)}&thinsp;${col(l, "ln")}</span> <span class="nowrap">= ${col(v, "ln")}</span></p>`;
       if (L === 0) {
-        html += '<p class="muted">λ = 0 gives the zero vector, which is perpendicular to every vector, so it picks out no plane. That is why λ must be nonzero.</p>';
+        html += `<p class="muted">${tr("λ = 0 gives the zero vector, which is perpendicular to every vector, so it picks out no plane. That is why λ must be nonzero.", "λ = 0 da el vector cero, que es perpendicular a todos los vectores, así que no define ningún plano. Por eso λ debe ser distinto de cero.")}</p>`;
       } else {
-        html += '<span class="lbl">The plane perpendicular to it</span>';
-        html += `<p>${equation(v, PQR)}${L !== 1 ? `, which divided by ${fmt(L)} is ${equation(l, PQR)}` : ""}: the same plane for every <span class="nowrap">λ ≠ 0</span>.</p>`;
-        html += '<span class="lbl">Where that plane meets <i>r</i> = 1</span>';
-        if (flat) html += '<p class="muted">With <i>a</i> = <i>b</i> = 0 the plane is <i>r</i> = 0, level with the floor. It never meets <i>r</i> = 1, so it gives no line.</p>';
-        else html += `<p>Setting <i>r</i> = 1 gives ${equation(l)}: the line ${sym(ELL, "", "ln")}.${seg ? "" : " It misses the part of the plane <i>r</i> = 1 that is drawn."}</p>`;
-        if (L < 0) html += '<p class="muted">A negative λ flips the vector to the other side of the plane; the plane stays the same.</p>';
+        html += `<span class="lbl">${tr("The plane perpendicular to it", "El plano perpendicular a él")}</span>`;
+        html += `<p>${equation(v, PQR)}${L !== 1 ? tr(`, which divided by ${fmt(L)} is ${equation(l, PQR)}`, `, que al dividir por ${fmt(L)} queda ${equation(l, PQR)}`) : ""}: ${tr("the same plane for every", "el mismo plano para todo")} <span class="nowrap">λ ≠ 0</span>.</p>`;
+        html += `<span class="lbl">${tr("Where that plane meets <i>r</i> = 1", "Donde ese plano corta a <i>r</i> = 1")}</span>`;
+        if (flat) html += `<p class="muted">${tr("With <i>a</i> = <i>b</i> = 0 the plane is <i>r</i> = 0, level with the floor. It never meets <i>r</i> = 1, so it gives no line.", "Con <i>a</i> = <i>b</i> = 0 el plano es <i>r</i> = 0, a ras del suelo. Nunca corta a <i>r</i> = 1, así que no da ninguna recta.")}</p>`;
+        else html += `<p>${tr(`Setting <i>r</i> = 1 gives ${equation(l)}: the line ${sym(ELL, "", "ln")}.`, `Con <i>r</i> = 1 queda ${equation(l)}: la recta ${sym(ELL, "", "ln")}.`)}${seg ? "" : tr(" It misses the part of the plane <i>r</i> = 1 that is drawn.", " No pasa por la parte dibujada del plano <i>r</i> = 1.")}</p>`;
+        if (L < 0) html += `<p class="muted">${tr("A negative λ flips the vector to the other side of the plane; the plane stays the same.", "Un λ negativo lleva el vector al otro lado del plano; el plano sigue siendo el mismo.")}</p>`;
       }
     }
     out.innerHTML = html;
@@ -317,17 +317,17 @@ function lineThroughPoints() {
     const m1 = [a.x, a.y, 1], m2 = [b.x, b.y, 1];
     const l = cross(m1, m2);
     P.place(h1, a); P.place(h2, b);
-    h1.setAttribute("aria-label", `Point m1 at (${a.x}, ${a.y}). Use the arrow keys to move it.`);
-    h2.setAttribute("aria-label", `Point m2 at (${b.x}, ${b.y}). Use the arrow keys to move it.`);
+    h1.setAttribute("aria-label", tr(`Point m1 at (${a.x}, ${a.y}). Use the arrow keys to move it.`, `Punto m1 en (${a.x}, ${a.y}). Usa las flechas del teclado para moverlo.`));
+    h2.setAttribute("aria-label", tr(`Point m2 at (${b.x}, ${b.y}). Use the arrow keys to move it.`, `Punto m2 en (${b.x}, ${b.y}). Usa las flechas del teclado para moverlo.`));
 
-    let html = '<span class="lbl">Cross product</span>';
+    let html = `<span class="lbl">${tr("Cross product", "Producto cruz")}</span>`;
     html += `<p class="eq"><span class="nowrap">${sym(ELL, "", "ln")} = ${col(m1, "pt")} × ${col(m2, "pt")}</span> <span class="nowrap">= ${col(l, "ln")}</span></p>`;
 
     if (l[0] === 0 && l[1] === 0) {
       P.drawSegment(line, null);
       lLab.setAttribute("visibility", "hidden");
       P.placeAlong(lab1, a, [1, 1], 2.3); P.placeAlong(lab2, b, [-1, -1], 2.3);
-      html += `<p class="muted">The two points coincide, so ${sym("m", "1", "pt")} × ${sym("m", "2", "pt")} = ${row([0, 0, 0])} and does not define a line. Move them apart to continue.</p>`;
+      html += `<p class="muted">${tr(`The two points coincide, so ${sym("m", "1", "pt")} × ${sym("m", "2", "pt")} = ${row([0, 0, 0])} and does not define a line. Move them apart to continue.`, `Los dos puntos coinciden, así que ${sym("m", "1", "pt")} × ${sym("m", "2", "pt")} = ${row([0, 0, 0])} y no define ninguna recta. Sepáralos para continuar.`)}</p>`;
       out.innerHTML = html;
       return;
     }
@@ -339,13 +339,13 @@ function lineThroughPoints() {
     P.placeAlong(lab2, b, [-l[0], -l[1]], 2.3);
 
     const s = simplify(l);
-    html += '<span class="lbl">Simplest form</span><p>';
-    if (s.d === 1) html += `Already in its simplest form: ${equation(s.v)}.`;
-    else if (s.d === -1) html += `Flipping the sign gives the same line, ${row(s.v, "ln")}, that is ${equation(s.v)}.`;
-    else html += `Dividing by ${fmt(s.d)} gives the same line, ${row(s.v, "ln")}, that is ${equation(s.v)}.`;
+    html += `<span class="lbl">${tr("Simplest form", "Forma más simple")}</span><p>`;
+    if (s.d === 1) html += tr(`Already in its simplest form: ${equation(s.v)}.`, `Ya está en su forma más simple: ${equation(s.v)}.`);
+    else if (s.d === -1) html += tr(`Flipping the sign gives the same line, ${row(s.v, "ln")}, that is ${equation(s.v)}.`, `Al cambiar el signo se obtiene la misma recta, ${row(s.v, "ln")}, es decir, ${equation(s.v)}.`);
+    else html += tr(`Dividing by ${fmt(s.d)} gives the same line, ${row(s.v, "ln")}, that is ${equation(s.v)}.`, `Al dividir por ${fmt(s.d)} se obtiene la misma recta, ${row(s.v, "ln")}, es decir, ${equation(s.v)}.`);
     html += "</p>";
 
-    html += '<span class="lbl">Check with the dot product</span>';
+    html += `<span class="lbl">${tr("Check with the dot product", "Comprobación con el producto punto")}</span>`;
     for (const [m, i] of [[m1, "1"], [m2, "2"]]) {
       html += `<p>${sym(ELL, "", "ln")}${T}${sym("m", i, "pt")} = <span class="nowrap">${paren(l[0])}·${paren(m[0])}</span> + <span class="nowrap">${paren(l[1])}·${paren(m[1])}</span> + <span class="nowrap">${paren(l[2])}·1 = ${fmt(dot(l, m))} <span class="ok">✓</span></span></p>`;
     }
@@ -381,7 +381,7 @@ function intersection() {
   function render() {
     for (const k of keys) {
       P.place(hs[k], st[k]);
-      hs[k].setAttribute("aria-label", `Endpoint of line ${k[0] === "p" ? 1 : 2} at (${st[k].x}, ${st[k].y}). Use the arrow keys to move it.`);
+      hs[k].setAttribute("aria-label", tr(`Endpoint of line ${k[0] === "p" ? 1 : 2} at (${st[k].x}, ${st[k].y}). Use the arrow keys to move it.`, `Extremo de la recta ${k[0] === "p" ? 1 : 2} en (${st[k].x}, ${st[k].y}). Usa las flechas del teclado para moverlo.`));
     }
     const l1 = cross([st.p1.x, st.p1.y, 1], [st.p2.x, st.p2.y, 1]);
     const l2 = cross([st.q1.x, st.q1.y, 1], [st.q2.x, st.q2.y, 1]);
@@ -395,33 +395,33 @@ function intersection() {
 
     if (bad1 || bad2) {
       show(false);
-      out.innerHTML = `<p class="muted">Both endpoints of ${sym(ELL, bad1 ? "1" : "2", "ln")} coincide, so they do not define a line. Move them apart to continue.</p>`;
+      out.innerHTML = `<p class="muted">${tr(`Both endpoints of ${sym(ELL, bad1 ? "1" : "2", "ln")} coincide, so they do not define a line. Move them apart to continue.`, `Los dos extremos de ${sym(ELL, bad1 ? "1" : "2", "ln")} coinciden, así que no definen una recta. Sepáralos para continuar.`)}</p>`;
       return;
     }
     const s1 = simplify(l1).v, s2 = simplify(l2).v;
-    let html = '<span class="lbl">The lines, in simplest form</span>';
+    let html = `<span class="lbl">${tr("The lines, in simplest form", "Las rectas, en su forma más simple")}</span>`;
     html += `<p>${sym(ELL, "1", "ln")} = ${row(s1, "ln")}&ensp;<span class="muted">${equation(s1)}</span></p>`;
     html += `<p>${sym(ELL, "2", "ln")} = ${row(s2, "ln")}&ensp;<span class="muted">${equation(s2)}</span></p>`;
 
     const m = cross(s1, s2);
-    html += '<span class="lbl">Cross product</span>';
+    html += `<span class="lbl">${tr("Cross product", "Producto cruz")}</span>`;
     html += `<p class="eq"><span class="nowrap">${sym("m", "", "pt")} = ${col(s1, "ln")} × ${col(s2, "ln")}</span> <span class="nowrap">= ${col(m, "pt")}</span></p>`;
 
     if (m[0] === 0 && m[1] === 0 && m[2] === 0) {
       show(false);
-      out.innerHTML = html + '<p class="muted">The two lines coincide: their cross product is the zero vector, so there is no single intersection point.</p>';
+      out.innerHTML = html + `<p class="muted">${tr("The two lines coincide: their cross product is the zero vector, so there is no single intersection point.", "Las dos rectas coinciden: su producto cruz es el vector cero, así que no hay un único punto de intersección.")}</p>`;
       return;
     }
     if (m[2] === 0) {
       show(false);
-      out.innerHTML = html + '<p class="muted"><i>r</i> = 0: the lines are parallel, so they do not meet at any point of the plane and we cannot divide by <i>r</i>.</p>';
+      out.innerHTML = html + `<p class="muted">${tr("<i>r</i> = 0: the lines are parallel, so they do not meet at any point of the plane and we cannot divide by <i>r</i>.", "<i>r</i> = 0: las rectas son paralelas, así que no se cortan en ningún punto del plano y no se puede dividir por <i>r</i>.")}</p>`;
       return;
     }
     const xi = m[0] / m[2], yi = m[1] / m[2];
-    html += '<span class="lbl">Back to Cartesian coordinates</span>';
+    html += `<span class="lbl">${tr("Back to Cartesian coordinates", "De vuelta a coordenadas cartesianas")}</span>`;
     const point = `<span class="pt">(${fmt(xi)}, ${fmt(yi)})</span>`;
-    if (m[2] === 1) html += `<p>Here <i>r</i> = 1, so the point can be read directly: <span class="nowrap">${point}</span></p>`;
-    else html += `<p>Dividing by <i>r</i> = ${fmt(m[2])}: <span class="nowrap">(${frac(fmt(m[0]), fmt(m[2]))}, ${frac(fmt(m[1]), fmt(m[2]))})</span> <span class="nowrap">${isRounded(xi) || isRounded(yi) ? "≈" : "="} ${point}</span></p>`;
+    if (m[2] === 1) html += `<p>${tr("Here <i>r</i> = 1, so the point can be read directly:", "Aquí <i>r</i> = 1, así que el punto se lee directamente:")} <span class="nowrap">${point}</span></p>`;
+    else html += `<p>${tr("Dividing by", "Al dividir por")} <i>r</i> = ${fmt(m[2])}: <span class="nowrap">(${frac(fmt(m[0]), fmt(m[2]))}, ${frac(fmt(m[1]), fmt(m[2]))})</span> <span class="nowrap">${isRounded(xi) || isRounded(yi) ? "≈" : "="} ${point}</span></p>`;
 
     const inside = xi >= 0 && xi <= P.max && yi >= 0 && yi <= P.max;
     show(inside);
@@ -433,7 +433,7 @@ function intersection() {
       const sa = [d1[0] + d2[0], d1[1] + d2[1]], sb = [d1[0] - d2[0], d1[1] - d2[1]];
       P.placeAlong(mLab, { x: xi, y: yi }, Math.hypot(...sa) >= Math.hypot(...sb) ? sa : sb, 2.6);
     } else {
-      html += '<p class="muted">The point lies outside the visible area of the plot.</p>';
+      html += `<p class="muted">${tr("The point lies outside the visible area of the plot.", "El punto queda fuera del área visible del gráfico.")}</p>`;
     }
     out.innerHTML = html;
   }

@@ -1,0 +1,30 @@
+{
+  "en": {
+    "skip": "Skip to content",
+    "mainNav": "Main",
+    "built": "Built with Eleventy.",
+    "notes": "Notes",
+    "notesUrl": "/notes/",
+    "note": "Note",
+    "of": "of",
+    "previous": "Previous",
+    "next": "Next",
+    "sequenceNav": "Notes in this course",
+    "notice": "Personal study notes, written with AI assistance. They may contain errors; corrections are welcome.",
+    "back": "Back to all notes"
+  },
+  "es": {
+    "skip": "Saltar al contenido",
+    "mainNav": "Principal",
+    "built": "Hecho con Eleventy.",
+    "notes": "Apuntes",
+    "notesUrl": "/es/notes/",
+    "note": "Apunte",
+    "of": "de",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "sequenceNav": "Apuntes de este curso",
+    "notice": "Apuntes personales de estudio, escritos con ayuda de IA. Pueden contener errores; las correcciones son bienvenidas.",
+    "back": "Volver a todos los apuntes"
+  }
+}

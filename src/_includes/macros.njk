@@ -1,3 +1,9 @@
+{#- A link to the same page in the other language, labeled in that language. #}
+{% macro langSwitch(href, lang) %}
+{%- set to = "en" if lang == "es" else "es" -%}
+<a class="lang-switch" href="{{ href }}" hreflang="{{ to }}" lang="{{ to }}">{{ "Read in English" if to == "en" else "Leer en español" }}</a>
+{%- endmacro %}
+
 {% macro publication(p) %}
 <li class="pub">
   <p class="pub-title">{% if p.doi %}<a href="https://doi.org/{{ p.doi }}">{{ p.title }}</a>{% else %}{{ p.title }}{% endif %}</p>

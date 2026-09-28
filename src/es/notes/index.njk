@@ -1,29 +1,29 @@
 ---
 layout: base.njk
-title: Notes
-description: Study notes from my courses, with interactive figures.
-permalink: /notes/
+title: Apuntes
+description: Apuntes de estudio de mis cursos, con figuras interactivas.
+permalink: /es/notes/
 ---
 {%- from "macros.njk" import langSwitch -%}
 {%- set other = page.url | otherLanguage(collections.all) -%}
 <div class="wrap">
   <header class="page-head">
-    <h1>Notes</h1>
-    <p>Study notes from my courses, with interactive figures you can play with.</p>
+    <h1>Apuntes</h1>
+    <p>Apuntes de estudio de mis cursos, con figuras interactivas para explorar.</p>
     {%- if other %}
-    <p class="page-lang">{{ langSwitch(other, "en") }}</p>
+    <p class="page-lang">{{ langSwitch(other, "es") }}</p>
     {%- endif %}
   </header>
 
   {%- set courses = [] %}
-  {%- for n in collections.notes %}{% if not (n.data.course in courses) %}{% set courses = (courses.push(n.data.course), courses) %}{% endif %}{% endfor %}
+  {%- for n in collections.notesEs %}{% if not (n.data.course in courses) %}{% set courses = (courses.push(n.data.course), courses) %}{% endif %}{% endfor %}
 
   {%- for course in courses %}
   <section class="section" aria-labelledby="c-{{ loop.index }}">
     <div class="section-head"><h2 id="c-{{ loop.index }}">{{ course }}</h2></div>
     {#- The notes of a course are read in order, so they are numbered. #}
     <ol class="cards" role="list">
-      {%- for note in collections.notes | byCourse(course) %}
+      {%- for note in collections.notesEs | byCourse(course) %}
       <li class="card">
         <h3><span class="n">{{ loop.index }}</span><a href="{{ note.url }}">{{ note.data.title }}</a></h3>
         <p>{{ note.data.description }}</p>
@@ -34,5 +34,5 @@ permalink: /notes/
   </section>
   {%- endfor %}
 
-  <p class="notice">These are personal study notes, written with AI assistance. They may contain errors.</p>
+  <p class="notice">Son apuntes personales de estudio, escritos con ayuda de IA. Pueden contener errores.</p>
 </div>

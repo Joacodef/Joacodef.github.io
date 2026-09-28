@@ -1,0 +1,5 @@
+{
+  "layout": "note.njk",
+  "course": "Visión por Computador",
+  "source": "Basado en el módulo de Geometría (CV02) del curso Visión por Computador del profesor Domingo Mery en la UC Chile. Materiales del curso: <a href=\"https://github.com/domingomery/cv\">github.com/domingomery/cv</a>."
+}

@@ -1,0 +1,188 @@
+---
+title: Coordenadas homogéneas
+module: Geometría
+order: 1
+description: Puntos y rectas en el plano, resumidos para repasar, con figuras interactivas.
+scripts:
+  - /assets/js/notes/homogeneous-coordinates.js
+---
+<div class="prose">
+  <div class="duo">
+    <div>
+      <p class="big"><i class="ln">ℓ</i> = <span class="pt"><i>m</i><sub>1</sub></span> × <span class="pt"><i>m</i><sub>2</sub></span></p>
+      <p class="cap">La recta que pasa por dos puntos.</p>
+    </div>
+    <div>
+      <p class="big"><span class="pt"><i>m</i></span> = <span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span></p>
+      <p class="cap">El punto donde se cortan dos rectas.</p>
+    </div>
+  </div>
+  <p class="legend">En esta página, los <span class="dot" aria-hidden="true"></span>puntos se dibujan con tinta roja y las <span class="bar" aria-hidden="true"></span>rectas con tinta azul.</p>
+</div>
+
+<section id="point">
+  <div class="prose">
+    <h2><span class="n">1</span>El punto homogéneo</h2>
+    <p>Un punto del plano con coordenadas cartesianas (<i>x</i>, <i>y</i>) se escribe en coordenadas homogéneas agregando una tercera componente igual a 1:</p>
+    <div class="disp"><span class="pt"><i>m</i></span> = <span class="col pt"><span><i>x</i></span><span><i>y</i></span><span>1</span></span></div>
+    <p>La ventaja es que los puntos y las rectas pasan a ser vectores de tres componentes, y las operaciones geométricas del plano se reducen a productos punto y productos cruz.</p>
+
+    <h3>La escala no importa</h3>
+    <p>Cualquier múltiplo λ<i>m</i> con λ ≠ 0 representa el mismo punto. Estos tres vectores son todos el punto (2, 3):</p>
+    <div class="disp num"><span class="col pt"><span>2</span><span>3</span><span>1</span></span> ∼ <span class="col pt"><span>4</span><span>6</span><span>2</span></span> ∼ <span class="col pt"><span>−1</span><span>−1.5</span><span>−0.5</span></span></div>
+    <p>La razón está en cómo volvemos a coordenadas cartesianas: dividimos por la tercera componente. Si <span class="pt"><i>m</i></span> = [<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup>, el punto es</p>
+    <div class="disp">(<i>x</i>, <i>y</i>) = <span class="nowrap">(<span class="frac"><span><i>p</i></span><span><i>r</i></span></span>, <span class="frac"><span><i>q</i></span><span><i>r</i></span></span>)</span></div>
+    <p>y la división cancela el factor λ: <span class="nowrap">λ<i>p</i> / λ<i>r</i> = <i>p</i> / <i>r</i></span>. Por eso el resultado de una operación no necesita terminar en 1; solo hay que dividir por <i>r</i> antes de leerlo.</p>
+
+    <h3>Cada punto es una recta que pasa por el origen</h3>
+    <p>Lee un vector [<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup> como una posición en un espacio con ejes <i>p</i>, <i>q</i> y <i>r</i>. El plano cartesiano está en ese espacio como el plano <span class="nowrap"><i>r</i> = 1</span>, y <span class="pt"><i>m</i></span> = [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup> es un punto sobre él. Cada múltiplo λ<span class="pt"><i>m</i></span> está en la recta que pasa por el origen y por <span class="pt"><i>m</i></span>, y esa recta cruza el plano una sola vez, en <span class="pt"><i>m</i></span>. Dividir por <i>r</i> desliza un vector a lo largo de su recta, de vuelta al plano.</p>
+    <p>El tercer eje solo le da a la tercera componente un lugar donde dibujarse. Los puntos que nos interesan viven todos en el plano <span class="nowrap"><i>r</i> = 1</span>.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-scale" role="group" aria-label="Espacio con ejes p, q y r. El plano r = 1 contiene el punto m, y una recta roja que pasa por el origen contiene todos los múltiplos de m. Usa las flechas del teclado para girar la vista."></svg>
+    <div class="ro" id="fig-scale-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Arrastra λ<span class="pt"><i>m</i></span> a lo largo de la recta y <span class="pt"><i>m</i></span> por el plano, y arrastra el fondo para girar la vista. Con el teclado, selecciona la figura, λ<span class="pt"><i>m</i></span> o <span class="pt"><i>m</i></span> con Tab y usa las flechas. La recta roja no es una recta del plano: contiene todos los vectores que representan a <span class="pt"><i>m</i></span>.</p>
+      <button type="button" class="btn" id="fig-scale-reset">Reiniciar</button>
+    </div>
+  </div>
+</section>
+
+<section id="line">
+  <div class="prose">
+    <h2><span class="n">2</span>La recta como vector</h2>
+    <p>La recta <i>ax</i> + <i>by</i> + <i>c</i> = 0 queda descrita por completo por sus tres coeficientes, así que también puede escribirse como un vector:</p>
+    <div class="disp"><span class="ln"><i>ℓ</i></span> = <span class="col ln"><span><i>a</i></span><span><i>b</i></span><span><i>c</i></span></span>&ensp;⟷&ensp;<span class="nowrap"><i>ax</i> + <i>by</i> + <i>c</i> = 0</span></div>
+    <p>Igual que con los puntos, λ<i>ℓ</i> es la misma recta: multiplicar toda la ecuación por λ no cambia qué puntos la cumplen. Estos tres vectores son todos la recta <span class="nowrap"><i>x</i> + <i>y</i> = 3</span>:</p>
+    <div class="disp num"><span class="col ln"><span>1</span><span>1</span><span>−3</span></span> ∼ <span class="col ln"><span>2</span><span>2</span><span>−6</span></span> ∼ <span class="col ln"><span>−1</span><span>−1</span><span>3</span></span></div>
+
+    <h3>Cuándo un punto está en una recta</h3>
+    <p>Si reemplazas <span class="pt"><i>m</i></span> = [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup> en la ecuación de la recta, lo que obtienes es exactamente un producto punto:</p>
+    <div class="disp"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = <i>ax</i> + <i>by</i> + <i>c</i> = 0</div>
+    <p>Por ejemplo, la recta <span class="ln nowrap">[1&ensp;−1&ensp;10]<sup class="t">T</sup></span> es <i>x</i> − <i>y</i> + 10 = 0. El punto (10, 20) está en ella porque 1·10 + (−1)·20 + 10·1 = 0.</p>
+
+    <h3>Evaluar la recta en un <i>x</i> dado</h3>
+    <p>Despejando <i>y</i> de la ecuación:</p>
+    <div class="disp"><i>y</i> = <span class="nowrap">−(<i>ax</i> + <i>c</i>) / <i>b</i></span></div>
+    <p>Esto vale cuando <i>b</i> ≠ 0; si <i>b</i> = 0, la recta es vertical. Con la recta anterior y <i>x</i> = 14, <span class="nowrap"><i>y</i> = −(14 + 10) / (−1) = 24</span>.</p>
+
+    <h3>Cada recta es un plano que pasa por el origen</h3>
+    <p>Vuelve al espacio de la sección 1, con ejes <i>p</i>, <i>q</i> y <i>r</i>. Los vectores [<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup> con <span class="nowrap"><i>ap</i> + <i>bq</i> + <i>cr</i> = 0</span> forman un plano que pasa por el origen, y <span class="ln"><i>ℓ</i></span> = [<i>a</i>&ensp;<i>b</i>&ensp;<i>c</i>]<sup class="t">T</sup> es perpendicular a él, ya que su producto punto con cualquier vector del plano es cero. Ese plano corta a <span class="nowrap"><i>r</i> = 1</span> exactamente en la recta <span class="nowrap"><i>ax</i> + <i>by</i> + <i>c</i> = 0</span>. Escalar <span class="ln"><i>ℓ</i></span> estira o invierte el vector perpendicular, pero el plano sigue siendo el mismo, y la recta también.</p>
+    <p>Así, un punto es una recta que pasa por el origen, y una recta es un plano que pasa por el origen. El punto <span class="pt"><i>m</i></span> está en <span class="ln"><i>ℓ</i></span> cuando la recta de <span class="pt"><i>m</i></span> está dentro del plano de <span class="ln"><i>ℓ</i></span>, que es lo que dice <span class="nowrap"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0</span>.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-plane" role="group" aria-label="Espacio con ejes p, q y r y el plano r = 1. La recta ℓ está sobre ese plano, un plano azul que pasa por el origen la contiene, y el vector λℓ es perpendicular al plano azul. Usa las flechas del teclado para girar la vista."></svg>
+    <div class="ro">
+      <p class="coef-row"><span class="ln"><i>ℓ</i></span> = <span class="col ln coef"><input id="fig-plane-a" type="number" step="1" min="-9" max="9" value="1" aria-label="a, el coeficiente de x"><input id="fig-plane-b" type="number" step="1" min="-9" max="9" value="1" aria-label="b, el coeficiente de y"><input id="fig-plane-c" type="number" step="1" min="-9" max="9" value="-3" aria-label="c, el término constante"></span> <span class="nowrap">⟷ <span id="fig-plane-eq"></span></span></p>
+      <div id="fig-plane-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Arrastra λ<span class="ln"><i>ℓ</i></span> a lo largo de su recta, cambia <i>a</i>, <i>b</i> y <i>c</i> para mover la recta, y arrastra el fondo para girar la vista. Gira la vista hasta que el plano azul se reduzca a una línea: λ<span class="ln"><i>ℓ</i></span> lo corta entonces en ángulo recto. Con el teclado, selecciona la figura, λ<span class="ln"><i>ℓ</i></span> o un coeficiente con Tab y usa las flechas.</p>
+      <button type="button" class="btn" id="fig-plane-reset">Reiniciar</button>
+    </div>
+  </div>
+</section>
+
+<section id="line-through-points">
+  <div class="prose">
+    <h2><span class="n">3</span>La recta que pasa por dos puntos</h2>
+    <div class="disp hero-f"><span class="ln"><i>ℓ</i></span> = <span class="pt"><i>m</i><sub>1</sub></span> × <span class="pt"><i>m</i><sub>2</sub></span></div>
+    <p>¿Por qué funciona? El producto cruz da un vector perpendicular a ambos factores, y perpendicular significa producto punto cero. Así, <span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i><sub>1</sub></span> = 0 y <span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i><sub>2</sub></span> = 0, que es exactamente la condición para que ambos puntos estén en <span class="ln"><i>ℓ</i></span>.</p>
+    <p>Para puntos de la forma [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup>, el producto cruz queda:</p>
+    <div class="disp"><span class="ln"><i>ℓ</i></span> = <span class="col ln"><span><i>y</i><sub>1</sub> − <i>y</i><sub>2</sub></span><span><i>x</i><sub>2</sub> − <i>x</i><sub>1</sub></span><span><i>x</i><sub>1</sub><i>y</i><sub>2</sub> − <i>x</i><sub>2</sub><i>y</i><sub>1</sub></span></span></div>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-line" role="group" aria-label="Plano con dos puntos que se pueden arrastrar y la recta que pasa por ellos"></svg>
+    <div class="ro" id="fig-line-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Arrastra <span class="pt"><i>m</i><sub>1</sub></span> y <span class="pt"><i>m</i><sub>2</sub></span>. Con el teclado, selecciona un punto con Tab y muévelo con las flechas.</p>
+      <button type="button" class="btn" id="fig-line-reset">Reiniciar</button>
+    </div>
+  </div>
+</section>
+
+<section id="intersection">
+  <div class="prose">
+    <h2><span class="n">4</span>La intersección de dos rectas</h2>
+    <div class="disp hero-f"><span class="pt"><i>m</i></span> = <span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span></div>
+    <p>Es la misma operación con los papeles intercambiados. El vector <span class="pt"><i>m</i></span> es perpendicular tanto a <span class="ln"><i>ℓ</i><sub>1</sub></span> como a <span class="ln"><i>ℓ</i><sub>2</sub></span>, así que <span class="ln"><i>ℓ</i><sub>1</sub></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0 y <span class="ln"><i>ℓ</i><sub>2</sub></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0: el punto está en ambas rectas.</p>
+    <p>El resultado [<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup> casi nunca viene con <i>r</i> = 1, así que dividir por <i>r</i> es un paso obligatorio antes de leer las coordenadas.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-meet" role="group" aria-label="Plano con dos rectas ajustables y su punto de intersección"></svg>
+    <div class="ro" id="fig-meet-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Arrastra los círculos de los extremos para mover cada recta. Las rectas se simplifican antes del producto cruz; cualquier múltiplo daría el mismo punto. Prueba a hacerlas paralelas y mira <i>r</i>.</p>
+      <button type="button" class="btn" id="fig-meet-reset">Reiniciar</button>
+    </div>
+  </div>
+</section>
+
+<section id="example">
+  <div class="prose">
+    <h2><span class="n">5</span>Un ejemplo resuelto</h2>
+    <p>Un ejemplo encadena todo lo anterior: dos puntos, la recta que pasa por ellos, y dónde esa recta corta a una segunda recta.</p>
+    <ol class="steps">
+      <li><b>Los puntos.</b>
+        <span class="f"><span class="nowrap"><span class="pt"><i>m</i><sub>1</sub></span> = <span class="pt">[10&ensp;20&ensp;1]<sup class="t">T</sup></span>,</span> &ensp;<span class="nowrap"><span class="pt"><i>m</i><sub>2</sub></span> = <span class="pt">[20&ensp;30&ensp;1]<sup class="t">T</sup></span></span></span></li>
+      <li><b>La recta que pasa por ellos.</b>
+        <span class="f"><span class="nowrap"><span class="ln"><i>ℓ</i></span> = <span class="pt"><i>m</i><sub>1</sub></span> × <span class="pt"><i>m</i><sub>2</sub></span></span> <span class="nowrap">= <span class="col"><span>20 − 30</span><span>20 − 10</span><span>10·30 − 20·20</span></span></span> <span class="nowrap">= <span class="col ln"><span>−10</span><span>10</span><span>−100</span></span></span></span></li>
+      <li><b>Simplificar.</b> Dividir por −10 da la misma recta, <span class="ln nowrap"><i>ℓ</i><sub>1</sub> = [1&ensp;−1&ensp;10]<sup class="t">T</sup></span>, es decir, <span class="nowrap"><i>x</i> − <i>y</i> + 10 = 0</span>.</li>
+      <li><b>Evaluar en <i>x</i> = 14.</b>
+        <span class="f"><i>y</i> = −(1·14 + 10) / (−1) = 24</span></li>
+      <li><b>Cortar con una segunda recta.</b> Toma <span class="ln nowrap"><i>ℓ</i><sub>2</sub> = [1&ensp;1&ensp;−40]<sup class="t">T</sup></span>, es decir, <span class="nowrap"><i>x</i> + <i>y</i> = 40</span>.
+        <span class="f"><span class="nowrap"><span class="pt"><i>m</i></span> = <span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span></span> <span class="nowrap">= <span class="col"><span>(−1)(−40) − 10·1</span><span>10·1 − 1·(−40)</span><span>1·1 − (−1)·1</span></span></span> <span class="nowrap">= <span class="col pt"><span>30</span><span>50</span><span>2</span></span></span></span></li>
+      <li><b>De vuelta a cartesianas.</b> Aquí <i>r</i> = 2, así que dividimos:
+        <span class="f">(<span class="frac"><span>30</span><span>2</span></span>, <span class="frac"><span>50</span><span>2</span></span>) = <span class="pt">(15, 25)</span></span>
+        Comprobación: <span class="nowrap">15 − 25 + 10 = 0</span> y <span class="nowrap">15 + 25 − 40 = 0</span>.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">6</span>Resumen</h2>
+    <p>Las ideas clave junto a sus equivalentes en NumPy.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Punto en forma homogénea</div>
+      <div class="f"><span class="pt"><i>m</i></span> = [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup></div>
+      <div class="c"><code>m = np.array([x, y, 1])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">De vuelta a cartesianas</div>
+      <div class="f">(<i>p</i>/<i>r</i>, <i>q</i>/<i>r</i>)</div>
+      <div class="c"><code>x, y = m[0]/m[2], m[1]/m[2]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">La escala no importa</div>
+      <div class="f">λ<span class="pt"><i>m</i></span> ∼ <span class="pt"><i>m</i></span>,&ensp;λ<span class="ln"><i>ℓ</i></span> ∼ <span class="ln"><i>ℓ</i></span>&ensp;(λ ≠ 0)</div>
+      <div class="c"><span class="none">No hay código: es una propiedad, no una operación.</span></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Punto en una recta</div>
+      <div class="f"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0</div>
+      <div class="c"><code>np.isclose(np.dot(ell, m), 0)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Recta que pasa por dos puntos</div>
+      <div class="f"><span class="ln"><i>ℓ</i></span> = <span class="pt"><i>m</i><sub>1</sub></span> × <span class="pt"><i>m</i><sub>2</sub></span></div>
+      <div class="c"><code>ell = np.cross(m1, m2)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Intersección de dos rectas</div>
+      <div class="f"><span class="pt"><i>m</i></span> = <span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span>, luego dividir por <i>r</i></div>
+      <div class="c"><code>mi = np.cross(ell_1, ell_2)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k"><i>y</i> para un <i>x</i> dado</div>
+      <div class="f"><i>y</i> = −(<i>ax</i> + <i>c</i>) / <i>b</i></div>
+      <div class="c"><code>y = -(a*x + c)/b</code></div>
+    </div>
+  </div>
+</section>

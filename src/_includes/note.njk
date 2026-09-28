@@ -3,20 +3,41 @@ layout: base.njk
 styles:
   - /assets/css/notes.css
 ---
+{%- from "macros.njk" import langSwitch -%}
+{%- set L = lang or site.lang -%}
+{%- set t = i18n[L] -%}
+{%- set other = page.url | otherLanguage(collections.all) -%}
+{#- The notes of a course form a sequence, in the order set by their `order` field. #}
+{%- set seq = (collections.notesEs if L == "es" else collections.notes) | noteSequence(page.url) -%}
 <article class="note">
   <div class="wrap">
     <header class="note-head prose">
-      <p class="crumbs"><a href="/notes/">Notes</a> / {{ course }}</p>
+      <div class="note-top">
+        <p class="crumbs"><a href="{{ t.notesUrl }}">{{ t.notes }}</a> / {{ course }}{% if seq %} / <span class="nowrap">{{ t.note }} {{ seq.number }} {{ t.of }} {{ seq.total }}</span>{% endif %}</p>
+        {%- if other %}
+        {{ langSwitch(other, L) }}
+        {%- endif %}
+      </div>
       <h1>{{ title }}</h1>
       {%- if description %}
       <p class="note-lede">{{ description }}</p>
       {%- endif %}
     </header>
     {{ content | safe }}
+    {%- if seq and (seq.prev or seq.next) %}
+    <nav class="note-seq" aria-label="{{ t.sequenceNav }}">
+      {%- if seq.prev %}
+      <a class="prev" href="{{ seq.prev.url }}"><span class="dir">{{ t.previous }}:</span> {{ seq.prev.data.title }}</a>
+      {%- endif %}
+      {%- if seq.next %}
+      <a class="next" href="{{ seq.next.url }}"><span class="dir">{{ t.next }}:</span> {{ seq.next.data.title }}</a>
+      {%- endif %}
+    </nav>
+    {%- endif %}
     <footer class="note-foot">
-      <p>Personal study notes, written with AI assistance. They may contain errors; corrections are welcome.</p>
+      <p>{{ t.notice }}</p>
       {%- if source %}<p>{{ source | safe }}</p>{% endif %}
-      <p><a href="/notes/">Back to all notes</a></p>
+      <p><a href="{{ t.notesUrl }}">{{ t.back }}</a></p>
     </footer>
   </div>
 </article>

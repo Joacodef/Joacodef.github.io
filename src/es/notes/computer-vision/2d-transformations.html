@@ -1,0 +1,261 @@
+---
+title: Transformaciones 2D
+module: Geometría
+order: 2
+description: Los cuatro tipos de transformación 2D, cómo estimar una homografía a partir de pares de puntos y cómo transformar imágenes, con figuras interactivas.
+scripts:
+  - /assets/js/notes/2d-transformations.js
+---
+<div class="prose">
+  <div class="duo">
+    <div>
+      <p class="big">λ<span class="pt"><i>m</i>′</span> = <i>H</i><span class="pt"><i>m</i></span></p>
+      <p class="cap">Una matriz de 3 × 3 mueve cada punto del plano.</p>
+    </div>
+    <div>
+      <p class="big"><i>Ah</i> = <i>b</i></p>
+      <p class="cap">Cuatro pares de puntos bastan para encontrarla.</p>
+    </div>
+  </div>
+  <p class="legend">En esta página, los <span class="dot" aria-hidden="true"></span>puntos se dibujan con tinta roja y las <span class="bar" aria-hidden="true"></span>rectas con tinta azul. Se basa en los apuntes de <a href="/es/notes/computer-vision/homogeneous-coordinates/">coordenadas homogéneas</a>.</p>
+</div>
+
+<section id="frames">
+  <div class="prose">
+    <h2><span class="n">1</span>Un punto en dos sistemas de coordenadas</h2>
+    <p>Pon un segundo sistema de coordenadas en el plano, con ejes <i>x</i>′ e <i>y</i>′. Su origen está en <i>t</i>′ = (<i>t</i><sub><i>x</i></sub>, <i>t</i><sub><i>y</i></sub>) y sus ejes están girados en un ángulo θ. Un punto tiene entonces dos juegos de coordenadas, <span class="pt"><i>m</i>′</span> = [<i>x</i>′&ensp;<i>y</i>′&ensp;1]<sup class="t">T</sup> en el sistema nuevo y <span class="pt"><i>m</i></span> = [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup> en el original, y una matriz convierte de uno a otro:</p>
+    <div class="disp"><span class="nowrap"><span class="pt"><i>m</i></span> = <i>H</i><span class="pt"><i>m</i>′</span>,</span>&ensp; <span class="nowrap"><i>H</i> = <span class="mat"><span>cos θ</span><span>−sin θ</span><span><i>t</i><sub><i>x</i></sub></span><span>sin θ</span><span>cos θ</span><span><i>t</i><sub><i>y</i></sub></span><span>0</span><span>0</span><span>1</span></span></span></div>
+    <p>Lee <i>H</i> columna por columna. La primera columna, (cos θ, sin θ), es el vector unitario del eje <i>x</i>′ escrito en las coordenadas originales, y la segunda, (−sin θ, cos θ), es el vector unitario del eje <i>y</i>′. La tercera es el nuevo origen <i>t</i>′. Así, <i>H</i><span class="pt"><i>m</i>′</span> dice: parte en <i>t</i>′, avanza <i>x</i>′ unidades a lo largo del eje <i>x</i>′ e <i>y</i>′ unidades a lo largo del eje <i>y</i>′. El 1 al final de <span class="pt"><i>m</i>′</span> es lo que suma <i>t</i>′. Sin esa tercera componente, una traslación no podría escribirse como un producto de matrices.</p>
+    <p>Por bloques, con <i>R</i>′ el giro de 2 × 2 en θ:</p>
+    <div class="disp"><span class="nowrap"><i>H</i> = <span class="mat" style="--cols: 2"><span><i>R</i>′</span><span><i>t</i>′</span><span>0<sup class="t">T</sup></span><span>1</span></span>,</span>&ensp; <span class="nowrap"><i>R</i>′ = <span class="mat" style="--cols: 2"><span>cos θ</span><span>−sin θ</span><span>sin θ</span><span>cos θ</span></span></span></div>
+
+    <h3>En el otro sentido</h3>
+    <p>Para obtener <span class="pt"><i>m</i>′</span> a partir de <span class="pt"><i>m</i></span>, invierte <i>H</i>: <span class="nowrap"><span class="pt"><i>m</i>′</span> = <i>H</i><sup class="t">−1</sup><span class="pt"><i>m</i></span></span>. No hace falta una inversión general. Las columnas de <i>R</i>′ son vectores unitarios perpendiculares, así que <span class="nowrap"><i>R</i>′<sup class="t">T</sup><i>R</i>′ = <i>I</i></span>: la inversa de <i>R</i>′ es su traspuesta, <span class="nowrap"><i>R</i> = <i>R</i>′<sup class="t">T</sup></span>, un giro en −θ. Sus filas son los ejes nuevos, así que <i>R</i> da las coordenadas de un punto en los ejes girados. Deshacer la traslación y luego el giro, <span class="nowrap"><span class="pt"><i>m</i>′</span> = <i>R</i>(<span class="pt"><i>m</i></span> − <i>t</i>′)</span>, da</p>
+    <div class="disp"><span class="nowrap"><i>H</i><sup class="t">−1</sup> = <span class="mat" style="--cols: 2"><span><i>R</i></span><span><i>t</i></span><span>0<sup class="t">T</sup></span><span>1</span></span>,</span>&ensp; <span class="nowrap"><i>R</i> = <span class="mat" style="--cols: 2"><span>cos θ</span><span>sin θ</span><span>−sin θ</span><span>cos θ</span></span>,</span>&ensp; <span class="nowrap"><i>t</i> = −<i>Rt</i>′</span></div>
+    <p>Por ejemplo, toma θ = 35°, <i>t</i>′ = (4.1, 3.2) y el punto (<i>x</i>, <i>y</i>) = (4.9, 5.5). Al restar <i>t</i>′ queda (0.8, 2.3). Multiplicar eso por <i>R</i>, con cos 35° ≈ 0.8192 y sin 35° ≈ 0.5736, da</p>
+    <div class="disp num"><span class="nowrap"><i>x</i>′ ≈ 0.8192·0.8 + 0.5736·2.3</span> <span class="nowrap">≈ 1.97</span><br><span class="nowrap"><i>y</i>′ ≈ −0.5736·0.8 + 0.8192·2.3</span> <span class="nowrap">≈ 1.43</span></div>
+    <p>así que en el sistema nuevo el punto está en <span class="pt">(1.97, 1.43)</span>.</p>
+
+    <h3>Agregar una escala</h3>
+    <p>Si el sistema nuevo además usa otra unidad, de modo que una unidad a lo largo de <i>x</i>′ o de <i>y</i>′ mide <i>s</i> unidades en el sistema original, los dos vectores unitarios de <i>H</i> crecen en un factor <i>s</i>:</p>
+    <div class="disp"><span class="nowrap"><i>H</i> = <span class="mat"><span><i>s</i> cos θ</span><span>−<i>s</i> sin θ</span><span><i>t</i><sub><i>x</i></sub></span><span><i>s</i> sin θ</span><span><i>s</i> cos θ</span><span><i>t</i><sub><i>y</i></sub></span><span>0</span><span>0</span><span>1</span></span></span> <span class="nowrap">= <span class="mat" style="--cols: 2"><span><i>sR</i>′</span><span><i>t</i>′</span><span>0<sup class="t">T</sup></span><span>1</span></span></span></div>
+    <p>Esta es una <em>similitud</em>. Multiplica cada longitud por <i>s</i> pero conserva los ángulos, así que las figuras conservan su forma. Con <span class="nowrap"><i>s</i> = 1</span> es la transformación <em>euclídea</em> de arriba, que además conserva las longitudes.</p>
+
+    <h3>Convertir coordenadas o mover puntos</h3>
+    <p>Hasta aquí el punto se quedó donde estaba y <i>H</i> convirtió sus coordenadas. El mismo producto se puede leer con un solo sistema de coordenadas: <i>H</i> mueve el punto que está en <span class="pt"><i>m</i>′</span> al punto que está en <span class="pt"><i>m</i></span>. El resto de esta página usa esa lectura, con los nombres intercambiados para que <i>H</i> lleve <span class="pt"><i>m</i></span> a <span class="pt"><i>m</i>′</span>. Hacia dónde apunta <i>H</i> es una elección: <i>H</i><sup class="t">−1</sup> devuelve los puntos, y es una transformación del mismo tipo.</p>
+  </div>
+</section>
+
+<section id="kinds">
+  <div class="prose">
+    <h2><span class="n">2</span>Cuatro tipos de transformación</h2>
+    <p>En general, <i>H</i> puede ser cualquier matriz invertible de 3 × 3. Lleva el punto <span class="pt"><i>m</i></span> = [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup> al punto <span class="pt"><i>m</i>′</span> dado por</p>
+    <div class="disp hero-f">λ<span class="pt"><i>m</i>′</span> = <i>H</i><span class="pt"><i>m</i></span></div>
+    <p>El factor λ está ahí porque <i>H</i><span class="pt"><i>m</i></span> no tiene por qué terminar en 1. Como con cualquier vector homogéneo, divide por la tercera componente para leer el punto; λ es esa tercera componente.</p>
+    <p>Las matrices de la sección 1 mantienen la última fila [0&ensp;0&ensp;1]. Liberar más entradas da transformaciones más flexibles, cuatro tipos en total, cada uno nombrado por lo que todavía conserva:</p>
+  </div>
+  <div class="prose kinds">
+    <div class="kind">
+      <h3>Euclídea</h3>
+      <div class="f"><span class="mat"><span>cos θ</span><span>−sin θ</span><span><i>t</i><sub><i>x</i></sub></span><span>sin θ</span><span>cos θ</span><span><i>t</i><sub><i>y</i></sub></span><span>0</span><span>0</span><span>1</span></span></div>
+      <p>3 números libres: θ, <i>t</i><sub><i>x</i></sub> y <i>t</i><sub><i>y</i></sub>. Conserva las longitudes.</p>
+    </div>
+    <div class="kind">
+      <h3>Similitud</h3>
+      <div class="f"><span class="mat"><span><i>s</i> cos θ</span><span>−<i>s</i> sin θ</span><span><i>t</i><sub><i>x</i></sub></span><span><i>s</i> sin θ</span><span><i>s</i> cos θ</span><span><i>t</i><sub><i>y</i></sub></span><span>0</span><span>0</span><span>1</span></span></div>
+      <p>4 números libres: agrega la escala <i>s</i>. Conserva los ángulos, así que una figura conserva su forma.</p>
+    </div>
+    <div class="kind">
+      <h3>Afín</h3>
+      <div class="f"><span class="mat"><span><i>a</i><sub>11</sub></span><span><i>a</i><sub>12</sub></span><span><i>t</i><sub><i>x</i></sub></span><span><i>a</i><sub>21</sub></span><span><i>a</i><sub>22</sub></span><span><i>t</i><sub><i>y</i></sub></span><span>0</span><span>0</span><span>1</span></span></div>
+      <p>6 números libres: las dos filas de arriba. Conserva las rectas paralelas y las razones a lo largo de una recta, así que los puntos medios siguen siendo puntos medios.</p>
+    </div>
+    <div class="kind">
+      <h3>Proyectiva</h3>
+      <div class="f"><span class="mat"><span><i>h</i><sub>11</sub></span><span><i>h</i><sub>12</sub></span><span><i>h</i><sub>13</sub></span><span><i>h</i><sub>21</sub></span><span><i>h</i><sub>22</sub></span><span><i>h</i><sub>23</sub></span><span><i>h</i><sub>31</sub></span><span><i>h</i><sub>32</sub></span><span><i>h</i><sub>33</sub></span></span></div>
+      <p>8 números libres: nueve entradas, menos una por la escala. Conserva las rectas. También se llama homografía.</p>
+    </div>
+  </div>
+  <div class="prose">
+    <p>Cada tipo conserva además todo lo que conservan los tipos más flexibles: una transformación euclídea también conserva los ángulos, las rectas paralelas y las rectas.</p>
+    <p>¿De dónde salen las cuentas? La matriz euclídea tiene tres números libres, la similitud agrega <i>s</i>, y la matriz afín libera las seis entradas de sus dos filas de arriba. La matriz proyectiva tiene nueve entradas, pero λ<i>H</i> lleva cada punto exactamente adonde lo lleva <i>H</i>, porque la división por la tercera componente cancela λ. Solo importan ocho números.</p>
+    <p>Por qué cada tipo conserva lo que conserva: un giro y una traslación mueven el plano como una pieza rígida, así que las longitudes sobreviven. Una escala multiplica cada longitud por el mismo <i>s</i>, así que las razones entre longitudes sobreviven, y con ellas los ángulos. Con la última fila [0&ensp;0&ensp;1], <i>H</i><span class="pt"><i>m</i></span> siempre termina en 1 y no se divide nada. La transformación es entonces una aplicación lineal más una traslación, que lleva cada dirección <i>d</i> a una sola dirección nueva <i>Ad</i>, con <i>A</i> el bloque de 2 × 2 de arriba a la izquierda. Las rectas que compartían una dirección siguen compartiendo una, así que siguen paralelas. Pero <i>A</i> puede estirar unas direcciones más que otras, así que los ángulos cambian. Una última fila proyectiva hace que la división final dependa del punto, y la sección 3 muestra qué les hace eso a las rectas paralelas.</p>
+    <p>Aplicar una transformación tras otra es un producto de matrices: primero <i>H</i><sub>1</sub> y luego <i>H</i><sub>2</sub> es <i>H</i><sub>2</sub><i>H</i><sub>1</sub>. Dos transformaciones de un tipo dan una tercera del mismo tipo, igual que dos rotaciones dan una rotación.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-kinds" role="group" aria-label="Plano con un cuadrado punteado, su imagen bajo el tipo de transformación elegido dibujada como una cuadrícula azul, y esquinas que se pueden arrastrar"></svg>
+    <div class="ro">
+      <div class="modes" id="fig-kinds-modes" role="group" aria-label="Tipo de transformación">
+        <button type="button" data-mode="euclidean" aria-pressed="true">Euclídea</button>
+        <button type="button" data-mode="similarity" aria-pressed="false">Similitud</button>
+        <button type="button" data-mode="affine" aria-pressed="false">Afín</button>
+        <button type="button" data-mode="projective" aria-pressed="false">Proyectiva</button>
+      </div>
+      <div id="fig-kinds-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Elige un tipo y arrastra las esquinas rojas rellenas; las huecas las siguen. El cuadrado punteado es la figura antes de la transformación. Con el teclado, selecciona una esquina con Tab y muévela con las flechas. En el tipo euclídeo, las flechas sobre <span class="pt"><i>m</i>′<sub>4</sub></span> giran el cuadrado en torno a <span class="pt"><i>m</i>′<sub>1</sub></span>.</p>
+      <button type="button" class="btn" id="fig-kinds-reset">Reiniciar</button>
+    </div>
+  </div>
+</section>
+
+<section id="lines">
+  <div class="prose">
+    <h2><span class="n">3</span>Por qué las rectas siguen siendo rectas</h2>
+    <p>Incluso el tipo más flexible conserva las rectas, y el producto punto muestra por qué. Un punto <span class="pt"><i>m</i></span> está en la recta <span class="ln"><i>ℓ</i></span> cuando <span class="nowrap"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0</span>. Pon <span class="nowrap"><i>H</i><sup class="t">−1</sup><i>H</i> = <i>I</i></span> en medio:</p>
+    <div class="disp"><span class="nowrap"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span></span> <span class="nowrap">= <span class="ln"><i>ℓ</i></span><sup class="t">T</sup><i>H</i><sup class="t">−1</sup><i>H</i><span class="pt"><i>m</i></span></span> <span class="nowrap">= (<i>H</i><sup class="t">−T</sup><span class="ln"><i>ℓ</i></span>)<sup class="t">T</sup>(<i>H</i><span class="pt"><i>m</i></span>)</span> <span class="nowrap">= 0</span></div>
+    <p>Así que cada punto de <span class="ln"><i>ℓ</i></span> cae sobre una misma recta, <span class="nowrap"><span class="ln"><i>ℓ</i>′</span> = <i>H</i><sup class="t">−T</sup><span class="ln"><i>ℓ</i></span></span>, donde <i>H</i><sup class="t">−T</sup> es la traspuesta de <i>H</i><sup class="t">−1</sup>. Los puntos se mueven con <i>H</i>, y las rectas con <i>H</i><sup class="t">−T</sup>.</p>
+    <p>Lo mismo se ve en el dibujo de las coordenadas homogéneas, donde un punto es una recta que pasa por el origen del espacio con ejes <i>p</i>, <i>q</i> y <i>r</i>, y una recta es un plano que pasa por el origen. Una matriz invertible de 3 × 3 es una aplicación lineal de ese espacio. Lleva rectas por el origen a rectas por el origen, y planos por el origen a planos por el origen: puntos a puntos, y rectas a rectas.</p>
+
+    <h3>Las rectas paralelas pueden cortarse</h3>
+    <p>El producto cruz de dos rectas paralelas tiene <span class="nowrap"><i>r</i> = 0</span>: un vector [<i>p</i>&ensp;<i>q</i>&ensp;0]<sup class="t">T</sup> que ninguna división devuelve al plano. Se llama punto en el infinito en la dirección (<i>p</i>, <i>q</i>), y toda recta con esa dirección pasa por él. Ahora aplica <i>H</i>:</p>
+    <div class="disp"><span class="nowrap"><i>H</i><span class="col pt"><span><i>p</i></span><span><i>q</i></span><span>0</span></span></span> <span class="nowrap">= <span class="col pt"><span><i>h</i><sub>11</sub><i>p</i> + <i>h</i><sub>12</sub><i>q</i></span><span><i>h</i><sub>21</sub><i>p</i> + <i>h</i><sub>22</sub><i>q</i></span><span><i>h</i><sub>31</sub><i>p</i> + <i>h</i><sub>32</sub><i>q</i></span></span></span></div>
+    <p>Si la última fila de <i>H</i> es [0&ensp;0&ensp;1], como en los tres primeros tipos, la tercera componente sigue siendo 0 y las rectas siguen paralelas. Por eso las transformaciones afines conservan las paralelas. Cuando <i>h</i><sub>31</sub> o <i>h</i><sub>32</sub> no es cero, la tercera componente es 0 para una sola dirección, (<i>p</i>, <i>q</i>) = (<i>h</i><sub>32</sub>, −<i>h</i><sub>31</sub>). Las rectas paralelas en cualquier otra dirección se llevan a rectas que se cortan en un punto común y corriente, su <em>punto de fuga</em>: el punto de una foto donde se juntan los rieles de una vía recta. En el tipo proyectivo de la figura de arriba, la lectura encuentra ese punto con un producto cruz.</p>
+
+    <h3>De dónde vienen las homografías</h3>
+    <p>Las transformaciones proyectivas son las que producen las cámaras. Fotografía una escena plana, como una pared o una página: cada punto de ella llega a la imagen por un rayo recto que pasa por el centro de la cámara, y el plano de la escena y la imagen quedan relacionados por una homografía. Si los dos planos son paralelos, los rayos solo cambian la escala, y la transformación es una similitud. Si están inclinados, los bordes paralelos de la escena convergen en la foto, y <i>H</i> necesita su última fila. Dos fotos tomadas desde un mismo lugar con la cámara girada también quedan relacionadas por una homografía, sea cual sea la profundidad de la escena, porque los rayos por el centro común son los mismos para ambas fotos.</p>
+  </div>
+</section>
+
+<section id="estimate">
+  <div class="prose">
+    <h2><span class="n">4</span><span>Estimar <i>H</i> a partir de pares de puntos</span></h2>
+    <p>A menudo <i>H</i> es desconocida, pero se conocen algunos pares de puntos correspondientes: las esquinas de un letrero en una foto y las del rectángulo en que debería convertirse, o un mismo punto de referencia visto en dos fotos. Cada par <span class="nowrap"><span class="pt"><i>m</i></span> ↔ <span class="pt"><i>m</i>′</span></span> da dos ecuaciones. Como <i>H</i> solo importa salvo escala, fija <span class="nowrap"><i>h</i><sub>33</sub> = 1</span>, lo que deja 8 incógnitas, y divide por la tercera componente de <i>H</i><span class="pt"><i>m</i></span>:</p>
+    <div class="disp"><span class="nowrap"><i>x</i>′ = <span class="frac"><span><i>h</i><sub>11</sub><i>x</i> + <i>h</i><sub>12</sub><i>y</i> + <i>h</i><sub>13</sub></span><span><i>h</i><sub>31</sub><i>x</i> + <i>h</i><sub>32</sub><i>y</i> + 1</span></span>,</span>&ensp; <span class="nowrap"><i>y</i>′ = <span class="frac"><span><i>h</i><sub>21</sub><i>x</i> + <i>h</i><sub>22</sub><i>y</i> + <i>h</i><sub>23</sub></span><span><i>h</i><sub>31</sub><i>x</i> + <i>h</i><sub>32</sub><i>y</i> + 1</span></span></span></div>
+    <p>La división hace que estas ecuaciones no sean lineales en las incógnitas, pero multiplicar ambos lados por el denominador las vuelve lineales:</p>
+    <div class="disp"><span class="nowrap"><i>h</i><sub>11</sub><i>x</i> + <i>h</i><sub>12</sub><i>y</i> + <i>h</i><sub>13</sub></span> <span class="nowrap">− <i>h</i><sub>31</sub><i>xx</i>′ − <i>h</i><sub>32</sub><i>yx</i>′</span> <span class="nowrap">= <i>x</i>′</span><br><span class="nowrap"><i>h</i><sub>21</sub><i>x</i> + <i>h</i><sub>22</sub><i>y</i> + <i>h</i><sub>23</sub></span> <span class="nowrap">− <i>h</i><sub>31</sub><i>xy</i>′ − <i>h</i><sub>32</sub><i>yy</i>′</span> <span class="nowrap">= <i>y</i>′</span></div>
+    <p>Apila las incógnitas en <span class="nowrap"><i>h</i> = [<i>h</i><sub>11</sub>&ensp;<i>h</i><sub>12</sub>&ensp;<i>h</i><sub>13</sub>&ensp;<i>h</i><sub>21</sub>&ensp;<i>h</i><sub>22</sub>&ensp;<i>h</i><sub>23</sub>&ensp;<i>h</i><sub>31</sub>&ensp;<i>h</i><sub>32</sub>]<sup class="t">T</sup></span>. Cada par agrega entonces dos filas a un sistema lineal <span class="nowrap"><i>Ah</i> = <i>b</i></span>:</p>
+    <div class="disp"><span class="nowrap">[<i>x</i>&ensp;<i>y</i>&ensp;1&ensp;0&ensp;0&ensp;0&ensp;−<i>xx</i>′&ensp;−<i>yx</i>′]&thinsp;<i>h</i></span> <span class="nowrap">= <i>x</i>′</span><br><span class="nowrap">[0&ensp;0&ensp;0&ensp;<i>x</i>&ensp;<i>y</i>&ensp;1&ensp;−<i>xy</i>′&ensp;−<i>yy</i>′]&thinsp;<i>h</i></span> <span class="nowrap">= <i>y</i>′</span></div>
+    <p>Cuatro pares dan ocho ecuaciones para las ocho incógnitas, así que cuatro es el mínimo, y entonces <span class="nowrap"><i>h</i> = <i>A</i><sup class="t">−1</sup><i>b</i></span>. Tres de los cuatro puntos no pueden estar sobre una misma recta; si lo están, <i>A</i> es singular y no se encuentra una única <i>H</i>. En el tipo proyectivo de la figura de la sección 2, este es el sistema que se resuelve cada vez que se mueve una esquina: las esquinas del cuadrado punteado y las esquinas rojas son los cuatro pares.</p>
+
+    <h3>Más de cuatro pares</h3>
+    <p>Los puntos medidos nunca son exactos, así que en la práctica se usan más pares de los necesarios. Con <span class="nowrap"><i>n</i> &gt; 4</span> pares, <i>A</i> tiene 2<i>n</i> filas y ningún <i>h</i> las satisface todas. La mejor opción es el <i>h</i> que hace mínimos los errores al cuadrado ‖<i>Ah</i> − <i>b</i>‖<sup class="t">2</sup>. Igualar su derivada a cero da <span class="nowrap"><i>A</i><sup class="t">T</sup><i>Ah</i> = <i>A</i><sup class="t">T</sup><i>b</i></span>, y de ahí la solución de mínimos cuadrados</p>
+    <div class="disp"><i>h</i> = (<i>A</i><sup class="t">T</sup><i>A</i>)<sup class="t">−1</sup><i>A</i><sup class="t">T</sup><i>b</i></div>
+    <p>La matriz <i>A</i><sup class="t">T</sup><i>A</i> es de 8 × 8 sin importar cuántos pares haya, así que el sistema por resolver sigue siendo pequeño.</p>
+    <p>Fijar <span class="nowrap"><i>h</i><sub>33</sub> = 1</span> falla en un caso: cuando el verdadero <i>h</i><sub>33</sub> es 0, lo que ocurre cuando <i>H</i> envía el origen de las coordenadas al infinito. El método general mantiene las nueve entradas como incógnitas, agrega −<i>x</i>′ y −<i>y</i>′ como novena columna de <i>A</i>, y resuelve <span class="nowrap"><i>Ah</i> = 0</span>. La respuesta es el vector singular derecho de <i>A</i> con el menor valor singular, la última fila de <i>V</i><sup class="t">T</sup> en la SVD. Cuando <span class="nowrap"><i>h</i><sub>33</sub> ≠ 0</span>, da la misma <i>H</i> salvo escala.</p>
+  </div>
+</section>
+
+<section id="warp">
+  <div class="prose">
+    <h2><span class="n">5</span>Transformar una imagen</h2>
+    <p>Para transformar una imagen completa, cada píxel del resultado necesita un valor de gris. En coordenadas de píxel, <i>x</i> cuenta columnas hacia la derecha e <i>y</i> cuenta filas hacia abajo. Sea <i>I</i>′ la imagen original e <i>I</i> el resultado, y escribe <i>H</i> de modo que <span class="nowrap">λ<span class="pt"><i>m</i>′</span> = <i>H</i><span class="pt"><i>m</i></span></span> lleve cada píxel del resultado <span class="pt"><i>m</i></span> al lugar <span class="pt"><i>m</i>′</span> de la imagen original que muestra.</p>
+    <p>El algoritmo va hacia atrás: para cada píxel del resultado, calcula <span class="pt"><i>m</i>′</span> y lee ahí la imagen original. Ir hacia adelante, enviando cada píxel de la original al resultado, parece más natural, pero el lugar donde cae rara vez es el centro de un píxel. Tras redondear, algunos píxeles del resultado reciben dos píxeles de la original y otros ninguno, lo que deja huecos, sobre todo cuando la imagen se agranda. Hacia atrás, cada píxel del resultado pregunta de dónde viene y obtiene exactamente una respuesta.</p>
+    <p>Esa respuesta, <span class="nowrap"><span class="pt"><i>m</i>′</span> = (<i>x</i>′, <i>y</i>′)</span>, tampoco suele ser el centro de un píxel, así que el valor hay que leerlo entre los cuatro píxeles de la original que la rodean. Llámalos <i>I</i>′<sub>1</sub> (arriba a la izquierda), <i>I</i>′<sub>2</sub> (arriba a la derecha), <i>I</i>′<sub>3</sub> (abajo a la izquierda) e <i>I</i>′<sub>4</sub> (abajo a la derecha). Hay dos formas habituales.</p>
+    <p><b>Píxel más cercano.</b> Toma el valor del más cercano de los cuatro. Es rápido, pero los bordes quedan dentados.</p>
+    <p><b>Interpolación bilineal.</b> Mezcla los cuatro. El punto <span class="pt"><i>m</i>′</span> divide el cuadrado entre sus centros en cuatro rectángulos, con áreas <i>A</i> (arriba a la izquierda), <i>B</i> (arriba a la derecha), <i>C</i> (abajo a la izquierda) y <i>D</i> (abajo a la derecha). Cada píxel se pondera por el área del rectángulo opuesto a él:</p>
+    <div class="disp"><span class="nowrap"><i>I</i>(<i>x</i>, <i>y</i>)</span> <span class="nowrap">= <i>A</i>&thinsp;<i>I</i>′<sub>4</sub> + <i>B</i>&thinsp;<i>I</i>′<sub>3</sub></span> <span class="nowrap">+ <i>C</i>&thinsp;<i>I</i>′<sub>2</sub> + <i>D</i>&thinsp;<i>I</i>′<sub>1</sub>,</span>&ensp; <span class="nowrap"><i>A</i> + <i>B</i> + <i>C</i> + <i>D</i> = 1</span></div>
+    <p>¿Por qué el rectángulo opuesto? A medida que <span class="pt"><i>m</i>′</span> se acerca a <i>I</i>′<sub>1</sub>, el rectángulo <i>D</i> opuesto a él crece hasta llenar el cuadrado completo. Así, un punto justo encima de un píxel recibe exactamente el valor de ese píxel, y entre medio el valor cambia de forma suave. Las cuatro áreas suman el cuadrado completo, 1, así que una región de gris constante conserva su gris.</p>
+    <p>Cuando <span class="pt"><i>m</i>′</span> cae fuera de la imagen original, no hay nada que leer, y el píxel del resultado queda vacío, normalmente como 0.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-warp" role="group" aria-label="Dos cuadrículas de píxeles: la imagen original a la izquierda y el resultado a la derecha, que muestra la original girada en 30 grados. Un punto que se puede arrastrar elige un píxel del resultado."></svg>
+    <div class="ro">
+      <div class="modes" id="fig-warp-modes" role="group" aria-label="Interpolación">
+        <button type="button" data-mode="nearest" aria-pressed="false">Píxel más cercano</button>
+        <button type="button" data-mode="bilinear" aria-pressed="true">Bilineal</button>
+      </div>
+      <div id="fig-warp-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Arrastra el punto rojo por el resultado. Su píxel lee la imagen original en <span class="nowrap"><span class="pt"><i>m</i>′</span> = <i>H</i><span class="pt"><i>m</i></span></span>, entre los cuatro píxeles marcados. Los píxeles tachados leen fuera de la original y no tienen valor. Cambia la interpolación para comparar los dos resultados. Con el teclado, selecciona el punto con Tab y muévelo con las flechas.</p>
+      <button type="button" class="btn" id="fig-warp-reset">Reiniciar</button>
+    </div>
+  </div>
+</section>
+
+<section id="stitch">
+  <div class="prose">
+    <h2><span class="n">6</span>Unir fotos en un mosaico</h2>
+    <p>Una panorámica se arma con fotos tomadas desde un mismo lugar mientras la cámara gira. Como mostró la sección 3, esas fotos quedan relacionadas por una homografía, así que una puede transformarse sobre la otra. Son cuatro pasos.</p>
+    <ol class="steps">
+      <li><b>Encontrar puntos distintivos.</b> Un detector de puntos característicos como SIFT encuentra esquinas y manchas en cada foto, y describe la zona alrededor de cada una con un vector. Los vectores están construidos para que el mismo lugar, visto en la otra foto, reciba uno parecido.</li>
+      <li><b>Emparejarlos.</b> Para cada punto característico de una foto, busca los dos vectores más parecidos en la otra. Conserva la pareja solo si el mejor está mucho más cerca que el segundo. Esta prueba de la razón descarta los lugares que se parecen a muchos otros, como una ventana en una fila de ventanas.</li>
+      <li><b>Estimar <i>H</i> de forma robusta.</b> Algunas parejas siguen siendo erróneas después de la prueba de la razón, y un solo par erróneo puede alejar mucho la <i>H</i> de mínimos cuadrados. RANSAC evita esto. Elige cuatro parejas al azar, calcula <i>H</i> exactamente a partir de ellas, y cuenta cuántas de todas las parejas lleva esta <i>H</i> a pocos píxeles (5, por ejemplo) de su compañera. Repite muchas veces, quédate con la <i>H</i> que tiene más de estas parejas consistentes (<i lang="en">inliers</i>), y refínala por mínimos cuadrados usando solo esas parejas. Tras suficientes intentos, es probable que alguna muestra de cuatro tenga solo parejas buenas, y la <i>H</i> correcta es aquella con la que concuerdan más parejas.</li>
+      <li><b>Transformar sobre un lienzo más grande.</b> Escribe <i>H</i> de modo que lleve puntos de la segunda foto a la primera. Enviar las esquinas de la segunda foto a través de <i>H</i> muestra dónde cae, y algunas esquinas pueden quedar en coordenadas negativas o más allá de los bordes de la primera foto. Una traslación <i>T</i> que traiga todas las esquinas a la vista lo corrige. Una traslación es también una homografía, así que la segunda foto va al lienzo mediante el producto <i>TH</i>, y la primera mediante <i>T</i> sola. Para llenar el lienzo, cada uno de sus píxeles lee la segunda foto a través de (<i>TH</i>)<sup class="t">−1</sup>, hacia atrás como en la sección 5.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="example">
+  <div class="prose">
+    <h2><span class="n">7</span>Un ejemplo resuelto</h2>
+    <p>Una foto muestra un panel rectangular en ángulo, y queremos una imagen de frente de 440 × 600, con un margen de 20 píxeles. El ejemplo usa todas las secciones: cuatro pares de puntos, el sistema <span class="nowrap"><i>Ah</i> = <i>b</i></span>, la homografía misma y una comprobación con productos cruz. Las coordenadas están en píxeles, con <i>y</i> apuntando hacia abajo.</p>
+    <ol class="steps">
+      <li><b>Los pares.</b> Cada esquina del resultado, <span class="pt"><i>m</i><sub><i>i</i></sub></span>, y el lugar de la foto donde aparece esa esquina del panel, <span class="pt"><i>m</i>′<sub><i>i</i></sub></span>:
+        <span class="f"><span class="nowrap"><span class="pt">(20, 20)</span> ↔ <span class="pt">(74, 120)</span>,</span>&ensp; <span class="nowrap"><span class="pt">(20, 620)</span> ↔ <span class="pt">(94, 500)</span>,</span> <span class="nowrap"><span class="pt">(460, 620)</span> ↔ <span class="pt">(385, 535)</span>,</span>&ensp; <span class="nowrap"><span class="pt">(460, 20)</span> ↔ <span class="pt">(350, 20)</span></span></span></li>
+      <li><b>Dos filas por par.</b> Para el primer par, <span class="nowrap"><i>x</i> = <i>y</i> = 20</span>, <span class="nowrap"><i>x</i>′ = 74</span> e <span class="nowrap"><i>y</i>′ = 120</span>, así que <span class="nowrap">−<i>xx</i>′ = −<i>yx</i>′ = −1480</span> y <span class="nowrap">−<i>xy</i>′ = −<i>yy</i>′ = −2400</span>:
+        <span class="f"><span class="nowrap">[20&nbsp;20&nbsp;1&nbsp;0&nbsp;0&nbsp;0&nbsp;−1480&nbsp;−1480]&thinsp;<i>h</i></span> <span class="nowrap">= 74</span><br><span class="nowrap">[0&nbsp;0&nbsp;0&nbsp;20&nbsp;20&nbsp;1&nbsp;−2400&nbsp;−2400]&thinsp;<i>h</i></span> <span class="nowrap">= 120</span></span>
+        Los otros tres pares agregan seis filas más.</li>
+      <li><b>Resolver.</b> Con <span class="nowrap"><i>h</i> = <i>A</i><sup class="t">−1</sup><i>b</i></span> y <span class="nowrap"><i>h</i><sub>33</sub> = 1</span>:
+        <span class="f"><span class="nowrap"><i>H</i> ≈</span> <span class="mat"><span>0.415</span><span>0.0298</span><span>64.2</span><span>−0.236</span><span>0.609</span><span>111</span><span>−5.85·10<sup class="t">−4</sup></span><span>−3.32·10<sup class="t">−5</sup></span><span>1</span></span></span></li>
+      <li><b>Comprobar una esquina.</b> La primera esquina va donde debe:
+        <span class="f"><span class="nowrap"><i>H</i><span class="col pt"><span>20</span><span>20</span><span>1</span></span></span> <span class="nowrap">≈ <span class="col pt"><span>73.08</span><span>118.52</span><span>0.9876</span></span></span> <span class="nowrap">→ (<span class="frac"><span>73.08</span><span>0.9876</span></span>, <span class="frac"><span>118.52</span><span>0.9876</span></span>)</span> <span class="nowrap">≈ <span class="pt">(74.00, 120.00)</span></span></span></li>
+      <li><b>Encontrar de dónde viene el centro.</b> El centro del resultado es (240, 320):
+        <span class="f"><span class="nowrap"><i>H</i><span class="col pt"><span>240</span><span>320</span><span>1</span></span></span> <span class="nowrap">≈ <span class="col pt"><span>173.25</span><span>249.22</span><span>0.8489</span></span></span> <span class="nowrap">→ <span class="pt">(204.09, 293.59)</span></span></span>
+        así que ese píxel del resultado muestra la foto en (204.09, 293.59).</li>
+      <li><b>Comprobar con rectas.</b> El centro de un rectángulo es donde se cruzan sus diagonales, y <i>H</i> conserva las rectas, así que la respuesta debe ser donde se cruzan las diagonales del panel en la foto. Con productos cruz, y cada recta simplificada:
+        <span class="f"><span class="nowrap"><span class="ln"><i>ℓ</i><sub>1</sub></span> = <span class="pt"><i>m</i>′<sub>1</sub></span> × <span class="pt"><i>m</i>′<sub>3</sub></span></span> <span class="nowrap">∼ <span class="ln">[415&ensp;−311&ensp;6610]<sup class="t">T</sup></span>,</span>&ensp; <span class="nowrap"><span class="ln"><i>ℓ</i><sub>2</sub></span> = <span class="pt"><i>m</i>′<sub>2</sub></span> × <span class="pt"><i>m</i>′<sub>4</sub></span></span> <span class="nowrap">∼ <span class="ln">[15&ensp;8&ensp;−5410]<sup class="t">T</sup></span></span></span>
+        <span class="f"><span class="nowrap"><span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span> = <span class="col pt"><span>1629630</span><span>2344300</span><span>7985</span></span></span> <span class="nowrap">→ (<span class="frac"><span>1629630</span><span>7985</span></span>, <span class="frac"><span>2344300</span><span>7985</span></span>)</span> <span class="nowrap">≈ <span class="pt">(204.09, 293.59)</span> <span class="ok">✓</span></span></span>
+        El mismo punto. No es el promedio de las cuatro esquinas en la foto, (225.75, 293.75): una transformación proyectiva conserva las rectas, pero no los puntos medios.</li>
+      <li><b>Construir la imagen.</b> Hacer el paso 5 para cada píxel del resultado, e interpolar ahí la foto como en la sección 5, da la imagen enderezada.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">8</span>Resumen</h2>
+    <p>Las ideas clave junto a sus equivalentes en NumPy y OpenCV.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Transformación euclídea</div>
+      <div class="f"><i>H</i> = [<i>R</i>′&ensp;<i>t</i>′;&ensp;0<sup class="t">T</sup>&ensp;1]</div>
+      <div class="c"><code>H = np.block([[Rp, tp], [0, 0, 1]])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Cambio de coordenadas</div>
+      <div class="f"><span class="pt"><i>m</i>′</span> = <i>H</i><sup class="t">−1</sup><span class="pt"><i>m</i></span></div>
+      <div class="c"><code>mp = np.linalg.inv(H) @ m</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Aplicar una homografía</div>
+      <div class="f">λ<span class="pt"><i>m</i>′</span> = <i>H</i><span class="pt"><i>m</i></span>, luego dividir por <i>r</i></div>
+      <div class="c"><code>mp = H @ m</code><br><code>mp = mp / mp[2]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Rectas bajo una homografía</div>
+      <div class="f"><span class="ln"><i>ℓ</i>′</span> = <i>H</i><sup class="t">−T</sup><span class="ln"><i>ℓ</i></span></div>
+      <div class="c"><code>ell_p = np.linalg.inv(H).T @ ell</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k"><i>H</i> a partir de cuatro pares</div>
+      <div class="f"><i>h</i> = <i>A</i><sup class="t">−1</sup><i>b</i>, con <i>h</i><sub>33</sub> = 1</div>
+      <div class="c"><code>h = np.linalg.solve(A, b)</code><br><code>H = np.append(h, 1).reshape(3, 3)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k"><i>H</i> a partir de más pares</div>
+      <div class="f"><i>h</i> = (<i>A</i><sup class="t">T</sup><i>A</i>)<sup class="t">−1</sup><i>A</i><sup class="t">T</sup><i>b</i></div>
+      <div class="c"><code>h = np.linalg.pinv(A) @ b</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k"><i>H</i> pese a parejas erróneas</div>
+      <div class="f">RANSAC</div>
+      <div class="c"><code>H, mask = cv2.findHomography(</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;m, mp, cv2.RANSAC, 5.0)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Transformar una imagen</div>
+      <div class="f">Leer la imagen original en <span class="pt"><i>m</i>′</span> para cada píxel <span class="pt"><i>m</i></span> del resultado</div>
+      <div class="c"><code>Y = cv2.warpPerspective(</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;X, np.linalg.inv(H), (M, N))</code><br><span class="none">OpenCV recibe la transformación de la original al resultado, y el ancho y el alto del resultado.</span></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Interpolación bilineal</div>
+      <div class="f"><i>A</i>&thinsp;<i>I</i>′<sub>4</sub> + <i>B</i>&thinsp;<i>I</i>′<sub>3</sub> + <i>C</i>&thinsp;<i>I</i>′<sub>2</sub> + <i>D</i>&thinsp;<i>I</i>′<sub>1</sub></div>
+      <div class="c"><code>flags=cv2.INTER_LINEAR</code> <span class="none">(el valor por defecto; <code>cv2.INTER_NEAREST</code> para el píxel más cercano)</span></div>
+    </div>
+  </div>
+</section>

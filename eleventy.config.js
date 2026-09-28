@@ -27,6 +27,30 @@ export default function (eleventyConfig) {
       .getFilteredByGlob("src/notes/*/**/*.{html,md,njk}")
       .sort((a, b) => (a.data.order ?? 0) - (b.data.order ?? 0))
   );
+  // Their Spanish versions, under src/es/notes/, in the same order.
+  eleventyConfig.addCollection("notesEs", (api) =>
+    api
+      .getFilteredByGlob("src/es/notes/*/**/*.{html,md,njk}")
+      .sort((a, b) => (a.data.order ?? 0) - (b.data.order ?? 0))
+  );
+
+  // The notes of one course, in reading order.
+  eleventyConfig.addFilter("byCourse", (notes, course) => notes.filter((n) => n.data.course === course));
+  // Where the note at `url` sits in its course: its number, how many notes the course has, and the notes before and after it.
+  eleventyConfig.addFilter("noteSequence", (notes, url) => {
+    const note = notes.find((n) => n.url === url);
+    if (!note) return null;
+    const course = notes.filter((n) => n.data.course === note.data.course);
+    const i = course.indexOf(note);
+    return { number: i + 1, total: course.length, prev: course[i - 1] ?? null, next: course[i + 1] ?? null };
+  });
+
+  // The URL of the same page in the other language (/es/notes/… for /notes/…, and back), or null when it has none.
+  eleventyConfig.addFilter("otherLanguage", (url, all) => {
+    if (!url) return null;
+    const other = url.startsWith("/es/") ? url.slice(3) : `/es${url}`;
+    return all.some((p) => p.url === other) ? other : null;
+  });
 
   // Marks the site owner inside author lists.
   eleventyConfig.addFilter("isMe", (author) => String(author).includes("De Ferrari"));

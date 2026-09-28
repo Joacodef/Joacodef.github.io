@@ -1,0 +1,240 @@
+---
+title: Transformaciones 3D
+module: Geometría
+order: 3
+description: Rotaciones y traslaciones en el espacio, proyección en perspectiva y el modelo de cámara, con figuras interactivas.
+scripts:
+  - /assets/js/notes/3d-transformations.js
+---
+<div class="prose">
+  <div class="duo">
+    <div>
+      <p class="big"><span class="pt"><i>M</i>′</span> = <i>S</i><span class="pt"><i>M</i></span></p>
+      <p class="cap">Una matriz de 4 × 4 da las coordenadas de un punto en un nuevo sistema de coordenadas del espacio.</p>
+    </div>
+    <div>
+      <p class="big">λ<span class="pt"><i>m</i></span> = <i>P</i><span class="pt"><i>M</i></span></p>
+      <p class="cap">Una matriz de 3 × 4 lo proyecta sobre la imagen.</p>
+    </div>
+  </div>
+  <p class="legend">En esta página, los <span class="dot" aria-hidden="true"></span>puntos se dibujan con tinta roja y las <span class="bar" aria-hidden="true"></span>rectas con tinta azul. Se basa en los apuntes de <a href="/es/notes/computer-vision/homogeneous-coordinates/">coordenadas homogéneas</a> y de <a href="/es/notes/computer-vision/2d-transformations/">transformaciones 2D</a>.</p>
+</div>
+
+<section id="frames">
+  <div class="prose">
+    <h2><span class="n">1</span>Un punto en dos sistemas de coordenadas 3D</h2>
+    <p>Un punto del espacio con coordenadas (<i>X</i>, <i>Y</i>, <i>Z</i>) se escribe en coordenadas homogéneas igual que en el plano, agregando un 1:</p>
+    <div class="disp"><span class="pt"><i>M</i></span> = [<i>X</i>&ensp;<i>Y</i>&ensp;<i>Z</i>&ensp;1]<sup class="t">T</sup></div>
+    <p>Ahora toma un segundo sistema de coordenadas, con ejes <i>X</i>′, <i>Y</i>′ y <i>Z</i>′, como si estuviera pegado a un objeto. Se obtiene del primero girando los ejes y moviendo el origen, así que llamaremos al primero el sistema original y al segundo el sistema nuevo. El mismo punto tiene coordenadas <span class="pt"><i>M</i>′</span> = [<i>X</i>′&ensp;<i>Y</i>′&ensp;<i>Z</i>′&ensp;1]<sup class="t">T</sup> en el sistema nuevo. Seis números relacionan ambos sistemas: tres ángulos, ω<sub><i>X</i></sub>, ω<sub><i>Y</i></sub> y ω<sub><i>Z</i></sub>, para el giro, y tres para la traslación.</p>
+
+    <h3>La traslación</h3>
+    <p>Si los ejes no están girados y el nuevo origen está en <span class="nowrap"><i>t</i>′ = (<i>t</i>′<sub><i>X</i></sub>, <i>t</i>′<sub><i>Y</i></sub>, <i>t</i>′<sub><i>Z</i></sub>)</span> en el sistema original, cada coordenada original es la nueva más la posición del nuevo origen:</p>
+    <div class="disp"><span class="nowrap"><i>X</i> = <i>X</i>′ + <i>t</i>′<sub><i>X</i></sub>,</span>&ensp; <span class="nowrap"><i>Y</i> = <i>Y</i>′ + <i>t</i>′<sub><i>Y</i></sub>,</span>&ensp; <span class="nowrap"><i>Z</i> = <i>Z</i>′ + <i>t</i>′<sub><i>Z</i></sub></span></div>
+    <p>El 1 al final de <span class="pt"><i>M</i>′</span> convierte estas tres sumas en un solo producto de matrices:</p>
+    <div class="disp"><span class="nowrap"><span class="col pt"><span><i>X</i></span><span><i>Y</i></span><span><i>Z</i></span><span>1</span></span></span> <span class="nowrap">= <span class="mat" style="--cols: 4"><span>1</span><span>0</span><span>0</span><span><i>t</i>′<sub><i>X</i></sub></span><span>0</span><span>1</span><span>0</span><span><i>t</i>′<sub><i>Y</i></sub></span><span>0</span><span>0</span><span>1</span><span><i>t</i>′<sub><i>Z</i></sub></span><span>0</span><span>0</span><span>0</span><span>1</span></span><span class="col pt"><span><i>X</i>′</span><span><i>Y</i>′</span><span><i>Z</i>′</span><span>1</span></span></span></div>
+    <p>La última columna de la matriz se multiplica por ese 1, así que <i>t</i>′ se suma a todos los puntos. Sin la cuarta componente, una traslación no podría escribirse como un producto de matrices, igual que en el plano. En el sentido contrario, las coordenadas nuevas son las originales menos <i>t</i>′.</p>
+  </div>
+</section>
+
+<section id="axis">
+  <div class="prose">
+    <h2><span class="n">2</span>Girar en torno a un eje</h2>
+    <p>Gira los ejes en torno a <i>Z</i> en un ángulo ω<sub><i>Z</i></sub>. El eje <i>Z</i> se queda donde está, y <i>X</i>′ e <i>Y</i>′ son <i>X</i> e <i>Y</i> girados en ω<sub><i>Z</i></sub>, medido de <i>X</i> a <i>X</i>′. Los ángulos positivos siguen la regla de la mano derecha: con el pulgar derecho a lo largo del eje, los dedos se curvan en el sentido en que gira un ángulo positivo. Visto desde la punta del eje <i>Z</i>, mirando hacia el origen, un ω<sub><i>Z</i></sub> positivo gira <i>X</i> hacia <i>Y</i>, en sentido antihorario.</p>
+    <p>Un punto que se queda donde está recibe coordenadas nuevas <span class="nowrap"><span class="pt"><i>M</i>′</span> = <i>R</i><sub><i>Z</i></sub><span class="pt"><i>M</i></span></span>, dejando fuera el 1 final, con</p>
+    <div class="disp"><span class="nowrap"><i>R</i><sub><i>Z</i></sub> = <span class="mat"><span>cos ω<sub><i>Z</i></sub></span><span>sin ω<sub><i>Z</i></sub></span><span>0</span><span>−sin ω<sub><i>Z</i></sub></span><span>cos ω<sub><i>Z</i></sub></span><span>0</span><span>0</span><span>0</span><span>1</span></span></span></div>
+    <p>Cada coordenada nueva es el largo de la sombra del punto sobre un eje nuevo, es decir, un producto punto con el vector unitario de ese eje. El vector unitario de <i>X</i>′ es (cos ω<sub><i>Z</i></sub>, sin ω<sub><i>Z</i></sub>, 0) en el sistema original, así que <span class="nowrap"><i>X</i>′ = <i>X</i> cos ω<sub><i>Z</i></sub> + <i>Y</i> sin ω<sub><i>Z</i></sub></span>: la primera fila de <i>R</i><sub><i>Z</i></sub>. Las filas de <i>R</i><sub><i>Z</i></sub> son los ejes nuevos, escritos en el sistema original.</p>
+    <p><i>R</i><sub><i>Z</i></sub> puede parecer la traspuesta de la matriz de rotación habitual, que tiene −sin ω<sub><i>Z</i></sub> sobre la diagonal, y lo es. Esa matriz gira puntos; <i>R</i><sub><i>Z</i></sub> deja quieto el punto y gira los ejes, y girar los ejes en ω<sub><i>Z</i></sub> cambia las coordenadas del punto exactamente como lo haría girar el punto en −ω<sub><i>Z</i></sub>. El mismo par aparece en los <a href="/es/notes/computer-vision/2d-transformations/">apuntes de transformaciones 2D</a>, como <i>R</i> y <i>R</i>′.</p>
+    <p>Los giros en torno a los otros dos ejes mantienen fijo su propio eje de la misma manera:</p>
+    <div class="disp"><span class="nowrap"><i>R</i><sub><i>X</i></sub> = <span class="mat"><span>1</span><span>0</span><span>0</span><span>0</span><span>cos ω<sub><i>X</i></sub></span><span>sin ω<sub><i>X</i></sub></span><span>0</span><span>−sin ω<sub><i>X</i></sub></span><span>cos ω<sub><i>X</i></sub></span></span>,</span>&ensp; <span class="nowrap"><i>R</i><sub><i>Y</i></sub> = <span class="mat"><span>cos ω<sub><i>Y</i></sub></span><span>0</span><span>−sin ω<sub><i>Y</i></sub></span><span>0</span><span>1</span><span>0</span><span>sin ω<sub><i>Y</i></sub></span><span>0</span><span>cos ω<sub><i>Y</i></sub></span></span></span></div>
+    <p>En <i>R</i><sub><i>Y</i></sub> el signo menos está sobre la diagonal. La regla de la mano derecha gira <i>Y</i> hacia <i>Z</i> en torno a <i>X</i>, <i>Z</i> hacia <i>X</i> en torno a <i>Y</i>, y <i>X</i> hacia <i>Y</i> en torno a <i>Z</i>, siempre siguiendo el ciclo <span class="nowrap"><i>X</i> → <i>Y</i> → <i>Z</i> → <i>X</i></span>. En torno a <i>Y</i>, el giro va de <i>Z</i> a <i>X</i>, pero la matriz pone <i>X</i> antes que <i>Z</i>, contra el ciclo, y eso intercambia los dos signos.</p>
+  </div>
+</section>
+
+<section id="rotation">
+  <div class="prose">
+    <h2><span class="n">3</span>Cualquier rotación a partir de tres ángulos</h2>
+    <p>Girar en torno a los tres ejes se hace un eje a la vez: primero en torno a <i>Z</i> en ω<sub><i>Z</i></sub>, luego en torno al nuevo eje <i>Y</i> en ω<sub><i>Y</i></sub>, y luego en torno al eje <i>X</i> más nuevo en ω<sub><i>X</i></sub>. Cada giro vuelve a convertir las coordenadas, a los ejes tal como han quedado, así que las matrices se multiplican de derecha a izquierda:</p>
+    <div class="disp hero-f"><i>R</i> = <i>R</i><sub><i>X</i></sub><i>R</i><sub><i>Y</i></sub><i>R</i><sub><i>Z</i></sub></div>
+    <p>Para un giro solo, <span class="nowrap"><span class="pt"><i>M</i>′</span> = <i>R</i><span class="pt"><i>M</i></span></span>. Al multiplicarlas, cada entrada mezcla senos y cosenos de los tres ángulos. La primera fila, por ejemplo, es</p>
+    <div class="disp">[cos ω<sub><i>Y</i></sub> cos ω<sub><i>Z</i></sub>&ensp;cos ω<sub><i>Y</i></sub> sin ω<sub><i>Z</i></sub>&ensp;−sin ω<sub><i>Y</i></sub>]</div>
+    <p>El orden es parte de la definición. Los productos de matrices no conmutan, y los giros en el espacio tampoco: dale a un libro un cuarto de vuelta en torno a un eje y luego en torno a otro, después prueba en el otro orden, y el libro termina mirando hacia otro lado. A los mismos ejes se puede llegar en otro orden, pero con otros ángulos. Girar primero en <span class="nowrap">ω<sub><i>Z</i></sub> = 90°</span> y luego en <span class="nowrap">ω<sub><i>Y</i></sub> = −90°</span> da los mismos ejes que girar primero en <span class="nowrap">ω<sub><i>X</i></sub> = 90°</span> y luego en <span class="nowrap">ω<sub><i>Z</i></sub> = 90°</span>: <span class="nowrap"><i>R</i><sub><i>Y</i></sub>(−90°)<i>R</i><sub><i>Z</i></sub>(90°)</span> <span class="nowrap">= <i>R</i><sub><i>Z</i></sub>(90°)<i>R</i><sub><i>X</i></sub>(90°)</span>.</p>
+
+    <h3>Por qué bastan tres números</h3>
+    <p>Una matriz de 3 × 3 tiene nueve entradas, pero una rotación no puede tener nueve cualesquiera. Las filas de <i>R</i> son los vectores unitarios de los ejes nuevos, así que cada una tiene longitud 1 y cada par es perpendicular: tres condiciones para las longitudes y tres para los ángulos rectos, escritas todas a la vez como <span class="nowrap"><i>RR</i><sup class="t">T</sup> = <i>I</i></span>. Nueve entradas menos seis condiciones dejan tres números libres, y tres ángulos bastan para fijarlos. Un espejo también cumple <span class="nowrap"><i>RR</i><sup class="t">T</sup> = <i>I</i></span>, pero convierte una mano derecha en una izquierda; las rotaciones son las matrices que además tienen <span class="nowrap">det <i>R</i> = +1</span>. La misma ecuación dice que la inversa de <i>R</i> es su traspuesta.</p>
+
+    <h3>Giro y traslación en una sola matriz</h3>
+    <p>Ahora mueve también el origen, a <i>t</i>′ en el sistema original. Para obtener las coordenadas nuevas, resta <i>t</i>′ y gira: <span class="nowrap"><span class="pt"><i>M</i>′</span> = <i>R</i>(<span class="pt"><i>M</i></span> − <i>t</i>′)</span> <span class="nowrap">= <i>R</i><span class="pt"><i>M</i></span> + <i>t</i></span>, con <span class="nowrap"><i>t</i> = −<i>Rt</i>′</span>, que es el origen original escrito en el sistema nuevo. En coordenadas homogéneas eso es un solo producto de 4 × 4:</p>
+    <div class="disp hero-f"><span class="nowrap"><span class="pt"><i>M</i>′</span> = <i>S</i><span class="pt"><i>M</i></span>,</span>&ensp; <span class="nowrap"><i>S</i> = <span class="mat" style="--cols: 2"><span><i>R</i></span><span><i>t</i></span><span>0<sup class="t">T</sup></span><span>1</span></span></span></div>
+    <p>Esta es la transformación euclídea del espacio. Mueve el espacio como una pieza rígida, así que conserva longitudes y ángulos, y tiene seis números libres, donde su equivalente en 2D tiene tres.</p>
+
+    <h3>De vuelta</h3>
+    <p>Para recuperar las coordenadas originales, deshaz el giro y luego la traslación: <span class="nowrap"><span class="pt"><i>M</i></span> = <i>R</i><sup class="t">T</sup><span class="pt"><i>M</i>′</span> + <i>t</i>′</span>. Escribiendo <span class="nowrap"><i>R</i>′ = <i>R</i><sup class="t">T</sup></span>,</p>
+    <div class="disp hero-f"><span class="nowrap"><span class="pt"><i>M</i></span> = <i>S</i>′<span class="pt"><i>M</i>′</span>,</span>&ensp; <span class="nowrap"><i>S</i>′ = <span class="mat" style="--cols: 2"><span><i>R</i>′</span><span><i>t</i>′</span><span>0<sup class="t">T</sup></span><span>1</span></span></span></div>
+    <p>con <span class="nowrap"><i>t</i>′ = −<i>R</i>′<i>t</i></span>. <i>R</i>′ deshace los tres giros en orden inverso, cada uno con el ángulo opuesto: <span class="nowrap"><i>R</i>′ = <i>R</i><sub><i>Z</i></sub>(−ω<sub><i>Z</i></sub>)<i>R</i><sub><i>Y</i></sub>(−ω<sub><i>Y</i></sub>)<i>R</i><sub><i>X</i></sub>(−ω<sub><i>X</i></sub>)</span>. Sus columnas son los ejes nuevos escritos en el sistema original, así que <span class="nowrap"><i>R</i>′<span class="pt"><i>M</i>′</span> + <i>t</i>′</span> se lee como la matriz <i>H</i> de los apuntes de 2D: parte en <i>t</i>′, y luego avanza <i>X</i>′ unidades a lo largo del eje <i>X</i>′, <i>Y</i>′ unidades a lo largo de <i>Y</i>′ y <i>Z</i>′ unidades a lo largo de <i>Z</i>′.</p>
+
+    <h3>Cuando dos ángulos hacen lo mismo</h3>
+    <p>Con <span class="nowrap">ω<sub><i>Y</i></sub> = 90°</span>, el giro en torno a <i>Y</i> deja el eje <i>X</i> sobre el eje <i>Z</i>, apuntando en sentido contrario, así que el último giro, en torno a <i>X</i>, ocurre en torno a la misma recta que el primero, en torno a <i>Z</i>. Solo importa la diferencia <span class="nowrap">ω<sub><i>X</i></sub> − ω<sub><i>Z</i></sub></span> (con −90°, la suma <span class="nowrap">ω<sub><i>X</i></sub> + ω<sub><i>Z</i></sub></span>), y se pierde uno de los tres números. Esto se llama bloqueo del cardán (<i lang="en">gimbal lock</i>), y es una de las razones por las que las rotaciones suelen guardarse de otras formas que tres ángulos, como un eje y un ángulo.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-frames" role="group" aria-label="Espacio con ejes X, Y y Z, y una caja pegada a un sistema de coordenadas nuevo con ejes X′, Y′ y Z′, girado en tres ángulos y con su origen en t′. Usa las flechas del teclado para girar la vista."></svg>
+    <div class="ro">
+      <p class="coef-row"><span class="nowrap">ω<sub><i>X</i></sub> = <span class="coef"><input id="fig-frames-wx" type="number" step="5" min="-180" max="180" value="15" aria-label="ωX, el giro en torno a X, en grados"></span>°</span>&ensp; <span class="nowrap">ω<sub><i>Y</i></sub> = <span class="coef"><input id="fig-frames-wy" type="number" step="5" min="-180" max="180" value="10" aria-label="ωY, el giro en torno a Y, en grados"></span>°</span>&ensp; <span class="nowrap">ω<sub><i>Z</i></sub> = <span class="coef"><input id="fig-frames-wz" type="number" step="5" min="-180" max="180" value="0" aria-label="ωZ, el giro en torno a Z, en grados"></span>°</span></p>
+      <p class="coef-row"><i>t</i>′ = <span class="col coef"><input id="fig-frames-tx" type="number" step="1" min="-1" max="5" value="1" aria-label="t′X, la coordenada X del origen de la caja"><input id="fig-frames-ty" type="number" step="1" min="-1" max="5" value="3" aria-label="t′Y, la coordenada Y del origen de la caja"><input id="fig-frames-tz" type="number" step="1" min="-1" max="4" value="2" aria-label="t′Z, la coordenada Z del origen de la caja"></span></p>
+      <div id="fig-frames-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Cambia los ángulos y el origen <i>t</i>′ de la caja, o arrastra el círculo azul hueco, y arrastra el fondo para girar la vista. Los ejes azules <i>X</i>′, <i>Y</i>′ y <i>Z</i>′ son las filas de <i>R</i>, y la esquina roja es <span class="pt"><i>M</i>′</span> = (2, 1, 1) en las coordenadas de la caja. Con el teclado, selecciona la figura, el círculo o un campo con Tab y usa las flechas.</p>
+      <button type="button" class="btn" id="fig-frames-reset">Reiniciar</button>
+    </div>
+  </div>
+</section>
+
+<section id="projection">
+  <div class="prose">
+    <h2><span class="n">4</span>Proyección en perspectiva</h2>
+    <p>Una cámara convierte puntos del espacio en puntos de una imagen. El modelo más simple es la cámara <i lang="en">pinhole</i>, o cámara oscura: cada punto <span class="pt"><i>M</i></span> envía un rayo recto a través de un único punto <i>C</i>, el <em>centro óptico</em>, y la imagen es donde esos rayos cruzan un plano, el <em>plano de imagen</em>. Pon el origen de las coordenadas en <i>C</i> y el eje <i>Z</i> perpendicular al plano de imagen. Ese eje es el <em>eje óptico</em>, y el plano está en <span class="nowrap"><i>Z</i> = <i>f</i></span>, donde <i>f</i> es la <em>distancia focal</em>. El plano de imagen tiene sus propios ejes <i>x</i> e <i>y</i>, paralelos a <i>X</i> e <i>Y</i>, con su origen donde el eje óptico lo corta, un punto llamado <em>punto principal</em>.</p>
+    <p>El rayo que va de <i>C</i> a <span class="pt"><i>M</i></span> = (<i>X</i>, <i>Y</i>, <i>Z</i>) corta el plano en <span class="pt"><i>m</i></span> = (<i>x</i>, <i>y</i>). A lo largo del rayo, la distancia al eje óptico crece en proporción a la profundidad: hacia el lado es <i>X</i> a la profundidad <i>Z</i>, y <i>x</i> a la profundidad <i>f</i>. Los dos triángulos rectángulos son semejantes, así que</p>
+    <div class="disp"><span class="nowrap"><span class="frac"><span><i>Z</i></span><span><i>f</i></span></span> = <span class="frac"><span><i>X</i></span><span><i>x</i></span></span> = <span class="frac"><span><i>Y</i></span><span><i>y</i></span></span></span></div>
+    <p>lo que da <span class="nowrap"><i>Zx</i> = <i>fX</i></span> y <span class="nowrap"><i>Zy</i> = <i>fY</i></span>, o <span class="nowrap"><i>x</i> = <i>fX</i>/<i>Z</i></span> e <span class="nowrap"><i>y</i> = <i>fY</i>/<i>Z</i></span>. La división por <i>Z</i> es la razón por la que las cosas lejanas se ven pequeñas.</p>
+
+    <h3>La matriz <i>P</i></h3>
+    <p>La división también hace que el paso de <span class="pt"><i>M</i></span> a <span class="pt"><i>m</i></span> no sea lineal, así que tal como está no puede ser un producto de matrices. Las coordenadas homogéneas lo resuelven. Escribe las dos ecuaciones, junto con <span class="nowrap"><i>Z</i> = <i>Z</i></span>, como</p>
+    <div class="disp"><span class="nowrap"><i>Z</i><span class="col pt"><span><i>x</i></span><span><i>y</i></span><span>1</span></span></span> <span class="nowrap">= <span class="col"><span><i>fX</i></span><span><i>fY</i></span><span><i>Z</i></span></span></span> <span class="nowrap">= <span class="mat" style="--cols: 4"><span><i>f</i></span><span>0</span><span>0</span><span>0</span><span>0</span><span><i>f</i></span><span>0</span><span>0</span><span>0</span><span>0</span><span>1</span><span>0</span></span><span class="col pt"><span><i>X</i></span><span><i>Y</i></span><span><i>Z</i></span><span>1</span></span></span></div>
+    <p>El lado izquierdo es un múltiplo de <span class="pt"><i>m</i></span>, y el derecho es una matriz <i>P</i> por <span class="pt"><i>M</i></span>:</p>
+    <div class="disp hero-f">λ<span class="pt"><i>m</i></span> = <i>P</i><span class="pt"><i>M</i></span></div>
+    <p>El factor λ es la profundidad <i>Z</i>, ya que la tercera fila de <i>P</i> copia <i>Z</i>. Para leer <span class="pt"><i>m</i></span>, divide <i>P</i><span class="pt"><i>M</i></span> por su tercera componente, como con cualquier vector homogéneo. La división por <i>Z</i> no desapareció; se movió al final, donde ya no estorba a la matriz.</p>
+
+    <h3>La cámara es el mismo dibujo que las coordenadas homogéneas</h3>
+    <p>Toma <span class="nowrap"><i>f</i> = 1</span>. Entonces <span class="nowrap"><i>x</i> = <i>X</i>/<i>Z</i></span> e <span class="nowrap"><i>y</i> = <i>Y</i>/<i>Z</i></span>: dividir por la tercera componente, que es exactamente como se lee un vector homogéneo [<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup>. El espacio de la cámara es el espacio con ejes <i>p</i>, <i>q</i> y <i>r</i> de los <a href="/es/notes/computer-vision/homogeneous-coordinates/">apuntes de coordenadas homogéneas</a>, el centro óptico es su origen, y el plano de imagen es su plano <span class="nowrap"><i>r</i> = 1</span>. Cada punto de la imagen representa un rayo completo que pasa por <i>C</i>, así como cada punto del plano representaba una recta que pasa por el origen.</p>
+    <p>Eso es también lo que una sola imagen no puede decir: a qué distancia sobre su rayo estaba un punto. <span class="pt"><i>M</i></span> y 2<span class="pt"><i>M</i></span>, el doble de lejos en la misma dirección, dan el mismo <span class="pt"><i>m</i></span>. Recuperar la profundidad requiere una segunda imagen tomada desde otro lugar, donde el mismo punto está sobre un rayo distinto.</p>
+    <p>Un punto no tiene imagen: el centro óptico. <i>P</i> envía <span class="nowrap"><i>C</i> = [0&ensp;0&ensp;0&ensp;1]<sup class="t">T</sup></span> al vector cero, que no representa ningún punto, ya que todos los rayos parten de <i>C</i>.</p>
+
+    <h3>La imagen detrás del centro</h3>
+    <p>En una cámara oscura real, la imagen se forma detrás del orificio, al otro lado de <i>C</i> respecto de la escena, en <span class="nowrap"><i>Z</i> = −<i>f</i></span>. Los rayos se cruzan en <i>C</i>, así que un punto sobre el eje cae debajo de él y uno a la izquierda cae a la derecha: la imagen queda invertida. Los mismos triángulos dan <span class="nowrap"><i>x</i> = −<i>fX</i>/<i>Z</i></span> e <span class="nowrap"><i>y</i> = −<i>fY</i>/<i>Z</i></span>, así que <i>P</i> lleva −<i>f</i> en lugar de <i>f</i>. El modelo pone el plano delante de <i>C</i>, donde recoge los mismos rayos sin la inversión, y por eso <i>P</i> suele llevar +<i>f</i>.</p>
+    <p>Las imágenes de rayos X se ajustan al modelo con +<i>f</i> tal como está. La fuente de rayos X hace de centro óptico, y el objeto queda entre la fuente y el detector, que es el plano de imagen.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-project" role="group" aria-label="Una cámara pinhole: el centro óptico C, el eje óptico Z y el plano de imagen. El rayo que va de C al punto M corta el plano de imagen en m. Usa las flechas del teclado para girar la vista."></svg>
+    <div class="ro">
+      <div class="modes" id="fig-project-modes" role="group" aria-label="Dónde está el plano de imagen">
+        <button type="button" data-mode="front" aria-pressed="true">Delante de <i>C</i></button>
+        <button type="button" data-mode="behind" aria-pressed="false">Detrás de <i>C</i></button>
+      </div>
+      <p class="coef-row"><span class="nowrap"><i>Y</i> = <span class="coef"><input id="fig-project-y" type="number" step="1" min="-3" max="3" value="-2" aria-label="Y, la altura de M; negativa es sobre el eje óptico"></span></span>&ensp; <span class="nowrap"><i>f</i> = <span class="coef"><input id="fig-project-f" type="number" step="1" min="1" max="3" value="2" aria-label="f, la distancia focal"></span></span></p>
+      <div id="fig-project-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Arrastra <span class="pt"><i>M</i></span> hacia los lados y en profundidad, desliza <i>k</i><span class="pt"><i>M</i></span> por el rayo, y arrastra el fondo para girar la vista. <i>Y</i> apunta hacia abajo, así que un <i>Y</i> negativo pone <span class="pt"><i>M</i></span> sobre el eje óptico. Con el teclado, selecciona la figura, un punto o un campo con Tab y usa las flechas.</p>
+      <button type="button" class="btn" id="fig-project-reset">Reiniciar</button>
+    </div>
+  </div>
+</section>
+
+<section id="world">
+  <div class="prose">
+    <h2><span class="n">5</span>Un punto dado en otro sistema de coordenadas</h2>
+    <p>La proyección necesita <span class="pt"><i>M</i></span> en las coordenadas de la cámara, con <i>C</i> en el origen y <i>Z</i> a lo largo del eje óptico. Los puntos rara vez se conocen así: se miden sobre un objeto, o en una sala, en un sistema de coordenadas propio. Toma el sistema de la cámara como el original, con ejes <i>X</i>, <i>Y</i> y <i>Z</i>, y el del objeto como el nuevo, con ejes <i>X</i>′, <i>Y</i>′ y <i>Z</i>′. Entonces las columnas de <i>R</i>′ son los ejes del objeto vistos desde la cámara, y <i>t</i>′ es donde la cámara ve el origen del objeto. Un punto con coordenadas <span class="pt"><i>M</i>′</span> en el objeto está en <span class="nowrap"><span class="pt"><i>M</i></span> = <i>S</i>′<span class="pt"><i>M</i>′</span></span> en el sistema de la cámara, como en la sección 3, y</p>
+    <div class="disp hero-f">λ<span class="pt"><i>m</i></span> = <i>PS</i>′<span class="pt"><i>M</i>′</span></div>
+    <p>Léelo de derecha a izquierda: primero lleva el punto a las coordenadas de la cámara, luego proyéctalo. El producto <i>PS</i>′ es una sola matriz de 3 × 4, y su tercera fila da λ, la profundidad del punto delante de la cámara.</p>
+  </div>
+</section>
+
+<section id="pixels">
+  <div class="prose">
+    <h2><span class="n">6</span>De milímetros a píxeles</h2>
+    <p>Las coordenadas (<i>x</i>, <i>y</i>) de <span class="pt"><i>m</i></span> son largos sobre el plano de imagen, digamos en milímetros, medidos desde el punto principal. Una imagen, en cambio, se lee en píxeles: <i>u</i> cuenta columnas hacia la derecha y <i>v</i> cuenta filas hacia abajo, desde la esquina superior izquierda. Escribe <span class="nowrap"><span class="pt"><i>w</i></span> = [<i>u</i>&ensp;<i>v</i>&ensp;1]<sup class="t">T</sup></span> para el mismo punto en píxeles.</p>
+    <p>Para que ambos sistemas queden alineados, los ejes de la cámara se eligen a lo largo del sensor: <i>X</i> y <i>x</i> apuntan a la derecha, a lo largo de las filas, e <i>Y</i> e <i>y</i> apuntan hacia abajo, a lo largo de las columnas. Con <i>Z</i> apuntando hacia adelante, hacia la escena, los tres ejes forman un sistema de mano derecha. Así no se necesita ningún giro entre (<i>x</i>, <i>y</i>) y (<i>u</i>, <i>v</i>): cualquier giro de la cámara ya está en <i>S</i>′. Lo que falta toma tres pasos.</p>
+    <p><b>Traslación.</b> El punto principal cae en algún píxel (<i>u</i><sub>0</sub>, <i>v</i><sub>0</sub>), normalmente cerca del centro de la imagen, no en la esquina donde empiezan <i>u</i> y <i>v</i>. Pero sumar <i>u</i><sub>0</sub> y <i>v</i><sub>0</sub> no basta por sí solo, ya que <i>x</i> e <i>y</i> están en milímetros y <i>u</i> y <i>v</i> en píxeles.</p>
+    <p><b>Escala.</b> El sensor tiene α<sub><i>x</i></sub> píxeles por milímetro a lo largo de <i>x</i> y α<sub><i>y</i></sub> a lo largo de <i>y</i>, así que <span class="nowrap"><i>u</i> = α<sub><i>x</i></sub><i>x</i> + <i>u</i><sub>0</sub></span> y <span class="nowrap"><i>v</i> = α<sub><i>y</i></sub><i>y</i> + <i>v</i><sub>0</sub></span>. Las dos escalas difieren cuando los píxeles no son cuadrados.</p>
+    <p><b>Torcimiento.</b> Si las filas y las columnas del sensor no son exactamente perpendiculares, un paso a lo largo de <i>y</i> también avanza columnas, lo que agrega un término <i>sy</i> a <i>u</i>. A <i>s</i> se le llama factor de torcimiento, y en la mayoría de las cámaras vale 0 o muy cerca de 0.</p>
+    <p>En conjunto:</p>
+    <div class="disp hero-f"><span class="nowrap"><span class="pt"><i>w</i></span> = <i>K</i><span class="pt"><i>m</i></span>,</span>&ensp; <span class="nowrap"><i>K</i> = <span class="mat"><span>α<sub><i>x</i></sub></span><span><i>s</i></span><span><i>u</i><sub>0</sub></span><span>0</span><span>α<sub><i>y</i></sub></span><span><i>v</i><sub>0</sub></span><span>0</span><span>0</span><span>1</span></span></span></div>
+    <p><i>K</i> se llama la <em>matriz de calibración</em> de la cámara. Con su última fila [0&ensp;0&ensp;1], es una transformación afín del plano de imagen, del tipo visto en los <a href="/es/notes/computer-vision/2d-transformations/">apuntes de transformaciones 2D</a>, así que conserva las rectas paralelas. Sus cinco números dependen solo de la cámara: el tamaño y la disposición de sus píxeles, y dónde su eje óptico corta el sensor.</p>
+  </div>
+</section>
+
+<section id="camera">
+  <div class="prose">
+    <h2><span class="n">7</span>El modelo de cámara</h2>
+    <p>Juntando los pasos: lleva el punto a las coordenadas de la cámara, proyéctalo y conviértelo a píxeles.</p>
+    <div class="disp hero-f">λ<span class="pt"><i>w</i></span> = <i>KPS</i>′<span class="pt"><i>M</i>′</span></div>
+    <p>Al multiplicar <i>K</i> por <i>P</i> se obtiene</p>
+    <div class="disp"><span class="nowrap"><i>KP</i> = <span class="mat" style="--cols: 4"><span><i>f</i>α<sub><i>x</i></sub></span><span><i>fs</i></span><span><i>u</i><sub>0</sub></span><span>0</span><span>0</span><span><i>f</i>α<sub><i>y</i></sub></span><span><i>v</i><sub>0</sub></span><span>0</span><span>0</span><span>0</span><span>1</span><span>0</span></span></span> <span class="nowrap">= <span class="mat" style="--cols: 4"><span>α</span><span>γ</span><span><i>u</i><sub>0</sub></span><span>0</span><span>0</span><span>β</span><span><i>v</i><sub>0</sub></span><span>0</span><span>0</span><span>0</span><span>1</span><span>0</span></span></span></div>
+    <p>La distancia focal nunca aparece sola, sino multiplicada por α<sub><i>x</i></sub>, α<sub><i>y</i></sub> y <i>s</i>. Un lente el doble de largo con píxeles el doble de grandes da exactamente la misma imagen, así que las imágenes solo permiten conocer los productos, y estos reciben nombres propios: <span class="nowrap">α = <i>f</i>α<sub><i>x</i></sub></span>, <span class="nowrap">β = <i>f</i>α<sub><i>y</i></sub></span> y <span class="nowrap">γ = <i>fs</i></span>.</p>
+    <p>Así, una cámara queda descrita por once números. Cinco son <em>parámetros intrínsecos</em>, α, β, γ, <i>u</i><sub>0</sub> y <i>v</i><sub>0</sub>, que pertenecen a la cámara misma. Seis son <em>parámetros extrínsecos</em>, los ángulos ω<sub><i>X</i></sub>, ω<sub><i>Y</i></sub>, ω<sub><i>Z</i></sub> y las tres componentes de <i>t</i>′, que dicen dónde está la cámara y hacia dónde apunta, respecto del objeto. La cuenta coincide con la matriz: el producto completo <i>KPS</i>′ es una matriz de 3 × 4 con doce entradas, y, como en toda ecuación homogénea, multiplicarla por un número no cambia nada, lo que deja once.</p>
+    <p>Este producto se llama matriz de proyección general. A menudo también se escribe <i>P</i>, y <i>A</i>, <i>B</i>, <i>C</i>, … cuando varias cámaras miran la misma escena. La <i>P</i> simple de la sección 4 es el caso <span class="nowrap"><i>K</i> = <i>I</i></span> y <span class="nowrap"><i>S</i>′ = <i>I</i></span>. Encontrar los once números a partir de imágenes de puntos conocidos se llama calibración de la cámara.</p>
+  </div>
+</section>
+
+<section id="example">
+  <div class="prose">
+    <h2><span class="n">8</span>Un ejemplo resuelto</h2>
+    <p>El ejemplo tiene dos partes: un punto que se lleva entre dos sistemas de coordenadas del espacio, y un punto que se proyecta sobre una imagen. Las longitudes están en centímetros.</p>
+    <ol class="steps">
+      <li><b>El planteamiento.</b> Una caja tiene su propio sistema de coordenadas, girado respecto de <i>X</i>, <i>Y</i>, <i>Z</i> primero en <span class="nowrap">ω<sub><i>Z</i></sub> = 0°</span>, luego en <span class="nowrap">ω<sub><i>Y</i></sub> = 10°</span> y luego en <span class="nowrap">ω<sub><i>X</i></sub> = 15°</span>, con su origen en <span class="nowrap"><i>t</i>′ = (1, 3, 2)</span>. Una esquina de la caja tiene coordenadas <span class="nowrap"><span class="pt"><i>M</i>′</span> = <span class="pt">[2&ensp;1&ensp;1&ensp;1]<sup class="t">T</sup></span></span> en el sistema de la caja. ¿Dónde está en <i>X</i>, <i>Y</i> y <i>Z</i>?</li>
+      <li><b>Los giros.</b> Con <span class="nowrap">cos 15° ≈ 0.9659</span>, <span class="nowrap">sin 15° ≈ 0.2588</span>, <span class="nowrap">cos 10° ≈ 0.9848</span> y <span class="nowrap">sin 10° ≈ 0.1736</span>, y <span class="nowrap"><i>R</i><sub><i>Z</i></sub> = <i>I</i></span> porque <span class="nowrap">ω<sub><i>Z</i></sub> = 0</span>:
+        <span class="f"><span class="nowrap"><i>R</i><sub><i>X</i></sub> ≈ <span class="mat"><span>1</span><span>0</span><span>0</span><span>0</span><span>0.9659</span><span>0.2588</span><span>0</span><span>−0.2588</span><span>0.9659</span></span>,</span>&ensp; <span class="nowrap"><i>R</i><sub><i>Y</i></sub> ≈ <span class="mat"><span>0.9848</span><span>0</span><span>−0.1736</span><span>0</span><span>1</span><span>0</span><span>0.1736</span><span>0</span><span>0.9848</span></span></span></span></li>
+      <li><b>Su producto.</b> Sus filas son los ejes de la caja, escritos en <i>X</i>, <i>Y</i> y <i>Z</i>:
+        <span class="f"><span class="nowrap"><i>R</i> = <i>R</i><sub><i>X</i></sub><i>R</i><sub><i>Y</i></sub></span> <span class="nowrap">≈ <span class="mat"><span>0.9848</span><span>0</span><span>−0.1736</span><span>0.0449</span><span>0.9659</span><span>0.2549</span><span>0.1677</span><span>−0.2588</span><span>0.9513</span></span></span></span></li>
+      <li><b>De vuelta a <i>X</i>, <i>Y</i> y <i>Z</i>.</b> Con <span class="nowrap"><i>R</i>′ = <i>R</i><sup class="t">T</sup></span>:
+        <span class="f"><span class="nowrap"><i>R</i>′<span class="col pt"><span>2</span><span>1</span><span>1</span></span> ≈ <span class="col"><span>2.1823</span><span>0.7071</span><span>0.8588</span></span>,</span>&ensp; <span class="nowrap"><span class="pt"><i>M</i></span> = <i>R</i>′<span class="pt"><i>M</i>′</span> + <i>t</i>′</span> <span class="nowrap">≈ <span class="col pt"><span>3.1823</span><span>3.7071</span><span>2.8588</span></span></span></span>
+        así que la esquina está en <span class="pt nowrap">(3.1823, 3.7071, 2.8588)</span>.</li>
+      <li><b>Comprobar la longitud.</b> Una rotación conserva las longitudes, así que <span class="pt"><i>M</i></span> está tan lejos de <i>t</i>′ como <span class="pt"><i>M</i>′</span> del origen de la caja:
+        <span class="f"><span class="nowrap">‖<span class="pt"><i>M</i></span> − <i>t</i>′‖</span> <span class="nowrap">≈ √(2.1823² + 0.7071² + 0.8588²)</span> <span class="nowrap">≈ 2.449,</span><br><span class="nowrap">‖<span class="pt"><i>M</i>′</span>‖ = √(2² + 1² + 1²)</span> <span class="nowrap">= √6 ≈ 2.449</span> <span class="ok">✓</span></span></li>
+      <li><b>Volver a ir hacia adelante.</b> El origen original, escrito en el sistema de la caja, es <span class="nowrap"><i>t</i> = −<i>Rt</i>′</span> <span class="nowrap">≈ (−0.6375, −3.4525, −1.2938)</span>, y <span class="nowrap"><span class="pt"><i>M</i>′</span> = <i>R</i><span class="pt"><i>M</i></span> + <i>t</i></span> devuelve (2, 1, 1).</li>
+      <li><b>Comprobar el orden.</b> Girar en el otro orden, primero en torno a <i>X</i>, luego <i>Y</i> y luego <i>Z</i>, de modo que <span class="nowrap"><i>R</i> = <i>R</i><sub><i>Z</i></sub><i>R</i><sub><i>Y</i></sub><i>R</i><sub><i>X</i></sub></span>, pondría la esquina en <span class="pt nowrap">(3.1433, 3.8009, 2.8746)</span>. Ni siquiera los giros pequeños conmutan.</li>
+      <li><b>Proyectar un punto.</b> Ahora una cámara con <span class="nowrap"><i>f</i> = 100</span> ve el punto <span class="nowrap"><span class="pt"><i>M</i></span> = (20, 30, 50)</span>, dado en las coordenadas de la cámara:
+        <span class="f"><span class="nowrap"><i>P</i><span class="pt"><i>M</i></span> = <span class="mat" style="--cols: 4"><span>100</span><span>0</span><span>0</span><span>0</span><span>0</span><span>100</span><span>0</span><span>0</span><span>0</span><span>0</span><span>1</span><span>0</span></span><span class="col pt"><span>20</span><span>30</span><span>50</span><span>1</span></span></span> <span class="nowrap">= <span class="col pt"><span>2000</span><span>3000</span><span>50</span></span></span></span></li>
+      <li><b>Dividir por λ.</b> Aquí <span class="nowrap">λ = <i>Z</i> = 50</span>:
+        <span class="f"><span class="nowrap"><span class="pt"><i>m</i></span> = (<span class="frac"><span>2000</span><span>50</span></span>, <span class="frac"><span>3000</span><span>50</span></span>)</span> <span class="nowrap">= <span class="pt">(40, 60)</span></span></span>
+        Comprobación con los triángulos semejantes: <span class="nowrap">50/100 = 20/40 = 30/60</span> <span class="ok">✓</span></li>
+      <li><b>La profundidad se pierde.</b> El punto (10, 15, 25), a mitad de camino hacia <i>C</i> sobre el mismo rayo, da <span class="nowrap"><i>P</i><span class="pt"><i>M</i></span> = <span class="pt">[1000&ensp;1500&ensp;25]<sup class="t">T</sup></span></span>, y al dividir por 25 se obtiene el mismo <span class="pt"><i>m</i></span> = <span class="pt">(40, 60)</span>.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">9</span>Resumen</h2>
+    <p>Las ideas clave junto a sus equivalentes en NumPy.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Girar los ejes en torno a <i>Z</i></div>
+      <div class="f"><i>R</i><sub><i>Z</i></sub> = [cos ω<sub><i>Z</i></sub>&ensp;sin ω<sub><i>Z</i></sub>&ensp;0;&ensp;−sin ω<sub><i>Z</i></sub>&ensp;cos ω<sub><i>Z</i></sub>&ensp;0;&ensp;0&ensp;0&ensp;1]</div>
+      <div class="c"><code>Rz = np.array([</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;[np.cos(wz), np.sin(wz), 0],</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;[-np.sin(wz), np.cos(wz), 0],</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;[0, 0, 1]])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Tres ángulos: <i>Z</i>, luego <i>Y</i>, luego <i>X</i></div>
+      <div class="f"><i>R</i> = <i>R</i><sub><i>X</i></sub><i>R</i><sub><i>Y</i></sub><i>R</i><sub><i>Z</i></sub></div>
+      <div class="c"><code>R = Rx @ Ry @ Rz</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Coordenadas nuevas</div>
+      <div class="f"><span class="pt"><i>M</i>′</span> = <i>S</i><span class="pt"><i>M</i></span>,&ensp;<i>S</i> = [<i>R</i>&ensp;<i>t</i>;&ensp;0<sup class="t">T</sup>&ensp;1]</div>
+      <div class="c"><code>S = np.block([[R, t.reshape(3, 1)],</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;[0, 0, 0, 1]])</code><br><code>Mp = S @ M</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">De vuelta al sistema original</div>
+      <div class="f"><span class="pt"><i>M</i></span> = <i>S</i>′<span class="pt"><i>M</i>′</span>,&ensp;<i>R</i>′ = <i>R</i><sup class="t">T</sup>,&ensp;<i>t</i>′ = −<i>R</i>′<i>t</i></div>
+      <div class="c"><code>Sp = np.linalg.inv(S)</code><br><code>M = Sp @ Mp</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Proyección en perspectiva</div>
+      <div class="f">λ<span class="pt"><i>m</i></span> = <i>P</i><span class="pt"><i>M</i></span>, luego dividir por λ</div>
+      <div class="c"><code>P = np.array([[f, 0, 0, 0],</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;[0, f, 0, 0], [0, 0, 1, 0]])</code><br><code>m = P @ M</code><br><code>m = m / m[2]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">De milímetros a píxeles</div>
+      <div class="f"><span class="pt"><i>w</i></span> = <i>K</i><span class="pt"><i>m</i></span></div>
+      <div class="c"><code>w = K @ m</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Modelo de cámara</div>
+      <div class="f">λ<span class="pt"><i>w</i></span> = <i>KPS</i>′<span class="pt"><i>M</i>′</span></div>
+      <div class="c"><code>w = K @ P @ Sp @ Mp</code><br><code>w = w / w[2]</code></div>
+    </div>
+  </div>
+</section>
