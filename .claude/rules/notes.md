@@ -27,7 +27,7 @@ paths:
 - Components in `notes.css`: `.disp` for display math, `.col` for column vectors, `.mat` for matrices (3 columns unless `style="--cols: N"`; `mat()` in `plane.js` writes one), `.frac` for fractions, `sup.t` for the transpose and other superscripts, `.pt` for points (carmine) and `.ln` for lines (blue).
 - A heading that contains math wraps its text in a `<span>` after the number (`<h2><span class="n">4</span><span>Estimating <i>H</i> …</span></h2>`): the `h2` is a flex row, and loose text and `<i>` would become separate items with gaps between them.
 - Variables in `<i>`, subscripts in `<sub>`, and the real minus sign `−` (U+2212) in numbers.
-- Follow the course notation (Prof. Domingo Mery, github.com/domingomery/cv): `m` for points, `ℓ` for lines, homogeneous vectors as `[p q r]ᵀ`, projection as `λm = PM`.
+- Follow the course notation (Prof. Domingo Mery, github.com/domingomery/cv): `m` for points, `ℓ` for lines, homogeneous vectors as `[p q r]ᵀ`, projection as `λm = PM`. Changes of coordinates follow the lecture notes: `M′ = RM + t` from the old system to the new one, with `R = R_X R_Y R_Z` built from the axis-turning matrices (`R_Z = [cos sin 0; −sin cos 0; 0 0 1]`), and `M = S′M′` back, with `R′ = Rᵀ` and `t′ = −R′t`. The camera model is `λw = KPS′M′`.
 - In code snippets, use the variable names from the course labs (`m1`, `ell`, `ell_1`, `np.cross`).
 - Wrap each side of a long equation in a `.nowrap` span, putting the `=` at the start of the right-hand side (`<span class="nowrap">= …</span>`). On narrow screens the line then breaks before an equals sign, never after it. Do the same in figure readouts.
 
@@ -35,7 +35,7 @@ paths:
 
 - Snap draggable points to integers so readouts stay clean.
 - To let readers pick a mode (a kind of transformation, an interpolation method), use a `.modes` group of buttons with `data-mode` and `aria-pressed`, wired with `modeButtons` from `plane.js`.
-- `plane.js` also has matrix helpers (`apply` for any matrix times a vector, `matMul`, `transpose`, and `inverse` for 3×3), `solve` for square linear systems, `homography(pairs)` (h33 = 1; exact for 4 pairs, least squares for more), 3D rotations (`rotX`, `rotY`, `rotZ` by the right-hand rule, and `rotation3d(wx, wy, wz)` = R_X R_Y R_Z, in radians), `fmtSig` for matrix entries far below 1, and `fmt(n, d)` with `col(arr, cls, f)` and `mat(rows, cls, f)` for more decimals.
+- `plane.js` also has matrix helpers (`apply` for any matrix times a vector, `matMul`, `transpose`, and `inverse` for 3×3), `solve` for square linear systems, `homography(pairs)` (h33 = 1; exact for 4 pairs, least squares for more), 3D rotations in the course's convention (`rotX`, `rotY`, `rotZ` give a point's coordinates in axes turned by w, so their rows are the new axes; `rotation3d(wx, wy, wz)` = R_X R_Y R_Z turns the axes first about Z, then Y, then X; its transpose goes back; angles in radians), `fmtSig` for matrix entries far below 1, and `fmt(n, d)` with `col(arr, cls, f)` and `mat(rows, cls, f)` for more decimals.
 - Gray values of images are drawn with `color-mix()` between `--img-lo` (0) and `--img-hi` (255), so bright pixels stay bright in both themes. Mark pixels with no value explicitly (the warping figure crosses them out), since an empty cell looks like black or white.
 - To let readers edit a vector, put number inputs inside a `.col.coef` bracket, as the line-as-vector figure does. Accept whole numbers only, and leave the figure unchanged while a field holds something else (a lone minus sign, say). `wholeNumberInput` in `plane.js` does this; single numbers such as angles use a `.coef` span without `.col`.
 - Readouts show the actual computation with the current numbers, not only the result.
@@ -51,4 +51,5 @@ paths:
 
 - Local, gitignored course materials live in `course-materials/<course>/`.
 - Before writing or editing a note, read `course-materials/<course>/README.md` and the lab files it references, and follow the course's notation and variable names.
+- For computer vision, the professor's lecture notes (`course-materials/computer-vision/2004-ApuntesVision.pdf`, in Spanish) are the reference for theory and conventions. Where the slides or the lab code disagree with them, follow the lecture notes and point out the difference. Many of their formulas and figures are images, so render those pages to read them.
 - Never copy slides, lab code or assignment text into `src/`. Summarize concepts in your own words and credit the source.

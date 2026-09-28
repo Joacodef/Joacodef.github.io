@@ -9,8 +9,8 @@ scripts:
 <div class="prose">
   <div class="duo">
     <div>
-      <p class="big"><span class="pt"><i>M</i></span> = <i>S</i><span class="pt"><i>M</i>′</span></p>
-      <p class="cap">A 4 × 4 matrix takes a point from one coordinate system of space to another.</p>
+      <p class="big"><span class="pt"><i>M</i>′</span> = <i>S</i><span class="pt"><i>M</i></span></p>
+      <p class="cap">A 4 × 4 matrix gives a point's coordinates in a new coordinate system of space.</p>
     </div>
     <div>
       <p class="big">λ<span class="pt"><i>m</i></span> = <i>P</i><span class="pt"><i>M</i></span></p>
@@ -25,63 +25,66 @@ scripts:
     <h2><span class="n">1</span>A point in two 3D coordinate systems</h2>
     <p>A point of space with coordinates (<i>X</i>, <i>Y</i>, <i>Z</i>) is written in homogeneous coordinates as in the plane, by appending a 1:</p>
     <div class="disp"><span class="pt"><i>M</i></span> = [<i>X</i>&ensp;<i>Y</i>&ensp;<i>Z</i>&ensp;1]<sup class="t">T</sup></div>
-    <p>Now put a second coordinate system in space, with axes <i>X</i>′, <i>Y</i>′ and <i>Z</i>′, as if it were attached to an object. Its origin sits at <span class="nowrap"><i>t</i> = (<i>t</i><sub><i>X</i></sub>, <i>t</i><sub><i>Y</i></sub>, <i>t</i><sub><i>Z</i></sub>)</span>, and its axes are turned by three angles, ω<sub><i>X</i></sub>, ω<sub><i>Y</i></sub> and ω<sub><i>Z</i></sub>, one about each axis. The same point then has a second set of coordinates, <span class="pt"><i>M</i>′</span> = [<i>X</i>′&ensp;<i>Y</i>′&ensp;<i>Z</i>′&ensp;1]<sup class="t">T</sup>. Six numbers relate the two systems: three for the shift and three for the turn.</p>
+    <p>Now take a second coordinate system, with axes <i>X</i>′, <i>Y</i>′ and <i>Z</i>′, as if it were attached to an object. It comes from the first by turning the axes and moving the origin, so call the first system the old one and the second the new one. The same point has coordinates <span class="pt"><i>M</i>′</span> = [<i>X</i>′&ensp;<i>Y</i>′&ensp;<i>Z</i>′&ensp;1]<sup class="t">T</sup> in the new system. Six numbers relate the two systems: three angles, ω<sub><i>X</i></sub>, ω<sub><i>Y</i></sub> and ω<sub><i>Z</i></sub>, for the turn, and three for the shift.</p>
 
     <h3>The shift</h3>
-    <p>If the axes are not turned, the two sets of coordinates differ only by <i>t</i>:</p>
-    <div class="disp"><span class="nowrap"><i>X</i> = <i>X</i>′ + <i>t</i><sub><i>X</i></sub>,</span>&ensp; <span class="nowrap"><i>Y</i> = <i>Y</i>′ + <i>t</i><sub><i>Y</i></sub>,</span>&ensp; <span class="nowrap"><i>Z</i> = <i>Z</i>′ + <i>t</i><sub><i>Z</i></sub></span></div>
+    <p>If the axes are not turned and the new origin sits at <span class="nowrap"><i>t</i>′ = (<i>t</i>′<sub><i>X</i></sub>, <i>t</i>′<sub><i>Y</i></sub>, <i>t</i>′<sub><i>Z</i></sub>)</span> in the old system, each old coordinate is the new one plus the position of the new origin:</p>
+    <div class="disp"><span class="nowrap"><i>X</i> = <i>X</i>′ + <i>t</i>′<sub><i>X</i></sub>,</span>&ensp; <span class="nowrap"><i>Y</i> = <i>Y</i>′ + <i>t</i>′<sub><i>Y</i></sub>,</span>&ensp; <span class="nowrap"><i>Z</i> = <i>Z</i>′ + <i>t</i>′<sub><i>Z</i></sub></span></div>
     <p>The 1 at the end of <span class="pt"><i>M</i>′</span> turns these three sums into one matrix product:</p>
-    <div class="disp"><span class="nowrap"><span class="col pt"><span><i>X</i></span><span><i>Y</i></span><span><i>Z</i></span><span>1</span></span></span> <span class="nowrap">= <span class="mat" style="--cols: 4"><span>1</span><span>0</span><span>0</span><span><i>t</i><sub><i>X</i></sub></span><span>0</span><span>1</span><span>0</span><span><i>t</i><sub><i>Y</i></sub></span><span>0</span><span>0</span><span>1</span><span><i>t</i><sub><i>Z</i></sub></span><span>0</span><span>0</span><span>0</span><span>1</span></span><span class="col pt"><span><i>X</i>′</span><span><i>Y</i>′</span><span><i>Z</i>′</span><span>1</span></span></span></div>
-    <p>The last column of the matrix is multiplied by that 1, so <i>t</i> is added to every point. Without the fourth component, a shift could not be written as a matrix product, just as in the plane.</p>
+    <div class="disp"><span class="nowrap"><span class="col pt"><span><i>X</i></span><span><i>Y</i></span><span><i>Z</i></span><span>1</span></span></span> <span class="nowrap">= <span class="mat" style="--cols: 4"><span>1</span><span>0</span><span>0</span><span><i>t</i>′<sub><i>X</i></sub></span><span>0</span><span>1</span><span>0</span><span><i>t</i>′<sub><i>Y</i></sub></span><span>0</span><span>0</span><span>1</span><span><i>t</i>′<sub><i>Z</i></sub></span><span>0</span><span>0</span><span>0</span><span>1</span></span><span class="col pt"><span><i>X</i>′</span><span><i>Y</i>′</span><span><i>Z</i>′</span><span>1</span></span></span></div>
+    <p>The last column of the matrix is multiplied by that 1, so <i>t</i>′ is added to every point. Without the fourth component, a shift could not be written as a matrix product, just as in the plane. The other way, the new coordinates are the old ones less <i>t</i>′.</p>
   </div>
 </section>
 
 <section id="axis">
   <div class="prose">
     <h2><span class="n">2</span>Turning about one axis</h2>
-    <p>A turn by ω<sub><i>Z</i></sub> about the <i>Z</i> axis leaves <i>Z</i> unchanged and turns <i>X</i> and <i>Y</i> exactly as a rotation of the plane does:</p>
-    <div class="disp"><span class="nowrap"><i>R</i><sub><i>Z</i></sub> = <span class="mat"><span>cos ω<sub><i>Z</i></sub></span><span>−sin ω<sub><i>Z</i></sub></span><span>0</span><span>sin ω<sub><i>Z</i></sub></span><span>cos ω<sub><i>Z</i></sub></span><span>0</span><span>0</span><span>0</span><span>1</span></span></span></div>
-    <p>If the primed axes are the unprimed ones turned by ω<sub><i>Z</i></sub>, then <span class="nowrap"><span class="pt"><i>M</i></span> = <i>R</i><sub><i>Z</i></sub><span class="pt"><i>M</i>′</span></span>, leaving out the final 1. As in the plane, read the matrix column by column. The first column, (cos ω<sub><i>Z</i></sub>, sin ω<sub><i>Z</i></sub>, 0), is the unit vector of the <i>X</i>′ axis written in <i>X</i>, <i>Y</i> and <i>Z</i>; the second is the unit vector of <i>Y</i>′, and the third that of <i>Z</i>′, which here is <i>Z</i> itself. So <i>R</i><sub><i>Z</i></sub><span class="pt"><i>M</i>′</span> says: walk <i>X</i>′ units along the <i>X</i>′ axis, <i>Y</i>′ units along <i>Y</i>′ and <i>Z</i>′ units along <i>Z</i>′.</p>
-    <p>Positive angles follow the right-hand rule: with the right thumb along the axis, the fingers curl the way a positive angle turns. Seen from the tip of the <i>Z</i> axis, looking back at the origin, a positive ω<sub><i>Z</i></sub> turns <i>X</i> toward <i>Y</i>, counterclockwise.</p>
+    <p>Turn the axes about <i>Z</i> by an angle ω<sub><i>Z</i></sub>. The <i>Z</i> axis stays where it is, and <i>X</i>′ and <i>Y</i>′ are <i>X</i> and <i>Y</i> turned by ω<sub><i>Z</i></sub>, measured from <i>X</i> to <i>X</i>′. Positive angles follow the right-hand rule: with the right thumb along the axis, the fingers curl the way a positive angle turns. Seen from the tip of the <i>Z</i> axis, looking back at the origin, a positive ω<sub><i>Z</i></sub> turns <i>X</i> toward <i>Y</i>, counterclockwise.</p>
+    <p>A point that stays where it is gets new coordinates <span class="nowrap"><span class="pt"><i>M</i>′</span> = <i>R</i><sub><i>Z</i></sub><span class="pt"><i>M</i></span></span>, leaving out the final 1, with</p>
+    <div class="disp"><span class="nowrap"><i>R</i><sub><i>Z</i></sub> = <span class="mat"><span>cos ω<sub><i>Z</i></sub></span><span>sin ω<sub><i>Z</i></sub></span><span>0</span><span>−sin ω<sub><i>Z</i></sub></span><span>cos ω<sub><i>Z</i></sub></span><span>0</span><span>0</span><span>0</span><span>1</span></span></span></div>
+    <p>Each new coordinate is the length of the point's shadow on a new axis, which is a dot product with that axis's unit vector. The unit vector of <i>X</i>′ is (cos ω<sub><i>Z</i></sub>, sin ω<sub><i>Z</i></sub>, 0) in the old system, so <span class="nowrap"><i>X</i>′ = <i>X</i> cos ω<sub><i>Z</i></sub> + <i>Y</i> sin ω<sub><i>Z</i></sub></span>: the first row of <i>R</i><sub><i>Z</i></sub>. The rows of <i>R</i><sub><i>Z</i></sub> are the new axes, written in the old system.</p>
+    <p><i>R</i><sub><i>Z</i></sub> may look like the transpose of the usual rotation matrix, with −sin ω<sub><i>Z</i></sub> above the diagonal, and it is. That matrix turns points; <i>R</i><sub><i>Z</i></sub> keeps the point and turns the axes, and turning the axes by ω<sub><i>Z</i></sub> changes the point's coordinates exactly as turning the point by −ω<sub><i>Z</i></sub> would. The same pair appears in the <a href="/notes/computer-vision/2d-transformations/">note on 2D transformations</a>, as <i>R</i> and <i>R</i>′.</p>
     <p>The turns about the other two axes keep their own axis fixed in the same way:</p>
-    <div class="disp"><span class="nowrap"><i>R</i><sub><i>X</i></sub> = <span class="mat"><span>1</span><span>0</span><span>0</span><span>0</span><span>cos ω<sub><i>X</i></sub></span><span>−sin ω<sub><i>X</i></sub></span><span>0</span><span>sin ω<sub><i>X</i></sub></span><span>cos ω<sub><i>X</i></sub></span></span>,</span>&ensp; <span class="nowrap"><i>R</i><sub><i>Y</i></sub> = <span class="mat"><span>cos ω<sub><i>Y</i></sub></span><span>0</span><span>sin ω<sub><i>Y</i></sub></span><span>0</span><span>1</span><span>0</span><span>−sin ω<sub><i>Y</i></sub></span><span>0</span><span>cos ω<sub><i>Y</i></sub></span></span></span></div>
-    <p>In <i>R</i><sub><i>Y</i></sub> the minus sign sits below the diagonal. The right-hand rule turns <i>Y</i> toward <i>Z</i> about <i>X</i>, <i>Z</i> toward <i>X</i> about <i>Y</i>, and <i>X</i> toward <i>Y</i> about <i>Z</i>, always following the cycle <span class="nowrap"><i>X</i> → <i>Y</i> → <i>Z</i> → <i>X</i></span>. About <i>Y</i>, the turn goes from <i>Z</i> to <i>X</i>, but the matrix lists <i>X</i> before <i>Z</i>, against the cycle, and that swaps the two signs.</p>
+    <div class="disp"><span class="nowrap"><i>R</i><sub><i>X</i></sub> = <span class="mat"><span>1</span><span>0</span><span>0</span><span>0</span><span>cos ω<sub><i>X</i></sub></span><span>sin ω<sub><i>X</i></sub></span><span>0</span><span>−sin ω<sub><i>X</i></sub></span><span>cos ω<sub><i>X</i></sub></span></span>,</span>&ensp; <span class="nowrap"><i>R</i><sub><i>Y</i></sub> = <span class="mat"><span>cos ω<sub><i>Y</i></sub></span><span>0</span><span>−sin ω<sub><i>Y</i></sub></span><span>0</span><span>1</span><span>0</span><span>sin ω<sub><i>Y</i></sub></span><span>0</span><span>cos ω<sub><i>Y</i></sub></span></span></span></div>
+    <p>In <i>R</i><sub><i>Y</i></sub> the minus sign sits above the diagonal. The right-hand rule turns <i>Y</i> toward <i>Z</i> about <i>X</i>, <i>Z</i> toward <i>X</i> about <i>Y</i>, and <i>X</i> toward <i>Y</i> about <i>Z</i>, always following the cycle <span class="nowrap"><i>X</i> → <i>Y</i> → <i>Z</i> → <i>X</i></span>. About <i>Y</i>, the turn goes from <i>Z</i> to <i>X</i>, but the matrix lists <i>X</i> before <i>Z</i>, against the cycle, and that swaps the two signs.</p>
   </div>
 </section>
 
 <section id="rotation">
   <div class="prose">
     <h2><span class="n">3</span>Any rotation from three angles</h2>
-    <p>Turning about all three axes multiplies the three matrices:</p>
+    <p>Turning about all three axes is done one axis at a time: first about <i>Z</i> by ω<sub><i>Z</i></sub>, then about the new <i>Y</i> axis by ω<sub><i>Y</i></sub>, then about the newest <i>X</i> axis by ω<sub><i>X</i></sub>. Each turn converts the coordinates once more, into the axes as turned so far, so the matrices multiply from right to left:</p>
     <div class="disp hero-f"><i>R</i> = <i>R</i><sub><i>X</i></sub><i>R</i><sub><i>Y</i></sub><i>R</i><sub><i>Z</i></sub></div>
-    <p>Multiplied out, every entry mixes sines and cosines of the three angles. The first row, for example, is</p>
-    <div class="disp">[cos ω<sub><i>Y</i></sub> cos ω<sub><i>Z</i></sub>&ensp;−cos ω<sub><i>Y</i></sub> sin ω<sub><i>Z</i></sub>&ensp;sin ω<sub><i>Y</i></sub>]</div>
-    <p>What matters more is how to read the product. Applied to <span class="pt"><i>M</i>′</span>, it acts from right to left: first the turn about <i>Z</i>, then about <i>Y</i>, then about <i>X</i>, each about the fixed axes <i>X</i>, <i>Y</i> and <i>Z</i>. It can also be read from left to right, with axes that move: turn by ω<sub><i>X</i></sub> about <i>X</i>, then by ω<sub><i>Y</i></sub> about the new <i>Y</i> axis, then by ω<sub><i>Z</i></sub> about the newest <i>Z</i> axis. Both readings describe the same <i>R</i>.</p>
-    <p>Either way, the order is part of the definition. Matrix products do not commute, and neither do turns in space: <i>R</i><sub><i>Z</i></sub><i>R</i><sub><i>Y</i></sub><i>R</i><sub><i>X</i></sub>, with the same three angles, is a different rotation. Give a book a quarter turn about one axis and then about another, then try the other order: it ends up facing a different way.</p>
+    <p>For a turn alone, <span class="nowrap"><span class="pt"><i>M</i>′</span> = <i>R</i><span class="pt"><i>M</i></span></span>. Multiplied out, every entry mixes sines and cosines of the three angles. The first row, for example, is</p>
+    <div class="disp">[cos ω<sub><i>Y</i></sub> cos ω<sub><i>Z</i></sub>&ensp;cos ω<sub><i>Y</i></sub> sin ω<sub><i>Z</i></sub>&ensp;−sin ω<sub><i>Y</i></sub>]</div>
+    <p>The order is part of the definition. Matrix products do not commute, and neither do turns in space: give a book a quarter turn about one axis and then about another, then try the other order, and it ends up facing a different way. The same axes can be reached in another order, but with other angles. Turning first by <span class="nowrap">ω<sub><i>Z</i></sub> = 90°</span> and then by <span class="nowrap">ω<sub><i>Y</i></sub> = −90°</span> gives the same axes as turning first by <span class="nowrap">ω<sub><i>X</i></sub> = 90°</span> and then by <span class="nowrap">ω<sub><i>Z</i></sub> = 90°</span>: <span class="nowrap"><i>R</i><sub><i>Y</i></sub>(−90°)<i>R</i><sub><i>Z</i></sub>(90°)</span> <span class="nowrap">= <i>R</i><sub><i>Z</i></sub>(90°)<i>R</i><sub><i>X</i></sub>(90°)</span>.</p>
 
     <h3>Why three numbers are enough</h3>
-    <p>A 3 × 3 matrix has nine entries, but a rotation cannot have just any nine. Its columns are the unit vectors of the turned axes, so each has length 1 and every two of them are perpendicular: three conditions for the lengths and three for the right angles, all written at once as <span class="nowrap"><i>R</i><sup class="t">T</sup><i>R</i> = <i>I</i></span>. Nine entries less six conditions leave three free numbers, and three angles are enough to set them. A mirror satisfies <span class="nowrap"><i>R</i><sup class="t">T</sup><i>R</i> = <i>I</i></span> too, but it turns a right hand into a left hand; rotations are the matrices that also have <span class="nowrap">det <i>R</i> = +1</span>.</p>
-    <p>The same equation says that the inverse of a rotation is its transpose, <i>R</i><sup class="t">T</sup>, just as in the plane.</p>
+    <p>A 3 × 3 matrix has nine entries, but a rotation cannot have just any nine. The rows of <i>R</i> are the unit vectors of the new axes, so each has length 1 and every two of them are perpendicular: three conditions for the lengths and three for the right angles, all written at once as <span class="nowrap"><i>RR</i><sup class="t">T</sup> = <i>I</i></span>. Nine entries less six conditions leave three free numbers, and three angles are enough to set them. A mirror satisfies <span class="nowrap"><i>RR</i><sup class="t">T</sup> = <i>I</i></span> too, but it turns a right hand into a left hand; rotations are the matrices that also have <span class="nowrap">det <i>R</i> = +1</span>. The same equation says that the inverse of <i>R</i> is its transpose.</p>
 
     <h3>Turn and shift in one matrix</h3>
-    <p>With both, <span class="nowrap"><span class="pt"><i>M</i></span> = <i>R</i><span class="pt"><i>M</i>′</span> + <i>t</i></span> in Cartesian coordinates, and in homogeneous coordinates that is one 4 × 4 product:</p>
-    <div class="disp hero-f"><span class="nowrap"><span class="pt"><i>M</i></span> = <i>S</i><span class="pt"><i>M</i>′</span>,</span>&ensp; <span class="nowrap"><i>S</i> = <span class="mat" style="--cols: 2"><span><i>R</i></span><span><i>t</i></span><span>0<sup class="t">T</sup></span><span>1</span></span></span></div>
-    <p>This is the Euclidean transformation of space. It moves space as a rigid piece, so it keeps lengths and angles, and it has six free numbers where its 2D counterpart has three. To go back, undo the shift and then the turn, <span class="nowrap"><span class="pt"><i>M</i>′</span> = <i>R</i><sup class="t">T</sup>(<span class="pt"><i>M</i></span> − <i>t</i>)</span>, that is</p>
-    <div class="disp"><span class="nowrap"><i>S</i><sup class="t">−1</sup> = <span class="mat" style="--cols: 2"><span><i>R</i><sup class="t">T</sup></span><span>−<i>R</i><sup class="t">T</sup><i>t</i></span><span>0<sup class="t">T</sup></span><span>1</span></span></span></div>
+    <p>Now move the origin as well, to <i>t</i>′ in the old system. To find the new coordinates, subtract <i>t</i>′ and turn: <span class="nowrap"><span class="pt"><i>M</i>′</span> = <i>R</i>(<span class="pt"><i>M</i></span> − <i>t</i>′)</span> <span class="nowrap">= <i>R</i><span class="pt"><i>M</i></span> + <i>t</i></span>, with <span class="nowrap"><i>t</i> = −<i>Rt</i>′</span>, which is the old origin written in the new system. In homogeneous coordinates that is one 4 × 4 product:</p>
+    <div class="disp hero-f"><span class="nowrap"><span class="pt"><i>M</i>′</span> = <i>S</i><span class="pt"><i>M</i></span>,</span>&ensp; <span class="nowrap"><i>S</i> = <span class="mat" style="--cols: 2"><span><i>R</i></span><span><i>t</i></span><span>0<sup class="t">T</sup></span><span>1</span></span></span></div>
+    <p>This is the Euclidean transformation of space. It moves space as a rigid piece, so it keeps lengths and angles, and it has six free numbers where its 2D counterpart has three.</p>
+
+    <h3>Going back</h3>
+    <p>To get the old coordinates back, undo the turn and then the shift: <span class="nowrap"><span class="pt"><i>M</i></span> = <i>R</i><sup class="t">T</sup><span class="pt"><i>M</i>′</span> + <i>t</i>′</span>. Writing <span class="nowrap"><i>R</i>′ = <i>R</i><sup class="t">T</sup></span>,</p>
+    <div class="disp hero-f"><span class="nowrap"><span class="pt"><i>M</i></span> = <i>S</i>′<span class="pt"><i>M</i>′</span>,</span>&ensp; <span class="nowrap"><i>S</i>′ = <span class="mat" style="--cols: 2"><span><i>R</i>′</span><span><i>t</i>′</span><span>0<sup class="t">T</sup></span><span>1</span></span></span></div>
+    <p>with <span class="nowrap"><i>t</i>′ = −<i>R</i>′<i>t</i></span>. <i>R</i>′ undoes the three turns in reverse order, each by the opposite angle: <span class="nowrap"><i>R</i>′ = <i>R</i><sub><i>Z</i></sub>(−ω<sub><i>Z</i></sub>)<i>R</i><sub><i>Y</i></sub>(−ω<sub><i>Y</i></sub>)<i>R</i><sub><i>X</i></sub>(−ω<sub><i>X</i></sub>)</span>. Its columns are the new axes written in the old system, so <span class="nowrap"><i>R</i>′<span class="pt"><i>M</i>′</span> + <i>t</i>′</span> reads like the matrix <i>H</i> of the 2D note: start at <i>t</i>′, then walk <i>X</i>′ units along the <i>X</i>′ axis, <i>Y</i>′ units along <i>Y</i>′ and <i>Z</i>′ units along <i>Z</i>′.</p>
 
     <h3>When two angles do the same thing</h3>
-    <p>At <span class="nowrap">ω<sub><i>Y</i></sub> = 90°</span>, the quarter turn about <i>Y</i> lays the <i>Z</i> axis along the <i>X</i> axis, so the turn by ω<sub><i>Z</i></sub> ends up about the same line as the turn by ω<sub><i>X</i></sub>. Only their sum <span class="nowrap">ω<sub><i>X</i></sub> + ω<sub><i>Z</i></sub></span> matters (at −90°, their difference), and one of the three numbers is lost. This is called gimbal lock, and it is one reason why rotations are often stored in other forms than three angles, such as an axis and an angle.</p>
+    <p>At <span class="nowrap">ω<sub><i>Y</i></sub> = 90°</span>, the turn about <i>Y</i> lays the <i>X</i> axis along the <i>Z</i> axis, pointing the opposite way, so the last turn, about <i>X</i>, happens about the same line as the first one, about <i>Z</i>. Only the difference <span class="nowrap">ω<sub><i>X</i></sub> − ω<sub><i>Z</i></sub></span> matters (at −90°, the sum <span class="nowrap">ω<sub><i>X</i></sub> + ω<sub><i>Z</i></sub></span>), and one of the three numbers is lost. This is called gimbal lock, and it is one reason why rotations are often stored in other forms than three angles, such as an axis and an angle.</p>
   </div>
 
   <div class="fig">
-    <svg id="fig-frames" role="group" aria-label="Space with axes X, Y and Z, and a box attached to a second coordinate system with axes X′, Y′ and Z′, shifted by t and turned by three angles. Use the arrow keys to turn the view."></svg>
+    <svg id="fig-frames" role="group" aria-label="Space with axes X, Y and Z, and a box attached to a new coordinate system with axes X′, Y′ and Z′, turned by three angles and with its origin at t′. Use the arrow keys to turn the view."></svg>
     <div class="ro">
       <p class="coef-row"><span class="nowrap">ω<sub><i>X</i></sub> = <span class="coef"><input id="fig-frames-wx" type="number" step="5" min="-180" max="180" value="15" aria-label="ωX, the turn about X, in degrees"></span>°</span>&ensp; <span class="nowrap">ω<sub><i>Y</i></sub> = <span class="coef"><input id="fig-frames-wy" type="number" step="5" min="-180" max="180" value="10" aria-label="ωY, the turn about Y, in degrees"></span>°</span>&ensp; <span class="nowrap">ω<sub><i>Z</i></sub> = <span class="coef"><input id="fig-frames-wz" type="number" step="5" min="-180" max="180" value="0" aria-label="ωZ, the turn about Z, in degrees"></span>°</span></p>
-      <p class="coef-row"><i>t</i> = <span class="col coef"><input id="fig-frames-tx" type="number" step="1" min="-1" max="5" value="1" aria-label="tX, the X coordinate of the box's origin"><input id="fig-frames-ty" type="number" step="1" min="-1" max="5" value="3" aria-label="tY, the Y coordinate of the box's origin"><input id="fig-frames-tz" type="number" step="1" min="-1" max="4" value="2" aria-label="tZ, the Z coordinate of the box's origin"></span></p>
+      <p class="coef-row"><i>t</i>′ = <span class="col coef"><input id="fig-frames-tx" type="number" step="1" min="-1" max="5" value="1" aria-label="t′X, the X coordinate of the box's origin"><input id="fig-frames-ty" type="number" step="1" min="-1" max="5" value="3" aria-label="t′Y, the Y coordinate of the box's origin"><input id="fig-frames-tz" type="number" step="1" min="-1" max="4" value="2" aria-label="t′Z, the Z coordinate of the box's origin"></span></p>
       <div id="fig-frames-out" aria-live="polite"></div>
     </div>
     <div class="fig-foot">
-      <p>Change the angles and the shift, or drag the hollow blue circle to move the box's origin, and drag the background to turn the view. The blue axes <i>X</i>′, <i>Y</i>′ and <i>Z</i>′ point along the columns of <i>R</i>, and the red corner is <span class="pt"><i>M</i>′</span> = (2, 1, 1) in the box's coordinates. With a keyboard, select the figure, the circle or a field with Tab and use the arrow keys.</p>
+      <p>Change the angles and the box's origin <i>t</i>′, or drag the hollow blue circle, and drag the background to turn the view. The blue axes <i>X</i>′, <i>Y</i>′ and <i>Z</i>′ are the rows of <i>R</i>, and the red corner is <span class="pt"><i>M</i>′</span> = (2, 1, 1) in the box's coordinates. With a keyboard, select the figure, the circle or a field with Tab and use the arrow keys.</p>
       <button type="button" class="btn" id="fig-frames-reset">Reset</button>
     </div>
   </div>
@@ -90,7 +93,7 @@ scripts:
 <section id="projection">
   <div class="prose">
     <h2><span class="n">4</span>Perspective projection</h2>
-    <p>A camera turns points of space into points of an image. The simplest model is the pinhole camera: every point <span class="pt"><i>M</i></span> sends a straight ray through one point <i>C</i>, the <em>optical center</em>, and the image is where these rays cross a plane, the <em>image plane</em>. Put the origin of the coordinates at <i>C</i> and the <i>Z</i> axis perpendicular to the image plane. That axis is the <em>optical axis</em>, and the plane sits at <span class="nowrap"><i>Z</i> = <i>f</i></span>, where <i>f</i> is the <em>focal length</em>. The image plane has its own axes <i>x</i> and <i>y</i>, parallel to <i>X</i> and <i>Y</i>, with their origin where the optical axis meets it.</p>
+    <p>A camera turns points of space into points of an image. The simplest model is the pinhole camera: every point <span class="pt"><i>M</i></span> sends a straight ray through one point <i>C</i>, the <em>optical center</em>, and the image is where these rays cross a plane, the <em>image plane</em>. Put the origin of the coordinates at <i>C</i> and the <i>Z</i> axis perpendicular to the image plane. That axis is the <em>optical axis</em>, and the plane sits at <span class="nowrap"><i>Z</i> = <i>f</i></span>, where <i>f</i> is the <em>focal length</em>. The image plane has its own axes <i>x</i> and <i>y</i>, parallel to <i>X</i> and <i>Y</i>, with their origin where the optical axis meets it, a point called the <em>principal point</em>.</p>
     <p>The ray from <i>C</i> through <span class="pt"><i>M</i></span> = (<i>X</i>, <i>Y</i>, <i>Z</i>) meets the plane at <span class="pt"><i>m</i></span> = (<i>x</i>, <i>y</i>). Along the ray, the distance from the optical axis grows in proportion to the depth: sideways it is <i>X</i> at depth <i>Z</i>, and <i>x</i> at depth <i>f</i>. The two right triangles are similar, so</p>
     <div class="disp"><span class="nowrap"><span class="frac"><span><i>Z</i></span><span><i>f</i></span></span> = <span class="frac"><span><i>X</i></span><span><i>x</i></span></span> = <span class="frac"><span><i>Y</i></span><span><i>y</i></span></span></span></div>
     <p>which gives <span class="nowrap"><i>Zx</i> = <i>fX</i></span> and <span class="nowrap"><i>Zy</i> = <i>fY</i></span>, or <span class="nowrap"><i>x</i> = <i>fX</i>/<i>Z</i></span> and <span class="nowrap"><i>y</i> = <i>fY</i>/<i>Z</i></span>. The division by <i>Z</i> is why distant things look small.</p>
@@ -109,6 +112,7 @@ scripts:
 
     <h3>The image behind the center</h3>
     <p>In a real pinhole camera, the image forms behind the hole, on the far side of <i>C</i> from the scene, at <span class="nowrap"><i>Z</i> = −<i>f</i></span>. The rays cross at <i>C</i>, so a point above the axis lands below it and a point on the left lands on the right: the image is upside down. The same triangles give <span class="nowrap"><i>x</i> = −<i>fX</i>/<i>Z</i></span> and <span class="nowrap"><i>y</i> = −<i>fY</i>/<i>Z</i></span>, so <i>P</i> gets −<i>f</i> in place of <i>f</i>. The model puts the plane in front of <i>C</i> instead, where it catches the same rays without the flip, and that is why <i>P</i> usually has +<i>f</i>.</p>
+    <p>X-ray imaging fits the model with +<i>f</i> as it stands. The X-ray source plays the part of the optical center, and the object lies between the source and the detector, which is the image plane.</p>
   </div>
 
   <div class="fig">
@@ -131,23 +135,23 @@ scripts:
 <section id="world">
   <div class="prose">
     <h2><span class="n">5</span>A point given in another coordinate system</h2>
-    <p>The projection needs <span class="pt"><i>M</i></span> in the camera's coordinates, with <i>C</i> at the origin and <i>Z</i> along the optical axis. Points are rarely known that way: they are measured on an object, or in a room, in a coordinate system of their own. If <span class="pt"><i>M</i>′</span> are the coordinates of a point in that system, and <i>S</i> is the Euclidean transformation of section 3 that takes them to the camera's, then <span class="nowrap"><span class="pt"><i>M</i></span> = <i>S</i><span class="pt"><i>M</i>′</span></span>, and</p>
-    <div class="disp hero-f">λ<span class="pt"><i>m</i></span> = <i>PS</i><span class="pt"><i>M</i>′</span></div>
-    <p>Read it from right to left: first move the point into the camera's coordinates, then project it. The product <i>PS</i> is a single 3 × 4 matrix, and its third row gives λ, the depth of the point in front of the camera.</p>
+    <p>The projection needs <span class="pt"><i>M</i></span> in the camera's coordinates, with <i>C</i> at the origin and <i>Z</i> along the optical axis. Points are rarely known that way: they are measured on an object, or in a room, in a coordinate system of their own. Take the camera's system as the old one, with axes <i>X</i>, <i>Y</i> and <i>Z</i>, and the object's as the new one, with axes <i>X</i>′, <i>Y</i>′ and <i>Z</i>′. Then the columns of <i>R</i>′ are the object's axes seen from the camera, and <i>t</i>′ is where the camera sees the object's origin. A point with coordinates <span class="pt"><i>M</i>′</span> on the object is at <span class="nowrap"><span class="pt"><i>M</i></span> = <i>S</i>′<span class="pt"><i>M</i>′</span></span> in the camera's system, as in section 3, and</p>
+    <div class="disp hero-f">λ<span class="pt"><i>m</i></span> = <i>PS</i>′<span class="pt"><i>M</i>′</span></div>
+    <p>Read it from right to left: first move the point into the camera's coordinates, then project it. The product <i>PS</i>′ is a single 3 × 4 matrix, and its third row gives λ, the depth of the point in front of the camera.</p>
   </div>
 </section>
 
 <section id="pixels">
   <div class="prose">
     <h2><span class="n">6</span>From millimeters to pixels</h2>
-    <p>The coordinates (<i>x</i>, <i>y</i>) of <span class="pt"><i>m</i></span> are lengths on the image plane, say in millimeters, measured from where the optical axis meets it. An image is read in pixels instead: <i>u</i> counts columns to the right and <i>v</i> counts rows downward, from the top left corner. Write <span class="nowrap"><span class="pt"><i>w</i></span> = [<i>u</i>&ensp;<i>v</i>&ensp;1]<sup class="t">T</sup></span> for the same point in pixels.</p>
-    <p>To keep the two systems aligned, the camera's axes are chosen along the sensor: <i>X</i> and <i>x</i> point right, along the rows, and <i>Y</i> and <i>y</i> point down, along the columns. With <i>Z</i> pointing forward, into the scene, the three axes make a right-handed system. Then no turn is needed between (<i>x</i>, <i>y</i>) and (<i>u</i>, <i>v</i>): any turn of the camera is already in <i>S</i>. What is left takes three steps.</p>
-    <p><b>Shift.</b> The optical axis meets the sensor at some pixel (<i>u</i><sub>0</sub>, <i>v</i><sub>0</sub>), usually near the center of the image, not at the corner where <i>u</i> and <i>v</i> start. Adding <i>u</i><sub>0</sub> and <i>v</i><sub>0</sub> is not enough on its own, though, since <i>x</i> and <i>y</i> are millimeters and <i>u</i> and <i>v</i> are pixels.</p>
+    <p>The coordinates (<i>x</i>, <i>y</i>) of <span class="pt"><i>m</i></span> are lengths on the image plane, say in millimeters, measured from the principal point. An image is read in pixels instead: <i>u</i> counts columns to the right and <i>v</i> counts rows downward, from the top left corner. Write <span class="nowrap"><span class="pt"><i>w</i></span> = [<i>u</i>&ensp;<i>v</i>&ensp;1]<sup class="t">T</sup></span> for the same point in pixels.</p>
+    <p>To keep the two systems aligned, the camera's axes are chosen along the sensor: <i>X</i> and <i>x</i> point right, along the rows, and <i>Y</i> and <i>y</i> point down, along the columns. With <i>Z</i> pointing forward, into the scene, the three axes make a right-handed system. Then no turn is needed between (<i>x</i>, <i>y</i>) and (<i>u</i>, <i>v</i>): any turn of the camera is already in <i>S</i>′. What is left takes three steps.</p>
+    <p><b>Shift.</b> The principal point falls on some pixel (<i>u</i><sub>0</sub>, <i>v</i><sub>0</sub>), usually near the center of the image, not at the corner where <i>u</i> and <i>v</i> start. Adding <i>u</i><sub>0</sub> and <i>v</i><sub>0</sub> is not enough on its own, though, since <i>x</i> and <i>y</i> are millimeters and <i>u</i> and <i>v</i> are pixels.</p>
     <p><b>Scale.</b> The sensor has α<sub><i>x</i></sub> pixels per millimeter along <i>x</i> and α<sub><i>y</i></sub> along <i>y</i>, so <span class="nowrap"><i>u</i> = α<sub><i>x</i></sub><i>x</i> + <i>u</i><sub>0</sub></span> and <span class="nowrap"><i>v</i> = α<sub><i>y</i></sub><i>y</i> + <i>v</i><sub>0</sub></span>. The two scales differ when the pixels are not square.</p>
     <p><b>Skew.</b> If the rows and columns of the sensor are not exactly perpendicular, a step along <i>y</i> also moves across columns, which adds a term <i>sy</i> to <i>u</i>. For most cameras <i>s</i> is 0 or very close to it.</p>
     <p>Together:</p>
     <div class="disp hero-f"><span class="nowrap"><span class="pt"><i>w</i></span> = <i>K</i><span class="pt"><i>m</i></span>,</span>&ensp; <span class="nowrap"><i>K</i> = <span class="mat"><span>α<sub><i>x</i></sub></span><span><i>s</i></span><span><i>u</i><sub>0</sub></span><span>0</span><span>α<sub><i>y</i></sub></span><span><i>v</i><sub>0</sub></span><span>0</span><span>0</span><span>1</span></span></span></div>
-    <p>With its bottom row [0&ensp;0&ensp;1], <i>K</i> is an affine transformation of the image plane, of the kind in the <a href="/notes/computer-vision/2d-transformations/">note on 2D transformations</a>, so it keeps parallel lines. Its five numbers depend only on the camera: the size and layout of its pixels, and where its optical axis meets the sensor.</p>
+    <p><i>K</i> is called the camera's <em>calibration matrix</em>. With its bottom row [0&ensp;0&ensp;1], it is an affine transformation of the image plane, of the kind in the <a href="/notes/computer-vision/2d-transformations/">note on 2D transformations</a>, so it keeps parallel lines. Its five numbers depend only on the camera: the size and layout of its pixels, and where its optical axis meets the sensor.</p>
   </div>
 </section>
 
@@ -155,12 +159,12 @@ scripts:
   <div class="prose">
     <h2><span class="n">7</span>The camera model</h2>
     <p>Putting the steps together: move the point into the camera's coordinates, project it, and convert to pixels.</p>
-    <div class="disp hero-f">λ<span class="pt"><i>w</i></span> = <i>KPS</i><span class="pt"><i>M</i>′</span></div>
+    <div class="disp hero-f">λ<span class="pt"><i>w</i></span> = <i>KPS</i>′<span class="pt"><i>M</i>′</span></div>
     <p>Multiplying <i>K</i> by <i>P</i> gives</p>
     <div class="disp"><span class="nowrap"><i>KP</i> = <span class="mat" style="--cols: 4"><span><i>f</i>α<sub><i>x</i></sub></span><span><i>fs</i></span><span><i>u</i><sub>0</sub></span><span>0</span><span>0</span><span><i>f</i>α<sub><i>y</i></sub></span><span><i>v</i><sub>0</sub></span><span>0</span><span>0</span><span>0</span><span>1</span><span>0</span></span></span> <span class="nowrap">= <span class="mat" style="--cols: 4"><span>α</span><span>γ</span><span><i>u</i><sub>0</sub></span><span>0</span><span>0</span><span>β</span><span><i>v</i><sub>0</sub></span><span>0</span><span>0</span><span>0</span><span>1</span><span>0</span></span></span></div>
     <p>The focal length never appears alone, only multiplied by α<sub><i>x</i></sub>, α<sub><i>y</i></sub> and <i>s</i>. A lens twice as long with pixels twice as large gives exactly the same image, so images can only tell the products, and they get names of their own: <span class="nowrap">α = <i>f</i>α<sub><i>x</i></sub></span>, <span class="nowrap">β = <i>f</i>α<sub><i>y</i></sub></span> and <span class="nowrap">γ = <i>fs</i></span>.</p>
-    <p>So a camera is described by eleven numbers. Five are <em>intrinsic parameters</em>, α, β, γ, <i>u</i><sub>0</sub> and <i>v</i><sub>0</sub>, which belong to the camera itself. Six are <em>extrinsic parameters</em>, ω<sub><i>X</i></sub>, ω<sub><i>Y</i></sub>, ω<sub><i>Z</i></sub>, <i>t</i><sub><i>X</i></sub>, <i>t</i><sub><i>Y</i></sub> and <i>t</i><sub><i>Z</i></sub>, which say where the camera is and which way it points. The count agrees with the matrix: the whole product <i>KPS</i> is a 3 × 4 matrix with twelve entries, and, as in any homogeneous equation, multiplying it by a number changes nothing, which leaves eleven.</p>
-    <p>This 3 × 4 matrix is itself called the projection matrix, and is usually written <i>P</i> as well, so that <span class="nowrap">λ<span class="pt"><i>w</i></span> = <i>P</i><span class="pt"><i>M</i>′</span></span>. The simple <i>P</i> of section 4 is the case <span class="nowrap"><i>K</i> = <i>I</i></span> and <span class="nowrap"><i>S</i> = <i>I</i></span>. Finding the eleven numbers from images of known points is called camera calibration.</p>
+    <p>So a camera is described by eleven numbers. Five are <em>intrinsic parameters</em>, α, β, γ, <i>u</i><sub>0</sub> and <i>v</i><sub>0</sub>, which belong to the camera itself. Six are <em>extrinsic parameters</em>, the angles ω<sub><i>X</i></sub>, ω<sub><i>Y</i></sub>, ω<sub><i>Z</i></sub> and the three components of <i>t</i>′, which say where the camera stands and which way it points, relative to the object. The count agrees with the matrix: the whole product <i>KPS</i>′ is a 3 × 4 matrix with twelve entries, and, as in any homogeneous equation, multiplying it by a number changes nothing, which leaves eleven.</p>
+    <p>This product is called the general projection matrix. It is often written <i>P</i> as well, and <i>A</i>, <i>B</i>, <i>C</i>, … when several cameras look at the same scene. The simple <i>P</i> of section 4 is the case <span class="nowrap"><i>K</i> = <i>I</i></span> and <span class="nowrap"><i>S</i>′ = <i>I</i></span>. Finding the eleven numbers from images of known points is called camera calibration.</p>
   </div>
 </section>
 
@@ -169,18 +173,18 @@ scripts:
     <h2><span class="n">8</span>A worked example</h2>
     <p>The example has two parts: a point moved between two coordinate systems of space, and a point projected onto an image. Lengths are in centimeters.</p>
     <ol class="steps">
-      <li><b>The setup.</b> A corner of a box has coordinates <span class="nowrap"><span class="pt"><i>M</i>′</span> = <span class="pt">[2&ensp;1&ensp;1&ensp;1]<sup class="t">T</sup></span></span> in the box's own coordinate system. That system is turned by <span class="nowrap">ω<sub><i>X</i></sub> = 15°</span>, <span class="nowrap">ω<sub><i>Y</i></sub> = 10°</span> and <span class="nowrap">ω<sub><i>Z</i></sub> = 0°</span>, and its origin is at <span class="nowrap"><i>t</i> = (1, 3, 2)</span>. Where is the corner in <i>X</i>, <i>Y</i> and <i>Z</i>?</li>
+      <li><b>The setup.</b> A box has its own coordinate system, turned from <i>X</i>, <i>Y</i>, <i>Z</i> first by <span class="nowrap">ω<sub><i>Z</i></sub> = 0°</span>, then by <span class="nowrap">ω<sub><i>Y</i></sub> = 10°</span> and then by <span class="nowrap">ω<sub><i>X</i></sub> = 15°</span>, with its origin at <span class="nowrap"><i>t</i>′ = (1, 3, 2)</span>. A corner of the box has coordinates <span class="nowrap"><span class="pt"><i>M</i>′</span> = <span class="pt">[2&ensp;1&ensp;1&ensp;1]<sup class="t">T</sup></span></span> in the box's system. Where is it in <i>X</i>, <i>Y</i> and <i>Z</i>?</li>
       <li><b>The turns.</b> With <span class="nowrap">cos 15° ≈ 0.9659</span>, <span class="nowrap">sin 15° ≈ 0.2588</span>, <span class="nowrap">cos 10° ≈ 0.9848</span> and <span class="nowrap">sin 10° ≈ 0.1736</span>, and <span class="nowrap"><i>R</i><sub><i>Z</i></sub> = <i>I</i></span> because <span class="nowrap">ω<sub><i>Z</i></sub> = 0</span>:
-        <span class="f"><span class="nowrap"><i>R</i><sub><i>X</i></sub> ≈ <span class="mat"><span>1</span><span>0</span><span>0</span><span>0</span><span>0.9659</span><span>−0.2588</span><span>0</span><span>0.2588</span><span>0.9659</span></span>,</span>&ensp; <span class="nowrap"><i>R</i><sub><i>Y</i></sub> ≈ <span class="mat"><span>0.9848</span><span>0</span><span>0.1736</span><span>0</span><span>1</span><span>0</span><span>−0.1736</span><span>0</span><span>0.9848</span></span></span></span></li>
-      <li><b>Their product.</b>
-        <span class="f"><span class="nowrap"><i>R</i> = <i>R</i><sub><i>X</i></sub><i>R</i><sub><i>Y</i></sub></span> <span class="nowrap">≈ <span class="mat"><span>0.9848</span><span>0</span><span>0.1736</span><span>0.0449</span><span>0.9659</span><span>−0.2549</span><span>−0.1677</span><span>0.2588</span><span>0.9513</span></span></span></span></li>
-      <li><b>Turn, then shift.</b>
-        <span class="f"><span class="nowrap"><i>R</i><span class="col pt"><span>2</span><span>1</span><span>1</span></span> ≈ <span class="col"><span>2.1433</span><span>0.8009</span><span>0.8746</span></span>,</span>&ensp; <span class="nowrap"><span class="pt"><i>M</i></span> = <i>R</i><span class="pt"><i>M</i>′</span> + <i>t</i></span> <span class="nowrap">≈ <span class="col pt"><span>3.1433</span><span>3.8009</span><span>2.8746</span></span></span></span>
-        so the corner is at <span class="pt nowrap">(3.1433, 3.8009, 2.8746)</span>.</li>
-      <li><b>Check the length.</b> A rotation keeps lengths, so <span class="pt"><i>M</i></span> is as far from <i>t</i> as <span class="pt"><i>M</i>′</span> is from its origin:
-        <span class="f"><span class="nowrap">‖<span class="pt"><i>M</i></span> − <i>t</i>‖</span> <span class="nowrap">≈ √(2.1433² + 0.8009² + 0.8746²)</span> <span class="nowrap">≈ 2.449,</span><br><span class="nowrap">‖<span class="pt"><i>M</i>′</span>‖ = √(2² + 1² + 1²)</span> <span class="nowrap">= √6 ≈ 2.449</span> <span class="ok">✓</span></span>
-        Going back, <span class="nowrap"><i>R</i><sup class="t">T</sup>(<span class="pt"><i>M</i></span> − <i>t</i>)</span> gives (2, 1, 1) again.</li>
-      <li><b>Check the order.</b> In the other order, <i>R</i><sub><i>Y</i></sub><i>R</i><sub><i>X</i></sub>, the same angles put the corner at <span class="pt nowrap">(3.1823, 3.7071, 2.8588)</span>. Even small turns do not commute.</li>
+        <span class="f"><span class="nowrap"><i>R</i><sub><i>X</i></sub> ≈ <span class="mat"><span>1</span><span>0</span><span>0</span><span>0</span><span>0.9659</span><span>0.2588</span><span>0</span><span>−0.2588</span><span>0.9659</span></span>,</span>&ensp; <span class="nowrap"><i>R</i><sub><i>Y</i></sub> ≈ <span class="mat"><span>0.9848</span><span>0</span><span>−0.1736</span><span>0</span><span>1</span><span>0</span><span>0.1736</span><span>0</span><span>0.9848</span></span></span></span></li>
+      <li><b>Their product.</b> Its rows are the box's axes, written in <i>X</i>, <i>Y</i> and <i>Z</i>:
+        <span class="f"><span class="nowrap"><i>R</i> = <i>R</i><sub><i>X</i></sub><i>R</i><sub><i>Y</i></sub></span> <span class="nowrap">≈ <span class="mat"><span>0.9848</span><span>0</span><span>−0.1736</span><span>0.0449</span><span>0.9659</span><span>0.2549</span><span>0.1677</span><span>−0.2588</span><span>0.9513</span></span></span></span></li>
+      <li><b>Back to <i>X</i>, <i>Y</i> and <i>Z</i>.</b> With <span class="nowrap"><i>R</i>′ = <i>R</i><sup class="t">T</sup></span>:
+        <span class="f"><span class="nowrap"><i>R</i>′<span class="col pt"><span>2</span><span>1</span><span>1</span></span> ≈ <span class="col"><span>2.1823</span><span>0.7071</span><span>0.8588</span></span>,</span>&ensp; <span class="nowrap"><span class="pt"><i>M</i></span> = <i>R</i>′<span class="pt"><i>M</i>′</span> + <i>t</i>′</span> <span class="nowrap">≈ <span class="col pt"><span>3.1823</span><span>3.7071</span><span>2.8588</span></span></span></span>
+        so the corner is at <span class="pt nowrap">(3.1823, 3.7071, 2.8588)</span>.</li>
+      <li><b>Check the length.</b> A rotation keeps lengths, so <span class="pt"><i>M</i></span> is as far from <i>t</i>′ as <span class="pt"><i>M</i>′</span> is from the box's origin:
+        <span class="f"><span class="nowrap">‖<span class="pt"><i>M</i></span> − <i>t</i>′‖</span> <span class="nowrap">≈ √(2.1823² + 0.7071² + 0.8588²)</span> <span class="nowrap">≈ 2.449,</span><br><span class="nowrap">‖<span class="pt"><i>M</i>′</span>‖ = √(2² + 1² + 1²)</span> <span class="nowrap">= √6 ≈ 2.449</span> <span class="ok">✓</span></span></li>
+      <li><b>Go forward again.</b> The old origin, written in the box's system, is <span class="nowrap"><i>t</i> = −<i>Rt</i>′</span> <span class="nowrap">≈ (−0.6375, −3.4525, −1.2938)</span>, and <span class="nowrap"><span class="pt"><i>M</i>′</span> = <i>R</i><span class="pt"><i>M</i></span> + <i>t</i></span> gives back (2, 1, 1).</li>
+      <li><b>Check the order.</b> Turning in the other order, first about <i>X</i>, then <i>Y</i>, then <i>Z</i>, so that <span class="nowrap"><i>R</i> = <i>R</i><sub><i>Z</i></sub><i>R</i><sub><i>Y</i></sub><i>R</i><sub><i>X</i></sub></span>, would put the corner at <span class="pt nowrap">(3.1433, 3.8009, 2.8746)</span>. Even small turns do not commute.</li>
       <li><b>Project a point.</b> Now a camera with <span class="nowrap"><i>f</i> = 100</span> sees the point <span class="nowrap"><span class="pt"><i>M</i></span> = (20, 30, 50)</span>, given in the camera's coordinates:
         <span class="f"><span class="nowrap"><i>P</i><span class="pt"><i>M</i></span> = <span class="mat" style="--cols: 4"><span>100</span><span>0</span><span>0</span><span>0</span><span>0</span><span>100</span><span>0</span><span>0</span><span>0</span><span>0</span><span>1</span><span>0</span></span><span class="col pt"><span>20</span><span>30</span><span>50</span><span>1</span></span></span> <span class="nowrap">= <span class="col pt"><span>2000</span><span>3000</span><span>50</span></span></span></span></li>
       <li><b>Divide by λ.</b> Here <span class="nowrap">λ = <i>Z</i> = 50</span>:
@@ -198,29 +202,24 @@ scripts:
   </div>
   <div class="sum">
     <div class="sum-row">
-      <div class="k">Turn about one axis</div>
-      <div class="f"><i>R</i><sub><i>Z</i></sub> = [cos ω<sub><i>Z</i></sub>&ensp;−sin ω<sub><i>Z</i></sub>&ensp;0;&ensp;sin ω<sub><i>Z</i></sub>&ensp;cos ω<sub><i>Z</i></sub>&ensp;0;&ensp;0&ensp;0&ensp;1]</div>
-      <div class="c"><code>Rz = np.array([</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;[np.cos(wz), -np.sin(wz), 0],</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;[np.sin(wz), np.cos(wz), 0],</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;[0, 0, 1]])</code></div>
+      <div class="k">Turn the axes about <i>Z</i></div>
+      <div class="f"><i>R</i><sub><i>Z</i></sub> = [cos ω<sub><i>Z</i></sub>&ensp;sin ω<sub><i>Z</i></sub>&ensp;0;&ensp;−sin ω<sub><i>Z</i></sub>&ensp;cos ω<sub><i>Z</i></sub>&ensp;0;&ensp;0&ensp;0&ensp;1]</div>
+      <div class="c"><code>Rz = np.array([</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;[np.cos(wz), np.sin(wz), 0],</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;[-np.sin(wz), np.cos(wz), 0],</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;[0, 0, 1]])</code></div>
     </div>
     <div class="sum-row">
-      <div class="k">Any rotation</div>
+      <div class="k">Three angles: <i>Z</i>, then <i>Y</i>, then <i>X</i></div>
       <div class="f"><i>R</i> = <i>R</i><sub><i>X</i></sub><i>R</i><sub><i>Y</i></sub><i>R</i><sub><i>Z</i></sub></div>
       <div class="c"><code>R = Rx @ Ry @ Rz</code></div>
     </div>
     <div class="sum-row">
-      <div class="k">Euclidean transformation</div>
-      <div class="f"><i>S</i> = [<i>R</i>&ensp;<i>t</i>;&ensp;0<sup class="t">T</sup>&ensp;1]</div>
-      <div class="c"><code>S = np.block([[R, t.reshape(3, 1)],</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;[0, 0, 0, 1]])</code></div>
+      <div class="k">New coordinates</div>
+      <div class="f"><span class="pt"><i>M</i>′</span> = <i>S</i><span class="pt"><i>M</i></span>,&ensp;<i>S</i> = [<i>R</i>&ensp;<i>t</i>;&ensp;0<sup class="t">T</sup>&ensp;1]</div>
+      <div class="c"><code>S = np.block([[R, t.reshape(3, 1)],</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;[0, 0, 0, 1]])</code><br><code>Mp = S @ M</code></div>
     </div>
     <div class="sum-row">
-      <div class="k">Change of coordinates</div>
-      <div class="f"><span class="pt"><i>M</i></span> = <i>S</i><span class="pt"><i>M</i>′</span></div>
-      <div class="c"><code>M = S @ Mp</code></div>
-    </div>
-    <div class="sum-row">
-      <div class="k">Going back</div>
-      <div class="f"><span class="pt"><i>M</i>′</span> = <i>S</i><sup class="t">−1</sup><span class="pt"><i>M</i></span></div>
-      <div class="c"><code>Mp = np.linalg.inv(S) @ M</code></div>
+      <div class="k">Back to the old system</div>
+      <div class="f"><span class="pt"><i>M</i></span> = <i>S</i>′<span class="pt"><i>M</i>′</span>,&ensp;<i>R</i>′ = <i>R</i><sup class="t">T</sup>,&ensp;<i>t</i>′ = −<i>R</i>′<i>t</i></div>
+      <div class="c"><code>Sp = np.linalg.inv(S)</code><br><code>M = Sp @ Mp</code></div>
     </div>
     <div class="sum-row">
       <div class="k">Perspective projection</div>
@@ -234,8 +233,8 @@ scripts:
     </div>
     <div class="sum-row">
       <div class="k">Camera model</div>
-      <div class="f">λ<span class="pt"><i>w</i></span> = <i>KPS</i><span class="pt"><i>M</i>′</span></div>
-      <div class="c"><code>w = K @ P @ S @ Mp</code><br><code>w = w / w[2]</code></div>
+      <div class="f">λ<span class="pt"><i>w</i></span> = <i>KPS</i>′<span class="pt"><i>M</i>′</span></div>
+      <div class="c"><code>w = K @ P @ Sp @ Mp</code><br><code>w = w / w[2]</code></div>
     </div>
   </div>
 </section>

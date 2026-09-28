@@ -1,4 +1,4 @@
-import { createSpace, makeHandle, makeDraggable, apply, matMul, dot, rotX, rotY, rotZ, rotation3d, fmt, sym, col, mat, frac, modeButtons, wholeNumberInput, mathLabel, markBox, placeClear, stepRange, clampTo } from "../plane.js";
+import { createSpace, makeHandle, makeDraggable, apply, matMul, transpose, dot, rotX, rotY, rotZ, rotation3d, fmt, T, sym, col, mat, frac, modeButtons, wholeNumberInput, mathLabel, markBox, placeClear, stepRange, clampTo } from "../plane.js";
 
 const rad = (d) => (d * Math.PI) / 180;
 const add = (a, b) => a.map((x, i) => x + b[i]);
@@ -18,7 +18,8 @@ const R_ = (a) => `<i>R</i><sub><i>${a}</i></sub>`;
 const w_ = (a) => `ω<sub><i>${a}</i></sub>`;
 const Mh = sym("M", "", "pt"), MPh = '<span class="pt"><i>M</i>′</span>', mh = sym("m", "", "pt");
 
-/* Figure 1: a point in two coordinate systems of space, M = RM′ + t, with a box attached to the primed axes */
+/* Figure 1: a point in two coordinate systems of space. The box is attached to the new axes X′, Y′, Z′, turned from
+   X, Y, Z first about Z, then Y, then X, with the new origin at t′. The corner M′ = (2, 1, 1) is found at M = R′M′ + t′. */
 function twoFrames() {
   const svg = document.getElementById("fig-frames");
   const out = document.getElementById("fig-frames-out");
@@ -32,8 +33,9 @@ function twoFrames() {
   const S = createSpace(svg, { scale: 44, pivot: [2, 2, 1.5], yaw: VIEW[0], pitch: VIEW[1], yawRange: [-150, 60] });
   const LO = [-1, -1, -1], HI = [5, 5, 4];
   // The box is 2 × 1 × 1 along X′, Y′ and Z′, and M′ = (2, 1, 1) is its far corner. The primed axes reach past it.
+  // tp is t′, the new origin written in the old system.
   const SIZE = [2, 1, 1], AXIS = [2.8, 1.8, 1.8], MP = [2, 1, 1];
-  const initial = { w: [15, 10, 0], t: [1, 3, 2] };
+  const initial = { w: [15, 10, 0], tp: [1, 3, 2] };
   let st = structuredClone(initial);
   let refused = "";   // why the last change was not made, if it was not
 
@@ -60,15 +62,17 @@ function twoFrames() {
   const axisExt = [0, 1, 2].map(() => S.el("line", { class: "ln-path" }, marks));
   const dotM = S.el("circle", { r: 7, class: "pt-dot" }, marks);
   const axisLabs = AX.map((n) => mathLabel(labels, "ln-lab", [[n, true], ["′"]]));
-  const labT = mathLabel(labels, "ln-lab", [["t", true]]);
+  const labT = mathLabel(labels, "ln-lab", [["t", true], ["′"]]);
   const labM = mathLabel(labels, "pt-lab", [["M", true]]);
   const hT = makeHandle(handles, "grip");
 
+  // R gives new coordinates from old ones, so its rows are the new axes written in the old system, and
+  // R′ = Rᵀ takes a point of the box back to the old system.
   function geometry(s) {
-    const R = tidy(rotation3d(...s.w.map(rad)));
-    const corner = (ix) => add(s.t, apply(R, ix.map((v, i) => v * SIZE[i])));
-    const axisEnd = (a) => add(s.t, R.map((r) => r[a] * AXIS[a]));
-    return { R, corner, axisEnd };
+    const R = tidy(rotation3d(...s.w.map(rad))), Rp = transpose(R);
+    const corner = (ix) => add(s.tp, apply(Rp, ix.map((v, i) => v * SIZE[i])));
+    const axisEnd = (a) => add(s.tp, times(R[a], AXIS[a]));
+    return { R, Rp, corner, axisEnd };
   }
   const inside = (p) => p.every((v, i) => v > LO[i] - 1e-9 && v < HI[i] + 1e-9);
   function fits(s) {
@@ -89,20 +93,20 @@ function twoFrames() {
     set: (v) => { const w = [...st.w]; w[i] = v; tryState({ ...st, w }, keep(w_(AX[i]), v, st.w[i], "°")); },
   }));
   const showT = tIn.map((inp, i) => wholeNumberInput(inp, {
-    min: LO[i], max: HI[i], get: () => st.t[i],
-    set: (v) => { const t = [...st.t]; t[i] = v; tryState({ ...st, t }, keep(`<i>t</i><sub><i>${AX[i]}</i></sub>`, v, st.t[i], "")); },
+    min: LO[i], max: HI[i], get: () => st.tp[i],
+    set: (v) => { const tp = [...st.tp]; tp[i] = v; tryState({ ...st, tp }, keep(`<i>t</i>′<sub><i>${AX[i]}</i></sub>`, v, st.tp[i], "")); },
   }));
 
   function render() {
     showW.forEach((sh, i) => sh(st.w[i]));
-    showT.forEach((sh, i) => sh(st.t[i]));
-    const { R, corner, axisEnd } = geometry(st);
-    const cols = [0, 1, 2].map((a) => R.map((r) => r[a]));
+    showT.forEach((sh, i) => sh(st.tp[i]));
+    const { R, Rp, corner, axisEnd } = geometry(st);
+    const axes = R;   // the unit vectors of X′, Y′ and Z′, written in X, Y, Z
 
     // A face whose outward normal points at the reader is in front; an edge between two faces that both point
     // away is hidden, and dashed. The three edges from the primed origin lie on the primed axes.
     const view = S.toward();
-    const facing = cols.map((c) => { const d = dot(c, view); return [d < 0, d > 0]; });
+    const facing = axes.map((u) => { const d = dot(u, view); return [d < 0, d > 0]; });
     FACES.forEach(({ a, s, corners }, n) => {
       S.setPoly(faceEls[n], corners.map(corner));
       (facing[a][s] ? front : back).appendChild(faceEls[n]);
@@ -114,9 +118,9 @@ function twoFrames() {
       S.setLine(edgeEls[n], corner(from), corner(to));
       (hidden ? back : front).appendChild(edgeEls[n]);
     });
-    cols.forEach((c, a) => {
-      S.setLine(axisExt[a], add(st.t, times(c, SIZE[a])), axisEnd(a));
-      const o = S.offset(c);
+    axes.forEach((u, a) => {
+      S.setLine(axisExt[a], add(st.tp, times(u, SIZE[a])), axisEnd(a));
+      const o = S.offset(u);
       S.placeLabel(axisLabs[a], axisEnd(a), Math.hypot(...o) > 8 ? o : [1, -1], 15);
     });
 
@@ -127,46 +131,49 @@ function twoFrames() {
     dotM.setAttribute("cx", mx); dotM.setAttribute("cy", my);
     S.placeLabel(labM, M, S.offset(sub(M, corner([0.5, 0.5, 0.5]))), 20);
 
-    const zero = st.t.every((v) => v === 0);
+    const zero = st.tp.every((v) => v === 0);
     show([tLine, labT], !zero);
     if (!zero) {
-      S.setLine(tLine, [0, 0, 0], st.t);
-      placeClear(S, labT, times(st.t, 0.5), 16, S.offset(st.t), [...fixed, labM].map((l) => l.getBBox()));
+      S.setLine(tLine, [0, 0, 0], st.tp);
+      placeClear(S, labT, times(st.tp, 0.5), 16, S.offset(st.tp), [...fixed, labM].map((l) => l.getBBox()));
     }
-    S.place(hT, st.t);
-    hT.setAttribute("aria-label", `Origin of the box's coordinate system at t = (${list(st.t)}). Use the arrow keys to move it across the level plane Z = ${fmt(st.t[2])}.`);
+    S.place(hT, st.tp);
+    hT.setAttribute("aria-label", `Origin of the box's coordinate system at t′ = (${list(st.tp)}). Use the arrow keys to move it across the level plane Z = ${fmt(st.tp[2])}.`);
 
     // The readout, with the numbers shown to 4 decimals.
-    const RM = apply(R, MP), Mv = add(RM, st.t);
+    const RpM = apply(Rp, MP), Mv = add(RpM, st.tp);
     const approxR = R.flat().some((v) => rounded(v, 4)) ? "≈" : "=";
-    const approxM = [...RM, ...Mv].some((v) => rounded(v, 4)) ? "≈" : "=";
+    const approxM = [...RpM, ...Mv].some((v) => rounded(v, 4)) ? "≈" : "=";
     let html = '<span class="lbl">The rotation</span>';
     html += `<p class="eq"><span class="nowrap"><i>R</i> = ${R_("X")}${R_("Y")}${R_("Z")}</span> <span class="nowrap">${approxR} ${mat(R, "", f4)}</span></p>`;
     if (Math.abs(st.w[1]) === 90) {
-      const only = st.w[1] > 0 ? `their sum, ${w_("X")} + ${w_("Z")}` : `their difference, ${w_("Z")} − ${w_("X")}`;
-      html += `<p class="muted">At ${w_("Y")} = ${fmt(st.w[1])}°, the turns by ${w_("X")} and by ${w_("Z")} happen about the same line, so only ${only}, matters: a change in one can be undone by the other. This is called gimbal lock.</p>`;
+      const only = st.w[1] > 0 ? `their difference, ${w_("X")} − ${w_("Z")}` : `their sum, ${w_("X")} + ${w_("Z")}`;
+      html += `<p class="muted">At ${w_("Y")} = ${fmt(st.w[1])}°, the turn about <i>Y</i> lays the <i>X</i> axis along the <i>Z</i> axis, so the turns by ${w_("Z")} and by ${w_("X")} happen about the same line, and only ${only}, matters: a change in one can be undone by the other. This is called gimbal lock.</p>`;
     }
-    html += '<span class="lbl">The red corner</span>';
-    html += `<p class="eq"><span class="nowrap">${Mh} = <i>R</i>${MPh} + <i>t</i></span> <span class="nowrap">${approxM} ${col(RM, "", f4)} + ${col(st.t)}</span> <span class="nowrap">${approxM} ${col(Mv, "pt", f4)}</span></p>`;
+    html += '<span class="lbl">The red corner, in <i>X</i>, <i>Y</i> and <i>Z</i></span>';
+    html += `<p class="eq"><span class="nowrap">${Mh} = <i>R</i>′${MPh} + <i>t</i>′</span> <span class="nowrap">${approxM} ${col(RpM, "", f4)} + ${col(st.tp)}</span> <span class="nowrap">${approxM} ${col(Mv, "pt", f4)}</span></p>`;
+    html += `<p>Here <span class="nowrap"><i>R</i>′ = <i>R</i>${T}</span>: its columns are the blue axes, and it takes the box's coordinates back to <i>X</i>, <i>Y</i> and <i>Z</i>.</p>`;
     html += '<span class="lbl">Lengths are kept</span>';
-    html += `<p><span class="nowrap">‖${Mh} − <i>t</i>‖ ≈ ${f4(Math.hypot(...RM))},</span> the same as <span class="nowrap">‖${MPh}‖ = √6 ≈ ${f4(Math.sqrt(6))}</span> <span class="ok">✓</span></p>`;
+    html += `<p><span class="nowrap">‖${Mh} − <i>t</i>′‖ ≈ ${f4(Math.hypot(...RpM))},</span> the same as <span class="nowrap">‖${MPh}‖ = √6 ≈ ${f4(Math.sqrt(6))}</span> <span class="ok">✓</span></p>`;
 
+    // The same angles applied in the other order: first X, then Y, then Z.
     const R2 = matMul(matMul(rotZ(rad(st.w[2])), rotY(rad(st.w[1]))), rotX(rad(st.w[0])));
-    const M2 = add(apply(R2, MP), st.t);
+    const M2 = add(apply(transpose(R2), MP), st.tp);
     const same = M2.every((v, i) => Math.abs(v - Mv[i]) < 5e-5);
     const turns = st.w.filter((v) => v % 360 !== 0).length;
+    const other = `Turning first about <i>X</i>, then <i>Y</i>, then <i>Z</i>, so that <span class="nowrap"><i>R</i> = ${R_("Z")}${R_("Y")}${R_("X")}</span>,`;
     html += '<span class="lbl">In the other order</span>';
-    if (same) html += `<p>${R_("Z")}${R_("Y")}${R_("X")} puts the corner in the same place${turns <= 1 ? ": with only one turn, there is no order to change" : " here"}.</p>`;
-    else html += `<p>${R_("Z")}${R_("Y")}${R_("X")} would put the corner at <span class="nowrap">${M2.some((v) => rounded(v, 4)) ? "≈ " : ""}<span class="pt">(${list(M2, f4)})</span></span> instead.</p>`;
+    if (same) html += `<p>${other} puts the corner in the same place${turns <= 1 ? ": with only one turn, there is no order to change" : " here"}.</p>`;
+    else html += `<p>${other} would put the corner at <span class="nowrap">${M2.some((v) => rounded(v, 4)) ? "≈ " : ""}<span class="pt">(${list(M2, f4)})</span></span> instead.</p>`;
     if (refused) html += `<p class="muted">${refused}</p>`;
     out.innerHTML = html;
   }
 
-  // The primed origin moves across its level plane, one unit per arrow key in the direction that looks closest.
+  // The new origin moves across its level plane, one unit per arrow key in the direction that looks closest.
   const LEVEL = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0]];
   makeDraggable(hT, {
-    move: (s) => { const p = S.onPlane(s, st.t[2]); tryState({ ...st, t: [Math.round(p.x), Math.round(p.y), st.t[2]] }); },
-    step: (d) => tryState({ ...st, t: add(st.t, S.closest(LEVEL, d)) }),
+    move: (s) => { const p = S.onPlane(s, st.tp[2]); tryState({ ...st, tp: [Math.round(p.x), Math.round(p.y), st.tp[2]] }); },
+    step: (d) => tryState({ ...st, tp: add(st.tp, S.closest(LEVEL, d)) }),
   });
   S.turnable(render);
   document.getElementById("fig-frames-reset")?.addEventListener("click", () => { st = structuredClone(initial); refused = ""; S.setView(...VIEW); render(); });

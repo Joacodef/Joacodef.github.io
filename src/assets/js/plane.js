@@ -84,12 +84,14 @@ export function homography(pairs) {
   return h && [h.slice(0, 3), h.slice(3, 6), [h[6], h[7], 1]];
 }
 
-// Turns by w radians about the X, Y or Z axis, counterclockwise when the axis points at the viewer
-// (the right-hand rule). The columns are the turned axes.
-export const rotX = (w) => [[1, 0, 0], [0, Math.cos(w), -Math.sin(w)], [0, Math.sin(w), Math.cos(w)]];
-export const rotY = (w) => [[Math.cos(w), 0, Math.sin(w)], [0, 1, 0], [-Math.sin(w), 0, Math.cos(w)]];
-export const rotZ = (w) => [[Math.cos(w), -Math.sin(w), 0], [Math.sin(w), Math.cos(w), 0], [0, 0, 1]];
-// The rotation R = R_X R_Y R_Z from three angles in radians.
+// The matrices that give a point's coordinates in axes turned by w radians about the X, Y or Z axis. The angle goes
+// from the old axis to the new one, counterclockwise when the axis points at the viewer (the right-hand rule), and
+// the rows are the new axes written in the old system. Each is the transpose of the matrix that turns points by w.
+export const rotX = (w) => [[1, 0, 0], [0, Math.cos(w), Math.sin(w)], [0, -Math.sin(w), Math.cos(w)]];
+export const rotY = (w) => [[Math.cos(w), 0, -Math.sin(w)], [0, 1, 0], [Math.sin(w), 0, Math.cos(w)]];
+export const rotZ = (w) => [[Math.cos(w), Math.sin(w), 0], [-Math.sin(w), Math.cos(w), 0], [0, 0, 1]];
+// R = R_X R_Y R_Z, for axes turned first about Z, then about the new Y, then about the newest X (angles in radians).
+// M′ = RM gives the new coordinates; its transpose R′ = Rᵀ gives the old ones back.
 export const rotation3d = (wx, wy, wz) => matMul(matMul(rotX(wx), rotY(wy)), rotZ(wz));
 
 /* ---------- Math formatting (HTML strings) ---------- */
