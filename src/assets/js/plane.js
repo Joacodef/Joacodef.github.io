@@ -2,7 +2,8 @@
 // createPlane maps 2D data coordinates in [0, max] x [0, max] to an SVG viewBox, with the y axis pointing up.
 // createSpace draws 3D vectors with a parallel (oblique) projection.
 // The matrix helpers apply, invert and estimate 3×3 transformations, such as a homography from point pairs,
-// build 3D rotations from three angles, and relate two views of a scene through their fundamental matrix.
+// build 3D rotations from three angles, relate two views of a scene through their fundamental matrix, and find a
+// point of space from its images in several views.
 // Colors come from CSS classes (see notes.css).
 
 const NS = "http://www.w3.org/2000/svg";
@@ -162,6 +163,40 @@ export function fundamental(A, B) {
 }
 // The distance from the point m = [x, y, 1] (or any multiple of it) to the line ℓ = [a, b, c]: |ℓᵀm| / √(a² + b²).
 export const lineDistance = (l, m) => Math.abs(dot(l, m) / m[2]) / Math.hypot(l[0], l[1]);
+
+/* ---------- Several views ---------- */
+
+// The point M = [X, Y, Z] that best fits its pixels ms[i] = [x, y] in the views with cameras Ps[i], by least squares.
+// λm = PM is three equations, and the third gives λ = p31 X + p32 Y + p33 Z + p34. Put into the other two, it leaves
+// two rows of QM = r per view: (p31 x − p11)X + (p32 x − p12)Y + (p33 x − p13)Z = p14 − p34 x, and the same with y
+// and the second row of P. Returns { M, Q, r }, or null when Q has rank below 3 (fewer than two views, say).
+export function reconstruct(ms, Ps) {
+  const Q = [], r = [];
+  ms.forEach(([x, y], i) => {
+    const [p1, p2, p3] = Ps[i];
+    Q.push([0, 1, 2].map((j) => p3[j] * x - p1[j])); r.push(p1[3] - p3[3] * x);
+    Q.push([0, 1, 2].map((j) => p3[j] * y - p2[j])); r.push(p2[3] - p3[3] * y);
+  });
+  const M = Q.length >= 4 ? lstsq(Q, r) : null;
+  return M && { M, Q, r };
+}
+
+/* ---------- The X-ray series of the computer vision notes ---------- */
+
+// X-ray images of an object that turns 2° about the vertical axis Z between one image and the next, W × H pixels
+// each, numbered 0 to last. Image k has the projection matrix P(k) = P(0)·T(2k°), where T turns the object's
+// coordinates about Z, so the X-ray source, the optical center, sits on one horizontal circle around the object.
+// Lengths are in millimeters, and the third row of each P is a unit vector, so λ is a point's depth in millimeters.
+export const XRAY = { W: 2688, H: 2208, last: 177 };
+const XRAY_P0 = [
+  [-7919.179138430423, -1478.0889618975004, 5.355871503035249, 1297864.793781347],
+  [23.269823689888916, -1284.882318265887, -7958.236076838229, 1064265.9285700037],
+  [0.020550829547262388, -0.9997873837831113, 0.0016883817818043197, 964.0558692322625],
+];
+export function xrayCamera(k) {
+  const t = (2 * k * Math.PI) / 180, c = Math.cos(t), s = Math.sin(t);
+  return matMul(XRAY_P0, [[c, -s, 0, 0], [s, c, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]);
+}
 
 // Splits the camera A = k[K | 0]S′ = kK[R′ | t′] into the calibration matrix K = [α γ u0; 0 β v0; 0 0 1], the turn
 // R′ (its rows are the camera's axes X, Y and Z written in the object's system) and t′ (the object's origin seen from
@@ -404,9 +439,11 @@ export function createPlane(svg, { max = 40 } = {}) {
 // Draws an image of W × H pixels into svg at `scale` SVG units per pixel, with its top left corner at [ox, oy] and,
 // as an image is read, u to the right and v down: the frame, ticks with their values along the top and left edges,
 // and the axis names u and v. `id` names the clip path of the group `inside`, which keeps drawings within the image.
+// For a close-up, `from` is the pixel at the top left corner: the frame then shows pixels from[0] to from[0] + W
+// and from[1] to from[1] + H of a larger image, and the ticks and mappings use that image's pixels.
 // Returns that group and the mapping X(u), Y(v) to SVG units, with toPixel for the way back.
-export function pixelFrame(svg, { W, H, scale, ox, oy, id, uTicks = [], vTicks = [], axisNames = true }) {
-  const X = (u) => ox + scale * u, Y = (v) => oy + scale * v;
+export function pixelFrame(svg, { W, H, scale, ox, oy, id, uTicks = [], vTicks = [], axisNames = true, from = [0, 0] }) {
+  const X = (u) => ox + scale * (u - from[0]), Y = (v) => oy + scale * (v - from[1]);
   const clip = el("clipPath", { id }, el("defs", null, svg));
   el("rect", { x: ox, y: oy, width: W * scale, height: H * scale }, clip);
   el("rect", { x: ox, y: oy, width: W * scale, height: H * scale, class: "px-frame" }, svg);
@@ -420,11 +457,11 @@ export function pixelFrame(svg, { W, H, scale, ox, oy, id, uTicks = [], vTicks =
     el("text", { x: ox - 9, y: Y(v) + 5, "text-anchor": "end", class: "tick" }, svg).textContent = v;
   }
   if (axisNames) {
-    mathLabel(svg, "axl", [["u", true]]).setAttribute("transform", `translate(${X(W) - 8},${oy - 9})`);
-    mathLabel(svg, "axl", [["v", true]]).setAttribute("transform", `translate(${ox - 16},${Y(H) - 4})`);
+    mathLabel(svg, "axl", [["u", true]]).setAttribute("transform", `translate(${ox + W * scale - 8},${oy - 9})`);
+    mathLabel(svg, "axl", [["v", true]]).setAttribute("transform", `translate(${ox - 16},${oy + H * scale - 4})`);
   }
   const inside = el("g", { "clip-path": `url(#${id})` }, svg);
-  return { X, Y, toPixel: (s) => [(s.x - ox) / scale, (s.y - oy) / scale], inside };
+  return { X, Y, toPixel: (s) => [from[0] + (s.x - ox) / scale, from[1] + (s.y - oy) / scale], inside };
 }
 
 /* ---------- Controls ---------- */
@@ -561,6 +598,12 @@ export function createSpace(svg, { width = 460, height = 456, pivot = [0, 0, 0],
     setAxes();
     fixed.forEach((draw) => draw());
   }
+  // Zooms: `scale` SVG units per unit of space, with the point `p` of space drawn at `at`. The turn is kept.
+  function setScale(s, p = pivot) {
+    scale = s; pivot = p;
+    setAxes();
+    fixed.forEach((draw) => draw());
+  }
 
   // Lets the reader turn the view by dragging the figure's background, or by focusing the figure and using
   // the arrow keys. On touch screens only sideways drags turn it (touch-action: pan-y), so the page still scrolls.
@@ -597,7 +640,7 @@ export function createSpace(svg, { width = 460, height = 456, pivot = [0, 0, 0],
 
   return {
     width, height, view, project, offset, toward, onPlane, span, along, closest,
-    line, poly, dot, pin, setLine, setPoly, placeLabel, place, setView, turnable,
+    line, poly, dot, pin, setLine, setPoly, placeLabel, place, setView, setScale, turnable,
     el: (tag, attrs, parent = svg) => el(tag, attrs, parent),
   };
 }

@@ -1,0 +1,263 @@
+---
+title: Múltiples vistas
+module: Geometría
+order: 6
+description: Cómo encontrar un punto del espacio a partir de sus imágenes en dos o más vistas, y predecir dónde aparece en una tercera, con una figura interactiva.
+scripts:
+  - /assets/js/notes/multiple-views.js
+---
+<div class="prose">
+  <div class="duo">
+    <div>
+      <p class="big"><span class="pt"><span class="hat"><i>M</i></span></span> = (<i>Q</i><sup class="t">T</sup><i>Q</i>)<sup class="t">−1</sup><i>Q</i><sup class="t">T</sup><i>r</i></p>
+      <p class="cap">El punto del espacio que mejor se ajusta a sus píxeles en dos o más imágenes.</p>
+    </div>
+    <div>
+      <p class="big"><span class="pt"><i>m</i><sub>3</sub></span> = <span class="ln"><i>ℓ</i><sub>13</sub></span> × <span class="ln"><i>ℓ</i><sub>23</sub></span></p>
+      <p class="cap">Dónde aparece en una tercera imagen un punto visto en dos. El tensor trifocal también lo encuentra, incluso donde las dos líneas coinciden.</p>
+    </div>
+  </div>
+  <p class="legend">En esta página, los <span class="dot" aria-hidden="true"></span>puntos se dibujan con tinta roja y las <span class="bar" aria-hidden="true"></span>rectas con tinta azul. Usa la intersección de dos rectas de los apuntes de <a href="/es/notes/computer-vision/homogeneous-coordinates/">coordenadas homogéneas</a>, los mínimos cuadrados y el centro óptico de los apuntes de <a href="/es/notes/computer-vision/camera-calibration/">calibración de cámaras</a>, y la matriz fundamental y las líneas epipolares de los apuntes de <a href="/es/notes/computer-vision/epipolar-geometry/">geometría epipolar</a>.</p>
+</div>
+
+<section id="rays">
+  <div class="prose">
+    <h2><span class="n">1</span>Rayos que deberían cortarse</h2>
+    <p>Una sola imagen fija el rayo en que está un punto del espacio, pero no en qué lugar de ese rayo. Los apuntes de geometría epipolar usaron una segunda imagen para encontrar dónde puede aparecer el punto en ella. Estos apuntes van dos pasos más allá. Dados los píxeles de un punto en dos o más imágenes, encuentran el punto mismo. Y dados sus píxeles en dos imágenes, predicen dónde aparece el punto en una tercera.</p>
+    <p>Un punto <span class="pt"><i>M</i></span> visto en la imagen <i>i</i> como el píxel <span class="pt"><i>m</i><sub><i>i</i></sub></span> está sobre el rayo que sale del centro óptico <i>C</i><sub><i>i</i></sub> y pasa por <span class="pt"><i>m</i><sub><i>i</i></sub></span>. Está sobre el rayo de cada imagen que lo ve, así que es donde esos rayos se cortan. Encontrar un punto a partir de los rayos de sus imágenes se llama <em>triangulación</em>, y encontrarlo así es la <em>reconstrucción 3D</em>. Aquí esa palabra significa localizar un punto. No es lo que reconstruye la tomografía computarizada, que es de qué está hecho un objeto en cada uno de sus puntos.</p>
+    <p>Los píxeles reales se miden y las cámaras se estiman, así que los rayos casi nunca se cortan exactamente, ni siquiera dos de ellos. La pregunta pasa a ser qué punto del espacio explica mejor los píxeles.</p>
+
+    <h3>El ejemplo</h3>
+    <p>El ejemplo de esta página usa las imágenes de rayos X de los apuntes de geometría epipolar: un objeto gira 2° en torno al eje vertical <i>Z</i> entre una imagen y la siguiente, y la fuente de rayos X, el centro óptico, se mueve en un círculo horizontal. En las imágenes 1, 40 y 90 el objeto ha girado 2°, 80° y 180°. Así, las fuentes de las imágenes 1 y 40 están a 78° una de otra en el círculo, las de las imágenes 40 y 90 a 100°, y las de las imágenes 1 y 90 a 178°, casi enfrentadas. Los dos extremos de un objeto pequeño se marcaron a mano en cada una de las tres imágenes. Las longitudes están en milímetros y las coordenadas de imagen en píxeles.</p>
+  </div>
+</section>
+
+<section id="two-equations">
+  <div class="prose">
+    <h2><span class="n">2</span>Dos ecuaciones por vista</h2>
+    <p>Para una imagen, escribe su cámara <i>P</i> con entradas <i>p</i><sub><i>jk</i></sub>, el píxel como <span class="nowrap"><span class="pt"><i>m</i></span> = [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup></span> y el punto como <span class="nowrap"><span class="pt"><i>M</i></span> = [<i>X</i>&ensp;<i>Y</i>&ensp;<i>Z</i>&ensp;1]<sup class="t">T</sup></span>. La proyección <span class="nowrap">λ<span class="pt"><i>m</i></span> = <i>P</i><span class="pt"><i>M</i></span></span> son tres ecuaciones:</p>
+    <div class="disp"><span class="nowrap">λ<i>x</i></span> <span class="nowrap">= <i>p</i><sub>11</sub><i>X</i> + <i>p</i><sub>12</sub><i>Y</i> + <i>p</i><sub>13</sub><i>Z</i> + <i>p</i><sub>14</sub></span><br><span class="nowrap">λ<i>y</i></span> <span class="nowrap">= <i>p</i><sub>21</sub><i>X</i> + <i>p</i><sub>22</sub><i>Y</i> + <i>p</i><sub>23</sub><i>Z</i> + <i>p</i><sub>24</sub></span><br><span class="nowrap">λ</span> <span class="nowrap">= <i>p</i><sub>31</sub><i>X</i> + <i>p</i><sub>32</sub><i>Y</i> + <i>p</i><sub>33</sub><i>Z</i> + <i>p</i><sub>34</sub></span></div>
+    <p>Las incógnitas son <i>X</i>, <i>Y</i> y <i>Z</i>, y también λ, una nueva por cada imagen. La tercera ecuación da λ directamente: es la profundidad de <span class="pt"><i>M</i></span> delante de la cámara, en milímetros en este ejemplo, ya que las tres primeras entradas de la tercera fila de <i>P</i> forman un vector unitario. Al reemplazarla en las dos primeras, λ desaparece:</p>
+    <div class="disp"><span class="nowrap">(<i>p</i><sub>31</sub><i>x</i> − <i>p</i><sub>11</sub>)<i>X</i></span> <span class="nowrap">+ (<i>p</i><sub>32</sub><i>x</i> − <i>p</i><sub>12</sub>)<i>Y</i></span> <span class="nowrap">+ (<i>p</i><sub>33</sub><i>x</i> − <i>p</i><sub>13</sub>)<i>Z</i></span> <span class="nowrap">= <i>p</i><sub>14</sub> − <i>p</i><sub>34</sub><i>x</i></span><br><span class="nowrap">(<i>p</i><sub>31</sub><i>y</i> − <i>p</i><sub>21</sub>)<i>X</i></span> <span class="nowrap">+ (<i>p</i><sub>32</sub><i>y</i> − <i>p</i><sub>22</sub>)<i>Y</i></span> <span class="nowrap">+ (<i>p</i><sub>33</sub><i>y</i> − <i>p</i><sub>23</sub>)<i>Z</i></span> <span class="nowrap">= <i>p</i><sub>24</sub> − <i>p</i><sub>34</sub><i>y</i></span></div>
+    <p>Por eso cada imagen da dos ecuaciones: aporta tres ecuaciones y una incógnita nueva, λ, y una ecuación se gasta en ella. Las dos que quedan son lineales en <i>X</i>, <i>Y</i> y <i>Z</i>, porque el píxel (<i>x</i>, <i>y</i>) es un número conocido.</p>
+    <p>Cada una tiene una imagen geométrica. La primera se cumple para todo punto cuya imagen tiene esta <i>x</i>, sea cual sea su <i>y</i>: los puntos que se proyectan sobre una columna de la imagen. Forman un plano que pasa por el centro óptico. La segunda es el plano que pasa por el centro y se proyecta sobre la fila <i>y</i>. El rayo de <span class="pt"><i>m</i></span> es donde se cortan los dos planos. Así, una imagen da una recta, no un punto, y hace falta una segunda imagen para fijar un punto sobre ella.</p>
+  </div>
+</section>
+
+<section id="least-squares">
+  <div class="prose">
+    <h2><span class="n">3</span><span>Mínimos cuadrados con <i>n</i> vistas</span></h2>
+    <p>Cada una de las <i>n</i> imágenes da sus dos filas, con su propia cámara y su propio píxel. Apiladas, forman un solo sistema <span class="nowrap"><i>Q</i>[<i>X</i>&ensp;<i>Y</i>&ensp;<i>Z</i>]<sup class="t">T</sup> = <i>r</i></span>, donde <i>Q</i> es de 2<i>n</i> × 3 y <i>r</i> tiene 2<i>n</i> componentes, con las dos filas de la imagen <i>i</i> en los lugares 2<i>i</i> − 1 y 2<i>i</i>. Como en los apuntes de calibración de cámaras, los mínimos cuadrados dan el punto que hace más pequeña la suma de los cuadrados de las componentes de <span class="nowrap"><i>Q</i>[<i>X</i>&ensp;<i>Y</i>&ensp;<i>Z</i>]<sup class="t">T</sup> − <i>r</i></span>:</p>
+    <div class="disp hero-f"><span class="nowrap">[<span class="hat"><i>X</i></span>&ensp;<span class="hat"><i>Y</i></span>&ensp;<span class="hat"><i>Z</i></span>]<sup class="t">T</sup></span> <span class="nowrap">= (<i>Q</i><sup class="t">T</sup><i>Q</i>)<sup class="t">−1</sup><i>Q</i><sup class="t">T</sup><i>r</i></span></div>
+    <p>El sombrero marca una estimación. Llama <span class="pt"><span class="hat"><i>M</i></span></span> a ese punto. Existe cuando <i>Q</i> tiene rango 3, es decir, cuando los 2<i>n</i> planos no comparten todos una misma recta.</p>
+
+    <h3>Dos vistas y la restricción epipolar</h3>
+    <p>Dos imágenes dan cuatro ecuaciones para tres incógnitas, una más de las necesarias, así que las cuatro tienen una solución común solo para algunos pares de píxeles. Escríbelas como <span class="nowrap">[<i>Q</i> | −<i>r</i>][<i>X</i>&ensp;<i>Y</i>&ensp;<i>Z</i>&ensp;1]<sup class="t">T</sup> = 0</span>: un sistema de 4 × 4 con lado derecho 0, que tiene una solución distinta de 0 solo cuando <span class="nowrap">det [<i>Q</i> | −<i>r</i>] = 0</span>. Cada fila de [<i>Q</i> | −<i>r</i>] es <span class="nowrap"><i>x</i><i>p</i><sub>3</sub> − <i>p</i><sub>1</sub></span> o <span class="nowrap"><i>y</i><i>p</i><sub>3</sub> − <i>p</i><sub>2</sub></span> para uno de los dos píxeles, con <i>p</i><sub><i>j</i></sub> las filas de su cámara. Por eso el determinante es lineal en <span class="pt"><i>m</i><sub>1</sub></span> y lineal en <span class="pt"><i>m</i><sub>2</sub></span>, que es la forma de <span class="nowrap"><span class="pt"><i>m</i><sub>2</sub></span><sup class="t">T</sup><i>F</i><span class="pt"><i>m</i><sub>1</sub></span></span>, y se anula para todo par de puntos correspondientes. Es la restricción epipolar, multiplicada por un factor que depende solo de las cámaras. Para las imágenes 1 y 40, con <span class="nowrap"><i>F</i> = [<i>BC</i><sub>1</sub>]<sub>×</sub><i>BA</i><sup class="t">+</sup></span> como en los apuntes de geometría epipolar, el factor es −6.33·10<sup class="t">7</sup>, sean cuales sean los píxeles. Es el determinante det <i>G</i> de esos apuntes, con λ<sub>1</sub> y λ<sub>2</sub> ya eliminadas.</p>
+    <p>Así, dos rayos se cortan exactamente cuando sus píxeles cumplen la restricción epipolar. Los clics del ejemplo no la cumplen. En la imagen 40 están a 23.75 y 13.23 píxeles de las líneas epipolares de sus pares en la imagen 1, como encontraron los apuntes de geometría epipolar, así que sus rayos no se cortan. Los mínimos cuadrados reparten la diferencia: solo con las imágenes 1 y 40, el <span class="pt"><span class="hat"><i>M</i></span></span> del extremo superior se proyecta a 10.90 píxeles de su clic en la imagen 1 y a 11.87 del de la imagen 40.</p>
+
+    <h3>Vistas enfrentadas</h3>
+    <p>Los rayos de dos imágenes deben cruzarse con un ángulo claro. Las fuentes de las imágenes 1 y 90 están a 178° una de otra, a ambos lados del objeto, así que los dos rayos que pasan por un punto del objeto son casi una misma recta: se cortan en unos 174°. A lo largo de esa recta, las dos imágenes apenas ven diferencia, y unos pocos píxeles de error mueven <span class="pt"><span class="hat"><i>M</i></span></span> lejos sobre ella. Solo con estas dos imágenes, el objeto resulta de 67.43 mm de largo, mientras que las imágenes 1 y 40 dan 45.23 mm y las imágenes 40 y 90 dan 45.32 mm. En las ecuaciones, las columnas de <i>Q</i> son casi dependientes: sus valores singulares son 11258, 11245 y 596.5, frente a 11269, 8832 y 6977 para las imágenes 1 y 40.</p>
+
+    <h3>Más vistas</h3>
+    <p>Con tres imágenes, <i>Q</i> es de 6 × 3. Los errores de los clics se compensan en parte, y ningún par de imágenes decide solo el resultado. Las imágenes 1, 40 y 90 juntas dan 45.46 mm.</p>
+  </div>
+</section>
+
+<section id="residual">
+  <div class="prose">
+    <h2><span class="n">4</span>Qué minimiza el ajuste</h2>
+    <p>Los mínimos cuadrados hacen pequeño <span class="nowrap"><i>Q</i><span class="pt"><span class="hat"><i>M</i></span></span> − <i>r</i></span>, escribiendo <span class="pt"><span class="hat"><i>M</i></span></span> por [<span class="hat"><i>X</i></span>&ensp;<span class="hat"><i>Y</i></span>&ensp;<span class="hat"><i>Z</i></span>]<sup class="t">T</sup>, pero ¿qué es ese residuo? Toma la primera fila de la imagen <i>i</i>. Su lado izquierdo menos su lado derecho es <span class="nowrap">(<i>p</i><sub>3</sub> · <span class="pt"><span class="hat"><i>M</i></span></span>)<i>x</i><sub><i>i</i></sub> − <i>p</i><sub>1</sub> · <span class="pt"><span class="hat"><i>M</i></span></span></span>, escribiendo <i>p</i><sub><i>j</i></sub> · <span class="pt"><span class="hat"><i>M</i></span></span> por el producto de la fila <i>j</i> de <i>P</i><sub><i>i</i></sub> con [<span class="hat"><i>X</i></span>&ensp;<span class="hat"><i>Y</i></span>&ensp;<span class="hat"><i>Z</i></span>&ensp;1]<sup class="t">T</sup>. El primer producto es la profundidad λ<sub><i>i</i></sub> de <span class="pt"><span class="hat"><i>M</i></span></span>, y el segundo es λ<sub><i>i</i></sub><span class="hat lo"><i>x</i></span><sub><i>i</i></sub>, donde <span class="nowrap"><span class="pt"><span class="hat lo"><i>m</i></span><sub><i>i</i></sub></span> = (<span class="hat lo"><i>x</i></span><sub><i>i</i></sub>, <span class="hat lo"><i>y</i></span><sub><i>i</i></sub>)</span> es donde <span class="pt"><span class="hat"><i>M</i></span></span> se proyecta en la imagen <i>i</i>. Así, cada fila del residuo es <span class="nowrap">λ<sub><i>i</i></sub>(<i>x</i><sub><i>i</i></sub> − <span class="hat lo"><i>x</i></span><sub><i>i</i></sub>)</span> o <span class="nowrap">λ<sub><i>i</i></sub>(<i>y</i><sub><i>i</i></sub> − <span class="hat lo"><i>y</i></span><sub><i>i</i></sub>)</span>, una profundidad en milímetros por un error en píxeles, y los mínimos cuadrados minimizan</p>
+    <div class="disp"><span class="nowrap">‖<i>Q</i><span class="pt"><span class="hat"><i>M</i></span></span> − <i>r</i>‖<sup class="t">2</sup></span> <span class="nowrap">= Σ<sub><i>i</i></sub> λ<sub><i>i</i></sub><sup class="t">2</sup> [(<i>x</i><sub><i>i</i></sub> − <span class="hat lo"><i>x</i></span><sub><i>i</i></sub>)<sup class="t">2</sup> + (<i>y</i><sub><i>i</i></sub> − <span class="hat lo"><i>y</i></span><sub><i>i</i></sub>)<sup class="t">2</sup>]</span></div>
+    <p>Es el error en píxeles ponderado por el cuadrado de la profundidad, en mm·px: pesa más una imagen cuya fuente está más lejos del punto. La cantidad con un significado directo es el <em>error de reproyección</em>, la distancia en píxeles de cada <span class="pt"><i>m</i><sub><i>i</i></sub></span> marcado a la proyección <span class="pt"><span class="hat lo"><i>m</i></span><sub><i>i</i></sub></span> del punto encontrado, con <span class="nowrap">λ<sub><i>i</i></sub><span class="pt"><span class="hat lo"><i>m</i></span><sub><i>i</i></sub></span> = <i>P</i><sub><i>i</i></sub><span class="pt"><i>M</i></span></span>. El mejor punto en ese sentido minimiza</p>
+    <div class="disp"><span class="nowrap"><i>J</i>(<span class="pt"><i>M</i></span>) = Σ<sub><i>i</i></sub> (<span class="hat lo"><i>x</i></span><sub><i>i</i></sub> − <i>x</i><sub><i>i</i></sub>)<sup class="t">2</sup> + (<span class="hat lo"><i>y</i></span><sub><i>i</i></sub> − <i>y</i><sub><i>i</i></sub>)<sup class="t">2</sup></span></div>
+    <p>Ninguna fórmula da ese punto, porque <span class="hat lo"><i>x</i></span><sub><i>i</i></sub> y <span class="hat lo"><i>y</i></span><sub><i>i</i></sub> dividen por la profundidad, que depende de <span class="pt"><i>M</i></span>. Se encuentra iterando, con un método de gradiente por ejemplo, a partir de <span class="pt"><span class="hat"><i>M</i></span></span>. Cuando todas las profundidades se parecen, ambas respuestas casi coinciden. Aquí van de 908 a 1019 mm: minimizar <i>J</i> mueve los extremos 0.18 y 0.20 mm, y cambia el largo en 0.005 mm.</p>
+  </div>
+
+  <div class="fig">
+    <div class="panels">
+      <svg id="fig-rays-images" role="group" aria-label="Acercamientos de las imágenes 1, 40 y 90 en torno a un objeto, de 200 por 460 píxeles cada uno. En cada uno, los dos extremos del objeto marcados a mano, y dónde se proyectan los puntos reconstruidos."></svg>
+      <svg id="fig-rays-space" role="group" aria-label="El círculo en que se mueve la fuente de rayos X, las fuentes C1, C2 y C3 de las imágenes 1, 40 y 90, los rayos que salen de ellas y pasan por los extremos marcados, y los dos puntos reconstruidos. Usa las flechas del teclado para girar la vista."></svg>
+    </div>
+    <div class="ro">
+      <div class="modes" id="fig-rays-views" role="group" aria-label="Imágenes usadas">
+        <button type="button" data-mode="all" aria-pressed="true">Imágenes 1, 40 y 90</button>
+        <button type="button" data-mode="1-40" aria-pressed="false">1 y 40</button>
+        <button type="button" data-mode="40-90" aria-pressed="false">40 y 90</button>
+        <button type="button" data-mode="1-90" aria-pressed="false">1 y 90</button>
+      </div>
+      <div class="modes" id="fig-rays-zoom" role="group" aria-label="Acercamiento">
+        <button type="button" data-mode="whole" aria-pressed="true">Todo el montaje</button>
+        <button type="button" data-mode="close" aria-pressed="false">Cerca del objeto</button>
+      </div>
+      <div id="fig-rays-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Elige las imágenes que participan. En los acercamientos, los puntos llenos son los clics y los anillos son donde se proyecta el punto encontrado; en una imagen sin usar, los puntos huecos son sus clics y los anillos son una predicción. En la vista de abajo, los rayos salen de las fuentes de rayos X y pasan por los píxeles marcados, y los dos puntos rojos son los extremos encontrados. Acércate para ver que los rayos no se cortan por uno o dos milímetros: los segmentos punteados unen cada extremo con cada uno de sus rayos. Arrastra el fondo de la vista de abajo para girarla. Con el teclado, selecciona un botón o la vista de abajo con Tab y usa las flechas.</p>
+      <button type="button" class="btn" id="fig-rays-reset">Reiniciar</button>
+    </div>
+  </div>
+</section>
+
+<section id="third-view">
+  <div class="prose">
+    <h2><span class="n">5</span>Una tercera vista a partir de dos</h2>
+    <p>Ahora tres imágenes, con cámaras <i>A</i>, <i>B</i> y <i>C</i>. Dados los puntos correspondientes <span class="pt"><i>m</i><sub>1</sub></span> y <span class="pt"><i>m</i><sub>2</sub></span> en las dos primeras, ¿dónde aparece su punto del espacio en la tercera? La geometría epipolar ya lo responde. <span class="pt"><i>m</i><sub>3</sub></span> está sobre la línea epipolar de <span class="pt"><i>m</i><sub>1</sub></span> en la imagen 3, y sobre la de <span class="pt"><i>m</i><sub>2</sub></span>:</p>
+    <div class="disp"><span class="nowrap"><span class="ln"><i>ℓ</i><sub>13</sub></span> = <i>F</i><sub>13</sub><span class="pt"><i>m</i><sub>1</sub></span>,</span>&ensp; <span class="nowrap"><span class="ln"><i>ℓ</i><sub>23</sub></span> = <i>F</i><sub>23</sub><span class="pt"><i>m</i><sub>2</sub></span></span></div>
+    <p>donde <i>F</i><sub>13</sub> es la matriz fundamental de las imágenes 1 y 3, a partir de <i>A</i> y <i>C</i>, y <i>F</i><sub>23</sub> la de las imágenes 2 y 3, a partir de <i>B</i> y <i>C</i>. Así, <span class="pt"><i>m</i><sub>3</sub></span> es donde se cruzan las dos líneas, y el punto donde se cruzan dos rectas es su producto cruz, como en los apuntes de coordenadas homogéneas:</p>
+    <div class="disp hero-f"><span class="pt"><i>m</i><sub>3</sub></span> = <span class="ln"><i>ℓ</i><sub>13</sub></span> × <span class="ln"><i>ℓ</i><sub>23</sub></span></div>
+    <p>También es una prueba. <span class="pt"><i>m</i><sub>1</sub></span>, <span class="pt"><i>m</i><sub>2</sub></span> y <span class="pt"><i>m</i><sub>3</sub></span> son correspondientes exactamente cuando <span class="pt"><i>m</i><sub>3</sub></span> es ese punto: la condición es necesaria y suficiente.</p>
+
+    <h3>Cuando las dos líneas son una</h3>
+    <p>El cruce no está definido cuando <span class="ln"><i>ℓ</i><sub>13</sub></span> y <span class="ln"><i>ℓ</i><sub>23</sub></span> son la misma línea. <span class="ln"><i>ℓ</i><sub>13</sub></span> es donde la imagen 3 corta el plano epipolar de <span class="pt"><i>M</i></span>, <i>C</i><sub>1</sub> y <i>C</i><sub>3</sub>, y <span class="ln"><i>ℓ</i><sub>23</sub></span> es donde corta el plano de <span class="pt"><i>M</i></span>, <i>C</i><sub>2</sub> y <i>C</i><sub>3</sub>. Ambos planos contienen <span class="pt"><i>M</i></span> y <i>C</i><sub>3</sub>, y son el mismo plano cuando además contiene a <i>C</i><sub>1</sub> y <i>C</i><sub>2</sub>. Eso ocurre de dos maneras:</p>
+    <ul>
+      <li>Los tres centros ópticos están sobre una recta, como cuando una cámara toma las tres imágenes moviéndose en línea recta. Es frecuente, y entonces ocurre para todo punto.</li>
+      <li>Los centros no están sobre una recta, pero <span class="pt"><i>M</i></span> está sobre el plano que pasa por los tres.</li>
+    </ul>
+    <p>Cerca de cualquiera de los dos casos, las líneas se cruzan con un ángulo pequeño, y un error pequeño en <span class="pt"><i>m</i><sub>1</sub></span> o <span class="pt"><i>m</i><sub>2</sub></span> mueve su cruce lejos. Y aun cuando las líneas se cruzan bien, el método da dos pasos, dos líneas y luego su cruce, en vez de una sola fórmula.</p>
+
+    <h3>En el ejemplo</h3>
+    <p>Todas las fuentes de la serie de rayos X están en un mismo círculo, así que el plano que pasa por tres cualesquiera de ellas es el plano del círculo, <span class="nowrap"><i>Z</i> = −21.94</span>. Pasa por todos los centros ópticos, así que cada cámara lo ve de canto, como una recta, y es la misma recta en todas las imágenes: de <span class="nowrap"><i>v</i> = 1284.57</span> en <span class="nowrap"><i>u</i> = 0</span> a <span class="nowrap"><i>v</i> = 1285.63</span> en <span class="nowrap"><i>u</i> = 2688</span>, prácticamente la fila <span class="nowrap"><i>v</i> ≈ 1285</span>.</p>
+    <p>El extremo inferior del objeto está en ese plano: el punto encontrado en la sección 3 está 0.19 mm por encima. Al predecirlo en la imagen 90 a partir de sus clics en las imágenes 1 y 40, las dos líneas epipolares se cruzan en apenas 6.33°, y su cruce, (1503.11, 1283.15), cae a 100.99 píxeles de donde se marcó el extremo en la imagen 90, (1603, 1298). Justo sobre esa fila, un píxel de error en <span class="pt"><i>m</i><sub>2</sub></span> mueve el cruce mil píxeles o más. El extremo superior está 45 mm por encima del plano. Ahí las líneas se cruzan en 65.35°, y su cruce cae a 8.18 píxeles de su clic.</p>
+  </div>
+</section>
+
+<section id="tensor">
+  <div class="prose">
+    <h2><span class="n">6</span>El tensor trifocal</h2>
+    <p>Una forma de evitar las líneas epipolares parte de las tres proyecciones mismas. Elige una matriz <i>H</i> de 4 × 4 cuyas tres primeras filas sean <i>A</i>, y cambia de coordenadas a <span class="nowrap"><span class="pt"><i>M&#771;</i></span> = <i>H</i><span class="pt"><i>M</i></span></span>. Como <span class="nowrap"><i>A</i> = [<i>I</i> | 0]<i>H</i></span>,</p>
+    <div class="disp"><span class="nowrap"><i>A&#771;</i> = <i>AH</i><sup class="t">−1</sup> = [<i>I</i> | 0],</span>&ensp; <span class="nowrap"><i>B&#771;</i> = <i>BH</i><sup class="t">−1</sup>,</span>&ensp; <span class="nowrap"><i>C&#771;</i> = <i>CH</i><sup class="t">−1</sup></span></div>
+    <p>y <span class="nowrap">λ<sub>1</sub><span class="pt"><i>m</i><sub>1</sub></span> = <i>A&#771;</i><span class="pt"><i>M&#771;</i></span></span>, <span class="nowrap">λ<sub>2</sub><span class="pt"><i>m</i><sub>2</sub></span> = <i>B&#771;</i><span class="pt"><i>M&#771;</i></span></span>, <span class="nowrap">λ<sub>3</sub><span class="pt"><i>m</i><sub>3</sub></span> = <i>C&#771;</i><span class="pt"><i>M&#771;</i></span></span>: las mismas proyecciones, en coordenadas donde la primera cámara es lo más simple posible. <i>H</i> debe ser invertible. Agregar la fila [0&ensp;0&ensp;0&ensp;1] bajo <i>A</i> sirve siempre que <i>C</i><sub>1</sub> sea un punto finito, porque entonces el bloque izquierdo de 3 × 3 de <i>A</i> es invertible.</p>
+
+    <h3>El rayo de <span class="pt"><i>m</i><sub>1</sub></span></h3>
+    <p><span class="nowrap">λ<sub>1</sub><span class="pt"><i>m</i><sub>1</sub></span> = [<i>I</i> | 0]<span class="pt"><i>M&#771;</i></span></span> dice que las tres primeras componentes de <span class="pt"><i>M&#771;</i></span> son λ<sub>1</sub><span class="pt"><i>m</i><sub>1</sub></span>. Con la cuarta igual a 1,</p>
+    <div class="disp"><span class="nowrap"><span class="pt"><i>M&#771;</i></span> = [λ<sub>1</sub><i>x</i><sub>1</sub>&ensp;λ<sub>1</sub><i>y</i><sub>1</sub>&ensp;λ<sub>1</sub>&ensp;1]<sup class="t">T</sup></span> <span class="nowrap">= λ<sub>1</sub>[<i>x</i><sub>1</sub>&ensp;<i>y</i><sub>1</sub>&ensp;1&ensp;1/λ<sub>1</sub>]<sup class="t">T</sup></span></div>
+    <p>A medida que λ<sub>1</sub> recorre todas las profundidades, <span class="pt"><i>M&#771;</i></span> recorre el rayo de <span class="pt"><i>m</i><sub>1</sub></span>. Encontrar el punto es encontrar λ<sub>1</sub>.</p>
+
+    <h3>La profundidad a partir de una coordenada</h3>
+    <p>Proyecta este <span class="pt"><i>M&#771;</i></span> en la imagen 2 con <i>B&#771;</i>. Escribe <i>b&#771;</i><sub><i>j</i></sub> para las tres primeras entradas de la fila <i>j</i> de <i>B&#771;</i>, como fila, y <i>b&#771;</i><sub><i>j</i>4</sub> para la última. La primera coordenada del píxel es <span class="nowrap"><i>x</i><sub>2</sub> = (λ<sub>1</sub><i>b&#771;</i><sub>1</sub><span class="pt"><i>m</i><sub>1</sub></span> + <i>b&#771;</i><sub>14</sub>) / (λ<sub>1</sub><i>b&#771;</i><sub>3</sub><span class="pt"><i>m</i><sub>1</sub></span> + <i>b&#771;</i><sub>34</sub>)</span>, y al despejar λ<sub>1</sub>:</p>
+    <div class="disp"><span class="nowrap">λ<sub>1</sub> = <span class="frac"><span><i>b&#771;</i><sub>14</sub> − <i>b&#771;</i><sub>34</sub><i>x</i><sub>2</sub></span><span><i>x</i><sub>2</sub><i>b&#771;</i><sub>3</sub><span class="pt"><i>m</i><sub>1</sub></span> − <i>b&#771;</i><sub>1</sub><span class="pt"><i>m</i><sub>1</sub></span></span></span></span></div>
+    <p>Es la profundidad a la que el rayo de <span class="pt"><i>m</i><sub>1</sub></span> se proyecta sobre la columna <i>x</i><sub>2</sub> de la imagen 2: donde cruza el plano que pasa por <i>C</i><sub>2</sub> y cuya imagen es esa columna, como en la sección 2. El mismo paso en la imagen 3, con las filas <i>c&#771;</i><sub><i>k</i></sub> de <i>C&#771;</i> y la columna <i>x</i><sub>3</sub>, da <span class="nowrap">λ<sub>1</sub> = (<i>c&#771;</i><sub>14</sub> − <i>c&#771;</i><sub>34</sub><i>x</i><sub>3</sub>) / (<i>x</i><sub>3</sub><i>c&#771;</i><sub>3</sub><span class="pt"><i>m</i><sub>1</sub></span> − <i>c&#771;</i><sub>1</sub><span class="pt"><i>m</i><sub>1</sub></span>)</span>.</p>
+
+    <h3>Cuatro trilinealidades</h3>
+    <p>Si <span class="pt"><i>m</i><sub>1</sub></span>, <span class="pt"><i>m</i><sub>2</sub></span> y <span class="pt"><i>m</i><sub>3</sub></span> son correspondientes, las dos profundidades son el mismo λ<sub>1</sub>. Al igualarlas, multiplicar y agrupar los términos en 1, <i>x</i><sub>2</sub>, <i>x</i><sub>3</sub> y <i>x</i><sub>2</sub><i>x</i><sub>3</sub>, se obtiene una ecuación lineal en <span class="pt"><i>m</i><sub>1</sub></span>, en <i>x</i><sub>2</sub> y en <i>x</i><sub>3</sub>:</p>
+    <div class="disp hero-f"><span class="nowrap"><span class="pt"><i>m</i><sub>1</sub></span><sup class="t">T</sup>(<i>x</i><sub>3</sub><i>T</i><sup class="t">13</sup> − <i>x</i><sub>3</sub><i>x</i><sub>2</sub><i>T</i><sup class="t">33</sup></span> <span class="nowrap">+ <i>x</i><sub>2</sub><i>T</i><sup class="t">31</sup> − <i>T</i><sup class="t">11</sup>) = 0</span></div>
+    <p>Cada <i>T</i><sup class="t"><i>jk</i></sup> es aquí una columna de tres números, <span class="nowrap"><i>T</i><sup class="t"><i>jk</i></sup> = [<i>T</i><sub>1</sub><sup class="t"><i>jk</i></sup>&ensp;<i>T</i><sub>2</sub><sup class="t"><i>jk</i></sup>&ensp;<i>T</i><sub>3</sub><sup class="t"><i>jk</i></sup>]<sup class="t">T</sup></span>, con</p>
+    <div class="disp hero-f"><span class="nowrap"><i>T</i><sub><i>i</i></sub><sup class="t"><i>jk</i></sup> = <i>b&#771;</i><sub><i>ji</i></sub><i>c&#771;</i><sub><i>k</i>4</sub> − <i>b&#771;</i><sub><i>j</i>4</sub><i>c&#771;</i><sub><i>ki</i></sub></span></div>
+    <p>para <i>i</i>, <i>j</i>, <i>k</i> = 1, 2, 3. Usar <i>y</i><sub>2</sub> en vez de <i>x</i><sub>2</sub>, o <i>y</i><sub>3</sub> en vez de <i>x</i><sub>3</sub>, da tres ecuaciones más del mismo tipo. Las cuatro son las <em>trilinealidades</em>:</p>
+    <div class="disp"><span class="nowrap"><span class="pt"><i>m</i><sub>1</sub></span><sup class="t">T</sup>(<i>x</i><sub>3</sub><i>T</i><sup class="t">13</sup> − <i>x</i><sub>3</sub><i>x</i><sub>2</sub><i>T</i><sup class="t">33</sup></span> <span class="nowrap">+ <i>x</i><sub>2</sub><i>T</i><sup class="t">31</sup> − <i>T</i><sup class="t">11</sup>) = 0</span><br><span class="nowrap"><span class="pt"><i>m</i><sub>1</sub></span><sup class="t">T</sup>(<i>y</i><sub>3</sub><i>T</i><sup class="t">13</sup> − <i>y</i><sub>3</sub><i>x</i><sub>2</sub><i>T</i><sup class="t">33</sup></span> <span class="nowrap">+ <i>x</i><sub>2</sub><i>T</i><sup class="t">32</sup> − <i>T</i><sup class="t">12</sup>) = 0</span><br><span class="nowrap"><span class="pt"><i>m</i><sub>1</sub></span><sup class="t">T</sup>(<i>x</i><sub>3</sub><i>T</i><sup class="t">23</sup> − <i>x</i><sub>3</sub><i>y</i><sub>2</sub><i>T</i><sup class="t">33</sup></span> <span class="nowrap">+ <i>y</i><sub>2</sub><i>T</i><sup class="t">31</sup> − <i>T</i><sup class="t">21</sup>) = 0</span><br><span class="nowrap"><span class="pt"><i>m</i><sub>1</sub></span><sup class="t">T</sup>(<i>y</i><sub>3</sub><i>T</i><sup class="t">23</sup> − <i>y</i><sub>3</sub><i>y</i><sub>2</sub><i>T</i><sup class="t">33</sup></span> <span class="nowrap">+ <i>y</i><sub>2</sub><i>T</i><sup class="t">32</sup> − <i>T</i><sup class="t">22</sup>) = 0</span></div>
+    <p>Los 27 números <i>T</i><sub><i>i</i></sub><sup class="t"><i>jk</i></sup> forman el <em>tensor trifocal</em> de las tres imágenes. Como <i>F</i>, dependen solo de las cámaras, no de los puntos, así que se calculan una vez para todos los puntos. Y como <i>F</i>, son homogéneos: otra cuarta fila para <i>H</i> multiplica los 27 por un mismo número, lo que no cambia ninguna de las cuatro ecuaciones. Las cuatro ecuaciones son independientes, y se cumplen solo para puntos correspondientes: cuando se cumplen las cuatro, <span class="pt"><i>m</i><sub>1</sub></span>, <span class="pt"><i>m</i><sub>2</sub></span> y <span class="pt"><i>m</i><sub>3</sub></span> son correspondientes.</p>
+
+    <h3>Las mismas ecuaciones a partir de un determinante</h3>
+    <p>Como con <i>F</i> en los apuntes de geometría epipolar, las mismas ecuaciones salen de las proyecciones escritas como un solo sistema, <span class="nowrap"><i>G</i><i>v</i> = 0</span>. Aquí <i>G</i> es de 9 × 7, con las filas de <i>A&#771;</i>, <i>B&#771;</i> y <i>C&#771;</i> en sus cuatro primeras columnas y <span class="pt"><i>m</i><sub>1</sub></span>, <span class="pt"><i>m</i><sub>2</sub></span> y <span class="pt"><i>m</i><sub>3</sub></span> en las tres últimas, y <span class="nowrap"><i>v</i> = [<span class="pt"><i>M&#771;</i></span>; −λ<sub>1</sub>; −λ<sub>2</sub>; −λ<sub>3</sub>]</span>. Los puntos correspondientes dan una solución <span class="nowrap"><i>v</i> ≠ 0</span>, así que toda matriz de 7 × 7 formada por 7 de las 9 filas de <i>G</i> tiene determinante 0. Dejar fuera dos filas de una cámara deja solo las otras dos cámaras, y da su restricción epipolar, como <span class="nowrap"><span class="pt"><i>m</i><sub>3</sub></span><sup class="t">T</sup><i>F</i><sub>23</sub><span class="pt"><i>m</i><sub>2</sub></span> = 0</span>. Dejar fuera una fila de cada una de dos cámaras conserva las tres, y esos determinantes dan las trilinealidades.</p>
+  </div>
+</section>
+
+<section id="transfer">
+  <div class="prose">
+    <h2><span class="n">7</span>Transferencia con el tensor</h2>
+    <p>Conociendo <span class="pt"><i>m</i><sub>1</sub></span> y <span class="pt"><i>m</i><sub>2</sub></span>, las dos primeras trilinealidades son lineales en <i>x</i><sub>3</sub> y en <i>y</i><sub>3</sub>. Al despejarlas, dan directamente el punto en la imagen 3:</p>
+    <div class="disp"><span class="nowrap"><span class="pt"><span class="hat lo"><i>m</i></span><sub>3</sub></span> = <span class="frac"><span>1</span><span><span class="pt"><i>m</i><sub>1</sub></span><sup class="t">T</sup>(<i>T</i><sup class="t">13</sup> − <i>x</i><sub>2</sub><i>T</i><sup class="t">33</sup>)</span></span></span> <span class="nowrap"><span class="col"><span><span class="pt"><i>m</i><sub>1</sub></span><sup class="t">T</sup>(<i>T</i><sup class="t">11</sup> − <i>x</i><sub>2</sub><i>T</i><sup class="t">31</sup>)</span><span><span class="pt"><i>m</i><sub>1</sub></span><sup class="t">T</sup>(<i>T</i><sup class="t">12</sup> − <i>x</i><sub>2</sub><i>T</i><sup class="t">32</sup>)</span><span><span class="pt"><i>m</i><sub>1</sub></span><sup class="t">T</sup>(<i>T</i><sup class="t">13</sup> − <i>x</i><sub>2</sub><i>T</i><sup class="t">33</sup>)</span></span></span></div>
+    <p>Por qué funciona: <i>x</i><sub>2</sub> fija λ<sub>1</sub>, que es donde el rayo de <span class="pt"><i>m</i><sub>1</sub></span> cruza el plano que pasa por <i>C</i><sub>2</sub> y la columna <i>x</i><sub>2</sub>, y ese punto del espacio, proyectado por <i>C</i>, es <span class="pt"><span class="hat lo"><i>m</i></span><sub>3</sub></span>. Es una reconstrucción a partir de una imagen y media, seguida de una proyección en la tercera. No se cruzan líneas epipolares, así que el plano de los tres centros no hace daño. Para el extremo inferior del objeto, la transferencia da (1626.72, 1269.52), a 37.06 píxeles del clic en la imagen 90, donde el cruce de las líneas epipolares quedaba a 100.99 píxeles. Lo que queda es el error propio de los clics: en las imágenes 1 y 40, están a 13.23 píxeles de la línea epipolar del otro.</p>
+
+    <h3>Su propio punto débil</h3>
+    <p>Si la línea epipolar de <span class="pt"><i>m</i><sub>1</sub></span> en la imagen 2 es la propia columna <i>x</i><sub>2</sub>, el plano que pasa por <i>C</i><sub>2</sub> y esa columna contiene todo el rayo de <span class="pt"><i>m</i><sub>1</sub></span>, y <i>x</i><sub>2</sub> no puede fijar λ<sub>1</sub>. Entonces hacen el trabajo las dos últimas trilinealidades, que usan <i>y</i><sub>2</sub>. En el ejemplo, las líneas epipolares son casi filas, ya que los epipolos están en la fila <span class="nowrap"><i>v</i> ≈ 1285</span>, casi siempre lejos a los lados de las imágenes, así que la forma con <i>x</i><sub>2</sub> es la que conviene. La forma con <i>y</i><sub>2</sub> falla en esa fila, igual que el cruce de líneas epipolares. Para imágenes cuyas fuentes están enfrentadas, como la 1 y la 90, los epipolos caen dentro de las imágenes, en (1207.46, 1285.05) en la imagen 1. Entonces la forma con <i>x</i><sub>2</sub> falla para píxeles <span class="pt"><i>m</i><sub>1</sub></span> cercanos a una recta casi vertical que pasa por ese epipolo.</p>
+
+    <h3>¿Es una tercera correspondencia?</h3>
+    <p><span class="pt"><i>m</i><sub>1</sub></span>, <span class="pt"><i>m</i><sub>2</sub></span> y <span class="pt"><i>m</i><sub>3</sub></span> son correspondientes si <span class="pt"><i>m</i><sub>1</sub></span> y <span class="pt"><i>m</i><sub>2</sub></span> cumplen la restricción epipolar, y los tres cumplen las dos primeras trilinealidades, o las dos últimas. Las dos primeras usan <i>x</i><sub>2</sub> pero nunca <i>y</i><sub>2</sub>, y es la restricción epipolar entre <span class="pt"><i>m</i><sub>1</sub></span> y <span class="pt"><i>m</i><sub>2</sub></span> la que verifica <i>y</i><sub>2</sub>. Con puntos medidos, ambas pruebas llevan una tolerancia:</p>
+    <div class="disp"><span class="nowrap"><span class="frac"><span>|<span class="pt"><i>m</i><sub>2</sub></span><sup class="t">T</sup><i>F</i><sub>12</sub><span class="pt"><i>m</i><sub>1</sub></span>|</span><span>√(<i>a</i><sup class="t">2</sup> + <i>b</i><sup class="t">2</sup>)</span></span> &lt; <i>d</i><sub>0</sub>,</span>&ensp; <span class="nowrap">‖<span class="pt"><i>m</i><sub>3</sub></span> − <span class="pt"><span class="hat lo"><i>m</i></span><sub>3</sub></span>‖ &lt; <i>d</i><sub>1</sub></span></div>
+    <p>con <span class="nowrap"><i>F</i><sub>12</sub><span class="pt"><i>m</i><sub>1</sub></span> = [<i>a</i>&ensp;<i>b</i>&ensp;<i>c</i>]<sup class="t">T</sup></span>, como en los apuntes de geometría epipolar. La prueba epipolar va primero porque la transferencia es tan buena como el par del que parte. Los clics del extremo superior en las imágenes 1 y 40 están a 23.75 píxeles de la línea epipolar del otro, y su transferencia cae a 34.95 píxeles de su clic en la imagen 90, más lejos que el cruce de las líneas epipolares, que cae a 8.18 píxeles.</p>
+  </div>
+</section>
+
+<section id="four-views">
+  <div class="prose">
+    <h2><span class="n">8</span>Cuatro vistas y más</h2>
+    <p>Con una cuarta imagen, las mismas pruebas se encadenan. <span class="pt"><i>m</i><sub>1</sub></span>, <span class="pt"><i>m</i><sub>2</sub></span>, <span class="pt"><i>m</i><sub>3</sub></span> y <span class="pt"><i>m</i><sub>4</sub></span> son correspondientes si <span class="pt"><i>m</i><sub>1</sub></span>, <span class="pt"><i>m</i><sub>2</sub></span>, <span class="pt"><i>m</i><sub>3</sub></span> son correspondientes y <span class="pt"><i>m</i><sub>2</sub></span>, <span class="pt"><i>m</i><sub>3</sub></span>, <span class="pt"><i>m</i><sub>4</sub></span> también: <span class="pt"><i>m</i><sub>2</sub></span> y <span class="pt"><i>m</i><sub>3</sub></span>, compartidos, fijan un punto del espacio, así que los cuatro son sus imágenes. Eso son tres verificaciones: la restricción epipolar para <span class="pt"><i>m</i><sub>1</sub></span> y <span class="pt"><i>m</i><sub>2</sub></span>, dos trilinealidades para las imágenes 1, 2 y 3, y dos para las imágenes 2, 3 y 4, o en la práctica la distancia de <span class="pt"><i>m</i><sub>4</sub></span> al punto transferido a partir de <span class="pt"><i>m</i><sub>2</sub></span> y <span class="pt"><i>m</i><sub>3</sub></span>. Cuatro vistas tienen tensores propios, 81 números con 16 ecuaciones, pero la cadena los hace innecesarios. Cadenas así siguen un objeto detectado a lo largo de una secuencia de imágenes de rayos X, donde cada imagen nueva debe estar de acuerdo con las dos anteriores.</p>
+  </div>
+</section>
+
+<section id="example">
+  <div class="prose">
+    <h2><span class="n">9</span>Un ejemplo resuelto</h2>
+    <p>Primero el largo del objeto a partir de las imágenes 1, 40 y 90, y luego un punto llevado a una tercera imagen. Las longitudes están en milímetros y las coordenadas de imagen en píxeles.</p>
+    <ol class="steps">
+      <li><b>Las cámaras.</b> <i>A</i>, de la imagen 1, es la matriz del ejemplo resuelto de los apuntes de geometría epipolar. Las de las imágenes 40 y 90 son
+        <span class="f fit"><span class="nowrap"><i>B</i> ≈</span> <span class="mat" style="--cols: 4"><span>−2831</span><span>7542</span><span>5.36</span><span>1297865</span><span>−1261</span><span>−246</span><span>−7958</span><span>1064266</span><span>−0.981</span><span>−0.194</span><span>0.00169</span><span>964.1</span></span></span>
+        <span class="f fit"><span class="nowrap"><i>C</i> ≈</span> <span class="mat" style="--cols: 4"><span>7919</span><span>1478</span><span>5.36</span><span>1297865</span><span>−23.3</span><span>1285</span><span>−7958</span><span>1064266</span><span>−0.0206</span><span>1.000</span><span>0.00169</span><span>964.1</span></span></span>
+        y sus centros ópticos son
+        <span class="f"><span class="nowrap"><i>C</i><sub>1</sub> ≈ (17.62, 963.87, −21.94),</span> <span class="nowrap"><i>C</i><sub>2</sub> ≈ (946.47, 183.17, −21.94),</span> <span class="nowrap"><i>C</i><sub>3</sub> ≈ (16.03, −963.89, −21.94)</span></span>
+        todos a 964.03 mm del eje <i>Z</i>.</li>
+      <li><b>Los clics.</b> El extremo superior del objeto se marcó en (1012, 919) en la imagen 1, (833, 910) en la imagen 40 y (1687, 907) en la imagen 90. El extremo inferior, en (1081, 1271), (839, 1283) y (1603, 1298).</li>
+      <li><b>Dos filas por imagen.</b> Para el extremo superior, redondeadas:
+        <span class="f fit"><span class="nowrap"><i>Q</i> ≈</span> <span class="mat"><span>7951.4</span><span>188.9</span><span>−3.6</span><span>8.4</span><span>366.0</span><span>7959.8</span><span>2013.6</span><span>−7703.7</span><span>−3.9</span><span>368.6</span><span>69.6</span><span>7959.8</span><span>−7953.8</span><span>208.6</span><span>−2.5</span><span>4.6</span><span>−378.1</span><span>7959.8</span></span>&ensp; <span class="nowrap"><i>r</i> ≈</span> <span class="col"><span>322240</span><span>178299</span><span>494806</span><span>186975</span><span>−328497</span><span>189867</span></span></span>
+        Las entradas cercanas a 7950 en tamaño son aproximadamente la distancia focal en píxeles. La fila de <i>x</i> pesa sobre todo la dirección horizontal que su imagen ve de lado a lado, <i>X</i> para las imágenes 1 y 90 e <i>Y</i> para la imagen 40, y la fila de <i>y</i> pesa sobre todo <i>Z</i>, la vertical.</li>
+      <li><b>Los dos extremos.</b> Los mínimos cuadrados dan
+        <span class="f"><span class="nowrap"><span class="pt"><span class="hat"><i>M</i></span></span> ≈ (40.86, −53.34, 22.72)</span> <span class="nowrap">y (31.63, −55.17, −21.75)</span></span>
+        para el extremo superior y el inferior. Sus profundidades en las tres imágenes son 1016.84, 934.35 y 909.92 mm para el extremo superior, y 1018.73, 943.68 y 908.21 mm para el inferior.</li>
+      <li><b>Los errores de reproyección.</b> En las imágenes 1, 40 y 90, el extremo superior se proyecta a 17.92, 5.90 y 15.07 píxeles de sus clics, y el inferior a 16.40, 0.50 y 18.73. La primera fila del residuo comprueba la sección 4:
+        <span class="f"><span class="nowrap">λ<sub>1</sub>(<i>x</i><sub>1</sub> − <span class="hat lo"><i>x</i></span><sub>1</sub>)</span> <span class="nowrap">≈ 1016.84 · (1012 − 1019.37)</span> <span class="nowrap">≈ −7495.0</span></span>
+        que es la primera componente de <span class="nowrap"><i>Q</i><span class="pt"><span class="hat"><i>M</i></span></span> − <i>r</i></span>. Minimizar en su lugar el error de reproyección <i>J</i> movería los extremos apenas 0.18 y 0.20 mm.</li>
+      <li><b>El largo.</b> El extremo superior menos el inferior es (9.23, 1.83, 44.48), sobre todo a lo largo de <i>Z</i>: el objeto está a 12° de la vertical. Su largo es
+        <span class="f"><span class="nowrap">‖(9.23, 1.83, 44.48)‖</span> <span class="nowrap">≈ 45.46 mm</span></span> Con solo dos imágenes, el largo es 45.23 mm con las imágenes 1 y 40, 45.32 mm con las imágenes 40 y 90, y 67.43 mm con las imágenes 1 y 90, cuyos rayos son casi una misma recta.</li>
+      <li><b>Tres imágenes nuevas.</b> Ahora las imágenes 1, 90 y 170, con cámaras <i>A</i>, <i>B</i> y <i>C</i>. El objeto ha girado 2°, 180° y 340° en ellas, así que las fuentes de las imágenes 1 y 90 están a 178° una de otra, las de las imágenes 90 y 170 a 160°, y las de las imágenes 1 y 170 a 22°. Se marcó un punto en <span class="nowrap"><span class="pt"><i>m</i><sub>1</sub></span> = (542, 539)</span> en la imagen 1 y en <span class="nowrap"><span class="pt"><i>m</i><sub>2</sub></span> = (2020, 672)</span> en la imagen 90.</li>
+      <li><b>¿Son un par?</b> <span class="pt"><i>m</i><sub>2</sub></span> está a 9.54 píxeles de la línea epipolar <i>F</i><sub>12</sub><span class="pt"><i>m</i><sub>1</sub></span>. Una tolerancia <i>d</i><sub>0</sub> de 30 píxeles, como para los clics de los apuntes de geometría epipolar, acepta el par.</li>
+      <li><b>Dos líneas epipolares.</b> En la imagen 170, escaladas para que <span class="nowrap"><i>a</i><sup class="t">2</sup> + <i>b</i><sup class="t">2</sup> = 1</span>:
+        <span class="f"><span class="nowrap"><span class="ln"><i>ℓ</i><sub>13</sub></span> = <i>F</i><sub>13</sub><span class="pt"><i>m</i><sub>1</sub></span> ∝ <span class="col ln"><span>0.01786</span><span>0.99984</span><span>−577.38</span></span>,</span>&ensp; <span class="nowrap"><span class="ln"><i>ℓ</i><sub>23</sub></span> = <i>F</i><sub>23</sub><span class="pt"><i>m</i><sub>2</sub></span> ∝ <span class="col ln"><span>0.28361</span><span>−0.95894</span><span>453.34</span></span></span></span>
+        Se cruzan en 17.50°, y
+        <span class="f"><span class="nowrap"><span class="pt"><i>m</i><sub>3</sub></span> = <span class="ln"><i>ℓ</i><sub>13</sub></span> × <span class="ln"><i>ℓ</i><sub>23</sub></span></span> <span class="nowrap">→ <span class="pt">(333.93, 571.51)</span></span></span>
+        El punto está bien lejos del plano de las fuentes: reconstruido a partir de <span class="pt"><i>m</i><sub>1</sub></span> y <span class="pt"><i>m</i><sub>2</sub></span>, está 81.36 mm por encima.</li>
+      <li><b>El tensor.</b> Con <i>H</i> formada por <i>A</i> y la fila [0&ensp;0&ensp;0&ensp;1], <i>B&#771;</i> = <i>BH</i><sup class="t">−1</sup> y <i>C&#771;</i> = <i>CH</i><sup class="t">−1</sup> dan los 27 números <i>T</i><sub><i>i</i></sub><sup class="t"><i>jk</i></sup>, y la fórmula de la sección 7 da
+        <span class="f"><span class="nowrap"><span class="pt"><span class="hat lo"><i>m</i></span><sub>3</sub></span> ≈ <span class="pt">(279.66, 572.48)</span></span></span></li>
+      <li><b>Por qué difieren.</b> Las dos predicciones están a 54.28 píxeles una de otra. <span class="pt"><i>m</i><sub>2</sub></span> está a 9.54 píxeles de la línea epipolar de <span class="pt"><i>m</i><sub>1</sub></span>, así que ningún punto del espacio se proyecta en ambos, y cada método resuelve eso a su manera: el cruce usa las dos coordenadas de <span class="pt"><i>m</i><sub>2</sub></span>, el tensor solo <i>x</i><sub>2</sub>. Además, las fuentes de las imágenes 1 y 90 están casi enfrentadas, a 13° de una misma recta en este punto, lo que multiplica el error unas tres veces. Para un punto proyectado exactamente, como (30, −40, 60), ambos dan (1238.77, 640.71).</li>
+    </ol>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">10</span>Resumen</h2>
+    <p>Las ideas clave junto a sus equivalentes en NumPy. En código, las cámaras son <code>mat_a</code>, <code>mat_b</code> y <code>mat_c</code>, o <code>p</code> para cualquiera de ellas, los píxeles son vectores homogéneos como <code>m1 = np.array([x1, y1, 1])</code>, y <code>mat_q</code> y <code>mat_r</code> son <i>Q</i> y <i>r</i>.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Dos filas por vista</div>
+      <div class="f">(<i>p</i><sub>31</sub><i>x</i> − <i>p</i><sub>11</sub>)<i>X</i> + … = <i>p</i><sub>14</sub> − <i>p</i><sub>34</sub><i>x</i></div>
+      <div class="c"><code>q = p[2, :3]*x - p[0, :3]</code><br><code>r = p[0, 3] - p[2, 3]*x</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Mínimos cuadrados</div>
+      <div class="f">[<span class="hat"><i>X</i></span>&ensp;<span class="hat"><i>Y</i></span>&ensp;<span class="hat"><i>Z</i></span>]<sup class="t">T</sup> = (<i>Q</i><sup class="t">T</sup><i>Q</i>)<sup class="t">−1</sup><i>Q</i><sup class="t">T</sup><i>r</i></div>
+      <div class="c"><code>M = np.linalg.pinv(mat_q) @ mat_r</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Error de reproyección</div>
+      <div class="f">λ<sub><i>i</i></sub><span class="pt"><span class="hat lo"><i>m</i></span><sub><i>i</i></sub></span> = <i>P</i><sub><i>i</i></sub><span class="pt"><span class="hat"><i>M</i></span></span>,&ensp;‖<span class="pt"><span class="hat lo"><i>m</i></span><sub><i>i</i></sub></span> − <span class="pt"><i>m</i><sub><i>i</i></sub></span>‖</div>
+      <div class="c"><code>ms = p @ np.append(M, 1)</code><br><code>err = np.linalg.norm(</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;ms[:2] / ms[2] - m[:2])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Una tercera vista con líneas epipolares</div>
+      <div class="f"><span class="pt"><i>m</i><sub>3</sub></span> = <i>F</i><sub>13</sub><span class="pt"><i>m</i><sub>1</sub></span> × <i>F</i><sub>23</sub><span class="pt"><i>m</i><sub>2</sub></span></div>
+      <div class="c"><code>ell_13 = F13 @ m1</code><br><code>ell_23 = F23 @ m2</code><br><code>m3 = np.cross(ell_13, ell_23)</code><br><code>m3 = m3 / m3[2]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">La primera cámara como [<i>I</i> | 0]</div>
+      <div class="f"><i>A&#771;</i> = <i>AH</i><sup class="t">−1</sup>,&ensp;<i>B&#771;</i> = <i>BH</i><sup class="t">−1</sup>,&ensp;<i>C&#771;</i> = <i>CH</i><sup class="t">−1</sup></div>
+      <div class="c"><code>mat_h = np.vstack(</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;[mat_a, [0, 0, 0, 1]])</code><br><code>hi = np.linalg.inv(mat_h)</code><br><code>b, c = mat_b @ hi, mat_c @ hi</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Tensor trifocal</div>
+      <div class="f"><i>T</i><sub><i>i</i></sub><sup class="t"><i>jk</i></sup> = <i>b&#771;</i><sub><i>ji</i></sub><i>c&#771;</i><sub><i>k</i>4</sub> − <i>b&#771;</i><sub><i>j</i>4</sub><i>c&#771;</i><sub><i>ki</i></sub></div>
+      <div class="c"><code>tt[i, j, k] = (b[j, i]*c[k, 3]</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;- b[j, 3]*c[k, i])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Transferencia con el tensor</div>
+      <div class="f">λ<span class="pt"><span class="hat lo"><i>m</i></span><sub>3</sub></span> = [<span class="pt"><i>m</i><sub>1</sub></span><sup class="t">T</sup>(<i>T</i><sup class="t">1<i>k</i></sup> − <i>x</i><sub>2</sub><i>T</i><sup class="t">3<i>k</i></sup>)]<sub><i>k</i>=1,2,3</sub></div>
+      <div class="c"><code>m3 = (tt[:, 0, :]</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;- x2*tt[:, 2, :]).T @ m1</code><br><code>m3 = m3 / m3[2]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">¿Es una tercera correspondencia?</div>
+      <div class="f">‖<span class="pt"><i>m</i><sub>3</sub></span> − <span class="pt"><span class="hat lo"><i>m</i></span><sub>3</sub></span>‖ &lt; <i>d</i><sub>1</sub></div>
+      <div class="c"><code>d = np.linalg.norm(m3 - m3_hat)</code></div>
+    </div>
+  </div>
+</section>

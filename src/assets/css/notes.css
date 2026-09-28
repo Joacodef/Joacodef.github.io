@@ -50,6 +50,12 @@ sup.t { font-style: normal; font-size: 0.62em; margin-left: 0.06em; line-height:
     linear-gradient(currentColor, currentColor) right top / 0.32em 1.5px no-repeat,
     linear-gradient(currentColor, currentColor) right bottom / 0.32em 1.5px no-repeat;
 }
+/* A hat over one letter, for an estimate: <span class="hat"><i>M</i></span>, or <span class="hat lo"> for a lowercase
+   letter. The serif font sets a combining circumflex beside a letter instead of over it, so the hat is drawn here,
+   shifted right to follow the italic slant. */
+.hat { position: relative; display: inline-block; line-height: 1; }
+.hat::after { content: "\02C6"; position: absolute; left: 0.14em; right: -0.14em; top: -0.12em; text-align: center; font-style: normal; pointer-events: none; }
+.hat.lo::after { top: 0.06em; }
 .frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; font-size: 0.9em; line-height: 1.25; margin: 0 0.1em; }
 .frac > span:first-child { border-bottom: 1.3px solid currentColor; padding: 0 0.25em; }
 .num { font-variant-numeric: lining-nums; }

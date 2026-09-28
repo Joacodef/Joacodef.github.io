@@ -1,4 +1,4 @@
-import { createSpace, el, makeHandle, makeDraggable, apply, matMul, transpose, cross, dot, solve, lstsq, fmt, fmtSig, col, mat, modeButtons, wholeNumberInput, mathLabel, clipLine, pinv, fundamental, lineDistance, opticalCenter, pixelFrame, tr } from "../plane.js";
+import { createSpace, el, makeHandle, makeDraggable, apply, transpose, cross, dot, solve, lstsq, fmt, fmtSig, col, mat, modeButtons, wholeNumberInput, mathLabel, clipLine, pinv, fundamental, lineDistance, opticalCenter, pixelFrame, xrayCamera, XRAY, tr } from "../plane.js";
 
 const add = (a, b) => a.map((x, i) => x + b[i]);
 const sub = (a, b) => a.map((x, i) => x - b[i]);
@@ -13,20 +13,8 @@ const list = (v, f = fmt) => v.map((x) => f(x)).join(", ");
 const rounded = (n, d = 2) => Math.abs(n * 10 ** d - Math.round(n * 10 ** d)) > 1e-6;
 const approx = (...vs) => (vs.flat().some((v) => rounded(v)) ? "≈" : "=");
 
-/* The views: X-ray images of an object that turns 2° about the vertical axis Z between one image and the next,
-   2688 × 2208 pixels each. Image k has the projection matrix P(k) = P(0)·T(2k°), where T turns the object's
-   coordinates about Z, so the X-ray source, the optical center, sits on one horizontal circle around the object.
-   Lengths are in millimeters, and the third row of each P is a unit vector, so λ is a point's depth in millimeters. */
-const P0 = [
-  [-7919.179138430423, -1478.0889618975004, 5.355871503035249, 1297864.793781347],
-  [23.269823689888916, -1284.882318265887, -7958.236076838229, 1064265.9285700037],
-  [0.020550829547262388, -0.9997873837831113, 0.0016883817818043197, 964.0558692322625],
-];
-const W = 2688, H = 2208, LAST = 177;
-export function camera(k) {
-  const t = (2 * k * Math.PI) / 180, c = Math.cos(t), s = Math.sin(t);
-  return matMul(P0, [[c, -s, 0, 0], [s, c, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]);
-}
+// The views: images of the X-ray series (see xrayCamera in plane.js), whose sources sit on one horizontal circle.
+const { W, H, last: LAST } = XRAY, camera = xrayCamera;
 const depth = (A, X) => apply([A[2]], [...X, 1])[0];
 const project = (A, X) => cart(apply(A, [...X, 1]));
 // The direction of the ray through pixel w of camera A, scaled so that C + s·dir is the point of the ray at depth s.
