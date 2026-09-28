@@ -1,0 +1,271 @@
+---
+title: Calibración de cámaras
+module: Geometría
+order: 4
+description: Cómo estimar la matriz de proyección de una cámara y sus once parámetros a partir de puntos de un objeto conocido, con una figura interactiva.
+scripts:
+  - /assets/js/notes/camera-calibration.js
+---
+<div class="prose">
+  <div class="duo">
+    <div>
+      <p class="big">λ<span class="pt"><i>w</i></span> = <i>A</i><span class="pt"><i>M</i>′</span></p>
+      <p class="cap">La calibración lineal estima la matriz <i>A</i> de 3 × 4 a partir de puntos de un objeto conocido y sus píxeles.</p>
+    </div>
+    <div>
+      <p class="big"><i>A</i> ∝ <i>KPS</i>′</p>
+      <p class="cap">La calibración no lineal la construye, salvo un factor de escala, a partir de los once parámetros de la cámara.</p>
+    </div>
+  </div>
+  <p class="legend">En esta página, los <span class="dot" aria-hidden="true"></span>puntos se dibujan con tinta roja y las <span class="bar" aria-hidden="true"></span>rectas con tinta azul. Parte del modelo de cámara con que terminan los apuntes de <a href="/es/notes/computer-vision/3d-transformations/">transformaciones 3D</a>, y usa mínimos cuadrados como los apuntes de <a href="/es/notes/computer-vision/2d-transformations/">transformaciones 2D</a>.</p>
+</div>
+
+<section id="calibration">
+  <div class="prose">
+    <h2><span class="n">1</span>Qué es calibrar</h2>
+    <p>Los apuntes de transformaciones 3D terminaron con un modelo de la cámara:</p>
+    <div class="disp hero-f">λ<span class="pt"><i>w</i></span> = <i>KPS</i>′<span class="pt"><i>M</i>′</span></div>
+    <p>Lleva un punto <span class="nowrap"><span class="pt"><i>M</i>′</span> = [<i>X</i>′&ensp;<i>Y</i>′&ensp;<i>Z</i>′&ensp;1]<sup class="t">T</sup></span>, dado en las coordenadas de algún objeto, a su píxel <span class="nowrap"><span class="pt"><i>w</i></span> = [<i>u</i>&ensp;<i>v</i>&ensp;1]<sup class="t">T</sup></span>. Tiene once parámetros. Cinco son intrínsecos, α, β, γ, <i>u</i><sub>0</sub> y <i>v</i><sub>0</sub>, en <i>K</i> y <i>P</i>. Seis son extrínsecos, los ángulos ω<sub><i>X</i></sub>, ω<sub><i>Y</i></sub>, ω<sub><i>Z</i></sub> y las tres componentes de <i>t</i>′, en <i>S</i>′. <em>Calibrar</em> es estimarlos a partir de imágenes.</p>
+    <p>La idea es fotografiar un objeto cuya forma se conoce con exactitud, un <em>objeto de calibración</em>, y elegir <i>N</i> puntos en él. Sus coordenadas <span class="pt"><i>M</i>′<sub><i>i</i></sub></span> se conocen por el objeto, en milímetros, y sus píxeles <span class="pt"><i>w</i><sub><i>i</i></sub></span> se miden en la imagen. Reúne los parámetros en un vector θ. Para cualquier valor supuesto de θ, el modelo predice dónde debería aparecer cada punto:</p>
+    <div class="disp"><span class="pt"><i>ŵ</i><sub><i>i</i></sub></span> = <i>F</i>(<span class="pt"><i>M</i>′<sub><i>i</i></sub></span>, θ)</div>
+    <p>donde <i>F</i> construye <i>K</i>, <i>P</i> y <i>S</i>′ a partir de θ, las multiplica y divide por λ. Un buen θ deja cada <span class="pt"><i>ŵ</i><sub><i>i</i></sub></span> cerca del <span class="pt"><i>w</i><sub><i>i</i></sub></span> medido, así que calibrar es buscar el θ que hace mínima la distancia promedio entre ellos:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>J</i>(θ) = <span class="frac"><span>1</span><span><i>N</i></span></span> Σ<sub><i>i</i></sub> ‖<span class="pt"><i>ŵ</i><sub><i>i</i></sub></span> − <span class="pt"><i>w</i><sub><i>i</i></sub></span>‖</span> <span class="nowrap">→ mín</span></div>
+    <p><i>J</i> se mide en píxeles, así que dice directamente cuánto se equivoca el modelo, en promedio.</p>
+    <p>Esto se llama calibración fotogramétrica, porque se apoya en un objeto de tamaño conocido. La autocalibración prescinde de él: solo relaciona los mismos puntos vistos en varias imágenes. Pero no puede saber el tamaño real de la escena, porque un objeto pequeño cerca de la cámara da las mismas imágenes que una copia más grande más lejos. Cuando el resultado debe estar en milímetros, como para un robot que toma piezas, se usa un objeto de calibración.</p>
+
+    <h3>La mesa</h3>
+    <p>El ejemplo de toda esta página es una mesa de 800 mm de fondo, 1250 mm de ancho y 900 mm de alto, fotografiada de frente en una imagen de 1842 × 1408 píxeles. Sus ocho puntos conocidos son los extremos superior e inferior de sus cuatro patas, numerados del 0 al 7. El sistema de coordenadas de la mesa tiene su origen en la base de la pata trasera izquierda, la esquina 3, con <i>X</i>′ apuntando desde las patas traseras hacia las delanteras y la cámara, <i>Y</i>′ hacia la derecha a lo largo de la mesa, y <i>Z</i>′ hacia arriba, un sistema de mano derecha. Así, la base de la pata delantera izquierda, la esquina 0, está en (800, 0, 0), y el extremo superior de la pata delantera derecha, la esquina 5, está en (800, 1250, 900). Los píxeles se marcaron a mano sobre la foto, así que cada uno se desvía unos pocos píxeles.</p>
+  </div>
+</section>
+
+<section id="linear">
+  <div class="prose">
+    <h2><span class="n">2</span>Calibración lineal</h2>
+    <p>Al multiplicarla, <i>KPS</i>′ es una sola matriz de 3 × 4. Llámala <i>A</i>, la <em>matriz de proyección general</em> (en código suele llamarse <code>P</code>):</p>
+    <div class="disp"><span class="nowrap">λ<span class="col pt"><span><i>u</i></span><span><i>v</i></span><span>1</span></span></span> <span class="nowrap">= <span class="mat" style="--cols: 4"><span><i>a</i><sub>11</sub></span><span><i>a</i><sub>12</sub></span><span><i>a</i><sub>13</sub></span><span><i>a</i><sub>14</sub></span><span><i>a</i><sub>21</sub></span><span><i>a</i><sub>22</sub></span><span><i>a</i><sub>23</sub></span><span><i>a</i><sub>24</sub></span><span><i>a</i><sub>31</sub></span><span><i>a</i><sub>32</sub></span><span><i>a</i><sub>33</sub></span><span><i>a</i><sub>34</sub></span></span><span class="col pt"><span><i>X</i>′</span><span><i>Y</i>′</span><span><i>Z</i>′</span><span>1</span></span></span></div>
+    <p>En vez de los once parámetros, el método lineal estima las doce entradas de <i>A</i>. No todas son libres: <i>A</i> y <i>kA</i> dan los mismos píxeles para cualquier número <i>k</i> ≠ 0, porque <i>k</i> solo cambia λ. Así que una entrada se puede fijar, y lo usual es <span class="nowrap"><i>a</i><sub>34</sub> = 1</span>. Quedan once incógnitas, tantas como parámetros tiene la cámara.</p>
+    <p>¿Por qué se puede fijar <i>a</i><sub>34</sub>? La tercera fila de <i>A</i> da λ. Para el origen del objeto, <span class="nowrap"><span class="pt"><i>M</i>′</span> = [0&ensp;0&ensp;0&ensp;1]<sup class="t">T</sup></span>, da <span class="nowrap">λ = <i>a</i><sub>34</sub></span>, así que <i>a</i><sub>34</sub> es la profundidad de ese origen delante de la cámara, multiplicada por la escala de <i>A</i>. Fijarla en 1 solo elige la escala. La única excepción es un <i>a</i><sub>34</sub> verdadero igual a 0, cuando el origen del objeto está a la altura del centro óptico, en el plano que pasa por <i>C</i> paralelo a la imagen. Ninguna escala convierte 0 en 1. Un origen que esté a la vista, como en la mesa, evita este caso.</p>
+
+    <h3>Dos ecuaciones por punto</h3>
+    <p>La tercera fila da <span class="nowrap">λ = <i>a</i><sub>31</sub><i>X</i>′ + <i>a</i><sub>32</sub><i>Y</i>′ + <i>a</i><sub>33</sub><i>Z</i>′ + 1</span>. Al reemplazarla en las dos primeras filas, λ desaparece:</p>
+    <div class="disp"><span class="nowrap">(<i>a</i><sub>31</sub><i>X</i>′ + <i>a</i><sub>32</sub><i>Y</i>′ + <i>a</i><sub>33</sub><i>Z</i>′ + 1)&thinsp;<i>u</i></span> <span class="nowrap">= <i>a</i><sub>11</sub><i>X</i>′ + <i>a</i><sub>12</sub><i>Y</i>′ + <i>a</i><sub>13</sub><i>Z</i>′ + <i>a</i><sub>14</sub></span><br><span class="nowrap">(<i>a</i><sub>31</sub><i>X</i>′ + <i>a</i><sub>32</sub><i>Y</i>′ + <i>a</i><sub>33</sub><i>Z</i>′ + 1)&thinsp;<i>v</i></span> <span class="nowrap">= <i>a</i><sub>21</sub><i>X</i>′ + <i>a</i><sub>22</sub><i>Y</i>′ + <i>a</i><sub>23</sub><i>Z</i>′ + <i>a</i><sub>24</sub></span></div>
+    <p>Ambas ecuaciones son lineales en las incógnitas, porque <i>u</i>, <i>v</i>, <i>X</i>′, <i>Y</i>′ y <i>Z</i>′ son números conocidos. Reúne las incógnitas en <span class="nowrap"><i>a</i> = [<i>a</i><sub>11</sub>&ensp;<i>a</i><sub>12</sub>&ensp;…&ensp;<i>a</i><sub>33</sub>]<sup class="t">T</sup></span>, once entradas fila por fila, y pásalas a la izquierda:</p>
+    <div class="disp"><span class="nowrap">[<i>X</i>′&ensp;<i>Y</i>′&ensp;<i>Z</i>′&ensp;1&ensp;0&ensp;0&ensp;0&ensp;0</span> <span class="nowrap">−<i>uX</i>′&ensp;−<i>uY</i>′&ensp;−<i>uZ</i>′]&thinsp;<i>a</i></span> <span class="nowrap">= <i>u</i></span><br><span class="nowrap">[0&ensp;0&ensp;0&ensp;0&ensp;<i>X</i>′&ensp;<i>Y</i>′&ensp;<i>Z</i>′&ensp;1</span> <span class="nowrap">−<i>vX</i>′&ensp;−<i>vY</i>′&ensp;−<i>vZ</i>′]&thinsp;<i>a</i></span> <span class="nowrap">= <i>v</i></span></div>
+    <p>Cada punto agrega estas dos filas, y <i>N</i> puntos dan un sistema lineal</p>
+    <div class="disp hero-f"><i>Qa</i> = <i>r</i></div>
+    <p>con 2<i>N</i> ecuaciones, donde <i>Q</i> tiene once columnas y <i>r</i> lista los <i>u</i> y <i>v</i> medidos.</p>
+
+    <h3>Cuántos puntos</h3>
+    <p>Once incógnitas necesitan al menos once ecuaciones, así que al menos seis puntos: cinco dan solo diez. Y los puntos no pueden estar todos en un plano. Si lo estuvieran, por ejemplo todos en el suelo, donde <span class="nowrap"><i>Z</i>′ = 0</span>, entonces <i>a</i><sub>13</sub>, <i>a</i><sub>23</sub> y <i>a</i><sub>33</sub> multiplicarían a 0 en todas las filas, y nada los determinaría. Los puntos de un plano solo determinan la homografía entre ese plano y la imagen, como en los apuntes de transformaciones 2D, y una homografía tiene ocho números, no once. Las ocho esquinas de la mesa están en dos niveles, el suelo y la cubierta, y sí determinan <i>A</i>.</p>
+
+    <h3>Mínimos cuadrados</h3>
+    <p>Los píxeles marcados se desvían unos pocos píxeles, así que con más de seis puntos ningún <i>a</i> cumple todas las ecuaciones. Como con las homografías, se toma el <i>a</i> que hace mínima la suma de cuadrados ‖<i>Qa</i> − <i>r</i>‖<sup class="t">2</sup>:</p>
+    <div class="disp hero-f"><i>â</i> = (<i>Q</i><sup class="t">T</sup><i>Q</i>)<sup class="t">−1</sup><i>Q</i><sup class="t">T</sup><i>r</i></div>
+    <p>Las columnas de <i>Q</i> difieren en tamaño en millones: un 1 junto a −<i>uY</i>′, que aquí llega a dos millones. Formar <i>Q</i><sup class="t">T</sup><i>Q</i> eleva al cuadrado esa diferencia y puede perder dígitos, así que las bibliotecas numéricas, como <code>np.linalg.lstsq</code>, llegan al mismo <i>â</i> sin formarla.</p>
+    <p>¿Qué minimizan aquí los mínimos cuadrados? La primera ecuación del punto <i>i</i> deja el residuo <span class="nowrap">(primera fila de <i>A</i>)<span class="pt"><i>M</i>′<sub><i>i</i></sub></span> − <i>u</i><sub><i>i</i></sub>λ<sub><i>i</i></sub></span>. El primer término es <span class="nowrap">λ<sub><i>i</i></sub><i>û</i><sub><i>i</i></sub></span>, así que el residuo es <span class="nowrap">λ<sub><i>i</i></sub>(<i>û</i><sub><i>i</i></sub> − <i>u</i><sub><i>i</i></sub>)</span>: el error en píxeles, multiplicado por λ<sub><i>i</i></sub>. Con <span class="nowrap"><i>a</i><sub>34</sub> = 1</span>, λ<sub><i>i</i></sub> es la profundidad del punto dividida por la profundidad del origen del objeto, así que los puntos más lejanos pesan más. El resultado se acerca al θ con el menor <i>J</i>, pero no es el mismo, y esta es una de las razones para el método no lineal de la sección 4.</p>
+    <p>La elección <span class="nowrap"><i>a</i><sub>34</sub> = 1</span> también se puede evitar, como con las homografías. Deja las doce entradas como incógnitas, agrega −<i>u</i> y −<i>v</i> como duodécima columna de <i>Q</i>, y resuelve <span class="nowrap"><i>Qa</i> = 0</span> con <span class="nowrap">‖<i>a</i>‖ = 1</span>. La respuesta es el vector singular derecho de <i>Q</i> con el menor valor singular. Para la mesa, las dos <i>A</i> coinciden en tres cifras significativas, y sus errores promedio difieren en menos de 0.001 píxeles.</p>
+  </div>
+</section>
+
+<section id="camera">
+  <div class="prose">
+    <h2><span class="n">3</span>Dónde está la cámara, y sus once parámetros</h2>
+    <p><i>A</i> contiene la cámara completa, pero sus entradas lo mezclan todo. Dos hechos del modelo de cámara la separan. Escribe <span class="nowrap"><i>A</i> = [<i>B</i>&ensp;<i>b</i>]</span>, con <i>B</i> su bloque izquierdo de 3 × 3 y <i>b</i> su última columna.</p>
+
+    <h3>El centro óptico</h3>
+    <p>El centro óptico <i>C</i> no tiene imagen: todos los rayos parten de él, así que <i>A</i> lo envía al vector cero. En las coordenadas del objeto, <span class="nowrap"><i>AC</i> = <i>BC</i> + <i>b</i> = 0</span>, y por lo tanto</p>
+    <div class="disp hero-f"><i>C</i> = −<i>B</i><sup class="t">−1</sup><i>b</i></div>
+    <p>Esto no necesita ningún parámetro: encuentra dónde estaba la cámara a partir de <i>A</i> sola.</p>
+
+    <h3>Separar <i>K</i> y <i>R</i>′</h3>
+    <p>El modelo dice que <i>A</i> es un múltiplo de <i>KPS</i>′. Como <span class="nowrap"><i>KP</i> = [<i>K</i>&ensp;0]</span>, ese producto es <span class="nowrap"><i>K</i>[<i>R</i>′&ensp;<i>t</i>′]</span>, y</p>
+    <div class="disp"><span class="nowrap"><i>A</i> = <i>kK</i>[<i>R</i>′&ensp;<i>t</i>′],</span>&ensp; <span class="nowrap"><i>B</i> = <i>kKR</i>′</span></div>
+    <p>para algún número <i>k</i>. Dos propiedades separan <i>B</i>. <i>K</i> es triangular superior, con última fila [0&ensp;0&ensp;1]. Y las filas de <i>R</i>′, llámalas <i>r</i><sub>1</sub>, <i>r</i><sub>2</sub> y <i>r</i><sub>3</sub>, son los ejes <i>X</i>, <i>Y</i> y <i>Z</i> de la cámara escritos en el sistema del objeto: vectores unitarios, perpendiculares entre sí. Llama <i>m</i><sub>1</sub>, <i>m</i><sub>2</sub> y <i>m</i><sub>3</sub> a las filas de <i>B</i>. Fila por fila desde abajo, <i>B</i> = <i>kKR</i>′ dice</p>
+    <div class="disp"><span class="nowrap"><i>m</i><sub>3</sub> = <i>k</i>&thinsp;<i>r</i><sub>3</sub></span><br><span class="nowrap"><i>m</i><sub>2</sub> = <i>k</i>(β<i>r</i><sub>2</sub> + <i>v</i><sub>0</sub><i>r</i><sub>3</sub>)</span><br><span class="nowrap"><i>m</i><sub>1</sub> = <i>k</i>(α<i>r</i><sub>1</sub> + γ<i>r</i><sub>2</sub> + <i>u</i><sub>0</sub><i>r</i><sub>3</sub>)</span></div>
+    <p>y las incógnitas salen de a una.</p>
+    <ul>
+      <li><i>r</i><sub>3</sub> tiene largo 1, así que <span class="nowrap"><i>k</i> = ±‖<i>m</i><sub>3</sub>‖</span> y <span class="nowrap"><i>r</i><sub>3</sub> = <i>m</i><sub>3</sub>/<i>k</i></span>.</li>
+      <li>Un producto punto con <i>r</i><sub>3</sub> extrae la parte de <i>m</i><sub>2</sub>/<i>k</i> a lo largo de <i>r</i><sub>3</sub>, porque <i>r</i><sub>2</sub> es perpendicular a él: <span class="nowrap"><i>v</i><sub>0</sub> = <i>m</i><sub>2</sub>·<i>r</i><sub>3</sub>/<i>k</i></span>. Lo que queda, <span class="nowrap"><i>m</i><sub>2</sub>/<i>k</i> − <i>v</i><sub>0</sub><i>r</i><sub>3</sub></span>, es β<i>r</i><sub>2</sub>, cuyo largo es β y cuya dirección es <i>r</i><sub>2</sub>.</li>
+      <li>Del mismo modo, <span class="nowrap"><i>u</i><sub>0</sub> = <i>m</i><sub>1</sub>·<i>r</i><sub>3</sub>/<i>k</i></span> y <span class="nowrap">γ = <i>m</i><sub>1</sub>·<i>r</i><sub>2</sub>/<i>k</i></span>, y lo que queda de <i>m</i><sub>1</sub>/<i>k</i> es α<i>r</i><sub>1</sub>.</li>
+    </ul>
+    <p>Esto es el proceso de Gram–Schmidt aplicado a las filas de <i>B</i>, de abajo hacia arriba. El signo de <i>k</i> es el que deja el objeto delante de la cámara, con λ positivo para sus puntos. Luego <span class="nowrap"><i>t</i>′ = <i>K</i><sup class="t">−1</sup><i>b</i>/<i>k</i></span>, y los ángulos salen de <span class="nowrap"><i>R</i> = <i>R</i>′<sup class="t">T</sup></span>, cuya primera fila es</p>
+    <div class="disp"><span class="nowrap">[cos ω<sub><i>Y</i></sub> cos ω<sub><i>Z</i></sub>&ensp;cos ω<sub><i>Y</i></sub> sin ω<sub><i>Z</i></sub></span>&ensp;<span class="nowrap">−sin ω<sub><i>Y</i></sub>]</span></div>
+    <p>Esta da ω<sub><i>Y</i></sub> y ω<sub><i>Z</i></sub>, y ω<sub><i>X</i></sub> sale de la última columna de <i>R</i>.</p>
+    <p>Los largos son positivos, así que α y β siempre salen positivos, y un espejo en los datos aparece en <i>R</i>′: si <span class="nowrap">det <i>R</i>′ = −1</span>, <i>R</i>′ convierte una mano derecha en una izquierda, y ninguna cámara real da esos píxeles.</p>
+
+    <h3>Hacia dónde apuntan los seis números</h3>
+    <p>En esta página, como en los apuntes de transformaciones 3D, el sistema de coordenadas de la cámara es el original y el del objeto es el nuevo. Los ángulos ω giran los ejes de la cámara hasta los del objeto, y <i>t</i>′ es donde la cámara ve el origen del objeto. Muchos programas describen la misma cámara al revés, con el sistema de la cámara como el nuevo: un punto <span class="pt"><i>M</i>′</span> del objeto está en <span class="nowrap"><i>R</i>′<span class="pt"><i>M</i>′</span> + <i>t</i>′</span> en el sistema de la cámara. Su traslación es el mismo <i>t</i>′, pero su matriz de rotación es <i>R</i>′, la traspuesta de <i>R</i>, así que sus tres ángulos son números distintos para la misma cámara. Antes de usar ángulos de otra fuente, revisa cuál de las dos matrices construyen.</p>
+    <p>Para la mesa, esto importa de otra forma más. Su eje <i>X</i>′ apunta casi directamente hacia la cámara, así que ω<sub><i>Y</i></sub> sale cerca de 90°, cerca del bloqueo del cardán de los apuntes de transformaciones 3D: con 90°, ω<sub><i>X</i></sub> y ω<sub><i>Z</i></sub> girarían en torno a la misma recta. A 79° los ángulos siguen bien definidos, pero algunos cambios pequeños se agrandan. Mover la esquina 5 diez píxeles hacia abajo gira la cámara medio grado, pero cambia ω<sub><i>X</i></sub> en 2.5° y ω<sub><i>Z</i></sub> en 2.3°, ambos en el mismo sentido y unas cinco veces más. Esta es una de las razones por las que los programas de calibración guardan una rotación como un eje y un ángulo.</p>
+  </div>
+
+  <div class="fig">
+    <div class="panels">
+      <svg id="fig-calib-image" role="group" aria-label="La imagen, de 1842 por 1408 píxeles, con las ocho esquinas marcadas de la mesa en rojo y las aristas de la mesa proyectadas por A en azul. Cada esquina se puede arrastrar."></svg>
+      <svg id="fig-calib-space" role="group" aria-label="La mesa en sus propias coordenadas X′, Y′ y Z′, y la cámara encontrada a partir de A: su centro óptico C, sus ejes y su imagen, con un rayo desde C por cada píxel marcado. Usa las flechas del teclado para girar la vista."></svg>
+    </div>
+    <div class="ro">
+      <div class="modes" id="fig-calib-modes" role="group" aria-label="Cómo se ajusta A">
+        <button type="button" data-mode="lsq" aria-pressed="true">Mínimos cuadrados</button>
+        <button type="button" data-mode="ransac" aria-pressed="false">RANSAC</button>
+      </div>
+      <div id="fig-calib-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Arrastra una esquina roja en la imagen y la cámara se vuelve a encontrar a partir de los clics: <i>A</i> por mínimos cuadrados, y luego <i>C</i> y los parámetros. Los anillos huecos son las reproyecciones <span class="pt"><i>ŵ</i><sub><i>i</i></sub></span>. Arrastra el fondo de la vista inferior para girarla. El modo RANSAC se explica en la sección 6. Con el teclado, selecciona una esquina o la vista inferior con Tab y usa las flechas; una esquina se mueve 10 píxeles por pulsación.</p>
+      <button type="button" class="btn" id="fig-calib-reset">Reiniciar</button>
+    </div>
+  </div>
+</section>
+
+<section id="nonlinear">
+  <div class="prose">
+    <h2><span class="n">4</span>Calibración no lineal</h2>
+    <p>El método lineal nunca mira los parámetros. Estima doce números y minimiza un error en las ecuaciones, no en la imagen. La calibración no lineal trabaja con los parámetros mismos,</p>
+    <div class="disp"><span class="nowrap">θ = [α&ensp;β&ensp;γ&ensp;<i>u</i><sub>0</sub>&ensp;<i>v</i><sub>0</sub></span> <span class="nowrap">ω<sub><i>X</i></sub>&ensp;ω<sub><i>Y</i></sub>&ensp;ω<sub><i>Z</i></sub>&ensp;<i>t</i>′<sub><i>X</i></sub>&ensp;<i>t</i>′<sub><i>Y</i></sub>&ensp;<i>t</i>′<sub><i>Z</i></sub>]<sup class="t">T</sup></span></div>
+    <p>y minimiza <i>J</i>(θ), la distancia promedio en píxeles. Para cada θ, <i>F</i> construye <i>K</i>, convierte los ángulos en <span class="nowrap"><i>R</i> = <i>R</i><sub><i>X</i></sub><i>R</i><sub><i>Y</i></sub><i>R</i><sub><i>Z</i></sub></span>, forma <span class="nowrap"><i>S</i>′ = [<i>R</i><sup class="t">T</sup>&ensp;<i>t</i>′;&ensp;0<sup class="t">T</sup>&ensp;1]</span>, y proyecta cada punto con <span class="nowrap">λ<sub><i>i</i></sub><span class="pt"><i>ŵ</i><sub><i>i</i></sub></span> = <i>KPS</i>′<span class="pt"><i>M</i>′<sub><i>i</i></sub></span></span>.</p>
+    <p>Los ángulos entran a través de senos y cosenos, y cada <span class="pt"><i>ŵ</i><sub><i>i</i></sub></span> se divide por λ<sub><i>i</i></sub>, que también depende de θ. Así que, a diferencia de los mínimos cuadrados, el mínimo de <i>J</i> no tiene fórmula. Lo encuentra una búsqueda iterativa: parte de un valor inicial θ<sub>0</sub> y sigue cambiando θ mientras <i>J</i> baje. Algunas búsquedas, como el símplex de Nelder–Mead, solo comparan valores de <i>J</i>; otras siguen su pendiente. En ambos casos, una búsqueda encuentra el punto más bajo cerca de donde parte, que puede no ser el más bajo de todos, así que el valor inicial importa. La sección 3 da uno bueno: los parámetros de la <i>A</i> lineal.</p>
+    <p>¿Para qué buscar, si la <i>A</i> lineal ya ajusta? Por tres razones.</p>
+    <ul>
+      <li><i>J</i> mide lo que importa, distancias en la imagen, con todos los puntos contando lo mismo.</li>
+      <li>El modelo puede crecer. La distorsión del lente, en la sección siguiente, o un manipulador que gira el objeto entre imágenes, agregan parámetros que ninguna matriz <i>A</i> puede contener.</li>
+      <li>Se puede incorporar lo que se sabe de la cámara. Para una cámara que se sabe sin torcimiento, γ se puede fijar en 0, algo que las doce entradas libres de <i>A</i> no pueden expresar.</li>
+    </ul>
+
+    <h3>Un promedio de distancias, o de cuadrados</h3>
+    <p><i>J</i> promedia distancias, no distancias al cuadrado, y las dos llevan a cámaras distintas. Para la mesa, el menor <i>J</i> es 2.69 píxeles, y se alcanza con cinco de las ocho esquinas ajustadas exactamente y las otras tres hasta a 10.6 píxeles. Minimizar en cambio las distancias al cuadrado reparte el error entre las ocho esquinas, ninguna a más de 5 píxeles, con una distancia promedio de 3.40 píxeles. Un promedio de distancias se comporta como una mediana: tolera unos pocos errores grandes si el resto ajusta exactamente, así que un clic malo lo arrastra menos. Un cuadrado hace que un error grande cueste más que varios pequeños, y la mayoría de los programas de calibración minimizan cuadrados e informan su raíz cuadrática media.</p>
+    <p>El promedio de distancias tiene además pliegues agudos, donde una distancia llega a 0 y su pendiente salta. Pueden detener una búsqueda: para la mesa, el símplex de Nelder–Mead se detuvo en cualquier punto entre 2.9 y 3.3 píxeles, según dónde partiera. Resolver una sucesión de problemas de mínimos cuadrados ponderados, cada uno pesando el error al cuadrado de un punto por uno sobre su distancia actual, llegó a 2.69 desde cada uno de varios puntos de partida.</p>
+
+    <h3>Una imagen especular que ajusta</h3>
+    <p>Una cámara equivocada ajusta los píxeles exactamente igual de bien que la correcta. Gira la cámara media vuelta en torno a su propio eje <i>Y</i>, de modo que mire en sentido contrario al objeto, y cambia los signos de β y γ. En las coordenadas de la cámara, el giro cambia los signos de <i>X</i> y <i>Z</i> de cada punto. Dividir −<i>X</i> por −<i>Z</i> no cambia nada, pero ahora <i>Y</i> se divide por −<i>Z</i>, y los nuevos signos de β y γ, los dos parámetros que multiplican a <i>Y</i>, lo compensan. La matriz de la nueva cámara es exactamente −<i>A</i>, y −<i>A</i> da la misma imagen que <i>A</i>. Pero ahora cada λ<sub><i>i</i></sub> es negativo: todos los puntos están detrás de la cámara. Una búsqueda que parte de un valor inicial así, con un β negativo, se queda con él. Por eso, después de calibrar, revisa que α y β sean positivos y que cada λ<sub><i>i</i></sub> sea positivo.</p>
+  </div>
+</section>
+
+<section id="distortion">
+  <div class="prose">
+    <h2><span class="n">5</span>Distorsión del lente</h2>
+    <p>El modelo hasta aquí supone que los rayos pasan en línea recta por el centro óptico. Un lente real los curva un poco, sobre todo cerca de los bordes de la imagen, donde su superficie está más inclinada respecto del eje óptico. Las rectas de la escena se ven entonces curvas en la imagen.</p>
+    <p>La distorsión se modela como un paso más entre la proyección y la conversión a píxeles. <i>P</i> da el punto de la <em>imagen ideal</em> (<i>x</i>, <i>y</i>), una función de distorsión lo mueve al punto de la <em>imagen real</em> (<i>x</i>′, <i>y</i>′), el que registra el sensor, y <i>K</i> lo convierte a píxeles:</p>
+    <div class="disp"><span class="nowrap"><i>x</i>′ = <i>x</i> + δ<sub><i>x</i></sub>(<i>x</i>, <i>y</i>),</span>&ensp; <span class="nowrap"><i>y</i>′ = <i>y</i> + δ<sub><i>y</i></sub>(<i>x</i>, <i>y</i>)</span></div>
+    <p>El modelo completo tiene cuatro pasos: <i>S</i>′ lleva el punto a las coordenadas de la cámara, <i>P</i> lo proyecta sobre la imagen ideal, la distorsión lo mueve a la imagen real, y <i>K</i> da su píxel. Solo la imagen real se ve.</p>
+
+    <h3>Radial y tangencial</h3>
+    <p>La distorsión suele separarse en dos partes, en torno a un centro donde se anula, casi siempre el punto principal. En coordenadas polares (<i>r</i>, θ) en torno a ese centro, una parte <em>radial</em> δ<sub><i>r</i></sub>(<i>r</i>) mueve un punto a lo largo de su rayo desde el centro y depende solo de su distancia <i>r</i>. Una parte <em>tangencial</em> δ<sub>θ</sub>(θ) lo gira en torno al centro y depende solo de su ángulo θ. De vuelta en <i>x</i> e <i>y</i>, con el centro en el origen:</p>
+    <div class="disp"><span class="nowrap">δ<sub><i>x</i></sub> = δ<sub><i>r</i></sub>(<i>r</i>) cos θ − <i>r</i>&thinsp;δ<sub>θ</sub>(θ) sin θ</span><br><span class="nowrap">δ<sub><i>y</i></sub> = δ<sub><i>r</i></sub>(<i>r</i>) sin θ + <i>r</i>&thinsp;δ<sub>θ</sub>(θ) cos θ</span></div>
+    <p>Los primeros términos mueven el punto en δ<sub><i>r</i></sub> en la dirección (cos θ, sin θ); los segundos lo mueven en un arco <span class="nowrap"><i>r</i>&thinsp;δ<sub>θ</sub></span> en la dirección perpendicular (−sin θ, cos θ). Ambas partes suelen ser polinomios de orden mayor que uno. Un δ<sub><i>r</i></sub> proporcional a <i>r</i> solo cambiaría la escala de toda la imagen, lo que α y β ya hacen, y un δ<sub>θ</sub> constante solo la giraría, lo que los ángulos ya hacen.</p>
+    <p>Una distorsión radial que empuja los puntos hacia afuera cada vez más hacia los bordes curva hacia adentro las rectas de una cuadrícula, como un cojín. Una que los tira hacia adentro las curva hacia afuera, como un barril, algo común en lentes gran angular.</p>
+
+    <h3>Un ejemplo</h3>
+    <p>Un lente forma la imagen de nueve puntos en una cuadrícula, con <i>x</i> e <i>y</i> en {−1, 0, 1}. El centro y los cuatro puntos medios de los lados quedan donde estaban, pero las cuatro esquinas pasan de (±1, ±1) a (±1.2, ±1.2). Cada punto queda sobre su propio rayo desde el centro, así que no hay distorsión tangencial: <span class="nowrap">δ<sub>θ</sub> = 0</span>. La distancia al centro cambia solo en las esquinas, de √2 a 1.2√2, así que <span class="nowrap">δ<sub><i>r</i></sub>(1) = 0</span> y <span class="nowrap">δ<sub><i>r</i></sub>(√2) = 0.2√2</span>. Un polinomio que se anula en <span class="nowrap"><i>r</i> = 0</span> y <span class="nowrap"><i>r</i> = 1</span> es <span class="nowrap">δ<sub><i>r</i></sub>(<i>r</i>) = <i>k</i>(<i>r</i><sup class="t">3</sup> − <i>r</i>)</span>, y en <span class="nowrap"><i>r</i> = √2</span> da <i>k</i>√2, así que <span class="nowrap"><i>k</i> = 0.2</span>. Como <span class="nowrap">cos θ = <i>x</i>/<i>r</i></span> y <span class="nowrap">sin θ = <i>y</i>/<i>r</i></span>,</p>
+    <div class="disp"><span class="nowrap"><i>x</i>′ = <i>x</i> + 0.2<i>x</i>(<i>x</i><sup class="t">2</sup> + <i>y</i><sup class="t">2</sup> − 1),</span>&ensp; <span class="nowrap"><i>y</i>′ = <i>y</i> + 0.2<i>y</i>(<i>x</i><sup class="t">2</sup> + <i>y</i><sup class="t">2</sup> − 1)</span></div>
+    <p>Comprueba una esquina: <span class="nowrap"><i>x</i>′ = 1 + 0.2 · 1 · (1 + 1 − 1) = 1.2</span>. El punto medio de un lado, (1, 0), tiene <span class="nowrap"><i>x</i><sup class="t">2</sup> + <i>y</i><sup class="t">2</sup> − 1 = 0</span> y no se mueve. Otros polinomios también ajustan los nueve puntos. Este tiene solo potencias impares de <i>r</i>, lo que mantiene δ<sub><i>x</i></sub> y δ<sub><i>y</i></sub> como polinomios en <i>x</i> e <i>y</i>.</p>
+
+    <h3>Por qué solo el método no lineal puede incluirla</h3>
+    <p>Una distorsión curva las rectas, y ninguna matriz puede hacer eso: <i>A</i> envía cada recta a una recta. Así que una calibración lineal no puede modelar la distorsión. Una no lineal agrega sus coeficientes a θ y los estima junto con el resto.</p>
+  </div>
+</section>
+
+<section id="ransac">
+  <div class="prose">
+    <h2><span class="n">6</span>Valores atípicos y RANSAC</h2>
+    <p>Los mínimos cuadrados confían en todos los puntos. Si una esquina se marca en el lugar equivocado, por ejemplo la esquina 6, 150 píxeles a la izquierda, el ajuste se inclina hacia ella y todas las esquinas lo sufren. Los errores crecen de 2–5 píxeles a 9–67 píxeles, <i>J</i> crece de 3.69 a 35.7 píxeles, y la cámara encontrada se mueve 22 cm. La esquina equivocada ni siquiera se destaca: su error, 56 píxeles, es menor que el de la esquina 5, que se marcó bien. Un punto equivocado en los datos se llama <em>valor atípico</em> (<i lang="en">outlier</i>).</p>
+    <p>RANSAC, por <i lang="en">random sample consensus</i> (consenso de muestras aleatorias), da vuelta la pregunta. En vez de ajustar todos los puntos a la vez, repite cuatro pasos:</p>
+    <ol>
+      <li>Elige una muestra al azar con tan pocos puntos como necesite el modelo: seis esquinas para una cámara.</li>
+      <li>Ajusta <i>A</i> a la muestra.</li>
+      <li>Cuenta cuántos de todos los puntos reproyecta esta <i>A</i> dentro de una tolerancia de sus píxeles. Estos son sus puntos <em>consistentes</em> (<i lang="en">inliers</i>).</li>
+      <li>Quédate con la muestra con más puntos consistentes vista hasta ahora.</li>
+    </ol>
+    <p>Tras suficientes intentos, es probable que alguna muestra no tenga valores atípicos, y su <i>A</i> concuerda con todos los puntos buenos, lo que le da la mayor cantidad de puntos consistentes. Un ajuste final por mínimos cuadrados sobre esos puntos da la respuesta. La muestra se mantiene lo más pequeña posible porque una muestra pequeña tiene más probabilidad de estar libre de valores atípicos, así que se necesitan menos intentos.</p>
+    <p>El mismo método estimó homografías en los <a href="/es/notes/computer-vision/2d-transformations/">apuntes de transformaciones 2D</a>, con muestras de cuatro pares de puntos.</p>
+    <h3>RANSAC con solo ocho esquinas</h3>
+    <p>Ocho esquinas son pocas para un modelo con once parámetros. Seis esquinas dan doce ecuaciones para once incógnitas, así que <i>A</i> ajusta muy de cerca casi cualquier grupo de seis esquinas, y una muestra al azar dice poco sobre el resto. Con tan pocas esquinas, en cambio, no hace falta muestrear: la figura de la sección 3 ajusta <i>A</i> a cada conjunto de ocho, siete o seis esquinas, 37 conjuntos en total, y se queda con el conjunto más grande cuyas esquinas caen todas dentro de la tolerancia de su propio ajuste. Ese conjunto es el consenso que RANSAC busca con muestras al azar. Cambia la figura a RANSAC y arrastra una esquina lejos. Para la esquina 6 marcada 150 píxeles fuera de lugar, el conjunto más grande son las otras siete esquinas, su ajuste reproyecta cada una a menos de 3.4 píxeles, y la esquina 6 queda fuera como valor atípico, a 162 píxeles de donde la pone el ajuste.</p>
+    <p>La tolerancia es de 20 píxeles, porque una cámara ajustada a siete de las esquinas predice la octava con unos 7 a 24 píxeles de error aunque todos los clics sean correctos, y una tolerancia más estrecha declararía valores atípicos a esquinas buenas. Además, una esquina arrastrada solo un poco a veces se explica igual de bien dejando fuera una esquina vecina y desplazando el punto principal. Así que, cuando califican dos conjuntos del mismo tamaño, la figura prefiere la cámara con el punto principal más cerca del centro de la imagen y el menor torcimiento. Arrastra la esquina más lejos, y es ella la que queda fuera.</p>
+    <p>Marcar puntos a mano es lento. Los programas encuentran puntos correspondientes por sí solos, detectando las esquinas de un tablero de ajedrez o emparejando puntos clave entre imágenes, y algunas de esas parejas son erróneas. RANSAC es lo que hace eso práctico.</p>
+  </div>
+</section>
+
+<section id="practice">
+  <div class="prose">
+    <h2><span class="n">7</span>La calibración en la práctica</h2>
+    <p>Los objetos de calibración suelen ser planos: un tablero de ajedrez impreso, cuyas esquinas interiores un programa encuentra por sí solo con precisión de una fracción de píxel. Por la sección 2, una vista de un plano no basta, porque solo determina una homografía. Pero cada vista del tablero, sostenido en una pose distinta, da otra homografía, y todas comparten la misma <i>K</i>. Unas pocas vistas en poses distintas determinan los cinco parámetros intrínsecos, y luego el <i>R</i>′ y el <i>t</i>′ de cada vista.</p>
+    <p>OpenCV hace todo esto en una sola llamada, <code>cv.calibrateCamera</code>. Recibe las esquinas del tablero en las coordenadas del propio tablero, con <span class="nowrap"><i>Z</i>′ = 0</span>, y sus píxeles en cada vista. Devuelve <i>K</i>, los coeficientes de su modelo de distorsión del lente y, para cada vista, <i>R</i>′ y <i>t</i>′. OpenCV toma el sistema de la cámara como el nuevo, la forma inversa descrita en la sección 3, y guarda <i>R</i>′ como un vector de rotación: un eje cuyo largo es el ángulo girado en torno a él. La matriz <i>A</i> de cada vista es entonces <span class="nowrap">[<i>K</i>&ensp;0][<i>R</i>′&ensp;<i>t</i>′;&ensp;0<sup class="t">T</sup>&ensp;1]</span>.</p>
+    <p>Los sistemas de imágenes de rayos X se calibran de la misma forma, a partir de imágenes de un tablero de calibración. La fuente de rayos X hace el papel del centro óptico, como mostraron los apuntes de transformaciones 3D.</p>
+  </div>
+</section>
+
+<section id="example">
+  <div class="prose">
+    <h2><span class="n">8</span>Un ejemplo resuelto</h2>
+    <p>La mesa de la sección 1, desde sus esquinas marcadas hasta su cámara. Los largos están en milímetros y las coordenadas de imagen en píxeles.</p>
+    <ol class="steps">
+      <li><b>Los datos.</b> Cada esquina <span class="pt"><i>M</i>′<sub><i>i</i></sub></span> y el píxel <span class="pt"><i>w</i><sub><i>i</i></sub></span> donde se marcó:
+        <span class="f"><span class="nowrap">0: <span class="pt">(800, 0, 0)</span></span> <span class="nowrap">→ <span class="pt">(268, 1178)</span></span><br><span class="nowrap">1: <span class="pt">(800, 0, 900)</span></span> <span class="nowrap">→ <span class="pt">(166, 294)</span></span><br><span class="nowrap">2: <span class="pt">(0, 0, 900)</span></span> <span class="nowrap">→ <span class="pt">(412, 328)</span></span><br><span class="nowrap">3: <span class="pt">(0, 0, 0)</span></span> <span class="nowrap">→ <span class="pt">(470, 940)</span></span><br><span class="nowrap">4: <span class="pt">(800, 1250, 0)</span></span> <span class="nowrap">→ <span class="pt">(1654, 1118)</span></span><br><span class="nowrap">5: <span class="pt">(800, 1250, 900)</span></span> <span class="nowrap">→ <span class="pt">(1704, 246)</span></span><br><span class="nowrap">6: <span class="pt">(0, 1250, 900)</span></span> <span class="nowrap">→ <span class="pt">(1426, 304)</span></span><br><span class="nowrap">7: <span class="pt">(0, 1250, 0)</span></span> <span class="nowrap">→ <span class="pt">(1420, 900)</span></span></span></li>
+      <li><b>Dos filas por esquina.</b> Para la esquina 1, <span class="nowrap"><i>X</i>′ = 800</span>, <span class="nowrap"><i>Y</i>′ = 0</span>, <span class="nowrap"><i>Z</i>′ = 900</span>, <span class="nowrap"><i>u</i> = 166</span> y <span class="nowrap"><i>v</i> = 294</span>, así que <span class="nowrap">−<i>uX</i>′ = −132800</span>, <span class="nowrap">−<i>uZ</i>′ = −149400</span>, <span class="nowrap">−<i>vX</i>′ = −235200</span> y <span class="nowrap">−<i>vZ</i>′ = −264600</span>. Omitiendo los términos con <span class="nowrap"><i>Y</i>′ = 0</span>:
+        <span class="f"><span class="nowrap">800<i>a</i><sub>11</sub> + 900<i>a</i><sub>13</sub> + <i>a</i><sub>14</sub></span> <span class="nowrap">− 132800<i>a</i><sub>31</sub> − 149400<i>a</i><sub>33</sub></span> <span class="nowrap">= 166</span><br><span class="nowrap">800<i>a</i><sub>21</sub> + 900<i>a</i><sub>23</sub> + <i>a</i><sub>24</sub></span> <span class="nowrap">− 235200<i>a</i><sub>31</sub> − 264600<i>a</i><sub>33</sub></span> <span class="nowrap">= 294</span></span>
+        Las otras siete esquinas agregan catorce filas más: 16 ecuaciones para 11 incógnitas.</li>
+      <li><b>Resolver por mínimos cuadrados.</b> Con <span class="nowrap"><i>a</i><sub>34</sub> = 1</span>:
+        <span class="f fit"><span class="nowrap"><i>A</i> ≈</span> <span class="mat" style="--cols: 4"><span>−0.3538</span><span>0.7804</span><span>−0.09307</span><span>468.29</span><span>−0.1647</span><span>−0.01722</span><span>−0.6978</span><span>937.66</span><span>−3.967·10<sup class="t">−4</sup></span><span>1.457·10<sup class="t">−5</sup></span><span>−7.448·10<sup class="t">−5</sup></span><span>1</span></span></span></li>
+      <li><b>Reproyectar una esquina.</b> La esquina 1 cae a 5.13 píxeles de donde se marcó:
+        <span class="f"><span class="nowrap"><i>A</i><span class="col pt"><span>800</span><span>0</span><span>900</span><span>1</span></span></span> <span class="nowrap">≈ <span class="col pt"><span>101.46</span><span>177.91</span><span>0.6156</span></span></span> <span class="nowrap">→ (<span class="frac"><span>101.46</span><span>0.6156</span></span>, <span class="frac"><span>177.91</span><span>0.6156</span></span>)</span> <span class="nowrap">≈ <span class="pt">(164.82, 289.01)</span></span></span></li>
+      <li><b>El error promedio.</b> Las ocho esquinas caen a 4.23, 5.13, 3.91, 2.90, 2.46, 4.89, 3.98 y 2.06 píxeles de sus clics, así que
+        <span class="f"><span class="nowrap"><i>J</i> ≈ 29.56 / 8</span> <span class="nowrap">≈ 3.69 píxeles</span></span>
+        Cada λ<sub><i>i</i></sub> es positivo, de 0.62 a 1.02, así que cada esquina está delante de la cámara.</li>
+      <li><b>Dónde estaba la cámara.</b> Con <i>B</i> y <i>b</i> tomados de <i>A</i>:
+        <span class="f"><span class="nowrap"><i>C</i> = −<i>B</i><sup class="t">−1</sup><i>b</i></span> <span class="nowrap">≈ (2398.66, 578.54, 763.40)</span></span>
+        Es decir, 2.4 m delante de las patas traseras y 1.6 m delante de las delanteras, a 579 mm a lo largo de la mesa, cerca de la mitad de sus 1250 mm, y 76 cm sobre el suelo.</li>
+      <li><b>Los parámetros intrínsecos.</b> Con <span class="nowrap"><i>k</i> = ‖<i>m</i><sub>3</sub>‖ ≈ 4.039·10<sup class="t">−4</sup></span>, positivo porque <span class="nowrap"><i>a</i><sub>34</sub> = 1</span> es la profundidad del origen de la mesa por <i>k</i>:
+        <span class="f"><span class="nowrap">α ≈ 1899.31,</span>&ensp; <span class="nowrap">β ≈ 1624.13,</span>&ensp; <span class="nowrap">γ ≈ −15.40,</span>&ensp; <span class="nowrap"><i>u</i><sub>0</sub> ≈ 972.63,</span>&ensp; <span class="nowrap"><i>v</i><sub>0</sub> ≈ 717.51</span></span>
+        El punto principal está 52 píxeles a la derecha del centro de la imagen, (921, 704), y 14 más abajo, y el torcimiento es pequeño, como se espera. Pero β es un 15% menor que α, aproximadamente, más de lo que explicarían los píxeles de una cámara. Ocho esquinas, cada una marcada con unos pocos píxeles de error, determinan los cinco parámetros intrínsecos solo de forma aproximada. Más puntos, repartidos por toda la imagen, y varias vistas lo hacen mejor.</li>
+      <li><b>Los parámetros extrínsecos.</b> El origen de la mesa, visto desde la cámara, y los ángulos a partir de <span class="nowrap"><i>R</i> = <i>R</i>′<sup class="t">T</sup></span>:
+        <span class="f"><span class="nowrap"><i>t</i>′ ≈ (−654.7, 335.6, 2475.8),</span>&ensp; <span class="nowrap">ω ≈ (168.93°, 79.17°, 76.70°)</span></span>
+        La base de la pata trasera izquierda está 65 cm a la izquierda, 34 cm más abajo y 2.48 m adelante. Como comprobación, el origen original en el sistema nuevo, <span class="nowrap"><i>t</i> = −<i>Rt</i>′</span>, es de nuevo <i>C</i>.</li>
+      <li><b>El refinamiento no lineal.</b> Partiendo de estos once números, minimizar <i>J</i> lo baja de 3.69 a 2.69 píxeles, en
+        <span class="f"><span class="nowrap">α ≈ 1915.3,</span>&ensp; <span class="nowrap">β ≈ 1628.1,</span>&ensp; <span class="nowrap">γ ≈ −30.6,</span>&ensp; <span class="nowrap"><i>u</i><sub>0</sub> ≈ 961.5,</span>&ensp; <span class="nowrap"><i>v</i><sub>0</sub> ≈ 727.5,</span><br><span class="nowrap">ω ≈ (172.07°, 79.00°, 79.69°),</span>&ensp; <span class="nowrap"><i>t</i>′ ≈ (−638.9, 323.0, 2495.1)</span></span>
+        Las esquinas 0, 1, 4, 5 y 7 caen ahora exactamente sobre sus clics, y las esquinas 2, 3 y 6 quedan a 7.59, 3.36 y 10.55 píxeles. β es positivo y cada λ<sub><i>i</i></sub> es positivo, así que esta es la cámara, no su imagen especular.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">9</span>Resumen</h2>
+    <p>Las ideas clave junto a sus equivalentes en NumPy. En código, los puntos 3D son las columnas de <code>M</code>, sus píxeles las columnas de <code>w</code>, y <i>A</i> es <code>P</code>.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Dos filas por punto</div>
+      <div class="f">[<i>X</i>′&ensp;<i>Y</i>′&ensp;<i>Z</i>′&ensp;1&ensp;0&ensp;0&ensp;0&ensp;0&ensp;−<i>uX</i>′&ensp;−<i>uY</i>′&ensp;−<i>uZ</i>′]&thinsp;<i>a</i> = <i>u</i></div>
+      <div class="c"><code>x1 = np.array([X, Y, Z, 1, 0, 0,</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;0, 0, -u*X, -u*Y, -u*Z])</code><br><code>x2 = np.array([0, 0, 0, 0, X, Y,</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;Z, 1, -v*X, -v*Y, -v*Z])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Mínimos cuadrados, <i>a</i><sub>34</sub> = 1</div>
+      <div class="f"><i>â</i> = (<i>Q</i><sup class="t">T</sup><i>Q</i>)<sup class="t">−1</sup><i>Q</i><sup class="t">T</sup><i>r</i></div>
+      <div class="c"><code>a = np.linalg.lstsq(XX, bb,</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;rcond=None)[0]</code><br><code>P = np.append(a, 1).reshape(3, 4)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Reproyectar y medir</div>
+      <div class="f">λ<sub><i>i</i></sub><span class="pt"><i>ŵ</i><sub><i>i</i></sub></span> = <i>A</i><span class="pt"><i>M</i>′<sub><i>i</i></sub></span>,&ensp;<i>J</i> = <span class="frac"><span>1</span><span><i>N</i></span></span> Σ ‖<span class="pt"><i>ŵ</i><sub><i>i</i></sub></span> − <span class="pt"><i>w</i><sub><i>i</i></sub></span>‖</div>
+      <div class="c"><code>ws = P @ M</code><br><code>ws = ws / ws[-1]</code><br><code>J = np.mean(np.linalg.norm(</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;ws[:2] - w[:2], axis=0))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Centro óptico</div>
+      <div class="f"><i>C</i> = −<i>B</i><sup class="t">−1</sup><i>b</i></div>
+      <div class="c"><code>C = np.linalg.solve(P[:, :3],</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;-P[:, 3])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Parámetros intrínsecos</div>
+      <div class="f"><i>B</i> = <i>kKR</i>′, filas de abajo hacia arriba</div>
+      <div class="c"><code>k = np.linalg.norm(P[2, :3])</code><br><code>r3 = P[2, :3] / k</code><br><code>v0 = P[1, :3] @ r3 / k</code><br><code>u0 = P[0, :3] @ r3 / k</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Calibración no lineal</div>
+      <div class="f">θ̂ = arg mín <i>J</i>(θ), desde θ<sub>0</sub></div>
+      <div class="c"><code>ths = scipy.optimize.minimize(</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;J, th0, args=(M, w)).x</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Con un tablero de ajedrez</div>
+      <div class="f"><i>K</i>, distorsión, y <i>R</i>′, <i>t</i>′ por vista</div>
+      <div class="c"><code>ret, mtx, dist, rvecs, tvecs = \</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;cv.calibrateCamera(obj_points,</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;img_points, size, None, None)</code></div>
+    </div>
+  </div>
+</section>

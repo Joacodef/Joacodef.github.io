@@ -1,0 +1,271 @@
+---
+title: Camera calibration
+module: Geometry
+order: 4
+description: Estimating a camera's projection matrix and its eleven parameters from points of a known object, with an interactive figure.
+scripts:
+  - /assets/js/notes/camera-calibration.js
+---
+<div class="prose">
+  <div class="duo">
+    <div>
+      <p class="big">λ<span class="pt"><i>w</i></span> = <i>A</i><span class="pt"><i>M</i>′</span></p>
+      <p class="cap">Linear calibration estimates the 3 × 4 matrix <i>A</i> from points of a known object and their pixels.</p>
+    </div>
+    <div>
+      <p class="big"><i>A</i> ∝ <i>KPS</i>′</p>
+      <p class="cap">Nonlinear calibration builds it, up to scale, from the camera's eleven parameters.</p>
+    </div>
+  </div>
+  <p class="legend">Throughout this page, <span class="dot" aria-hidden="true"></span>points are drawn in red ink and <span class="bar" aria-hidden="true"></span>lines in blue ink. It starts from the camera model at the end of the note on <a href="/notes/computer-vision/3d-transformations/">3D transformations</a>, and uses least squares as in the note on <a href="/notes/computer-vision/2d-transformations/">2D transformations</a>.</p>
+</div>
+
+<section id="calibration">
+  <div class="prose">
+    <h2><span class="n">1</span>What calibration is</h2>
+    <p>The note on 3D transformations ended with a model of the camera:</p>
+    <div class="disp hero-f">λ<span class="pt"><i>w</i></span> = <i>KPS</i>′<span class="pt"><i>M</i>′</span></div>
+    <p>It takes a point <span class="nowrap"><span class="pt"><i>M</i>′</span> = [<i>X</i>′&ensp;<i>Y</i>′&ensp;<i>Z</i>′&ensp;1]<sup class="t">T</sup></span>, given in the coordinates of some object, to its pixel <span class="nowrap"><span class="pt"><i>w</i></span> = [<i>u</i>&ensp;<i>v</i>&ensp;1]<sup class="t">T</sup></span>. It has eleven parameters. Five are intrinsic, α, β, γ, <i>u</i><sub>0</sub> and <i>v</i><sub>0</sub>, in <i>K</i> and <i>P</i>. Six are extrinsic, the angles ω<sub><i>X</i></sub>, ω<sub><i>Y</i></sub>, ω<sub><i>Z</i></sub> and the three components of <i>t</i>′, in <i>S</i>′. <em>Calibration</em> is estimating them from images.</p>
+    <p>The idea is to photograph an object whose shape is known exactly, a <em>calibration object</em>, and pick <i>N</i> points on it. Their coordinates <span class="pt"><i>M</i>′<sub><i>i</i></sub></span> are known from the object, in millimeters, and their pixels <span class="pt"><i>w</i><sub><i>i</i></sub></span> are measured in the image. Collect the parameters in a vector θ. For any guess of θ, the model predicts where each point should appear:</p>
+    <div class="disp"><span class="pt"><i>ŵ</i><sub><i>i</i></sub></span> = <i>F</i>(<span class="pt"><i>M</i>′<sub><i>i</i></sub></span>, θ)</div>
+    <p>where <i>F</i> builds <i>K</i>, <i>P</i> and <i>S</i>′ from θ, multiplies, and divides by λ. A good θ puts every <span class="pt"><i>ŵ</i><sub><i>i</i></sub></span> close to the measured <span class="pt"><i>w</i><sub><i>i</i></sub></span>, so calibration looks for the θ that makes the average distance between them smallest:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>J</i>(θ) = <span class="frac"><span>1</span><span><i>N</i></span></span> Σ<sub><i>i</i></sub> ‖<span class="pt"><i>ŵ</i><sub><i>i</i></sub></span> − <span class="pt"><i>w</i><sub><i>i</i></sub></span>‖</span> <span class="nowrap">→ min</span></div>
+    <p><i>J</i> is measured in pixels, so it says directly how far off the model is, on average.</p>
+    <p>This is called photogrammetric calibration, since it relies on an object of known size. Self-calibration does without one: it only relates the same points seen in several images. But it cannot tell the true size of the scene, since a small object near the camera gives the same images as a larger copy farther away. When the result must be in millimeters, as for a robot that picks up parts, a calibration object is used.</p>
+
+    <h3>The table</h3>
+    <p>The example throughout this page is a table, 800 mm deep, 1250 mm wide and 900 mm tall, photographed from the front in an image of 1842 × 1408 pixels. Its eight known points are the top and bottom ends of its four legs, numbered 0 to 7. The table's coordinate system has its origin at the bottom of the back left leg, corner 3, with <i>X</i>′ pointing from the back legs toward the front legs and the camera, <i>Y</i>′ to the right along the table, and <i>Z</i>′ up, a right-handed system. So the bottom of the front left leg, corner 0, is at (800, 0, 0), and the top of the front right leg, corner 5, is at (800, 1250, 900). The pixels were clicked by hand on the photo, so each is off by a few pixels.</p>
+  </div>
+</section>
+
+<section id="linear">
+  <div class="prose">
+    <h2><span class="n">2</span>Linear calibration</h2>
+    <p>Multiplied out, <i>KPS</i>′ is a single 3 × 4 matrix. Call it <i>A</i>, the <em>general projection matrix</em> (in code it is usually called <code>P</code>):</p>
+    <div class="disp"><span class="nowrap">λ<span class="col pt"><span><i>u</i></span><span><i>v</i></span><span>1</span></span></span> <span class="nowrap">= <span class="mat" style="--cols: 4"><span><i>a</i><sub>11</sub></span><span><i>a</i><sub>12</sub></span><span><i>a</i><sub>13</sub></span><span><i>a</i><sub>14</sub></span><span><i>a</i><sub>21</sub></span><span><i>a</i><sub>22</sub></span><span><i>a</i><sub>23</sub></span><span><i>a</i><sub>24</sub></span><span><i>a</i><sub>31</sub></span><span><i>a</i><sub>32</sub></span><span><i>a</i><sub>33</sub></span><span><i>a</i><sub>34</sub></span></span><span class="col pt"><span><i>X</i>′</span><span><i>Y</i>′</span><span><i>Z</i>′</span><span>1</span></span></span></div>
+    <p>Instead of the eleven parameters, the linear method estimates the twelve entries of <i>A</i>. They are not all free: <i>A</i> and <i>kA</i> give the same pixels for any number <i>k</i> ≠ 0, since <i>k</i> only changes λ. So one entry can be fixed, and the usual choice is <span class="nowrap"><i>a</i><sub>34</sub> = 1</span>. That leaves eleven unknowns, as many as the camera has parameters.</p>
+    <p>Why may <i>a</i><sub>34</sub> be fixed? The third row of <i>A</i> gives λ. For the object's origin, <span class="nowrap"><span class="pt"><i>M</i>′</span> = [0&ensp;0&ensp;0&ensp;1]<sup class="t">T</sup></span>, it gives <span class="nowrap">λ = <i>a</i><sub>34</sub></span>, so <i>a</i><sub>34</sub> is the depth of that origin in front of the camera, times the scale of <i>A</i>. Setting it to 1 just picks the scale. The one exception is a true <i>a</i><sub>34</sub> of 0, when the object's origin is level with the optical center, on the plane through <i>C</i> parallel to the image. No scale turns 0 into 1. An origin somewhere in view, as on the table, avoids this.</p>
+
+    <h3>Two equations per point</h3>
+    <p>The third row gives <span class="nowrap">λ = <i>a</i><sub>31</sub><i>X</i>′ + <i>a</i><sub>32</sub><i>Y</i>′ + <i>a</i><sub>33</sub><i>Z</i>′ + 1</span>. Putting it into the first two rows removes λ:</p>
+    <div class="disp"><span class="nowrap">(<i>a</i><sub>31</sub><i>X</i>′ + <i>a</i><sub>32</sub><i>Y</i>′ + <i>a</i><sub>33</sub><i>Z</i>′ + 1)&thinsp;<i>u</i></span> <span class="nowrap">= <i>a</i><sub>11</sub><i>X</i>′ + <i>a</i><sub>12</sub><i>Y</i>′ + <i>a</i><sub>13</sub><i>Z</i>′ + <i>a</i><sub>14</sub></span><br><span class="nowrap">(<i>a</i><sub>31</sub><i>X</i>′ + <i>a</i><sub>32</sub><i>Y</i>′ + <i>a</i><sub>33</sub><i>Z</i>′ + 1)&thinsp;<i>v</i></span> <span class="nowrap">= <i>a</i><sub>21</sub><i>X</i>′ + <i>a</i><sub>22</sub><i>Y</i>′ + <i>a</i><sub>23</sub><i>Z</i>′ + <i>a</i><sub>24</sub></span></div>
+    <p>Both equations are linear in the unknowns, because <i>u</i>, <i>v</i>, <i>X</i>′, <i>Y</i>′ and <i>Z</i>′ are known numbers. Stack the unknowns in <span class="nowrap"><i>a</i> = [<i>a</i><sub>11</sub>&ensp;<i>a</i><sub>12</sub>&ensp;…&ensp;<i>a</i><sub>33</sub>]<sup class="t">T</sup></span>, eleven entries row by row, and move them to the left:</p>
+    <div class="disp"><span class="nowrap">[<i>X</i>′&ensp;<i>Y</i>′&ensp;<i>Z</i>′&ensp;1&ensp;0&ensp;0&ensp;0&ensp;0</span> <span class="nowrap">−<i>uX</i>′&ensp;−<i>uY</i>′&ensp;−<i>uZ</i>′]&thinsp;<i>a</i></span> <span class="nowrap">= <i>u</i></span><br><span class="nowrap">[0&ensp;0&ensp;0&ensp;0&ensp;<i>X</i>′&ensp;<i>Y</i>′&ensp;<i>Z</i>′&ensp;1</span> <span class="nowrap">−<i>vX</i>′&ensp;−<i>vY</i>′&ensp;−<i>vZ</i>′]&thinsp;<i>a</i></span> <span class="nowrap">= <i>v</i></span></div>
+    <p>Each point adds these two rows, and <i>N</i> points give a linear system</p>
+    <div class="disp hero-f"><i>Qa</i> = <i>r</i></div>
+    <p>with 2<i>N</i> equations, where <i>Q</i> has eleven columns and <i>r</i> lists the measured <i>u</i> and <i>v</i>.</p>
+
+    <h3>How many points</h3>
+    <p>Eleven unknowns need at least eleven equations, so at least six points: five give only ten. And the points must not all lie on one plane. If they did, say all on the floor, where <span class="nowrap"><i>Z</i>′ = 0</span>, then <i>a</i><sub>13</sub>, <i>a</i><sub>23</sub> and <i>a</i><sub>33</sub> would multiply 0 in every row, and nothing would fix them. The points of a plane only fix the homography between that plane and the image, as in the note on 2D transformations, and a homography has eight numbers, not eleven. The eight corners of the table lie on two levels, the floor and the tabletop, and they fix <i>A</i>.</p>
+
+    <h3>Least squares</h3>
+    <p>Clicked pixels are off by a few pixels, so with more than six points no <i>a</i> satisfies every equation. As for homographies, take the <i>a</i> that makes the sum of squares ‖<i>Qa</i> − <i>r</i>‖<sup class="t">2</sup> smallest:</p>
+    <div class="disp hero-f"><i>â</i> = (<i>Q</i><sup class="t">T</sup><i>Q</i>)<sup class="t">−1</sup><i>Q</i><sup class="t">T</sup><i>r</i></div>
+    <p>The columns of <i>Q</i> differ in size by millions: a 1 next to −<i>uY</i>′, which reaches two million here. Forming <i>Q</i><sup class="t">T</sup><i>Q</i> squares that spread and can lose digits, so numerical libraries, such as <code>np.linalg.lstsq</code>, reach the same <i>â</i> without forming it.</p>
+    <p>What does least squares minimize here? The first equation of point <i>i</i> leaves the residual <span class="nowrap">(first row of <i>A</i>)<span class="pt"><i>M</i>′<sub><i>i</i></sub></span> − <i>u</i><sub><i>i</i></sub>λ<sub><i>i</i></sub></span>. The first term is <span class="nowrap">λ<sub><i>i</i></sub><i>û</i><sub><i>i</i></sub></span>, so the residual is <span class="nowrap">λ<sub><i>i</i></sub>(<i>û</i><sub><i>i</i></sub> − <i>u</i><sub><i>i</i></sub>)</span>: the error in pixels, times λ<sub><i>i</i></sub>. With <span class="nowrap"><i>a</i><sub>34</sub> = 1</span>, λ<sub><i>i</i></sub> is the point's depth divided by the depth of the object's origin, so points farther from the camera weigh more. The result is close to the θ with the smallest <i>J</i>, but not the same, and this is one reason for the nonlinear method of section 4.</p>
+    <p>The choice <span class="nowrap"><i>a</i><sub>34</sub> = 1</span> can also be avoided, as for homographies. Keep all twelve entries as unknowns, add −<i>u</i> and −<i>v</i> as a twelfth column of <i>Q</i>, and solve <span class="nowrap"><i>Qa</i> = 0</span> with <span class="nowrap">‖<i>a</i>‖ = 1</span>. The answer is the right singular vector of <i>Q</i> with the smallest singular value. For the table, the two <i>A</i> agree to three significant digits, and their average errors differ by less than 0.001 pixels.</p>
+  </div>
+</section>
+
+<section id="camera">
+  <div class="prose">
+    <h2><span class="n">3</span>Where the camera is, and its eleven parameters</h2>
+    <p><i>A</i> holds the whole camera, but its entries mix everything together. Two facts from the camera model take it apart. Write <span class="nowrap"><i>A</i> = [<i>B</i>&ensp;<i>b</i>]</span>, with <i>B</i> its left 3 × 3 block and <i>b</i> its last column.</p>
+
+    <h3>The optical center</h3>
+    <p>The optical center <i>C</i> has no image: every ray starts there, so <i>A</i> sends it to the zero vector. In the object's coordinates, <span class="nowrap"><i>AC</i> = <i>BC</i> + <i>b</i> = 0</span>, and so</p>
+    <div class="disp hero-f"><i>C</i> = −<i>B</i><sup class="t">−1</sup><i>b</i></div>
+    <p>This needs no parameters at all: it finds where the camera stood from <i>A</i> alone.</p>
+
+    <h3>Peeling off <i>K</i> and <i>R</i>′</h3>
+    <p>The model says that <i>A</i> is a multiple of <i>KPS</i>′. Since <span class="nowrap"><i>KP</i> = [<i>K</i>&ensp;0]</span>, that product is <span class="nowrap"><i>K</i>[<i>R</i>′&ensp;<i>t</i>′]</span>, and</p>
+    <div class="disp"><span class="nowrap"><i>A</i> = <i>kK</i>[<i>R</i>′&ensp;<i>t</i>′],</span>&ensp; <span class="nowrap"><i>B</i> = <i>kKR</i>′</span></div>
+    <p>for some number <i>k</i>. Two properties split <i>B</i>. <i>K</i> is upper triangular, with bottom row [0&ensp;0&ensp;1]. And the rows of <i>R</i>′, call them <i>r</i><sub>1</sub>, <i>r</i><sub>2</sub> and <i>r</i><sub>3</sub>, are the camera's axes <i>X</i>, <i>Y</i> and <i>Z</i> written in the object's system: unit vectors, perpendicular to each other. Likewise, call <i>m</i><sub>1</sub>, <i>m</i><sub>2</sub> and <i>m</i><sub>3</sub> the rows of <i>B</i>. Row by row from the bottom, <i>B</i> = <i>kKR</i>′ says</p>
+    <div class="disp"><span class="nowrap"><i>m</i><sub>3</sub> = <i>k</i>&thinsp;<i>r</i><sub>3</sub></span><br><span class="nowrap"><i>m</i><sub>2</sub> = <i>k</i>(β<i>r</i><sub>2</sub> + <i>v</i><sub>0</sub><i>r</i><sub>3</sub>)</span><br><span class="nowrap"><i>m</i><sub>1</sub> = <i>k</i>(α<i>r</i><sub>1</sub> + γ<i>r</i><sub>2</sub> + <i>u</i><sub>0</sub><i>r</i><sub>3</sub>)</span></div>
+    <p>and the unknowns come out one at a time.</p>
+    <ul>
+      <li><i>r</i><sub>3</sub> has length 1, so <span class="nowrap"><i>k</i> = ±‖<i>m</i><sub>3</sub>‖</span> and <span class="nowrap"><i>r</i><sub>3</sub> = <i>m</i><sub>3</sub>/<i>k</i></span>.</li>
+      <li>A dot product with <i>r</i><sub>3</sub> picks out the part of <i>m</i><sub>2</sub>/<i>k</i> along <i>r</i><sub>3</sub>, since <i>r</i><sub>2</sub> is perpendicular to it: <span class="nowrap"><i>v</i><sub>0</sub> = <i>m</i><sub>2</sub>·<i>r</i><sub>3</sub>/<i>k</i></span>. What is left, <span class="nowrap"><i>m</i><sub>2</sub>/<i>k</i> − <i>v</i><sub>0</sub><i>r</i><sub>3</sub></span>, is β<i>r</i><sub>2</sub>, whose length is β and whose direction is <i>r</i><sub>2</sub>.</li>
+      <li>In the same way, <span class="nowrap"><i>u</i><sub>0</sub> = <i>m</i><sub>1</sub>·<i>r</i><sub>3</sub>/<i>k</i></span> and <span class="nowrap">γ = <i>m</i><sub>1</sub>·<i>r</i><sub>2</sub>/<i>k</i></span>, and what is left of <i>m</i><sub>1</sub>/<i>k</i> is α<i>r</i><sub>1</sub>.</li>
+    </ul>
+    <p>This is the Gram–Schmidt process run on the rows of <i>B</i>, from the bottom up. The sign of <i>k</i> is the one that puts the object in front of the camera, with λ positive for its points. Then <span class="nowrap"><i>t</i>′ = <i>K</i><sup class="t">−1</sup><i>b</i>/<i>k</i></span>, and the angles come from <span class="nowrap"><i>R</i> = <i>R</i>′<sup class="t">T</sup></span>, whose first row is</p>
+    <div class="disp"><span class="nowrap">[cos ω<sub><i>Y</i></sub> cos ω<sub><i>Z</i></sub>&ensp;cos ω<sub><i>Y</i></sub> sin ω<sub><i>Z</i></sub></span>&ensp;<span class="nowrap">−sin ω<sub><i>Y</i></sub>]</span></div>
+    <p>It gives ω<sub><i>Y</i></sub> and ω<sub><i>Z</i></sub>, and ω<sub><i>X</i></sub> follows from the last column of <i>R</i>.</p>
+    <p>Lengths are positive, so α and β always come out positive, and a mirror in the data shows up in <i>R</i>′: if <span class="nowrap">det <i>R</i>′ = −1</span>, <i>R</i>′ turns a right hand into a left hand, and no real camera gives those pixels.</p>
+
+    <h3>Which way the six numbers point</h3>
+    <p>On this page, as in the note on 3D transformations, the camera's coordinate system is the old one and the object's is the new one. The angles ω turn the camera's axes into the object's, and <i>t</i>′ is where the camera sees the object's origin. Many programs describe the same camera the other way round, with the camera's system as the new one: a point <span class="pt"><i>M</i>′</span> of the object is at <span class="nowrap"><i>R</i>′<span class="pt"><i>M</i>′</span> + <i>t</i>′</span> in the camera's system. Their translation is the same <i>t</i>′, but their rotation matrix is <i>R</i>′, the transpose of <i>R</i>, so their three angles are different numbers for the same camera. Before using angles from elsewhere, check which of the two matrices they build.</p>
+    <p>For the table, this matters in one more way. Its <i>X</i>′ axis points almost straight back at the camera, so ω<sub><i>Y</i></sub> comes out near 90°, close to the gimbal lock of the note on 3D transformations: at 90°, ω<sub><i>X</i></sub> and ω<sub><i>Z</i></sub> would turn about the same line. The angles are still well defined at 79°, but some small changes are magnified. Moving corner 5 down by 10 pixels turns the camera by half a degree, yet changes ω<sub><i>X</i></sub> by 2.5° and ω<sub><i>Z</i></sub> by 2.3°, both in the same direction and about five times as much. This is one reason why calibration programs store a rotation as an axis and an angle instead.</p>
+  </div>
+
+  <div class="fig">
+    <div class="panels">
+      <svg id="fig-calib-image" role="group" aria-label="The image, 1842 by 1408 pixels, with the eight clicked corners of the table in red and the table's edges as projected by A in blue. Each corner can be dragged."></svg>
+      <svg id="fig-calib-space" role="group" aria-label="The table in its own coordinates X′, Y′ and Z′, and the camera found from A: its optical center C, its axes and its image, with a ray from C through each clicked pixel. Use the arrow keys to turn the view."></svg>
+    </div>
+    <div class="ro">
+      <div class="modes" id="fig-calib-modes" role="group" aria-label="How A is fitted">
+        <button type="button" data-mode="lsq" aria-pressed="true">Least squares</button>
+        <button type="button" data-mode="ransac" aria-pressed="false">RANSAC</button>
+      </div>
+      <div id="fig-calib-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Drag a red corner in the image and the camera is found again from the clicks: <i>A</i> by least squares, then <i>C</i> and the parameters. Hollow rings are the reprojections <span class="pt"><i>ŵ</i><sub><i>i</i></sub></span>. Drag the background of the lower view to turn it. RANSAC mode is explained in section 6. With a keyboard, select a corner or the lower view with Tab and use the arrow keys; a corner moves 10 pixels per press.</p>
+      <button type="button" class="btn" id="fig-calib-reset">Reset</button>
+    </div>
+  </div>
+</section>
+
+<section id="nonlinear">
+  <div class="prose">
+    <h2><span class="n">4</span>Nonlinear calibration</h2>
+    <p>The linear method never looks at the parameters. It estimates twelve numbers and minimizes an error in the equations, not in the image. Nonlinear calibration works with the parameters themselves,</p>
+    <div class="disp"><span class="nowrap">θ = [α&ensp;β&ensp;γ&ensp;<i>u</i><sub>0</sub>&ensp;<i>v</i><sub>0</sub></span> <span class="nowrap">ω<sub><i>X</i></sub>&ensp;ω<sub><i>Y</i></sub>&ensp;ω<sub><i>Z</i></sub>&ensp;<i>t</i>′<sub><i>X</i></sub>&ensp;<i>t</i>′<sub><i>Y</i></sub>&ensp;<i>t</i>′<sub><i>Z</i></sub>]<sup class="t">T</sup></span></div>
+    <p>and minimizes <i>J</i>(θ), the average distance in pixels. For each θ, <i>F</i> builds <i>K</i>, turns the angles into <span class="nowrap"><i>R</i> = <i>R</i><sub><i>X</i></sub><i>R</i><sub><i>Y</i></sub><i>R</i><sub><i>Z</i></sub></span>, forms <span class="nowrap"><i>S</i>′ = [<i>R</i><sup class="t">T</sup>&ensp;<i>t</i>′;&ensp;0<sup class="t">T</sup>&ensp;1]</span>, and projects every point with <span class="nowrap">λ<sub><i>i</i></sub><span class="pt"><i>ŵ</i><sub><i>i</i></sub></span> = <i>KPS</i>′<span class="pt"><i>M</i>′<sub><i>i</i></sub></span></span>.</p>
+    <p>The angles enter through sines and cosines, and each <span class="pt"><i>ŵ</i><sub><i>i</i></sub></span> is divided by λ<sub><i>i</i></sub>, which depends on θ too. So, unlike least squares, the minimum of <i>J</i> has no formula. An iterative search finds it instead: start from a guess θ<sub>0</sub>, and keep changing θ while <i>J</i> goes down. Some searches, such as the Nelder–Mead simplex, only compare values of <i>J</i>; others follow its slope. Either way, a search finds the lowest point near where it starts, which may not be the lowest overall, so the guess matters. Section 3 gives a good one: the parameters of the linear <i>A</i>.</p>
+    <p>Why search, when the linear <i>A</i> already fits? For three reasons.</p>
+    <ul>
+      <li><i>J</i> measures what matters, distances in the image, with every point counting the same.</li>
+      <li>The model can grow. Lens distortion, in the next section, or a manipulator that turns the object between images, adds parameters that no matrix <i>A</i> can hold.</li>
+      <li>Knowledge about the camera can be built in. For a camera known to have no skew, γ can be fixed at 0, which the twelve free entries of <i>A</i> cannot express.</li>
+    </ul>
+
+    <h3>An average of distances, or of squares</h3>
+    <p><i>J</i> averages distances, not squared distances, and the two lead to different cameras. For the table, the smallest <i>J</i> is 2.69 pixels, reached with five of the eight corners fitted exactly and the other three up to 10.6 pixels off. Minimizing the squared distances instead spreads the error over all eight corners, none more than 5 pixels off, with an average distance of 3.40 pixels. An average of distances behaves like a median: it puts up with a few large errors when the rest fit exactly, so one bad click pulls it less. A square makes one large error cost more than several small ones, and most calibration software minimizes squares and reports their root mean square.</p>
+    <p>The average of distances also has sharp creases, where one distance reaches 0 and its slope jumps. They can stall a search: for the table, the Nelder–Mead simplex stopped anywhere between 2.9 and 3.3 pixels, depending on where it started. Solving a sequence of weighted least-squares problems, each one weighting a point's squared error by one over its current distance, reached 2.69 from each of several starts.</p>
+
+    <h3>A mirror image that fits</h3>
+    <p>One wrong camera fits the pixels exactly as well as the right one. Turn the camera half a turn about its own <i>Y</i> axis, so that it faces away from the object, and change the signs of β and γ. In the camera's coordinates, the turn changes the signs of <i>X</i> and <i>Z</i> for every point. Dividing −<i>X</i> by −<i>Z</i> changes nothing, but <i>Y</i> is now divided by −<i>Z</i>, and the new signs of β and γ, the two parameters that multiply <i>Y</i>, make up for it. The new camera's matrix is exactly −<i>A</i>, and −<i>A</i> gives the same image as <i>A</i>. But every λ<sub><i>i</i></sub> is now negative: all the points are behind the camera. A search that starts from such a guess, with a negative β, stays with it. So after calibrating, check that α and β are positive and that every λ<sub><i>i</i></sub> is positive.</p>
+  </div>
+</section>
+
+<section id="distortion">
+  <div class="prose">
+    <h2><span class="n">5</span>Lens distortion</h2>
+    <p>The model so far assumes that rays go straight through the optical center. A real lens bends them a little, most near the edges of the image, where its surface is most tilted from the optical axis. Straight lines in the scene then look curved in the image.</p>
+    <p>Distortion is modeled as one more step between the projection and the conversion to pixels. <i>P</i> gives the <em>ideal image</em> point (<i>x</i>, <i>y</i>), a distortion function moves it to the <em>real image</em> point (<i>x</i>′, <i>y</i>′), the one the sensor records, and <i>K</i> converts that to pixels:</p>
+    <div class="disp"><span class="nowrap"><i>x</i>′ = <i>x</i> + δ<sub><i>x</i></sub>(<i>x</i>, <i>y</i>),</span>&ensp; <span class="nowrap"><i>y</i>′ = <i>y</i> + δ<sub><i>y</i></sub>(<i>x</i>, <i>y</i>)</span></div>
+    <p>The full model has four steps: <i>S</i>′ takes the point to the camera's coordinates, <i>P</i> projects it onto the ideal image, the distortion moves it to the real image, and <i>K</i> gives its pixel. Only the real image is ever seen.</p>
+
+    <h3>Radial and tangential</h3>
+    <p>Distortion is usually split into two parts, around a center where it vanishes, most often the principal point. In polar coordinates (<i>r</i>, θ) around that center, a <em>radial</em> part δ<sub><i>r</i></sub>(<i>r</i>) moves a point along its ray from the center and depends only on its distance <i>r</i>. A <em>tangential</em> part δ<sub>θ</sub>(θ) turns it about the center and depends only on its angle θ. Back in <i>x</i> and <i>y</i>, with the center at the origin:</p>
+    <div class="disp"><span class="nowrap">δ<sub><i>x</i></sub> = δ<sub><i>r</i></sub>(<i>r</i>) cos θ − <i>r</i>&thinsp;δ<sub>θ</sub>(θ) sin θ</span><br><span class="nowrap">δ<sub><i>y</i></sub> = δ<sub><i>r</i></sub>(<i>r</i>) sin θ + <i>r</i>&thinsp;δ<sub>θ</sub>(θ) cos θ</span></div>
+    <p>The first terms move the point by δ<sub><i>r</i></sub> along the direction (cos θ, sin θ); the second terms move it by an arc <span class="nowrap"><i>r</i>&thinsp;δ<sub>θ</sub></span> along the perpendicular direction (−sin θ, cos θ). Both parts are usually polynomials of order higher than one. A δ<sub><i>r</i></sub> proportional to <i>r</i> would only scale the whole image, which α and β already do, and a constant δ<sub>θ</sub> would only turn it, which the angles already do.</p>
+    <p>A radial distortion that pushes points outward more and more toward the edges bends the straight lines of a square grid inward, like a pincushion. One that pulls them inward bows the lines outward, like a barrel, which is common in wide-angle lenses.</p>
+
+    <h3>An example</h3>
+    <p>A lens images nine points on a grid, at <i>x</i> and <i>y</i> in {−1, 0, 1}. The center and the four middles of the sides stay where they are, but the four corners move from (±1, ±1) to (±1.2, ±1.2). Every point stays on its own ray from the center, so there is no tangential distortion: <span class="nowrap">δ<sub>θ</sub> = 0</span>. The distance from the center changes only at the corners, from √2 to 1.2√2, so <span class="nowrap">δ<sub><i>r</i></sub>(1) = 0</span> and <span class="nowrap">δ<sub><i>r</i></sub>(√2) = 0.2√2</span>. A polynomial that vanishes at <span class="nowrap"><i>r</i> = 0</span> and <span class="nowrap"><i>r</i> = 1</span> is <span class="nowrap">δ<sub><i>r</i></sub>(<i>r</i>) = <i>k</i>(<i>r</i><sup class="t">3</sup> − <i>r</i>)</span>, and at <span class="nowrap"><i>r</i> = √2</span> it gives <i>k</i>√2, so <span class="nowrap"><i>k</i> = 0.2</span>. Since <span class="nowrap">cos θ = <i>x</i>/<i>r</i></span> and <span class="nowrap">sin θ = <i>y</i>/<i>r</i></span>,</p>
+    <div class="disp"><span class="nowrap"><i>x</i>′ = <i>x</i> + 0.2<i>x</i>(<i>x</i><sup class="t">2</sup> + <i>y</i><sup class="t">2</sup> − 1),</span>&ensp; <span class="nowrap"><i>y</i>′ = <i>y</i> + 0.2<i>y</i>(<i>x</i><sup class="t">2</sup> + <i>y</i><sup class="t">2</sup> − 1)</span></div>
+    <p>Check a corner: <span class="nowrap"><i>x</i>′ = 1 + 0.2 · 1 · (1 + 1 − 1) = 1.2</span>. The middle of a side, (1, 0), has <span class="nowrap"><i>x</i><sup class="t">2</sup> + <i>y</i><sup class="t">2</sup> − 1 = 0</span> and stays put. Other polynomials fit the nine points too. This one has only odd powers of <i>r</i>, which keeps δ<sub><i>x</i></sub> and δ<sub><i>y</i></sub> polynomials in <i>x</i> and <i>y</i>.</p>
+
+    <h3>Why only the nonlinear method can include it</h3>
+    <p>A distortion bends straight lines, and no matrix can do that: <i>A</i> sends every line to a line. So a linear calibration cannot model distortion. A nonlinear one adds its coefficients to θ and estimates them with the rest.</p>
+  </div>
+</section>
+
+<section id="ransac">
+  <div class="prose">
+    <h2><span class="n">6</span>Outliers and RANSAC</h2>
+    <p>Least squares trusts every point. If one corner is clicked in the wrong place, say corner 6, 150 pixels to the left, the fit bends toward it and every corner suffers. The errors grow from 2–5 pixels to 9–67 pixels, <i>J</i> grows from 3.69 to 35.7 pixels, and the camera found moves by 22 cm. The wrong corner does not even stand out: its error, 56 pixels, is smaller than that of corner 5, which was clicked correctly. A wrong point in the data is called an <em>outlier</em>.</p>
+    <p>RANSAC, for random sample consensus, turns the question around. Instead of fitting all the points at once, it repeats four steps:</p>
+    <ol>
+      <li>Pick a random sample with as few points as the model needs: six corners for a camera.</li>
+      <li>Fit <i>A</i> to the sample.</li>
+      <li>Count how many of all the points this <i>A</i> reprojects within a tolerance of their pixels. These are its <em>inliers</em>.</li>
+      <li>Keep the sample with the most inliers seen so far.</li>
+    </ol>
+    <p>After enough tries, some sample is likely to hold no outlier, and its <i>A</i> agrees with every good point, which gives it the most inliers. A final least-squares fit on those inliers gives the answer. The sample is kept as small as possible because a small sample is more likely to be free of outliers, so fewer tries are needed.</p>
+    <p>The same method estimated homographies in the <a href="/notes/computer-vision/2d-transformations/">note on 2D transformations</a>, with samples of four point pairs.</p>
+    <h3>RANSAC with only eight corners</h3>
+    <p>Eight corners are few for a model with eleven parameters. Six corners give twelve equations for eleven unknowns, so <i>A</i> fits almost any six corners closely, and a random sample says little about the rest. With so few corners, though, there is no need to sample: the figure in section 3 fits <i>A</i> to every set of eight, seven or six corners, 37 sets in all, and keeps the largest set whose corners all land within the tolerance of the fit to them. That set is the consensus RANSAC looks for with random samples. Switch the figure to RANSAC and drag a corner far away. For corner 6 clicked 150 pixels off, the largest such set is the other seven corners, their fit reprojects each within 3.4 pixels, and corner 6 is left out as an outlier, 162 pixels from where the fit puts it.</p>
+    <p>The tolerance is 20 pixels, because a camera fitted to seven of the corners predicts the eighth about 7 to 24 pixels off even when every click is right, and a tighter tolerance would call good corners outliers. And a corner dragged only a little can sometimes be explained as well by leaving out a neighboring corner and shifting the principal point. So when two sets of the same size qualify, the figure prefers the camera with its principal point nearest the center of the image and the least skew. Drag the corner farther, and it is the one left out.</p>
+    <p>Clicking points by hand is slow. Programs find corresponding points on their own, by detecting the corners of a chessboard or by matching keypoints between images, and some of those matches are wrong. RANSAC is what makes that practical.</p>
+  </div>
+</section>
+
+<section id="practice">
+  <div class="prose">
+    <h2><span class="n">7</span>Calibration in practice</h2>
+    <p>Calibration objects are usually flat: a printed chessboard, whose inner corners a program finds by itself to a fraction of a pixel. By section 2, one view of a plane is not enough, since it only fixes a homography. But every view of the board, held in a different pose, gives another homography, and all of them share the same <i>K</i>. A handful of views in different poses fix the five intrinsic parameters, and then each view's <i>R</i>′ and <i>t</i>′.</p>
+    <p>OpenCV does all of this in one call, <code>cv.calibrateCamera</code>. It takes the board's corners in the board's own coordinates, with <span class="nowrap"><i>Z</i>′ = 0</span>, and their pixels in every view. It returns <i>K</i>, the coefficients of its lens distortion model, and, for each view, <i>R</i>′ and <i>t</i>′. OpenCV takes the camera's system as the new one, the other way round described in section 3, and stores <i>R</i>′ as a rotation vector: an axis whose length is the angle turned about it. The matrix <i>A</i> of each view is then <span class="nowrap">[<i>K</i>&ensp;0][<i>R</i>′&ensp;<i>t</i>′;&ensp;0<sup class="t">T</sup>&ensp;1]</span>.</p>
+    <p>X-ray imaging systems are calibrated the same way, from images of a calibration board. The X-ray source plays the part of the optical center, as the note on 3D transformations showed.</p>
+  </div>
+</section>
+
+<section id="example">
+  <div class="prose">
+    <h2><span class="n">8</span>A worked example</h2>
+    <p>The table of section 1, from its clicked corners to its camera. Lengths are in millimeters and image coordinates in pixels.</p>
+    <ol class="steps">
+      <li><b>The data.</b> Each corner <span class="pt"><i>M</i>′<sub><i>i</i></sub></span> and the pixel <span class="pt"><i>w</i><sub><i>i</i></sub></span> where it was clicked:
+        <span class="f"><span class="nowrap">0: <span class="pt">(800, 0, 0)</span></span> <span class="nowrap">→ <span class="pt">(268, 1178)</span></span><br><span class="nowrap">1: <span class="pt">(800, 0, 900)</span></span> <span class="nowrap">→ <span class="pt">(166, 294)</span></span><br><span class="nowrap">2: <span class="pt">(0, 0, 900)</span></span> <span class="nowrap">→ <span class="pt">(412, 328)</span></span><br><span class="nowrap">3: <span class="pt">(0, 0, 0)</span></span> <span class="nowrap">→ <span class="pt">(470, 940)</span></span><br><span class="nowrap">4: <span class="pt">(800, 1250, 0)</span></span> <span class="nowrap">→ <span class="pt">(1654, 1118)</span></span><br><span class="nowrap">5: <span class="pt">(800, 1250, 900)</span></span> <span class="nowrap">→ <span class="pt">(1704, 246)</span></span><br><span class="nowrap">6: <span class="pt">(0, 1250, 900)</span></span> <span class="nowrap">→ <span class="pt">(1426, 304)</span></span><br><span class="nowrap">7: <span class="pt">(0, 1250, 0)</span></span> <span class="nowrap">→ <span class="pt">(1420, 900)</span></span></span></li>
+      <li><b>Two rows per corner.</b> For corner 1, <span class="nowrap"><i>X</i>′ = 800</span>, <span class="nowrap"><i>Y</i>′ = 0</span>, <span class="nowrap"><i>Z</i>′ = 900</span>, <span class="nowrap"><i>u</i> = 166</span> and <span class="nowrap"><i>v</i> = 294</span>, so <span class="nowrap">−<i>uX</i>′ = −132800</span>, <span class="nowrap">−<i>uZ</i>′ = −149400</span>, <span class="nowrap">−<i>vX</i>′ = −235200</span> and <span class="nowrap">−<i>vZ</i>′ = −264600</span>. Leaving out the terms with <span class="nowrap"><i>Y</i>′ = 0</span>:
+        <span class="f"><span class="nowrap">800<i>a</i><sub>11</sub> + 900<i>a</i><sub>13</sub> + <i>a</i><sub>14</sub></span> <span class="nowrap">− 132800<i>a</i><sub>31</sub> − 149400<i>a</i><sub>33</sub></span> <span class="nowrap">= 166</span><br><span class="nowrap">800<i>a</i><sub>21</sub> + 900<i>a</i><sub>23</sub> + <i>a</i><sub>24</sub></span> <span class="nowrap">− 235200<i>a</i><sub>31</sub> − 264600<i>a</i><sub>33</sub></span> <span class="nowrap">= 294</span></span>
+        The other seven corners add fourteen more rows: 16 equations for 11 unknowns.</li>
+      <li><b>Solve by least squares.</b> With <span class="nowrap"><i>a</i><sub>34</sub> = 1</span>:
+        <span class="f fit"><span class="nowrap"><i>A</i> ≈</span> <span class="mat" style="--cols: 4"><span>−0.3538</span><span>0.7804</span><span>−0.09307</span><span>468.29</span><span>−0.1647</span><span>−0.01722</span><span>−0.6978</span><span>937.66</span><span>−3.967·10<sup class="t">−4</sup></span><span>1.457·10<sup class="t">−5</sup></span><span>−7.448·10<sup class="t">−5</sup></span><span>1</span></span></span></li>
+      <li><b>Reproject a corner.</b> Corner 1 lands 5.13 pixels from where it was clicked:
+        <span class="f"><span class="nowrap"><i>A</i><span class="col pt"><span>800</span><span>0</span><span>900</span><span>1</span></span></span> <span class="nowrap">≈ <span class="col pt"><span>101.46</span><span>177.91</span><span>0.6156</span></span></span> <span class="nowrap">→ (<span class="frac"><span>101.46</span><span>0.6156</span></span>, <span class="frac"><span>177.91</span><span>0.6156</span></span>)</span> <span class="nowrap">≈ <span class="pt">(164.82, 289.01)</span></span></span></li>
+      <li><b>The average error.</b> The eight corners land 4.23, 5.13, 3.91, 2.90, 2.46, 4.89, 3.98 and 2.06 pixels from their clicks, so
+        <span class="f"><span class="nowrap"><i>J</i> ≈ 29.56 / 8</span> <span class="nowrap">≈ 3.69 pixels</span></span>
+        Every λ<sub><i>i</i></sub> is positive, from 0.62 to 1.02, so every corner is in front of the camera.</li>
+      <li><b>Where the camera stood.</b> With <i>B</i> and <i>b</i> from <i>A</i>:
+        <span class="f"><span class="nowrap"><i>C</i> = −<i>B</i><sup class="t">−1</sup><i>b</i></span> <span class="nowrap">≈ (2398.66, 578.54, 763.40)</span></span>
+        That is 2.4 m in front of the back legs and 1.6 m in front of the front legs, 579 mm along the table, near the middle of its 1250 mm, and 76 cm above the floor.</li>
+      <li><b>The intrinsic parameters.</b> With <span class="nowrap"><i>k</i> = ‖<i>m</i><sub>3</sub>‖ ≈ 4.039·10<sup class="t">−4</sup></span>, positive because <span class="nowrap"><i>a</i><sub>34</sub> = 1</span> is the depth of the table's origin times <i>k</i>:
+        <span class="f"><span class="nowrap">α ≈ 1899.31,</span>&ensp; <span class="nowrap">β ≈ 1624.13,</span>&ensp; <span class="nowrap">γ ≈ −15.40,</span>&ensp; <span class="nowrap"><i>u</i><sub>0</sub> ≈ 972.63,</span>&ensp; <span class="nowrap"><i>v</i><sub>0</sub> ≈ 717.51</span></span>
+        The principal point is 52 pixels to the right of the center of the image, (921, 704), and 14 below it, and the skew is small, as expected. But β is about 15% smaller than α, more than a camera's pixels would explain. Eight corners, each clicked a few pixels off, pin down the five intrinsic parameters only loosely. More points, spread over the whole image, and several views do better.</li>
+      <li><b>The extrinsic parameters.</b> The table's origin, seen from the camera, and the angles from <span class="nowrap"><i>R</i> = <i>R</i>′<sup class="t">T</sup></span>:
+        <span class="f"><span class="nowrap"><i>t</i>′ ≈ (−654.7, 335.6, 2475.8),</span>&ensp; <span class="nowrap">ω ≈ (168.93°, 79.17°, 76.70°)</span></span>
+        The bottom of the back left leg is 65 cm to the left, 34 cm down and 2.48 m ahead. As a check, the old origin in the new system, <span class="nowrap"><i>t</i> = −<i>Rt</i>′</span>, is <i>C</i> again.</li>
+      <li><b>The nonlinear refinement.</b> Starting from these eleven numbers, minimizing <i>J</i> lowers it from 3.69 to 2.69 pixels, at
+        <span class="f"><span class="nowrap">α ≈ 1915.3,</span>&ensp; <span class="nowrap">β ≈ 1628.1,</span>&ensp; <span class="nowrap">γ ≈ −30.6,</span>&ensp; <span class="nowrap"><i>u</i><sub>0</sub> ≈ 961.5,</span>&ensp; <span class="nowrap"><i>v</i><sub>0</sub> ≈ 727.5,</span><br><span class="nowrap">ω ≈ (172.07°, 79.00°, 79.69°),</span>&ensp; <span class="nowrap"><i>t</i>′ ≈ (−638.9, 323.0, 2495.1)</span></span>
+        Corners 0, 1, 4, 5 and 7 now land exactly on their clicks, and corners 2, 3 and 6 are 7.59, 3.36 and 10.55 pixels off. β is positive and every λ<sub><i>i</i></sub> is positive, so this is the camera, not its mirror image.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">9</span>Summary</h2>
+    <p>The key ideas next to their NumPy equivalents. In code, the 3D points are the columns of <code>M</code>, their pixels the columns of <code>w</code>, and <i>A</i> is <code>P</code>.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Two rows per point</div>
+      <div class="f">[<i>X</i>′&ensp;<i>Y</i>′&ensp;<i>Z</i>′&ensp;1&ensp;0&ensp;0&ensp;0&ensp;0&ensp;−<i>uX</i>′&ensp;−<i>uY</i>′&ensp;−<i>uZ</i>′]&thinsp;<i>a</i> = <i>u</i></div>
+      <div class="c"><code>x1 = np.array([X, Y, Z, 1, 0, 0,</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;0, 0, -u*X, -u*Y, -u*Z])</code><br><code>x2 = np.array([0, 0, 0, 0, X, Y,</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;Z, 1, -v*X, -v*Y, -v*Z])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Least squares, <i>a</i><sub>34</sub> = 1</div>
+      <div class="f"><i>â</i> = (<i>Q</i><sup class="t">T</sup><i>Q</i>)<sup class="t">−1</sup><i>Q</i><sup class="t">T</sup><i>r</i></div>
+      <div class="c"><code>a = np.linalg.lstsq(XX, bb,</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;rcond=None)[0]</code><br><code>P = np.append(a, 1).reshape(3, 4)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Reproject and measure</div>
+      <div class="f">λ<sub><i>i</i></sub><span class="pt"><i>ŵ</i><sub><i>i</i></sub></span> = <i>A</i><span class="pt"><i>M</i>′<sub><i>i</i></sub></span>,&ensp;<i>J</i> = <span class="frac"><span>1</span><span><i>N</i></span></span> Σ ‖<span class="pt"><i>ŵ</i><sub><i>i</i></sub></span> − <span class="pt"><i>w</i><sub><i>i</i></sub></span>‖</div>
+      <div class="c"><code>ws = P @ M</code><br><code>ws = ws / ws[-1]</code><br><code>J = np.mean(np.linalg.norm(</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;ws[:2] - w[:2], axis=0))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Optical center</div>
+      <div class="f"><i>C</i> = −<i>B</i><sup class="t">−1</sup><i>b</i></div>
+      <div class="c"><code>C = np.linalg.solve(P[:, :3],</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;-P[:, 3])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Intrinsic parameters</div>
+      <div class="f"><i>B</i> = <i>kKR</i>′, rows from the bottom up</div>
+      <div class="c"><code>k = np.linalg.norm(P[2, :3])</code><br><code>r3 = P[2, :3] / k</code><br><code>v0 = P[1, :3] @ r3 / k</code><br><code>u0 = P[0, :3] @ r3 / k</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Nonlinear calibration</div>
+      <div class="f">θ̂ = arg min <i>J</i>(θ), from θ<sub>0</sub></div>
+      <div class="c"><code>ths = scipy.optimize.minimize(</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;J, th0, args=(M, w)).x</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">With a chessboard</div>
+      <div class="f"><i>K</i>, distortion, and <i>R</i>′, <i>t</i>′ per view</div>
+      <div class="c"><code>ret, mtx, dist, rvecs, tvecs = \</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;cv.calibrateCamera(obj_points,</code><br><code>&nbsp;&nbsp;&nbsp;&nbsp;img_points, size, None, None)</code></div>
+    </div>
+  </div>
+</section>

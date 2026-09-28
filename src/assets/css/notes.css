@@ -138,6 +138,19 @@ sup.t { font-style: normal; font-size: 0.62em; margin-left: 0.06em; line-height:
 .inset .cut { stroke: var(--ink-3); stroke-width: 1.2; stroke-dasharray: 4 4; }
 .inset .area { fill: var(--ink-2); font-family: var(--serif); font-style: italic; font-size: 19px; }
 .inset .val { fill: var(--ink-2); font-family: var(--serif); font-size: 15px; }
+/* Calibration: an image and a 3D view of the same camera, stacked in one figure. In the image, blue edges are
+   the table as A projects it, and a hollow ring is where A puts a corner; in space, rays run from C through the clicks. */
+.panels { display: grid; gap: 14px; min-width: 0; }
+.edge { stroke: var(--blue); stroke-width: 1.5; stroke-linecap: round; }
+.reproj { fill: none; stroke: var(--red); stroke-width: 1.6; }
+.err { stroke: var(--red); stroke-width: 1.4; }
+.handle.out .pt-dot { fill: var(--card); stroke: var(--red); stroke-width: 2.4; }
+.ray.thin { stroke-width: 1.1; }
+.ray.dash { stroke-dasharray: 5 5; stroke-linecap: butt; }
+.cam-axis { stroke: var(--ink-2); stroke-width: 1.4; }
+.corner-lab { fill: var(--ink-2); font-family: var(--sans); font-size: 14px; }
+/* A readout matrix with four wide columns gets a smaller type on phones, so it fits without scrolling. */
+@media (max-width: 560px) { .corner-lab { font-size: 18px; } .ro .eq.fit, .steps .f.fit { font-size: 0.82rem; } }
 /* A 3D view turns when its background is dragged. On touch screens only sideways drags turn it, so the page still scrolls. */
 .turnable { cursor: grab; touch-action: pan-y; }
 .turnable.turning { cursor: grabbing; }

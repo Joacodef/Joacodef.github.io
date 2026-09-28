@@ -91,6 +91,82 @@ export function homography(pairs) {
   return h && [h.slice(0, 3), h.slice(3, 6), [h[6], h[7], 1]];
 }
 
+// The least-squares solution of Ax ≈ b, for more equations than unknowns, by Householder reflections (QR).
+// It stays accurate when the columns of A differ in size by many orders of magnitude, where the normal
+// equations (AᵀA)x = Aᵀb would lose digits. Null when the columns of A are dependent.
+export function lstsq(A, b) {
+  const m = A.length, n = A[0].length, R = A.map((r) => [...r]), y = [...b];
+  const size = Math.max(...A.flat().map(Math.abs));
+  for (let k = 0; k < n; k++) {
+    let s = 0;
+    for (let i = k; i < m; i++) s += R[i][k] ** 2;
+    const norm = Math.sqrt(s), alpha = R[k][k] > 0 ? -norm : norm;
+    const v = R.map((r, i) => (i < k ? 0 : r[k]));
+    v[k] -= alpha;
+    const vv = v.reduce((q, x) => q + x * x, 0);
+    if (vv > 0) {
+      const reflect = (get, set) => { let d = 0; for (let i = k; i < m; i++) d += v[i] * get(i); d = (2 * d) / vv; for (let i = k; i < m; i++) set(i, get(i) - d * v[i]); };
+      for (let j = k; j < n; j++) reflect((i) => R[i][j], (i, x) => { R[i][j] = x; });
+      reflect((i) => y[i], (i, x) => { y[i] = x; });
+    }
+    if (Math.abs(R[k][k]) <= 1e-10 * size) return null;
+  }
+  const x = new Array(n);
+  for (let i = n - 1; i >= 0; i--) {
+    let s = y[i];
+    for (let j = i + 1; j < n; j++) s -= R[i][j] * x[j];
+    x[i] = s / R[i][i];
+  }
+  return x;
+}
+
+// The general projection matrix A of a camera, scaled so that a34 = 1, with λw = AM′ for every pair [M′, w] of a
+// point of space [X, Y, Z] and its pixel [u, v]. Each pair gives two rows of Qa = r, and the 11 unknowns are found
+// by least squares. That takes at least six pairs whose points are not all on one plane; otherwise null.
+export function projectionMatrix(pairs) {
+  const Q = [], r = [];
+  for (const [[X, Y, Z], [u, v]] of pairs) {
+    Q.push([X, Y, Z, 1, 0, 0, 0, 0, -u * X, -u * Y, -u * Z]); r.push(u);
+    Q.push([0, 0, 0, 0, X, Y, Z, 1, -v * X, -v * Y, -v * Z]); r.push(v);
+  }
+  // Scaling each column to length 1 first makes the test for dependent columns independent of the units.
+  const len = transpose(Q).map((c) => Math.hypot(...c) || 1);
+  const a = Q.length >= 11 && lstsq(Q.map((row) => row.map((x, j) => x / len[j])), r);
+  return a ? [a.slice(0, 4), a.slice(4, 8), [...a.slice(8), 1]].map((row, i) => row.map((x, j) => (i === 2 && j === 3 ? 1 : x / len[4 * i + j]))) : null;
+}
+
+// The optical center of the camera A: the point C = [X, Y, Z] with AC = 0, the one point of space with no image.
+// Null when the left 3×3 block of A is singular (a camera with its center at infinity).
+export const opticalCenter = (A) => solve(A.map((r) => r.slice(0, 3)), A.map((r) => -r[3]));
+
+// Splits the camera A = k[K | 0]S′ = kK[R′ | t′] into the calibration matrix K = [α γ u0; 0 β v0; 0 0 1], the turn
+// R′ (its rows are the camera's axes X, Y and Z written in the object's system) and t′ (the object's origin seen from
+// the camera). The rows of R′ are perpendicular unit vectors and K is upper triangular, so they come off the rows of
+// A's left block one at a time, from the bottom up (Gram–Schmidt). The sign of k puts the object's origin in front
+// of the camera (t′Z > 0). With α and β positive, R′ can come out a mirror (det R′ = −1): then no real camera gives
+// these pixels, and `mirror` is true. Null when the left block is singular.
+export function decomposeCamera(A) {
+  const B = A.map((r) => r.slice(0, 3)), last = A.map((r) => r[3]);
+  const norm = (v) => Math.hypot(...v), sub = (a, b) => a.map((x, i) => x - b[i]), times = (v, s) => v.map((x) => x * s);
+  let k = norm(B[2]);
+  if (!inverse(B) || k === 0) return null;
+  if (last[2] < 0) k = -k;
+  const [m1, m2, r3] = B.map((r) => times(r, 1 / k));
+  const v0 = dot(m2, r3), q2 = sub(m2, times(r3, v0)), beta = norm(q2), r2 = times(q2, 1 / beta);
+  const u0 = dot(m1, r3), gamma = dot(m1, r2), q1 = sub(sub(m1, times(r2, gamma)), times(r3, u0)), alpha = norm(q1), r1 = times(q1, 1 / alpha);
+  const K = [[alpha, gamma, u0], [0, beta, v0], [0, 0, 1]], Rp = [r1, r2, r3];
+  const tp = apply(inverse(K), times(last, 1 / k));
+  return { K, Rp, tp, k, alpha, beta, gamma, u0, v0, mirror: dot(r1, cross(r2, r3)) < 0 };
+}
+
+// The angles [wx, wy, wz] in radians with rotation3d(wx, wy, wz) = R, taking wy between −90° and 90°. The first row
+// of R is [cos wy cos wz, cos wy sin wz, −sin wy]. At wy = ±90° (gimbal lock) only wx ∓ wz is fixed, and wz is set to 0.
+export function anglesOf(R) {
+  const wy = Math.asin(Math.max(-1, Math.min(1, -R[0][2])));
+  if (Math.abs(Math.cos(wy)) < 1e-9) return [Math.atan2(-R[2][1], R[1][1]), wy, 0];
+  return [Math.atan2(R[1][2], R[2][2]), wy, Math.atan2(R[0][1], R[0][0])];
+}
+
 // The matrices that give a point's coordinates in axes turned by w radians about the X, Y or Z axis. The angle goes
 // from the old axis to the new one, counterclockwise when the axis points at the viewer (the right-hand rule), and
 // the rows are the new axes written in the old system. Each is the transpose of the matrix that turns points by w.
