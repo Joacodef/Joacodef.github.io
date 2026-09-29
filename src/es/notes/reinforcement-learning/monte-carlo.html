@@ -1,0 +1,162 @@
+---
+title: Predicción y control con Monte Carlo
+module: Métodos Monte Carlo
+order: 4
+description: Aprender cuán bueno es cada estado y cada acción promediando los retornos de episodios completos, y mejorar la política con esos promedios, sin un modelo del mundo.
+---
+<div class="prose">
+  <p>Un robot vive en una casa pequeña con una cocina, un pasillo, un estudio y un cargador. Anda sin rumbo fijo. Desde la cocina siempre va al pasillo. Desde el pasillo elige al azar el estudio o la cocina, y desde el estudio, el cargador o volver al pasillo. Cada movimiento cuesta 1, y un viaje termina en el cargador.</p>
+  <figure class="diagram">
+    <svg viewBox="0 0 440 136" role="img" aria-label="Mapa de la casa: cocina, pasillo, estudio y cargador en fila. El robot va de la cocina al pasillo siempre; del pasillo al estudio o de vuelta a la cocina, la mitad de las veces cada uno; del estudio al cargador o de vuelta al pasillo, la mitad de las veces cada uno.">
+      <defs><marker id="mc-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+      <line class="ln-path" x1="74" y1="58" x2="174" y2="58" marker-end="url(#mc-head)"/>
+      <line class="ln-path" x1="176" y1="78" x2="76" y2="78" marker-end="url(#mc-head)"/>
+      <line class="ln-path" x1="204" y1="58" x2="304" y2="58" marker-end="url(#mc-head)"/>
+      <line class="ln-path" x1="306" y1="78" x2="206" y2="78" marker-end="url(#mc-head)"/>
+      <line class="ln-path" x1="334" y1="68" x2="394" y2="68" marker-end="url(#mc-head)"/>
+      <circle class="state" cx="60" cy="68" r="9"/>
+      <circle class="state" cx="190" cy="68" r="9"/>
+      <circle class="state" cx="320" cy="68" r="9"/>
+      <rect class="state" x="400" y="61" width="14" height="14"/>
+      <text class="dg-lab" x="124" y="48" text-anchor="middle">1</text>
+      <text class="dg-lab" x="124" y="98" text-anchor="middle">½</text>
+      <text class="dg-lab" x="254" y="48" text-anchor="middle">½</text>
+      <text class="dg-lab" x="254" y="98" text-anchor="middle">½</text>
+      <text class="dg-lab" x="364" y="58" text-anchor="middle">½</text>
+      <text class="dg-lab" x="60" y="124" text-anchor="middle">cocina</text>
+      <text class="dg-lab" x="190" y="124" text-anchor="middle">pasillo</text>
+      <text class="dg-lab" x="320" y="124" text-anchor="middle">estudio</text>
+      <text class="dg-lab" x="407" y="124" text-anchor="middle">cargador</text>
+    </svg>
+    <figcaption>La forma de moverse del robot, con la probabilidad de cada movimiento. Cada movimiento da una recompensa de −1, así que el retorno desde una pieza es menos el número de movimientos que aún faltan.</figcaption>
+  </figure>
+  <p>¿Cuán buena es cada pieza, es decir, cuántos movimientos tomará el viaje desde ahí? El robot no puede calcularlo, porque no conoce la distribución de la casa. Pero puede averiguarlo con la experiencia. Cada vez que llega al cargador, sabe cuántos movimientos tomó de verdad el viaje desde cada pieza por la que pasó, y promediar esos números sobre muchos viajes da la respuesta.</p>
+  <p>Eso es un método Monte Carlo: estimar valores promediando lo que de verdad ocurrió en episodios completos. Este apunte lo hace primero para una forma fija de comportarse, luego para el valor de cada acción, y después usa esos valores para comportarse mejor. En el camino se topa con lo único de lo que los métodos Monte Carlo no pueden prescindir: seguir probando todas las acciones.</p>
+  <p class="legend">En esta página, <span class="bar" aria-hidden="true"></span>los movimientos del robot se dibujan con tinta azul.</p>
+</div>
+
+<section id="prediction">
+  <div class="prose">
+    <h2><span class="n">1</span>Promediar retornos</h2>
+    <p>Una política π dice cómo elige el agente sus acciones; aquí, los movimientos al azar del robot. El valor de un estado bajo π es el retorno que cabe esperar desde él, la suma de las recompensas hasta que el episodio termina en el tiempo <i>T</i>, descontadas por γ:</p>
+    <div class="disp"><i>v</i><sub>π</sub>(<i>s</i>) = <span class="nowrap">E<sub>π</sub>[<i>G</i><sub><i>t</i></sub> | <i>S</i><sub><i>t</i></sub> = <i>s</i>],</span>&ensp;<span class="nowrap"><i>G</i><sub><i>t</i></sub> = <i>R</i><sub><i>t</i>+1</sub> + γ<i>R</i><sub><i>t</i>+2</sub></span> <span class="nowrap">+ ⋯ + γ<sup><i>T</i>−<i>t</i>−1</sup><i>R</i><sub><i>T</i></sub></span></div>
+    <p>Un valor esperado se puede estimar con un promedio de muestras, y cada visita a <i>s</i> en un episodio da una muestra: el retorno que vino después. Un estado se puede visitar más de una vez en el mismo episodio. Monte Carlo first-visit promedia solo los retornos después de la primera visita a <i>s</i> en cada episodio; Monte Carlo every-visit promedia los retornos después de todas las visitas.</p>
+    <p>En la casa γ = 1 y cada movimiento da −1, así que un retorno es menos el número de movimientos que quedan. Estos son dos viajes:</p>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col">Viaje</th><th scope="col">Piezas, en orden</th><th scope="col">Retornos desde cada una</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">1</th><td>cocina, pasillo, estudio</td><td>−3, −2, −1</td></tr>
+          <tr><th scope="row">2</th><td>cocina, pasillo, cocina, pasillo, estudio, pasillo, estudio</td><td>−7, −6, −5, −4, −3, −2, −1</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>En el segundo viaje el robot parte en la cocina con 7 movimientos por delante, vuelve a la cocina con 5 por delante, y así sucesivamente. Monte Carlo first-visit toma, de cada viaje, el retorno después de la primera visita a una pieza: −3 y −7 para la cocina, que promedian −5. Monte Carlo every-visit toma además el −5 de la segunda visita, y <span class="nowrap">(−3 − 7 − 5)/3</span> también es −5. Difieren en el pasillo: every-visit promedia cuatro retornos, <span class="nowrap">(−2 − 6 − 4 − 2)/4 = −3.5</span>, y first-visit dos, <span class="nowrap">(−2 − 6)/2 = −4</span>.</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th scope="col">Pieza</th><th scope="col">First-visit</th><th scope="col">Every-visit</th><th scope="col">Valor real</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">cocina</th><td>−5</td><td>−5</td><td>−9</td></tr>
+          <tr><th scope="row">pasillo</th><td>−4</td><td>−3.5</td><td>−8</td></tr>
+          <tr><th scope="row">estudio</th><td>−2</td><td>≈ −1.67</td><td>−5</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Dos viajes cortos son una mala muestra: los valores reales son mucho más bajos, porque muchos viajes van y vuelven un buen rato. Salen de las relaciones entre piezas vecinas: el valor del estudio es el promedio de sus dos movimientos, <span class="nowrap"><i>v</i>(estudio) = ½(−1) + ½(−1 + <i>v</i>(pasillo))</span>, y lo mismo para las otras piezas, lo que da −9, −8 y −5. Promediar más viajes llega ahí: después de 10&nbsp;000 viajes, ambos métodos están a menos de 0.1 de estos valores.</p>
+    <p>Ambos métodos convergen a <i>v</i><sub>π</sub>(<i>s</i>) a medida que crece el número de visitas. Para Monte Carlo first-visit es la ley de los grandes números: cada retorno es una muestra independiente cuya esperanza es <i>v</i><sub>π</sub>(<i>s</i>), así que el promedio es insesgado, y su error se achica como 1/√<i>n</i> después de <i>n</i> retornos. Monte Carlo every-visit también converge, aunque sus muestras de un mismo episodio no son independientes.</p>
+
+    <h3>El algoritmo</h3>
+    <p>Los retornos son más fáciles de calcular hacia atrás desde el final del episodio, porque <span class="nowrap"><i>G</i><sub><i>t</i></sub> = <i>R</i><sub><i>t</i>+1</sub> + γ<i>G</i><sub><i>t</i>+1</sub></span>. Predicción Monte Carlo first-visit, para una política π:</p>
+    <ol class="steps">
+      <li>Parte con cualquier estimación <i>V</i>(<i>s</i>) y una lista vacía de retornos para cada estado.</li>
+      <li>Genera un episodio siguiendo π: <i>S</i><sub>0</sub>, <i>A</i><sub>0</sub>, <i>R</i><sub>1</sub>, …, <i>S</i><sub><i>T</i>−1</sub>, <i>A</i><sub><i>T</i>−1</sub>, <i>R</i><sub><i>T</i></sub>. Haz <i>G</i> ← 0.</li>
+      <li>Para <i>t</i> = <i>T</i> − 1, <i>T</i> − 2, …, 0: haz <span class="nowrap"><i>G</i> ← γ<i>G</i> + <i>R</i><sub><i>t</i>+1</sub></span>. Si <i>S</i><sub><i>t</i></sub> no aparece antes en el episodio, agrega <i>G</i> a los retornos de <i>S</i><sub><i>t</i></sub> y deja <i>V</i>(<i>S</i><sub><i>t</i></sub>) en su promedio.</li>
+      <li>Repite desde el paso 2 con cada nuevo episodio. Monte Carlo every-visit es igual, sin la revisión del paso 3.</li>
+    </ol>
+
+    <h3>Promediar sobre la marcha</h3>
+    <p>No hace falta guardar todos los retornos. Después de un nuevo retorno <i>G</i><sub><i>t</i></sub>, el promedio de los <i>N</i>(<i>S</i><sub><i>t</i></sub>) retornos vistos hasta ahora se mueve hacia él:</p>
+    <div class="disp"><i>V</i>(<i>S</i><sub><i>t</i></sub>) <span class="nowrap">← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + <span class="frac"><span>1</span><span><i>N</i>(<i>S</i><sub><i>t</i></sub>)</span></span>[<i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span></div>
+    <p>Para el pasillo, el primer retorno, −2, da <i>V</i> = −2, y el segundo, −6, da <span class="nowrap">−2 + ½(−6 + 2) = −4</span>, el mismo promedio de antes. Un paso constante α en lugar de 1/<i>N</i> da Monte Carlo con α constante, <span class="nowrap"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + α[<i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span>, que pesa más los retornos recientes. Eso sirve en problemas que cambian con el tiempo, como aprender sobre una política que sigue cambiando.</p>
+
+    <h3>Sin bootstrapping</h3>
+    <p>Cada estimación sale solo de sus propios retornos: la estimación de la cocina no usa la del pasillo. Los métodos Monte Carlo no hacen bootstrapping, es decir, no construyen estimaciones sobre otras estimaciones. Una consecuencia es que estimar un estado cuesta lo mismo sin importar cuántos estados haya, así que un método Monte Carlo puede estudiar unos pocos estados de interés partiendo muchos episodios desde ellos e ignorando el resto. El precio es esperar: una estimación cambia solo cuando termina su episodio.</p>
+  </div>
+</section>
+
+<section id="action-values">
+  <div class="prose">
+    <h2><span class="n">2</span>Valores de acciones</h2>
+    <p>Los valores de estado bastan para elegir acciones solo con un modelo del mundo: sabiendo que un movimiento desde el pasillo lleva al estudio, el robot podría comparar las piezas a las que lleva cada movimiento. Sin modelo necesita directamente el valor de cada acción:</p>
+    <div class="disp"><i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>) = <span class="nowrap">E<sub>π</sub>[<i>G</i><sub><i>t</i></sub> | <i>S</i><sub><i>t</i></sub> = <i>s</i>, <i>A</i><sub><i>t</i></sub> = <i>a</i>]</span></div>
+    <p>el retorno que cabe esperar después de tomar la acción <i>a</i> en el estado <i>s</i> y seguir π desde ahí. Monte Carlo lo estima igual que antes, promediando los retornos después de las visitas al par (<i>s</i>, <i>a</i>), first-visit o every-visit. Para el robot que anda al azar, ir del estudio al cargador vale −1, y volver al pasillo −1 + (−8) = −9; ir del pasillo al estudio vale −6, y volver a la cocina −10.</p>
+    <p>La complicación es que puede haber muchos pares que nunca se visiten. Si el robot siempre fuera del estudio directo al cargador, nunca vería un retorno por volver al pasillo, y nunca podría saber si ese movimiento es mejor o peor. Para comparar acciones, hay que seguir probando todos los pares. Una forma de garantizarlo son los exploring starts (inicios exploratorios): cada episodio parte en un par estado–acción elegido al azar, con alguna probabilidad para cada par. Eso es fácil en una simulación y casi siempre imposible en el mundo real, donde los episodios parten donde parten.</p>
+  </div>
+</section>
+
+<section id="control">
+  <div class="prose">
+    <h2><span class="n">3</span>Mejorar la política</h2>
+    <p>Con valores de acción, una política mejor es fácil de encontrar: en cada estado, toma la acción de mayor valor. Una política que hace eso con respecto a <i>q</i> es greedy:</p>
+    <div class="disp">π(<i>s</i>) ≐ <span class="nowrap">argmax<sub><i>a</i></sub> <i>q</i>(<i>s</i>, <i>a</i>)</span></div>
+    <p>La política greedy es al menos tan buena como π en todas partes. Seguirla un paso y luego seguir π vale <span class="nowrap">max<sub><i>a</i></sub> <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>)</span>, que es al menos <i>v</i><sub>π</sub>(<i>s</i>), el valor de seguir π todo el tiempo; por el teorema de mejora de políticas, seguirla en todos los pasos también es al menos igual de bueno. En la casa, la política greedy con respecto a los valores de arriba va del pasillo al estudio (−6 le gana a −10) y del estudio al cargador (−1 le gana a −9). Esa es la mejor política, con valores −3, −2 y −1.</p>
+    <p>El control alterna los dos pasos: evaluar la política actual, volver greedy la política con respecto a esa evaluación, y repetir. Cada paso avanza hacia lo que el otro necesita, y cuando ninguno cambia nada, tanto la política como sus valores son óptimos. Este patrón se llama iteración de políticas generalizada (GPI). La evaluación no tiene que ser completa: los métodos Monte Carlo alternan después de cada episodio, actualizando los valores de los pares visitados y luego la política en esos estados.</p>
+    <p>Monte Carlo con Exploring Starts, Monte Carlo ES, hace exactamente eso. Parte cada episodio en un par al azar y luego sigue la política greedy actual; después del episodio, promedia en <i>Q</i> el retorno first-visit de cada par visitado y vuelve greedy la política en los estados visitados. No puede quedarse en una política que no sea óptima: los valores convergerían a los de esa política, y el paso greedy la cambiaría. Que siempre converja al óptimo es algo que se cree ampliamente, pero no se ha demostrado formalmente.</p>
+  </div>
+</section>
+
+<section id="soft">
+  <div class="prose">
+    <h2><span class="n">4</span>Control sin exploring starts</h2>
+    <p>Sin exploring starts, la única forma de seguir probando todas las acciones es que la propia política las siga eligiendo. Hay dos maneras de hacerlo. Los métodos on-policy evalúan y mejoran la misma política que toma las decisiones. Los métodos off-policy evalúan o mejoran una política distinta de la que genera la experiencia. Esta sección trata de un método on-policy.</p>
+    <p>La política se mantiene blanda (soft), con <span class="nowrap">π(<i>a</i>|<i>s</i>) &gt; 0</span> para toda acción. Una política ε-soft le da a cada acción al menos <span class="nowrap">ε/|𝒜(<i>s</i>)|</span>, donde |𝒜(<i>s</i>)| es el número de acciones en <i>s</i>. La más cercana a greedy entre ellas es ε-greedy: le da a cada acción no greedy exactamente ε/|𝒜(<i>s</i>)| y a la acción greedy el resto, <span class="nowrap">1 − ε + ε/|𝒜(<i>s</i>)|</span>. El control Monte Carlo first-visit on-policy es Monte Carlo ES con un cambio: los episodios parten donde parten, y el paso de mejora vuelve la política ε-greedy con respecto a <i>Q</i> en vez de greedy.</p>
+    <p>Esto igual mejora la política. Para cualquier π ε-soft, la política ε-greedy π′ con respecto a <i>q</i><sub>π</sub> cumple, en todo estado,</p>
+    <div class="disp">Σ<sub><i>a</i></sub> π′(<i>a</i>|<i>s</i>) <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>) <span class="nowrap">≥ <i>v</i><sub>π</sub>(<i>s</i>)</span></div>
+    <p>porque π′ pone su peso extra en el mayor <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>), y un promedio ponderado nunca supera a su mayor término. Por el teorema de mejora de políticas, π′ es al menos tan buena como π. En el estudio, con ε = 0.2 y dos acciones, π′ va al cargador con probabilidad 0.9: <span class="nowrap">0.9(−1) + 0.1(−9) = −1.8</span>, muy por encima del −5 del robot que anda al azar.</p>
+    <p>¿Dónde termina? El proceso deja de mejorar solo en la mejor política ε-soft, que no es la mejor política: sigue explorando para siempre, y explorar cuesta. En la casa, la política ε-greedy con ε = 0.2 en torno a los mejores movimientos tiene valores −3.47, −2.47 y −1.25, contra −3, −2 y −1 sin exploración. Dejar que ε se achique con el tiempo cierra esa brecha.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">5</span>Resumen</h2>
+    <p>Las ideas clave junto a sus equivalentes en NumPy. <code>r[t+1]</code> guarda <i>R</i><sub><i>t</i>+1</sub>, <code>s</code> los estados de un episodio, y <code>v</code>, <code>q</code> y <code>n</code> las estimaciones y los conteos de visitas.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Retorno, hacia atrás</div>
+      <div class="f"><i>G</i><sub><i>t</i></sub> = <i>R</i><sub><i>t</i>+1</sub> + γ<i>G</i><sub><i>t</i>+1</sub></div>
+      <div class="c"><code>g = gamma * g + r[t+1]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Primera visita a un estado</div>
+      <div class="f"><i>S</i><sub><i>t</i></sub> ∉ {<i>S</i><sub>0</sub>, …, <i>S</i><sub><i>t</i>−1</sub>}</div>
+      <div class="c"><code>first = s[t] not in s[:t]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Promedio sobre la marcha</div>
+      <div class="f"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + [<i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)] / <i>N</i>(<i>S</i><sub><i>t</i></sub>)</div>
+      <div class="c"><code>n[s[t]] += 1<br>v[s[t]] += (g - v[s[t]]) / n[s[t]]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Monte Carlo con α constante</div>
+      <div class="f"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + α[<i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</div>
+      <div class="c"><code>v[s[t]] += alpha * (g - v[s[t]])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Política greedy</div>
+      <div class="f">π(<i>s</i>) = argmax<sub><i>a</i></sub> <i>q</i>(<i>s</i>, <i>a</i>)</div>
+      <div class="c"><code>pi = np.argmax(q, axis=1)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Política ε-greedy</div>
+      <div class="f">ε/|𝒜(<i>s</i>)| cada una, más 1 − ε para la acción greedy</div>
+      <div class="c"><code>m = len(q[s])<br>pi_s = np.full(m, eps / m)<br>pi_s[np.argmax(q[s])] += 1 - eps</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">La mejora se cumple</div>
+      <div class="f">Σ<sub><i>a</i></sub> π′(<i>a</i>|<i>s</i>) <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>) ≥ <i>v</i><sub>π</sub>(<i>s</i>)</div>
+      <div class="c"><code>lhs = (pi_prime * q_pi).sum(1)<br>np.all(lhs &gt;= v_pi)</code></div>
+    </div>
+  </div>
+</section>

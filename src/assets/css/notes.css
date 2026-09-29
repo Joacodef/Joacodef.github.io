@@ -71,9 +71,19 @@ sup.t { font-style: normal; font-size: 0.62em; margin-left: 0.06em; line-height:
 .hat { position: relative; display: inline-block; line-height: 1; }
 .hat::after { content: "\02C6"; position: absolute; left: 0.14em; right: -0.14em; top: -0.12em; text-align: center; font-style: normal; pointer-events: none; }
 .hat.lo::after { top: 0.06em; }
+/* A bar over one letter, such as V̄ for an expected value: <span class="ovl"><i>V</i></span>. Drawn as a line, like the hat,
+   and shifted right to follow the italic slant. */
+.ovl { position: relative; display: inline-block; line-height: 1; }
+.ovl::after { content: ""; position: absolute; left: 0.2em; right: 0.02em; top: -0.08em; border-top: 0.06em solid currentColor; pointer-events: none; }
 .frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; font-size: 0.9em; line-height: 1.25; margin: 0 0.1em; }
+/* The limits of a sum or product, stacked beside its sign: ∏<span class="lims"><span>top</span><span>bottom</span></span>. */
+.lims { display: inline-flex; flex-direction: column; vertical-align: middle; font-size: 0.62em; line-height: 1.2; margin: 0 0.2em 0 0.08em; }
+/* A superscript stacked over a subscript on one letter, as the λ and t of G_t^λ: <i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span>. */
+.ss { display: inline-flex; flex-direction: column; vertical-align: 0.42em; font-size: 0.68em; line-height: 1.05; margin-left: 0.05em; }
 .frac > span:first-child { border-bottom: 1.3px solid currentColor; padding: 0 0.25em; }
 .num { font-variant-numeric: lining-nums; }
+/* A vector in bold upright serif, as the weights w and the trace z. */
+.vec { font-family: var(--serif); font-weight: 600; font-style: normal; }
 
 /* Interactive figures */
 .fig { max-width: 980px; margin: 2.2rem auto 1rem; background: var(--paper-2); border-radius: 18px; padding: clamp(14px, 3vw, 28px); display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
@@ -217,6 +227,115 @@ ol.steps li { counter-increment: s; position: relative; padding: 0 0 1.3rem 2.4r
 ol.steps li::before { content: counter(s); position: absolute; left: 0; top: 0; color: var(--ink-3); font-family: var(--serif); font-size: 1.25rem; line-height: 1.5; }
 ol.steps b { font-weight: 600; }
 
+/* Static diagrams: a drawing on a card with its caption, for sections that have no interactive figure yet. */
+.diagram { max-width: 560px; margin: 1.8rem auto; }
+.diagram svg { width: 100%; height: auto; display: block; background: var(--card); border-radius: 12px; }
+.diagram figcaption { color: var(--ink-2); font-size: 0.95rem; line-height: 1.45; margin: 0.6rem 0.2rem 0; }
+.diagram figcaption i { font-family: var(--serif); }
+.dg-lab { fill: var(--ink-2); font-family: var(--sans); font-size: 14px; }
+.dg-lab.m { font-family: var(--serif); font-style: italic; font-size: 16px; }
+.dg-lab .up { font-style: normal; }
+.dg-lab .sub { font-size: 0.7em; }
+.dg-lab.tg { fill: var(--red); }
+@media (max-width: 560px) { .dg-lab { font-size: 17px; } .dg-lab.m { font-size: 19px; } }
+/* Reinforcement learning: states are open circles and actions small dots, as in backup diagrams. Carmine marks
+   what the target of an update is built from. */
+.state { fill: var(--card); stroke: var(--ink); stroke-width: 1.6; }
+.act { fill: var(--ink); }
+.act.tg { fill: var(--red); }
+.bk { stroke: var(--ink-2); stroke-width: 1.4; fill: none; }
+.bk.dash { stroke-dasharray: 3 4; }
+/* A state whose estimate the target uses. */
+.state.tg { stroke: var(--red); }
+.tg-ring { fill: none; stroke: var(--red); stroke-width: 2; }
+.pond { fill: var(--paper-2); stroke: var(--ink-3); stroke-width: 1.2; }
+.rail { stroke: var(--ink-3); stroke-width: 1.4; }
+.head { fill: var(--blue); }
+.stick { stroke: var(--ink); stroke-width: 3; stroke-linecap: round; }
+.stick.gone { stroke: var(--ink-3); stroke-width: 1.6; stroke-dasharray: 3 3; stroke-linecap: butt; }
+.zero { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 4 4; }
+.cell { fill: none; stroke: var(--rule); stroke-width: 1.2; }
+.credit { stroke: var(--ink); stroke-width: 3.2; stroke-linecap: round; }
+.head-ink { fill: var(--ink); }
+.head-tg { fill: var(--red); }
+.tg-line { stroke: var(--red); stroke-width: 2; }
+/* Bars of weights and traces. */
+.bar-w { fill: var(--ink-3); fill-opacity: 0.3; stroke: var(--ink-2); stroke-width: 1.2; }
+
+/* Grid worlds: cells the reader presses to see their values, the agent as an ink dot, the best move in each cell as a
+   blue arrow and the path the best moves take as a dashed blue line. The cell whose values a target uses is outlined
+   in carmine. */
+.gw-floor { fill: var(--card); }
+.gw-cliff { fill: color-mix(in srgb, var(--ink) 16%, var(--card)); }
+.gw-frame { fill: none; stroke: var(--ink-3); stroke-width: 1.2; }
+.gw-line { stroke: var(--rule); stroke-width: 1; }
+.gw-cell { cursor: pointer; outline: none; }
+.gw-focus { fill: none; stroke: var(--ink-3); stroke-width: 1.5; stroke-dasharray: 3 3; opacity: 0; pointer-events: none; }
+.gw-cell:focus-visible .gw-focus { opacity: 1; }
+.gw-lab { fill: var(--ink-2); font-family: var(--sans); font-size: 13px; pointer-events: none; }
+.gw-axis { fill: var(--ink-3); font-family: var(--sans); font-size: 11px; }
+.gw-sg { fill: var(--ink-2); font-family: var(--sans); font-size: 12px; pointer-events: none; }
+.gw-tag { fill: var(--ink); font-family: var(--serif); font-style: italic; font-size: 14px; pointer-events: none; }
+.gw-tag .sub { font-size: 0.72em; }
+.gw-best { stroke: var(--blue); stroke-width: 2.4; stroke-linecap: round; pointer-events: none; }
+.gw-head { fill: var(--blue); pointer-events: none; }
+.gw-path { fill: none; stroke: var(--blue); stroke-width: 2; stroke-dasharray: 5 4; stroke-linejoin: round; opacity: 0.8; pointer-events: none; }
+.gw-sel { fill: none; stroke: var(--ink); stroke-width: 2; pointer-events: none; }
+.gw-sel.tg { stroke: var(--red); }
+.gw-agent { fill: var(--ink); }
+.gw-agent-g { pointer-events: none; transition: transform 0.3s ease; }
+.gw-agent-g.jump { transition: none; }
+.gw-fall { fill: none; stroke: var(--ink); stroke-width: 2; pointer-events: none; }
+.gw-wall { stroke: var(--ink); stroke-width: 4; stroke-linecap: round; pointer-events: none; }
+@media (max-width: 560px) { .gw-axis, .gw-sg { font-size: 14px; } .gw-lab { font-size: 16px; } .gw-tag { font-size: 17px; } }
+
+/* Figures stepped through like slides, with Next and Back. The controls sit right under the drawing, so the growing
+   text never moves them, and new text appears only at the bottom, with earlier text dimmed above it. */
+.fig.steps { grid-template-areas: "draw" "ctl" "ro" "foot"; }
+.fig.steps > svg { grid-area: draw; }
+.fig.steps > .ctl { grid-area: ctl; margin-top: -8px; }
+.fig.steps > .ro { grid-area: ro; }
+.fig.steps > .fig-foot { grid-area: foot; }
+@media (min-width: 840px) { .fig.steps { grid-template-rows: auto auto 1fr; grid-template-areas: "draw ro" "ctl ro" "foot ro"; } }
+.ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
+.ctl .count { color: var(--ink-3); font-size: 0.88rem; font-variant-numeric: tabular-nums; margin: 0 0.2rem; }
+.fig.steps .btn { white-space: nowrap; }
+.fig.steps .btn[hidden] { display: none; }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.btn:disabled:hover { background: transparent; }
+.ro .slide { font-family: var(--serif); font-size: 1.55rem; font-weight: 500; line-height: 1.25; color: var(--ink); margin: 0.15rem 0 0.5rem; }
+.ro .slide.ff { color: var(--ink-3); }
+.ro .later { font-family: var(--serif); font-style: italic; color: var(--ink-2); margin: 0.1rem 0 0; }
+.ro .lines p { margin: 0.4rem 0; }
+.ro .lines .eq { margin: 0 0 0.6rem; }
+.ro .lines .old { opacity: 0.55; }
+.ro .enter { animation: fade-in 0.45s ease-out both; }
+/* On a new slide, its first text waits for the title to finish fading in. */
+.ro .enter.after-title { animation-delay: 0.4s; }
+@keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+/* The four values of a cell, around its name: the best in blue, the one just updated underlined. */
+.qv { display: grid; grid-template-columns: repeat(3, auto); justify-content: start; gap: 0.1rem 0.9rem; margin: 0.3rem 0 0; font-variant-numeric: tabular-nums; }
+.qv span { text-align: center; }
+.qv .best { color: var(--blue); font-weight: 600; }
+.qv .changed { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.qv .mid { color: var(--ink-3); font-size: 0.9rem; align-self: center; }
+.fig svg.arr { display: inline-block; width: 0.8em; height: 0.8em; vertical-align: -0.05em; background: none; border-radius: 0; transform: rotate(var(--r)); }
+.arr path { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+@media (prefers-reduced-motion: reduce) { .gw-agent-g { transition: none; } .ro .enter { animation: none; } }
+/* Text for screen readers only. */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Tables of values, such as what two methods learn. On phones a wide table scrolls sideways inside its box. */
+.tbl { overflow-x: auto; margin: 1.4rem 0 1.6rem; }
+.tbl table { border-collapse: collapse; font-variant-numeric: lining-nums tabular-nums; }
+.tbl th, .tbl td { padding: 0.4rem 0.9rem; border-bottom: 1px solid var(--rule); text-align: right; }
+@media (max-width: 560px) { .tbl th, .tbl td { padding: 0.4rem 0.5rem; } }
+.tbl th { color: var(--ink-2); font-weight: 600; font-size: 0.92rem; }
+.tbl th:first-child, .tbl td:first-child { text-align: left; padding-left: 0; }
+.tbl tbody th { font-weight: 400; color: var(--ink); }
+.tbl.left td { text-align: left; }
+.tbl td i, .tbl th i { font-family: var(--serif); }
+
 /* Summary */
 .sum { max-width: 860px; margin: 2rem auto 1rem; background: var(--paper-2); border-radius: 18px; padding: clamp(16px, 3.2vw, 30px) clamp(16px, 3.6vw, 34px); }
 .sum-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.25rem; padding: 1rem 0; border-top: 1px solid var(--rule); }
@@ -227,6 +346,8 @@ ol.steps b { font-weight: 600; }
 .sum-row .f { font-family: var(--serif); font-size: 1.15rem; line-height: 1.8; }
 .sum-row .c { overflow-x: auto; }
 .sum-row code { white-space: nowrap; background: var(--card); }
+/* Code of several lines: one box, so the padding does not indent only the first line. */
+.sum-row code:has(br) { display: inline-block; }
 .sum-row .none { color: var(--ink-3); font-size: 0.9rem; }
 
 /* The notes before and after this one in its course. */

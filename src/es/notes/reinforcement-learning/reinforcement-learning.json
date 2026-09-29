@@ -1,0 +1,6 @@
+{
+  "layout": "note.njk",
+  "course": "Aprendizaje Reforzado",
+  "courseOrder": 2,
+  "source": "Basado en el curso Aprendizaje Reforzado (IIC3675) del profesor Rodrigo Toro en la UC Chile, que sigue el libro de Sutton y Barto, <a href=\"http://incompleteideas.net/book/the-book-2nd.html\"><i>Reinforcement Learning: An Introduction</i></a> (2.ª ed., 2020)."
+}

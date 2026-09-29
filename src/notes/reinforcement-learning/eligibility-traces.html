@@ -1,0 +1,229 @@
+---
+title: Eligibility traces
+module: Temporal-difference learning
+order: 8
+description: Averaging every n-step return with weights that fade by λ, and learning from that average as the episode runs, with a fading memory of the pairs just visited.
+---
+<div class="prose">
+  <p>An <i>n</i>-step method trusts its estimates after a fixed number of steps, <i>n</i>, and a good <i>n</i> depends on the task. Nothing forces a single choice. A target can average several <i>n</i>-step returns, say half of a short one and half of a long one, and still be a sound target.</p>
+  <p>The λ-return averages all of them. It gives the one-step return the largest weight and each longer return a little less, by a factor λ per extra step, so one number, λ, moves the target smoothly from one-step TD (λ = 0) to Monte Carlo (λ = 1). The catch is that this average reaches to the end of the episode, so it can only be computed once the episode is over. Eligibility traces remove the wait. The agent keeps a fading memory of the pairs it has visited, and each time it computes a TD error it passes that error back to them, more to recent pairs and less to old ones.</p>
+  <figure class="diagram">
+    <svg viewBox="0 0 440 176" role="img" aria-label="Bar chart of the weights the λ-return gives, with λ = 0.5, to each return from a state four steps before the end of the episode: 0.5 for the one-step return, 0.25 for the two-step return, 0.125 for the three-step return, and 0.125 for the full return.">
+      <line class="guide" x1="40" y1="140" x2="410" y2="140"/>
+      <rect class="bar-w" x="62" y="40" width="56" height="100"/>
+      <rect class="bar-w" x="152" y="90" width="56" height="50"/>
+      <rect class="bar-w" x="242" y="115" width="56" height="25"/>
+      <rect class="bar-w" x="332" y="115" width="56" height="25"/>
+      <text class="dg-lab" x="90" y="32" text-anchor="middle">0.5</text>
+      <text class="dg-lab" x="180" y="82" text-anchor="middle">0.25</text>
+      <text class="dg-lab" x="270" y="107" text-anchor="middle">0.125</text>
+      <text class="dg-lab" x="360" y="107" text-anchor="middle">0.125</text>
+      <text class="dg-lab m" x="90" y="164" text-anchor="middle">G<tspan class="sub" dy="4">t:t+1</tspan></text>
+      <text class="dg-lab m" x="180" y="164" text-anchor="middle">G<tspan class="sub" dy="4">t:t+2</tspan></text>
+      <text class="dg-lab m" x="270" y="164" text-anchor="middle">G<tspan class="sub" dy="4">t:t+3</tspan></text>
+      <text class="dg-lab m" x="360" y="164" text-anchor="middle">G<tspan class="sub" dy="4">t</tspan></text>
+    </svg>
+    <figcaption>The weights of the λ-return with λ = 0.5, for a state four steps before the end: the one-, two- and three-step returns, then the full return <i>G</i><sub><i>t</i></sub>. Each longer return gets half the weight of the one before, and the full return takes all the weight that is left.</figcaption>
+  </figure>
+  <p class="legend">Throughout this page, <span class="bar" aria-hidden="true"></span>the steps of an episode are drawn in blue ink, and <span class="dot" aria-hidden="true"></span>targets and the TD errors that carry them in red ink.</p>
+</div>
+
+<section id="compound">
+  <div class="prose">
+    <h2><span class="n">1</span><span>Averaging <i>n</i>-step returns</span></h2>
+    <p>The <i>n</i>-step return keeps <i>n</i> rewards and then trusts the estimate of the state or pair it reaches:</p>
+    <div class="disp"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub> ≐ <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub> + γ<i>R</i><sub><i>t</i>+2</sub> + ⋯</span> <span class="nowrap">+ γ<sup><i>n</i>−1</sup><i>R</i><sub><i>t</i>+<i>n</i></sub></span> <span class="nowrap">+ γ<sup><i>n</i></sup><span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i>+<i>n</i></sub>, <b class="vec">w</b><sub><i>t</i>+<i>n</i>−1</sub>)</span></div>
+    <p>This is the general form, for any way of estimating values: <span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>) is the estimated value of state <i>s</i> given a vector of weights <b class="vec">w</b>. A table is the simplest case, with one weight per state, so that <span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>) is just the table's entry <i>V</i>(<i>s</i>). With action values, the last term is the estimate of the pair (<i>S</i><sub><i>t</i>+<i>n</i></sub>, <i>A</i><sub><i>t</i>+<i>n</i></sub>) instead, as in <i>n</i>-step Sarsa.</p>
+    <p>Any <i>n</i>-step return is a valid target, and so is any average of them, as long as the weights are positive and add up to 1. Such an average keeps the error reduction property of the <i>n</i>-step returns, so it leads to sound learning too. An update toward an average of simpler targets is a compound update. For example, half of a two-step return and half of a four-step return:</p>
+    <div class="disp">½<i>G</i><sub><i>t</i>:<i>t</i>+2</sub> + ½<i>G</i><sub><i>t</i>:<i>t</i>+4</sub></div>
+    <p>A compound update can only be made once its longest part is complete: this one must wait four steps.</p>
+    <p>An example. A robot drives home to its charger from the kitchen, through the hallway and the study. Reaching the charger gives +10, every other step 0, and γ = 0.9, so the true values are 8.1, 9 and 10. The robot's table is still poor: 2 for the kitchen, 4 for the hallway and 6 for the study. From the kitchen, the one-step return is <span class="nowrap">0 + 0.9 · 4 = 3.6</span>, the two-step return <span class="nowrap">0.81 · 6 = 4.86</span>, and the three-step return reaches the charger, <span class="nowrap">0.81 · 10 = 8.1</span>. Half of the first and half of the last is 5.85.</p>
+  </div>
+</section>
+
+<section id="lambda-return">
+  <div class="prose">
+    <h2><span class="n">2</span>The λ-return</h2>
+    <p>The λ-return averages every <i>n</i>-step return, with a weight that shrinks by λ at each extra step:</p>
+    <div class="disp hero-f"><span class="pt"><i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span></span> ≐ <span class="nowrap">(1 − λ) Σ<span class="lims"><span>∞</span><span><i>n</i>=1</span></span>λ<sup><i>n</i>−1</sup><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub></span></div>
+    <p>λ is between 0 and 1. The weights are 1 − λ for the one-step return, (1 − λ)λ for the two-step return, (1 − λ)λ<sup>2</sup> for the three-step return, and so on. They add up to 1, since <span class="nowrap">1 + λ + λ<sup>2</sup> + ⋯ = 1/(1 − λ)</span>; the factor 1 − λ is there to make them.</p>
+    <p>Once an <i>n</i>-step return reaches the end of the episode, it is the full return <i>G</i><sub><i>t</i></sub>, and so is every longer one. Gathering all their weights gives the form used for episodes:</p>
+    <div class="disp"><span class="pt"><i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span></span> = <span class="nowrap">(1 − λ) Σ<span class="lims"><span><i>T</i>−<i>t</i>−1</span><span><i>n</i>=1</span></span>λ<sup><i>n</i>−1</sup><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub></span> <span class="nowrap">+ λ<sup><i>T</i>−<i>t</i>−1</sup><i>G</i><sub><i>t</i></sub></span></div>
+    <p>The two ends of the range are the methods we already know. With λ = 1, the sum vanishes and <span class="nowrap"><i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span> = <i>G</i><sub><i>t</i></sub></span>: learning from it is Monte Carlo. With λ = 0, only the one-step return is left, <span class="nowrap"><i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span> = <i>G</i><sub><i>t</i>:<i>t</i>+1</sub></span>: learning from it is one-step TD.</p>
+    <p>From the kitchen, two steps before the last, the λ-return has three terms. With λ = 0.5 their weights are 0.5, 0.25 and 0.25:</p>
+    <div class="disp num"><span class="pt"><i>G</i><span class="ss"><span>λ</span><span>0</span></span></span> <span class="nowrap">= 0.5 · 3.6 + 0.25 · 4.86</span> <span class="nowrap">+ 0.25 · 8.1</span> <span class="nowrap">= 5.04</span></div>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col">λ</th><th scope="col">λ-return from the kitchen</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">0</th><td>3.6, the one-step return</td></tr>
+          <tr><th scope="row">0.5</th><td>5.04</td></tr>
+          <tr><th scope="row">0.8</th><td>6.68</td></tr>
+          <tr><th scope="row">1</th><td>8.1, the full return</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The larger λ, the more the target relies on real rewards and the less on the poor estimates.</p>
+  </div>
+</section>
+
+<section id="offline">
+  <div class="prose">
+    <h2><span class="n">3</span>Learning from the λ-return</h2>
+    <p>The λ-return can replace the target of any update. Sarsa moved toward it becomes</p>
+    <div class="disp"><i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">← <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span></span></span> <span class="nowrap">− <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
+    <p>and the same holds for state values. <i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span> needs every reward until the end, so the simplest algorithm waits. The off-line λ-return algorithm changes nothing during the episode; when it ends, it makes one update per step, toward that step's λ-return:</p>
+    <div class="disp"><b class="vec">w</b><sub><i>t</i>+1</sub> <span class="nowrap">≐ <b class="vec">w</b><sub><i>t</i></sub> + α[<span class="pt"><i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span></span></span> <span class="nowrap">− <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)] ∇<span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>),</span> <span class="nowrap"><i>t</i> = 0, …, <i>T</i> − 1</span></div>
+    <p>The gradient ∇<span class="hat lo"><i>v</i></span> says which weights produced the estimate of <i>S</i><sub><i>t</i></sub>, and how much. In a table it is 1 for the entry of <i>S</i><sub><i>t</i></sub> and 0 for every other, so the update is the familiar <span class="nowrap"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + α[<span class="pt"><i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span>.</p>
+    <p>In the example with λ = 0.5 and α = 0.5, the λ-returns are 5.04 for the kitchen, 7.2 for the hallway and 10 for the study, so at the end of the episode the table moves from 2, 4 and 6 to 3.52, 5.6 and 8.</p>
+    <p>How well does it learn? About as well as <i>n</i>-step TD at its best <i>n</i>, and slightly better at their best settings. As with <i>n</i>, an intermediate λ usually works best, and averaging over all horizons tends to be more robust than betting on a single <i>n</i>.</p>
+
+    <h3>Forward and backward views</h3>
+    <p>The λ-return is a forward view: each state's update looks forward in time, to all the rewards and states that follow it. That is why it has to wait, like Monte Carlo, and why it cannot be used in tasks without an end. A backward view turns this around. At each step it computes the current TD error and sends it back to the states or pairs visited recently, so every estimate is updated a little at every step, from information that already exists. The next section shows why the two views can agree.</p>
+  </div>
+</section>
+
+<section id="traces">
+  <div class="prose">
+    <h2><span class="n">4</span>The λ-return as a sum of TD errors</h2>
+    <p>Take the TD error of Sarsa, with the table held fixed during the episode:</p>
+    <div class="disp">δ<sub><i>k</i></sub> = <span class="nowrap"><span class="pt"><i>R</i><sub><i>k</i>+1</sub> + γ<i>Q</i>(<i>S</i><sub><i>k</i>+1</sub>, <i>A</i><sub><i>k</i>+1</sub>)</span></span> <span class="nowrap">− <i>Q</i>(<i>S</i><sub><i>k</i></sub>, <i>A</i><sub><i>k</i></sub>)</span></div>
+    <p>Write the λ-return out term by term, collect the rewards and the estimates step by step, and the estimates cancel in pairs. What is left is a discounted sum of the TD errors from time <i>t</i> on:</p>
+    <div class="disp"><span class="pt"><i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span></span> − <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">= δ<sub><i>t</i></sub> + γλδ<sub><i>t</i>+1</sub></span> <span class="nowrap">+ (γλ)<sup>2</sup>δ<sub><i>t</i>+2</sub> + ⋯</span> <span class="nowrap">= Σ<span class="lims"><span><i>T</i>−1</span><span><i>k</i>=<i>t</i></span></span>(γλ)<sup><i>k</i>−<i>t</i></sup>δ<sub><i>k</i></sub></span></div>
+    <p>For the kitchen, the TD errors are <span class="nowrap">δ<sub>0</sub> = 0 + 0.9 · 4 − 2 = 1.6</span>, <span class="nowrap">δ<sub>1</sub> = 0.9 · 6 − 4 = 1.4</span> and <span class="nowrap">δ<sub>2</sub> = 10 − 6 = 4</span>, and with γλ = 0.45 the sum is <span class="nowrap">1.6 + 0.45 · 1.4 + 0.2025 · 4 = 3.04</span>, which is <span class="nowrap">5.04 − 2</span>.</p>
+    <p>Now read the sum the other way. The TD error δ<sub><i>k</i></sub> appears in the update of every pair visited before or at time <i>k</i>, with weight (γλ)<sup><i>k</i>−<i>t</i></sup>, where <span class="nowrap"><i>k</i> − <i>t</i></span> is how many steps ago that pair was visited. So there is no need to wait: as soon as δ<sub><i>k</i></sub> is known, it can be passed back to every earlier pair, weighted by (γλ) raised to the time since its visit. The eligibility trace of a pair keeps exactly that weight.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 440 196" role="img" aria-label="The last five pairs visited, from t − 4 to t, each with a bar for its trace: 0.41, 0.51, 0.64, 0.8 and 1. A red arrow carries the TD error δ t from the current pair back over all of them.">
+        <defs><marker id="t-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head-tg" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+        <text class="dg-lab m tg" x="400" y="30" text-anchor="middle">δ<tspan class="sub" dy="4">t</tspan></text>
+        <line class="tg-line" x1="382" y1="34" x2="48" y2="34" marker-end="url(#t-head)"/>
+        <rect class="bar-w" x="46" y="112.2" width="28" height="36.8"/>
+        <rect class="bar-w" x="126" y="102.9" width="28" height="46.1"/>
+        <rect class="bar-w" x="206" y="91.4" width="28" height="57.6"/>
+        <rect class="bar-w" x="286" y="77" width="28" height="72"/>
+        <rect class="bar-w" x="366" y="59" width="28" height="90"/>
+        <text class="dg-lab" x="60" y="105" text-anchor="middle">0.41</text>
+        <text class="dg-lab" x="140" y="96" text-anchor="middle">0.51</text>
+        <text class="dg-lab" x="220" y="84" text-anchor="middle">0.64</text>
+        <text class="dg-lab" x="300" y="70" text-anchor="middle">0.8</text>
+        <text class="dg-lab" x="380" y="52" text-anchor="middle">1</text>
+        <line class="ln-path" x1="60" y1="160" x2="380" y2="160"/>
+        <line class="ln-path dash" x1="380" y1="160" x2="424" y2="160"/>
+        <circle class="act" cx="60" cy="160" r="5"/>
+        <circle class="act" cx="140" cy="160" r="5"/>
+        <circle class="act" cx="220" cy="160" r="5"/>
+        <circle class="act" cx="300" cy="160" r="5"/>
+        <circle class="act" cx="380" cy="160" r="5"/>
+        <text class="dg-lab m" x="60" y="184" text-anchor="middle">t − 4</text>
+        <text class="dg-lab m" x="140" y="184" text-anchor="middle">t − 3</text>
+        <text class="dg-lab m" x="220" y="184" text-anchor="middle">t − 2</text>
+        <text class="dg-lab m" x="300" y="184" text-anchor="middle">t − 1</text>
+        <text class="dg-lab m" x="380" y="184" text-anchor="middle">t</text>
+      </svg>
+      <figcaption>The traces of the last five pairs visited, with γλ = 0.8: 1 for the pair just visited, then 0.8, 0.64, 0.51 and 0.41. When the TD error δ<sub><i>t</i></sub> is known, each of these pairs moves by αδ<sub><i>t</i></sub> times its trace.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="sarsa-lambda">
+  <div class="prose">
+    <h2><span class="n">5</span><span>Sarsa(λ)</span></h2>
+    <p>Sarsa(λ) keeps a trace <i>z</i>(<i>s</i>, <i>a</i>) for every pair, a short-term memory next to the long-term table <i>Q</i>. When a pair is visited its trace goes up by 1, and after every step all traces shrink by the factor γλ. Each step then moves every pair by its share of the current TD error:</p>
+    <div class="disp"><i>Q</i>(<i>s</i>, <i>a</i>) <span class="nowrap">← <i>Q</i>(<i>s</i>, <i>a</i>) + αδ<sub><i>t</i></sub><i>z</i>(<i>s</i>, <i>a</i>)</span>&ensp;<span class="nowrap">for all <i>s</i>, <i>a</i></span></div>
+    <p>A pair that was never visited, or visited long ago, has a trace near 0 and barely moves. With λ = 0 only the current pair has a trace, and Sarsa(λ) is one-step Sarsa. With λ = 1 the traces fade only by γ, and every pair of the episode shares each TD error as in Monte Carlo. The trace is also written <i>e</i>(<i>s</i>, <i>a</i>).</p>
+
+    <h3>The algorithm</h3>
+    <p>For a step size α, a discount γ, a trace decay λ and a small ε &gt; 0, with <i>Q</i>(<i>s</i>, <i>a</i>) initialized arbitrarily except <span class="nowrap"><i>Q</i>(terminal, ·) = 0</span>, and for each episode:</p>
+    <ol class="steps">
+      <li>Set every trace to 0: <i>z</i>(<i>s</i>, <i>a</i>) ← 0. Observe the first state <i>S</i> and choose <i>A</i> ε-greedily with respect to <i>Q</i>.</li>
+      <li>Take <i>A</i>, and observe <i>R</i> and <i>S</i>′. Choose <i>A</i>′ in <i>S</i>′ ε-greedily.</li>
+      <li>Compute the TD error <span class="nowrap">δ ← <span class="pt"><i>R</i> + γ<i>Q</i>(<i>S</i>′, <i>A</i>′)</span></span> <span class="nowrap">− <i>Q</i>(<i>S</i>, <i>A</i>)</span>, and mark the pair just visited: <span class="nowrap"><i>z</i>(<i>S</i>, <i>A</i>) ← <i>z</i>(<i>S</i>, <i>A</i>) + 1</span>.</li>
+      <li>For every pair: <span class="nowrap"><i>Q</i>(<i>s</i>, <i>a</i>) ← <i>Q</i>(<i>s</i>, <i>a</i>) + αδ<i>z</i>(<i>s</i>, <i>a</i>)</span>, then <span class="nowrap"><i>z</i>(<i>s</i>, <i>a</i>) ← γλ<i>z</i>(<i>s</i>, <i>a</i>)</span>.</li>
+      <li>Set <i>S</i> ← <i>S</i>′ and <i>A</i> ← <i>A</i>′, and go back to step 2 until <i>S</i> is terminal.</li>
+    </ol>
+    <p>Here is the hallway episode, with one action per room, go on, so that each <i>Q</i> plays the role of the room's value. λ = 0.5 and α = 0.5, so γλ = 0.45, and the table starts at 2, 4 and 6:</p>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col"><i>t</i></th><th scope="col">TD error</th><th scope="col">Traces (kitchen, hallway, study)</th><th scope="col">Table after the step</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">0</th><td class="pt"><span class="nowrap">0.9 · 4 − 2 = 1.6</span></td><td>1, 0, 0</td><td>2.8, 4, 6</td></tr>
+          <tr><th scope="row">1</th><td class="pt"><span class="nowrap">0.9 · 6 − 4 = 1.4</span></td><td>0.45, 1, 0</td><td>3.115, 4.7, 6</td></tr>
+          <tr><th scope="row">2</th><td class="pt"><span class="nowrap">10 − 6 = 4</span></td><td>0.2025, 0.45, 1</td><td>3.52, 5.6, 8</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>At <i>t</i> = 2, for example, the kitchen moves by <span class="nowrap">0.5 · 4 · 0.2025 = 0.405</span>. The final table, 3.52, 5.6 and 8, is exactly what the off-line λ-return algorithm gives. Here that is because every TD error was computed from values that had not changed yet. In general they do change during the episode, since Sarsa(λ) updates as it goes, so a later TD error already reflects earlier updates. Sarsa(λ) is then not equivalent to the λ-return, but it is a close approximation, and it learns at every step instead of at the end.</p>
+
+    <h3>Credit for a whole path</h3>
+    <p>The traces spread each TD error over the whole recent path. Take a robot crossing an open room to its charger, with reward 0 on every move except +1 on arrival, all values 0 at first, γ = 1 and α = 0.5, and λ = 0.9. Its first episode wanders for nine moves. Every TD error is 0 until the last move, whose TD error is 1, and at that moment the trace of the move <i>k</i> steps before the end is 0.9<sup><i>k</i></sup>.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 440 206" role="img" aria-label="A room of 5 by 4 cells with a wandering path of nine moves from the start at the bottom left to the charger at the top right. Every move is marked with an arrow, thicker the closer it is to the end: the last move's value rises to 0.5, the first move's to 0.22.">
+        <defs><marker id="s-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path class="head-ink" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+        <g transform="translate(130 30)">
+          <path class="cell" d="M0 0 H180 V144 H0 Z M36 0 V144 M72 0 V144 M108 0 V144 M144 0 V144 M0 36 H180 M0 72 H180 M0 108 H180"/>
+          <polyline class="ln-path" points="18,126 54,126 54,90 18,90 18,54 54,54 90,54 90,18 126,18 162,18"/>
+          <circle class="state" cx="18" cy="126" r="6"/>
+          <text class="dg-lab" x="162" y="33" text-anchor="middle">+1</text>
+          <line class="credit" style="stroke-width: 1.38" x1="18" y1="126" x2="50" y2="126" marker-end="url(#s-head)"/>
+          <line class="credit" style="stroke-width: 1.53" x1="54" y1="126" x2="54" y2="94" marker-end="url(#s-head)"/>
+          <line class="credit" style="stroke-width: 1.7" x1="54" y1="90" x2="22" y2="90" marker-end="url(#s-head)"/>
+          <line class="credit" style="stroke-width: 1.89" x1="18" y1="90" x2="18" y2="58" marker-end="url(#s-head)"/>
+          <line class="credit" style="stroke-width: 2.1" x1="18" y1="54" x2="50" y2="54" marker-end="url(#s-head)"/>
+          <line class="credit" style="stroke-width: 2.33" x1="54" y1="54" x2="86" y2="54" marker-end="url(#s-head)"/>
+          <line class="credit" style="stroke-width: 2.59" x1="90" y1="54" x2="90" y2="22" marker-end="url(#s-head)"/>
+          <line class="credit" style="stroke-width: 2.88" x1="90" y1="18" x2="122" y2="18" marker-end="url(#s-head)"/>
+          <line class="credit" style="stroke-width: 3.2" x1="126" y1="18" x2="158" y2="18" marker-end="url(#s-head)"/>
+        </g>
+        <text class="dg-lab" x="274" y="22" text-anchor="middle">0.5</text>
+        <text class="dg-lab" x="164" y="196" text-anchor="middle">0.22</text>
+      </svg>
+      <figcaption>After one episode of Sarsa(λ) with λ = 0.9, every move of the path has a higher value, from 0.5 for the last to 0.22 for the first; thicker arrows rose more. One-step Sarsa would have raised only the last move, and 4-step Sarsa the last four.</figcaption>
+    </figure>
+    <p>The traces do not remember which moves were useful, only which were recent, so the detour in the middle of the path gets credit too. Later episodes sort this out, as paths that go straight collect their reward sooner.</p>
+    <p>The same mechanism works with any way of estimating values. The trace is then a vector <b class="vec">z</b><sub><i>t</i></sub>, the size of the weight vector: when a weight takes part in an estimate, its trace is bumped up, and then it fades. In a table, the weight that takes part is the entry of the pair just visited, which is the +1 of the algorithm above.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">6</span>Summary</h2>
+    <p>The key ideas next to their NumPy equivalents. <code>g_n</code> holds the returns <i>G</i><sub><i>t</i>:<i>t</i>+1</sub> to <i>G</i><sub><i>t</i>:<i>T</i>−1</sub>, <code>g</code> the full return, and <code>q</code> and <code>z</code> the table and the traces; λ is <code>lam</code>, since <code>lambda</code> is a Python keyword.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">λ-return</div>
+      <div class="f"><span class="pt"><i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span></span> = <span class="nowrap">(1 − λ) Σ<span class="lims"><span><i>T</i>−<i>t</i>−1</span><span><i>n</i>=1</span></span>λ<sup><i>n</i>−1</sup><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub></span> <span class="nowrap">+ λ<sup><i>T</i>−<i>t</i>−1</sup><i>G</i><sub><i>t</i></sub></span></div>
+      <div class="c"><code>k = np.arange(T - t - 1)<br>w = (1 - lam) * lam**k<br>g_lam = w @ g_n + lam**(T-t-1) * g</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">The two ends</div>
+      <div class="f">λ = 0: <i>G</i><sub><i>t</i>:<i>t</i>+1</sub> (one-step TD); λ = 1: <i>G</i><sub><i>t</i></sub> (Monte Carlo)</div>
+      <div class="c"><span class="none">No code: special cases of the line above.</span></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Off-line λ-return update</div>
+      <div class="f"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + α[<span class="pt"><i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)], at the end of the episode</div>
+      <div class="c"><code>v[s] += alpha * (g_lam - v[s])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">As a sum of TD errors</div>
+      <div class="f"><span class="pt"><i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span></span> − <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) = <span class="nowrap">Σ<sub><i>k</i></sub> (γλ)<sup><i>k</i>−<i>t</i></sup>δ<sub><i>k</i></sub></span></div>
+      <div class="c"><code>k = np.arange(len(deltas))<br>err = (gamma * lam)**k @ deltas</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">TD error of Sarsa</div>
+      <div class="f">δ = <span class="pt"><i>R</i> + γ<i>Q</i>(<i>S</i>′, <i>A</i>′)</span> − <i>Q</i>(<i>S</i>, <i>A</i>)</div>
+      <div class="c"><code>g = r + gamma * q[s_next, a_next]<br>delta = g - q[s, a]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Sarsa(λ), one step</div>
+      <div class="f"><i>z</i>(<i>S</i>, <i>A</i>) += 1; <span class="nowrap"><i>Q</i> ← <i>Q</i> + αδ<i>z</i></span>; <span class="nowrap"><i>z</i> ← γλ<i>z</i></span></div>
+      <div class="c"><code>z[s, a] += 1<br>q += alpha * delta * z<br>z *= gamma * lam</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Start of an episode</div>
+      <div class="f"><i>z</i>(<i>s</i>, <i>a</i>) = 0 for every pair</div>
+      <div class="c"><code>z = np.zeros_like(q)</code></div>
+    </div>
+  </div>
+</section>

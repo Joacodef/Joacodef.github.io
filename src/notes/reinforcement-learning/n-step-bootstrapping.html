@@ -1,0 +1,215 @@
+---
+title: n-step bootstrapping
+module: Temporal-difference learning
+order: 7
+description: "Using n real rewards before trusting an estimate: the range of methods between one-step TD and Monte Carlo."
+---
+<div class="prose">
+  <p>An agent that learns from experience has to decide how long to wait before it learns from what happened. One-step methods, such as Sarsa and Q-learning, learn after every move: they take the reward they just received and add their own estimate of what the next state is worth, which stands in for everything that follows. Monte Carlo methods do the opposite. They wait until the episode ends and learn from all the rewards that actually came.</p>
+  <p>Neither is always best. Trusting an estimate after one step is quick, but early on the estimates are poor, and so are the targets built on them. Waiting for the end uses only real rewards, but those vary from episode to episode, and nothing is learned until the end. The methods in this note sit in between: they use <i>n</i> real rewards, then trust the estimate of the state they reach. With <i>n</i> = 1 they are the one-step methods, and with an <i>n</i> as long as the episode, Monte Carlo.</p>
+  <figure class="diagram">
+    <svg viewBox="0 0 440 164" role="img" aria-label="An episode as a row of states from S t to the end. Three targets for S t: one step, which uses one reward and the estimate of the next state; three steps, which uses three rewards and the estimate of the state three steps later; and to the end, which uses all the rewards and no estimate.">
+      <line class="guide" x1="210" y1="54" x2="210" y2="146"/>
+      <line class="guide" x1="270" y1="54" x2="270" y2="146"/>
+      <line class="guide" x1="330" y1="54" x2="330" y2="146"/>
+      <line class="guide" x1="410" y1="54" x2="410" y2="146"/>
+      <circle class="state" cx="150" cy="42" r="7"/>
+      <circle class="state" cx="210" cy="42" r="7"/>
+      <circle class="state" cx="270" cy="42" r="7"/>
+      <circle class="state" cx="330" cy="42" r="7"/>
+      <text class="dg-lab" x="370" y="47" text-anchor="middle">⋯</text>
+      <rect class="state" x="404" y="36" width="12" height="12"/>
+      <text class="dg-lab m" x="150" y="22" text-anchor="middle">S<tspan class="sub" dy="4">t</tspan></text>
+      <text class="dg-lab m" x="210" y="22" text-anchor="middle">S<tspan class="sub" dy="4">t+1</tspan></text>
+      <text class="dg-lab m" x="270" y="22" text-anchor="middle">S<tspan class="sub" dy="4">t+2</tspan></text>
+      <text class="dg-lab m" x="330" y="22" text-anchor="middle">S<tspan class="sub" dy="4">t+3</tspan></text>
+      <text class="dg-lab m" x="410" y="22" text-anchor="middle">S<tspan class="sub" dy="4">T</tspan></text>
+      <text class="dg-lab" x="130" y="81" text-anchor="end">1 step</text>
+      <line class="ln-path" x1="150" y1="76" x2="210" y2="76"/>
+      <circle class="act tg" cx="210" cy="76" r="6"/>
+      <text class="dg-lab" x="130" y="111" text-anchor="end">3 steps</text>
+      <line class="ln-path" x1="150" y1="106" x2="330" y2="106"/>
+      <circle class="act tg" cx="330" cy="106" r="6"/>
+      <text class="dg-lab" x="130" y="141" text-anchor="end">to the end</text>
+      <line class="ln-path" x1="150" y1="136" x2="404" y2="136"/>
+      <rect class="state" x="404" y="130" width="12" height="12"/>
+    </svg>
+    <figcaption>What the target for <i>S</i><sub><i>t</i></sub> uses: the rewards along the blue line, then, in red, the estimated value of the state where the line stops. Running to the end of the episode, as Monte Carlo does, needs no estimate.</figcaption>
+  </figure>
+  <p class="legend">Throughout this page, <span class="bar" aria-hidden="true"></span>the steps of an episode are drawn in blue ink, and <span class="dot" aria-hidden="true"></span>the estimate a target relies on in red ink.</p>
+</div>
+
+<section id="return">
+  <div class="prose">
+    <h2><span class="n">1</span><span>The <i>n</i>-step return</span></h2>
+    <p>Start with prediction: estimating <i>v</i><sub>π</sub>(<i>s</i>), the expected return from each state <i>s</i> when following a fixed policy π, from episodes that follow π. <i>V</i> is the table of estimates. The target of a Monte Carlo update is the full return, every reward until the episode ends at time <i>T</i>:</p>
+    <div class="disp"><i>G</i><sub><i>t</i></sub> = <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub> + γ<i>R</i><sub><i>t</i>+2</sub></span> <span class="nowrap">+ γ<sup>2</sup><i>R</i><sub><i>t</i>+3</sub> + ⋯</span> <span class="nowrap">+ γ<sup><i>T</i>−<i>t</i>−1</sup><i>R</i><sub><i>T</i></sub></span></div>
+    <p>The target of a one-step TD update keeps the first reward and replaces the rest by the discounted estimate of the next state. It is the one-step return, <span class="nowrap"><i>G</i><sub><i>t</i>:<i>t</i>+1</sub> = <i>R</i><sub><i>t</i>+1</sub> + γ<i>V</i><sub><i>t</i></sub>(<i>S</i><sub><i>t</i>+1</sub>)</span>. Keeping <i>n</i> rewards instead of one gives the <i>n</i>-step return:</p>
+    <div class="disp"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub> = <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub> + γ<i>R</i><sub><i>t</i>+2</sub> + ⋯</span> <span class="nowrap">+ γ<sup><i>n</i>−1</sup><i>R</i><sub><i>t</i>+<i>n</i></sub></span> <span class="nowrap pt">+ γ<sup><i>n</i></sup><i>V</i><sub><i>t</i>+<i>n</i>−1</sub>(<i>S</i><sub><i>t</i>+<i>n</i></sub>)</span></div>
+    <p>The subscript <i>t</i>:<i>t</i>+<i>n</i> says that the return starts at time <i>t</i> and uses rewards up to time <i>t</i> + <i>n</i>. The last term is the estimate of the state reached after <i>n</i> steps, standing in for all the rewards after it; <i>V</i><sub><i>t</i>+<i>n</i>−1</sub> is the table as it stands when that return can first be computed. If the episode ends before <i>n</i> steps, when <span class="nowrap"><i>t</i> + <i>n</i> ≥ <i>T</i></span>, there is nothing left to estimate, and the <i>n</i>-step return is the full return <i>G</i><sub><i>t</i></sub>.</p>
+    <p>An example. A robot drives home to its charger from the kitchen, through the hallway and the study. Reaching the charger gives +10, every other step 0, and γ = 0.9, so the true values are 8.1 for the kitchen, 9 for the hallway and 10 for the study. The robot's table is still poor: <span class="nowrap"><i>V</i>(kitchen) = 2</span>, <span class="nowrap"><i>V</i>(hallway) = 4</span> and <span class="nowrap"><i>V</i>(study) = 6</span>. The returns from the kitchen, at <i>t</i> = 0:</p>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col"><i>n</i></th><th scope="col"><i>n</i>-step return from the kitchen</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">1</th><td><span class="nowrap">0 + 0.9 · <span class="pt">4</span></span> <span class="nowrap">= 3.6</span></td></tr>
+          <tr><th scope="row">2</th><td><span class="nowrap">0 + 0.9 · 0</span> <span class="nowrap">+ 0.81 · <span class="pt">6</span></span> <span class="nowrap">= 4.86</span></td></tr>
+          <tr><th scope="row">3 or more</th><td><span class="nowrap">0 + 0.9 · 0</span> <span class="nowrap">+ 0.81 · 10</span> <span class="nowrap">= 8.1</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Each extra step replaces part of an estimate with a real reward. With three steps the robot reaches the charger, so no estimate is left, and the return is the full return, 8.1.</p>
+
+    <h3>Why a longer return is a better target</h3>
+    <p>In the <i>n</i>-step return, the rewards are real, and the only estimate is multiplied by γ<sup><i>n</i></sup>. So its expectation is closer to the truth than the table, in the worst case by a factor γ<sup><i>n</i></sup>. This is the error reduction property:</p>
+    <div class="disp">max<sub><i>s</i></sub> <span class="nowrap">|E<sub>π</sub>[<i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub> | <i>S</i><sub><i>t</i></sub> = <i>s</i>] − <i>v</i><sub>π</sub>(<i>s</i>)|</span> <span class="nowrap">≤ γ<sup><i>n</i></sup> max<sub><i>s</i></sub> |<i>V</i><sub><i>t</i>+<i>n</i>−1</sub>(<i>s</i>) − <i>v</i><sub>π</sub>(<i>s</i>)|</span></div>
+    <p>In the example, the table's worst error is 6.1, at the kitchen. The one-step returns are off by at most 4.5, below <span class="nowrap">0.9 · 6.1 = 5.49</span>, and the two-step returns by at most 3.24, below <span class="nowrap">0.81 · 6.1 = 4.94</span>. This property is why every <i>n</i>-step TD method converges to the right values under the appropriate technical conditions: the one-step methods and Monte Carlo are the two ends of one family.</p>
+  </div>
+</section>
+
+<section id="n-step-td">
+  <div class="prose">
+    <h2><span class="n">2</span><span><i>n</i>-step TD</span></h2>
+    <div class="disp"><i>V</i><sub><i>t</i>+<i>n</i></sub>(<i>S</i><sub><i>t</i></sub>) <span class="nowrap">≐ <i>V</i><sub><i>t</i>+<i>n</i>−1</sub>(<i>S</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub></span></span> <span class="nowrap">− <i>V</i><sub><i>t</i>+<i>n</i>−1</sub>(<i>S</i><sub><i>t</i></sub>)],</span> <span class="nowrap">0 ≤ <i>t</i> &lt; <i>T</i></span></div>
+    <p>The update moves the estimate of <i>S</i><sub><i>t</i></sub> toward its <i>n</i>-step return, and leaves every other state as it was. The indices record timing. <i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub> needs <i>R</i><sub><i>t</i>+<i>n</i></sub> and <i>S</i><sub><i>t</i>+<i>n</i></sub>, which arrive at time <i>t</i> + <i>n</i>, so the state visited at time <i>t</i> is updated <i>n</i> steps later. Nothing is updated during the first <span class="nowrap"><i>n</i> − 1</span> steps of an episode. To make up for it, the last <span class="nowrap"><i>n</i> − 1</span> states are updated after the episode ends, with returns cut short by the end.</p>
+    <p>Here is the hallway episode with <i>n</i> = 2 and α = 0.5. At each time <i>t</i>, the state updated is the one from time <span class="nowrap">τ = <i>t</i> − <i>n</i> + 1</span>:</p>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col"><i>t</i></th><th scope="col">The robot sees</th><th scope="col">Update</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">0</th><td>0, arrives in the hallway</td><td>none yet</td></tr>
+          <tr><th scope="row">1</th><td>0, arrives in the study</td><td><span class="nowrap"><i>V</i>(kitchen): 2 → 3.43</span>, toward <span class="nowrap pt">0.81 · 6 = 4.86</span></td></tr>
+          <tr><th scope="row">2</th><td>+10, reaches the charger</td><td><span class="nowrap"><i>V</i>(hallway): 4 → 6.5</span>, toward <span class="nowrap pt">0 + 0.9 · 10 = 9</span></td></tr>
+          <tr><th scope="row">3</th><td>the episode is over</td><td><span class="nowrap"><i>V</i>(study): 6 → 8</span>, toward <span class="nowrap pt">10</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>One-step TD on the same episode moves the kitchen only from 2 to 2.8 and the hallway from 4 to 4.7, since their targets, 3.6 and 5.4, rest on the poor estimates of the next state. With two steps, the reward of +10 reaches two states back instead of one, so a single episode carries it twice as far.</p>
+
+    <h3>The algorithm</h3>
+    <p>For a policy π to evaluate, a step size α in (0, 1] and a positive integer <i>n</i>, and for each episode:</p>
+    <ol class="steps">
+      <li>Observe the first state <i>S</i><sub>0</sub>, and set <i>T</i> ← ∞, since the end is not known yet.</li>
+      <li>At each time <i>t</i> = 0, 1, 2, …, while <i>t</i> &lt; <i>T</i>: take an action from π, and store the reward <i>R</i><sub><i>t</i>+1</sub> and the next state <i>S</i><sub><i>t</i>+1</sub>. If <i>S</i><sub><i>t</i>+1</sub> is terminal, set <i>T</i> ← <i>t</i> + 1.</li>
+      <li>Set τ ← <i>t</i> − <i>n</i> + 1, the time whose state is updated now. If τ ≥ 0, set <span class="nowrap"><i>G</i> ← Σ<span class="lims"><span>min(τ+<i>n</i>, <i>T</i>)</span><span><i>i</i>=τ+1</span></span>γ<sup><i>i</i>−τ−1</sup><i>R</i><sub><i>i</i></sub></span>, the discounted rewards; if <span class="nowrap">τ + <i>n</i> &lt; <i>T</i></span>, add <span class="nowrap">γ<sup><i>n</i></sup><i>V</i>(<i>S</i><sub>τ+<i>n</i></sub>)</span>; then update <span class="nowrap"><i>V</i>(<i>S</i><sub>τ</sub>) ← <i>V</i>(<i>S</i><sub>τ</sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>G</i></span> − <i>V</i>(<i>S</i><sub>τ</sub>)]</span>.</li>
+      <li>Stop when τ = <i>T</i> − 1, once the last state of the episode has been updated.</li>
+    </ol>
+    <p>Only the last <i>n</i> + 1 states and rewards are ever needed, so they can be kept in a buffer indexed modulo <i>n</i> + 1.</p>
+
+    <h3>The <i>n</i>-step error as a sum of TD errors</h3>
+    <p>The one-step TD error measures how much one step changes an estimate:</p>
+    <div class="disp">δ<sub><i>t</i></sub> = <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub> + γ<i>V</i>(<i>S</i><sub><i>t</i>+1</sub>)</span> <span class="nowrap">− <i>V</i>(<i>S</i><sub><i>t</i></sub>)</span></div>
+    <p>If the table does not change along the way, the error of the <i>n</i>-step update is the discounted sum of the one-step errors of its <i>n</i> steps, because the estimates in between cancel:</p>
+    <div class="disp"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>) <span class="nowrap">= δ<sub><i>t</i></sub> + γδ<sub><i>t</i>+1</sub> + ⋯</span> <span class="nowrap">+ γ<sup><i>n</i>−1</sup>δ<sub><i>t</i>+<i>n</i>−1</sub></span></div>
+    <p>In the example, <span class="nowrap">δ<sub>0</sub> = 0 + 0.9 · 4 − 2 = 1.6</span> and <span class="nowrap">δ<sub>1</sub> = 0 + 0.9 · 6 − 4 = 1.4</span>, and <span class="nowrap">1.6 + 0.9 · 1.4 = 2.86</span>, which is <span class="nowrap">4.86 − 2</span>. With the whole episode this becomes the Monte Carlo error, and eligibility traces are built on the same sum.</p>
+
+    <h3>Choosing <i>n</i></h3>
+    <p>Which <i>n</i> learns fastest depends on the task. Short returns lean on estimates, which are poor early on; long returns add up many random rewards, which vary from episode to episode. An intermediate <i>n</i> often does better than either end. A larger <i>n</i> also separates two time scales that one-step methods tie together: an agent may need to choose an action every fraction of a second, while a meaningful change of state takes many such steps, and bootstrapping works best across a change that matters.</p>
+  </div>
+</section>
+
+<section id="n-step-sarsa">
+  <div class="prose">
+    <h2><span class="n">3</span><span><i>n</i>-step Sarsa</span></h2>
+    <p>For control, the same idea works with action values: replace states by state–action pairs, and act ε-greedily with respect to <i>Q</i>. The <i>n</i>-step return ends in the estimate of the pair reached after <i>n</i> steps,</p>
+    <div class="disp"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub> = <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub> + γ<i>R</i><sub><i>t</i>+2</sub> + ⋯</span> <span class="nowrap">+ γ<sup><i>n</i>−1</sup><i>R</i><sub><i>t</i>+<i>n</i></sub></span> <span class="nowrap pt">+ γ<sup><i>n</i></sup><i>Q</i><sub><i>t</i>+<i>n</i>−1</sub>(<i>S</i><sub><i>t</i>+<i>n</i></sub>, <i>A</i><sub><i>t</i>+<i>n</i></sub>)</span></div>
+    <p>for <i>n</i> ≥ 1 and <span class="nowrap">0 ≤ <i>t</i> &lt; <i>T</i> − <i>n</i></span>, and it is the full return <i>G</i><sub><i>t</i></sub> when <span class="nowrap"><i>t</i> + <i>n</i> ≥ <i>T</i></span>. The update is the same as for states:</p>
+    <div class="disp"><i>Q</i><sub><i>t</i>+<i>n</i></sub>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">≐ <i>Q</i><sub><i>t</i>+<i>n</i>−1</sub>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub></span></span> <span class="nowrap">− <i>Q</i><sub><i>t</i>+<i>n</i>−1</sub>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
+    <p>With <i>n</i> = 1 this is one-step Sarsa, also called Sarsa(0). The gain shows most when rewards are rare. Take a robot crossing an open room to its charger, with reward 0 on every move except +1 on arrival, all action values 0 at first, γ = 1 and α = 0.5. Its first episode wanders for nine moves.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 440 206" role="img" aria-label="Two copies of a room of 5 by 4 cells with the same wandering path of nine moves from the start at the bottom left to the charger at the top right. In the first copy only the last move is marked; in the second, the last four moves.">
+        <defs><marker id="n-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path class="head-ink" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+        <text class="dg-lab" x="110" y="24" text-anchor="middle">One-step Sarsa</text>
+        <text class="dg-lab" x="330" y="24" text-anchor="middle">4-step Sarsa</text>
+        <g transform="translate(20 42)">
+          <path class="cell" d="M0 0 H180 V144 H0 Z M36 0 V144 M72 0 V144 M108 0 V144 M144 0 V144 M0 36 H180 M0 72 H180 M0 108 H180"/>
+          <polyline class="ln-path" points="18,126 54,126 54,90 18,90 18,54 54,54 90,54 90,18 126,18 162,18"/>
+          <circle class="state" cx="18" cy="126" r="6"/>
+          <text class="dg-lab" x="162" y="33" text-anchor="middle">+1</text>
+          <line class="credit" x1="126" y1="18" x2="158" y2="18" marker-end="url(#n-head)"/>
+        </g>
+        <g transform="translate(240 42)">
+          <path class="cell" d="M0 0 H180 V144 H0 Z M36 0 V144 M72 0 V144 M108 0 V144 M144 0 V144 M0 36 H180 M0 72 H180 M0 108 H180"/>
+          <polyline class="ln-path" points="18,126 54,126 54,90 18,90 18,54 54,54 90,54 90,18 126,18 162,18"/>
+          <circle class="state" cx="18" cy="126" r="6"/>
+          <text class="dg-lab" x="162" y="33" text-anchor="middle">+1</text>
+          <line class="credit" x1="54" y1="54" x2="86" y2="54" marker-end="url(#n-head)"/>
+          <line class="credit" x1="90" y1="54" x2="90" y2="22" marker-end="url(#n-head)"/>
+          <line class="credit" x1="90" y1="18" x2="122" y2="18" marker-end="url(#n-head)"/>
+          <line class="credit" x1="126" y1="18" x2="158" y2="18" marker-end="url(#n-head)"/>
+        </g>
+      </svg>
+      <figcaption>The same first episode, from the start (circle) to the charger (+1). The thick arrows are the moves whose values this episode raises: the last one with one-step Sarsa, the last four with 4-step Sarsa.</figcaption>
+    </figure>
+    <p>During the episode every target is 0, since the rewards are 0 and the table is still all zeros, until the returns start to reach the charger. One-step Sarsa's only such return is that of the last move, so one value rises, to 0.5. With <i>n</i> = 4, the returns of the last four moves reach the charger, and four values rise to 0.5. The next episode that passes through those cells finds a trail four moves long instead of one.</p>
+
+    <h3><i>n</i>-step Expected Sarsa</h3>
+    <p>Expected Sarsa ends its return, instead, in the average value of the actions in <i>S</i><sub><i>t</i>+<i>n</i></sub> under the target policy π:</p>
+    <div class="disp"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub> = <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub> + ⋯</span> <span class="nowrap">+ γ<sup><i>n</i>−1</sup><i>R</i><sub><i>t</i>+<i>n</i></sub></span> <span class="nowrap pt">+ γ<sup><i>n</i></sup><span class="ovl"><i>V</i></span><sub><i>t</i>+<i>n</i>−1</sub>(<i>S</i><sub><i>t</i>+<i>n</i></sub>)</span>,&ensp;<span class="nowrap"><span class="ovl"><i>V</i></span><sub><i>t</i></sub>(<i>s</i>) ≐ Σ<sub><i>a</i></sub> π(<i>a</i>|<i>s</i>) <i>Q</i><sub><i>t</i></sub>(<i>s</i>, <i>a</i>)</span></div>
+    <p>for <span class="nowrap"><i>t</i> + <i>n</i> &lt; <i>T</i></span>, and the full return otherwise. <span class="ovl"><i>V</i></span><sub><i>t</i></sub>(<i>s</i>), the expected approximate value of <i>s</i>, is 0 for a terminal state. The actions along the way are the ones actually taken; only the last step averages over all of them.</p>
+  </div>
+</section>
+
+<section id="off-policy">
+  <div class="prose">
+    <h2><span class="n">4</span><span>Off-policy <i>n</i>-step learning</span></h2>
+    <p>Off-policy learning learns the values of a target policy π from experience that follows a behavior policy <i>b</i>: often π is greedy with respect to <i>Q</i> and <i>b</i> is ε-greedy. One-step Q-learning needs no correction for the difference, but an <i>n</i>-step return does. Its rewards depend on the actions taken along the way, and <i>b</i> chose them, not π. The correction weights the update by the importance sampling ratio, the relative probability of those actions under the two policies:</p>
+    <div class="disp">ρ<sub><i>t</i>:<i>h</i></sub> ≐ <span class="nowrap">∏<span class="lims"><span>min(<i>h</i>, <i>T</i>−1)</span><span><i>k</i>=<i>t</i></span></span><span class="frac"><span>π(<i>A</i><sub><i>k</i></sub>|<i>S</i><sub><i>k</i></sub>)</span><span><i>b</i>(<i>A</i><sub><i>k</i></sub>|<i>S</i><sub><i>k</i></sub>)</span></span></span></div>
+    <p>If π would never take one of those actions, the ratio is 0 and the return is ignored. If π takes them more often than <i>b</i> does, the ratio is above 1 and the return counts more, which makes up for how rarely <i>b</i> produces what π would do. When the two policies are the same, every factor is 1, and the updates below become the ones of sections 2 and 3.</p>
+    <p>For state values, the update of <i>S</i><sub><i>t</i></sub> is weighted by the ratio of the <i>n</i> actions <i>A</i><sub><i>t</i></sub> to <i>A</i><sub><i>t</i>+<i>n</i>−1</sub>:</p>
+    <div class="disp"><i>V</i><sub><i>t</i>+<i>n</i></sub>(<i>S</i><sub><i>t</i></sub>) <span class="nowrap">≐ <i>V</i><sub><i>t</i>+<i>n</i>−1</sub>(<i>S</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ αρ<sub><i>t</i>:<i>t</i>+<i>n</i>−1</sub>[<span class="pt"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub></span></span> <span class="nowrap">− <i>V</i><sub><i>t</i>+<i>n</i>−1</sub>(<i>S</i><sub><i>t</i></sub>)]</span></div>
+    <p>For action values, the ratio starts and ends one step later:</p>
+    <div class="disp"><i>Q</i><sub><i>t</i>+<i>n</i></sub>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">≐ <i>Q</i><sub><i>t</i>+<i>n</i>−1</sub>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ αρ<sub><i>t</i>+1:<i>t</i>+<i>n</i></sub>[<span class="pt"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub></span></span> <span class="nowrap">− <i>Q</i><sub><i>t</i>+<i>n</i>−1</sub>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
+    <p>The pair being updated already contains its action <i>A</i><sub><i>t</i></sub>, so how likely <i>b</i> was to choose it does not matter: the value of (<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) is about what happens after taking <i>A</i><sub><i>t</i></sub>. The actions after it, <i>A</i><sub><i>t</i>+1</sub> to <i>A</i><sub><i>t</i>+<i>n</i></sub>, are weighted, the last one included, since the return ends in its value <i>Q</i>(<i>S</i><sub><i>t</i>+<i>n</i></sub>, <i>A</i><sub><i>t</i>+<i>n</i></sub>).</p>
+    <p>For example, let π be greedy and <i>b</i> ε-greedy with ε = 0.2 and two actions, so that <i>b</i> takes the greedy action with probability 0.9. Each greedy action contributes a factor <span class="nowrap">1/0.9 ≈ 1.11</span>, and each exploring action a factor <span class="nowrap">0/0.1 = 0</span>. In 3-step Sarsa, <span class="nowrap">ρ<sub><i>t</i>+1:<i>t</i>+3</sub> = 1/0.9<sup>3</sup> ≈ 1.37</span> when the next three actions are greedy, and 0 as soon as one of them explores: only stretches of greedy behavior teach about the greedy policy. A product of many ratios can swing widely, so these updates are noisier than on-policy ones.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">5</span>Summary</h2>
+    <p>The key ideas next to their NumPy equivalents. The arrays <code>s</code>, <code>a</code> and <code>r</code> hold one episode, with <code>r[i]</code> for <i>R</i><sub><i>i</i></sub>, and <code>v</code> and <code>q</code> are the tables.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k"><i>n</i>-step return</div>
+      <div class="f"><span class="nowrap">Σ<span class="lims"><span>min(<i>t</i>+<i>n</i>, <i>T</i>)</span><span><i>i</i>=<i>t</i>+1</span></span>γ<sup><i>i</i>−<i>t</i>−1</sup><i>R</i><sub><i>i</i></sub></span>, plus <span class="nowrap pt">γ<sup><i>n</i></sup><i>V</i>(<i>S</i><sub><i>t</i>+<i>n</i></sub>)</span> if <span class="nowrap"><i>t</i> + <i>n</i> &lt; <i>T</i></span></div>
+      <div class="c"><code>h = min(t + n, T)<br>w = gamma ** np.arange(h - t)<br>g = w @ r[t+1:h+1]<br>if h &lt; T:<br>&nbsp;&nbsp;&nbsp;&nbsp;g += gamma**n * v[s[h]]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">The time being updated</div>
+      <div class="f">τ = <i>t</i> − <i>n</i> + 1</div>
+      <div class="c"><code>tau = t - n + 1</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k"><i>n</i>-step TD update</div>
+      <div class="f"><i>V</i>(<i>S</i><sub>τ</sub>) ← <i>V</i>(<i>S</i><sub>τ</sub>) + α[<span class="pt"><i>G</i></span> − <i>V</i>(<i>S</i><sub>τ</sub>)]</div>
+      <div class="c"><code>s_tau = s[tau]<br>v[s_tau] += alpha * (g - v[s_tau])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">TD error</div>
+      <div class="f">δ<sub><i>t</i></sub> = <i>R</i><sub><i>t</i>+1</sub> + γ<i>V</i>(<i>S</i><sub><i>t</i>+1</sub>) − <i>V</i>(<i>S</i><sub><i>t</i></sub>)</div>
+      <div class="c"><code>delta = r[t+1] + gamma * v[s[t+1]]<br>delta -= v[s[t]]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k"><i>n</i>-step Sarsa return</div>
+      <div class="f">the same rewards, <span class="nowrap pt">+ γ<sup><i>n</i></sup><i>Q</i>(<i>S</i><sub><i>t</i>+<i>n</i></sub>, <i>A</i><sub><i>t</i>+<i>n</i></sub>)</span></div>
+      <div class="c"><code>g += gamma**n * q[s[h], a[h]]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k"><i>n</i>-step Expected Sarsa return</div>
+      <div class="f">the same rewards, <span class="nowrap pt">+ γ<sup><i>n</i></sup><span class="ovl"><i>V</i></span>(<i>S</i><sub><i>t</i>+<i>n</i></sub>)</span></div>
+      <div class="c"><code>g += gamma**n * pi[s[h]] @ q[s[h]]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Importance sampling ratio</div>
+      <div class="f">ρ<sub><i>t</i>:<i>h</i></sub> = <span class="nowrap">∏<span class="lims"><span>min(<i>h</i>, <i>T</i>−1)</span><span><i>k</i>=<i>t</i></span></span>π(<i>A</i><sub><i>k</i></sub>|<i>S</i><sub><i>k</i></sub>) / <i>b</i>(<i>A</i><sub><i>k</i></sub>|<i>S</i><sub><i>k</i></sub>)</span></div>
+      <div class="c"><code>k = np.arange(t, min(h, T-1) + 1)<br>rho = np.prod(pi[s[k], a[k]]<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/ b[s[k], a[k]])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Off-policy <i>n</i>-step Sarsa</div>
+      <div class="f"><i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) ← <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) + αρ<sub><i>t</i>+1:<i>t</i>+<i>n</i></sub>[<span class="pt"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub></span> − <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</div>
+      <div class="c"><code>sa = s[t], a[t]<br>q[sa] += alpha * rho * (g - q[sa])</code></div>
+    </div>
+  </div>
+</section>

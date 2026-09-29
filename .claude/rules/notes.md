@@ -9,7 +9,7 @@ paths:
 
 # Study notes
 
-These rules hold for the notes of every course. Each course also has a rules file of its own, `notes-<course>.md` in this folder, with its sources, notation and terms (for now, `notes-computer-vision.md`).
+These rules hold for the notes of every course. Each course also has a rules file of its own, `notes-<course>.md` in this folder, with its sources, notation and terms (`notes-computer-vision.md`, `notes-reinforcement-learning.md`).
 
 ## Who the notes are for
 

@@ -1,0 +1,162 @@
+---
+title: Monte Carlo prediction and control
+module: Monte Carlo methods
+order: 4
+description: Learning how good each state and action is by averaging the returns of complete episodes, and improving the policy from those averages, with no model of the world.
+---
+<div class="prose">
+  <p>A robot lives in a small home with a kitchen, a hallway, a study and a charger. It wanders. From the kitchen it always goes to the hallway. From the hallway it picks the study or the kitchen at random, and from the study, the charger or back to the hallway. Every move costs 1, and a trip ends at the charger.</p>
+  <figure class="diagram">
+    <svg viewBox="0 0 440 136" role="img" aria-label="Map of the home: kitchen, hallway, study and charger in a row. The robot goes from the kitchen to the hallway always; from the hallway to the study or back to the kitchen, one half each; from the study to the charger or back to the hallway, one half each.">
+      <defs><marker id="mc-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+      <line class="ln-path" x1="74" y1="58" x2="174" y2="58" marker-end="url(#mc-head)"/>
+      <line class="ln-path" x1="176" y1="78" x2="76" y2="78" marker-end="url(#mc-head)"/>
+      <line class="ln-path" x1="204" y1="58" x2="304" y2="58" marker-end="url(#mc-head)"/>
+      <line class="ln-path" x1="306" y1="78" x2="206" y2="78" marker-end="url(#mc-head)"/>
+      <line class="ln-path" x1="334" y1="68" x2="394" y2="68" marker-end="url(#mc-head)"/>
+      <circle class="state" cx="60" cy="68" r="9"/>
+      <circle class="state" cx="190" cy="68" r="9"/>
+      <circle class="state" cx="320" cy="68" r="9"/>
+      <rect class="state" x="400" y="61" width="14" height="14"/>
+      <text class="dg-lab" x="124" y="48" text-anchor="middle">1</text>
+      <text class="dg-lab" x="124" y="98" text-anchor="middle">½</text>
+      <text class="dg-lab" x="254" y="48" text-anchor="middle">½</text>
+      <text class="dg-lab" x="254" y="98" text-anchor="middle">½</text>
+      <text class="dg-lab" x="364" y="58" text-anchor="middle">½</text>
+      <text class="dg-lab" x="60" y="124" text-anchor="middle">kitchen</text>
+      <text class="dg-lab" x="190" y="124" text-anchor="middle">hallway</text>
+      <text class="dg-lab" x="320" y="124" text-anchor="middle">study</text>
+      <text class="dg-lab" x="407" y="124" text-anchor="middle">charger</text>
+    </svg>
+    <figcaption>The robot's way of moving, with the probability of each move. Every move gives a reward of −1, so the return from a room is minus the number of moves still to come.</figcaption>
+  </figure>
+  <p>How good is each room, that is, how many moves will the trip take from there? The robot cannot work it out, since it does not know the layout. But it can find out from experience. Each time it reaches the charger, it knows how many moves the trip actually took from every room it passed through, and averaging those numbers over many trips gives the answer.</p>
+  <p>That is a Monte Carlo method: estimate values by averaging what actually happened in complete episodes. This note does it first for a fixed way of behaving, then for the value of each action, and then uses those values to behave better. Along the way it runs into the one thing Monte Carlo methods cannot do without: continuing to try every action.</p>
+  <p class="legend">Throughout this page, <span class="bar" aria-hidden="true"></span>the robot's moves are drawn in blue ink.</p>
+</div>
+
+<section id="prediction">
+  <div class="prose">
+    <h2><span class="n">1</span>Averaging returns</h2>
+    <p>A policy π says how the agent chooses actions, here the robot's random moves. The value of a state under π is the return to expect from it, the sum of the rewards until the episode ends at time <i>T</i>, discounted by γ:</p>
+    <div class="disp"><i>v</i><sub>π</sub>(<i>s</i>) = <span class="nowrap">E<sub>π</sub>[<i>G</i><sub><i>t</i></sub> | <i>S</i><sub><i>t</i></sub> = <i>s</i>],</span>&ensp;<span class="nowrap"><i>G</i><sub><i>t</i></sub> = <i>R</i><sub><i>t</i>+1</sub> + γ<i>R</i><sub><i>t</i>+2</sub></span> <span class="nowrap">+ ⋯ + γ<sup><i>T</i>−<i>t</i>−1</sup><i>R</i><sub><i>T</i></sub></span></div>
+    <p>An expected value can be estimated by an average of samples, and each visit to <i>s</i> in an episode gives one sample: the return that followed it. A state can be visited more than once in the same episode. First-visit Monte Carlo averages only the returns after the first visit to <i>s</i> in each episode; every-visit Monte Carlo averages the returns after all visits.</p>
+    <p>In the home γ = 1 and every move gives −1, so a return is minus the number of moves left. Here are two trips:</p>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col">Trip</th><th scope="col">Rooms, in order</th><th scope="col">Returns from each</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">1</th><td>kitchen, hallway, study</td><td>−3, −2, −1</td></tr>
+          <tr><th scope="row">2</th><td>kitchen, hallway, kitchen, hallway, study, hallway, study</td><td>−7, −6, −5, −4, −3, −2, −1</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>In the second trip the robot starts in the kitchen with 7 moves ahead, returns to the kitchen with 5 left, and so on. First-visit Monte Carlo takes, from each trip, the return after a room's first visit: −3 and −7 for the kitchen, which average −5. Every-visit Monte Carlo also takes the −5 of the second visit, and <span class="nowrap">(−3 − 7 − 5)/3</span> is −5 too. They differ for the hallway: every-visit averages four returns, <span class="nowrap">(−2 − 6 − 4 − 2)/4 = −3.5</span>, and first-visit two, <span class="nowrap">(−2 − 6)/2 = −4</span>.</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th scope="col">Room</th><th scope="col">First-visit</th><th scope="col">Every-visit</th><th scope="col">True value</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">kitchen</th><td>−5</td><td>−5</td><td>−9</td></tr>
+          <tr><th scope="row">hallway</th><td>−4</td><td>−3.5</td><td>−8</td></tr>
+          <tr><th scope="row">study</th><td>−2</td><td>≈ −1.67</td><td>−5</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Two short trips are a poor sample: the true values are much lower, since many trips go back and forth for a while. They follow from the relations between neighboring rooms: the study's value is the average of its two moves, <span class="nowrap"><i>v</i>(study) = ½(−1) + ½(−1 + <i>v</i>(hallway))</span>, and likewise for the other rooms, which gives −9, −8 and −5. Averaging more trips gets there: after 10,000 trips, both methods are within 0.1 of these values.</p>
+    <p>Both methods converge to <i>v</i><sub>π</sub>(<i>s</i>) as the number of visits grows. For first-visit Monte Carlo this is the law of large numbers: each return is an independent sample whose expectation is <i>v</i><sub>π</sub>(<i>s</i>), so the average is unbiased, and its error shrinks like 1/√<i>n</i> after <i>n</i> returns. Every-visit Monte Carlo converges too, though its samples from the same episode are not independent.</p>
+
+    <h3>The algorithm</h3>
+    <p>Returns are easiest to compute backward from the end of the episode, since <span class="nowrap"><i>G</i><sub><i>t</i></sub> = <i>R</i><sub><i>t</i>+1</sub> + γ<i>G</i><sub><i>t</i>+1</sub></span>. First-visit Monte Carlo prediction, for a policy π:</p>
+    <ol class="steps">
+      <li>Start with any estimates <i>V</i>(<i>s</i>) and an empty list of returns for each state.</li>
+      <li>Generate an episode by following π: <i>S</i><sub>0</sub>, <i>A</i><sub>0</sub>, <i>R</i><sub>1</sub>, …, <i>S</i><sub><i>T</i>−1</sub>, <i>A</i><sub><i>T</i>−1</sub>, <i>R</i><sub><i>T</i></sub>. Set <i>G</i> ← 0.</li>
+      <li>For <i>t</i> = <i>T</i> − 1, <i>T</i> − 2, …, 0: set <span class="nowrap"><i>G</i> ← γ<i>G</i> + <i>R</i><sub><i>t</i>+1</sub></span>. If <i>S</i><sub><i>t</i></sub> does not appear earlier in the episode, add <i>G</i> to the returns of <i>S</i><sub><i>t</i></sub> and set <i>V</i>(<i>S</i><sub><i>t</i></sub>) to their average.</li>
+      <li>Repeat from step 2 for each new episode. Every-visit Monte Carlo is the same without the check of step 3.</li>
+    </ol>
+
+    <h3>Averaging as you go</h3>
+    <p>There is no need to keep every return. After a new return <i>G</i><sub><i>t</i></sub>, the average of the <i>N</i>(<i>S</i><sub><i>t</i></sub>) returns seen so far moves toward it:</p>
+    <div class="disp"><i>V</i>(<i>S</i><sub><i>t</i></sub>) <span class="nowrap">← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + <span class="frac"><span>1</span><span><i>N</i>(<i>S</i><sub><i>t</i></sub>)</span></span>[<i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span></div>
+    <p>For the hallway, the first return, −2, gives <i>V</i> = −2, and the second, −6, gives <span class="nowrap">−2 + ½(−6 + 2) = −4</span>, the same average as before. A constant step size α in place of 1/<i>N</i> gives constant-α Monte Carlo, <span class="nowrap"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + α[<i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span>, which weights recent returns more. That suits problems that change over time, such as learning about a policy that keeps changing.</p>
+
+    <h3>No bootstrapping</h3>
+    <p>Each estimate comes from its own returns only: the estimate for the kitchen does not use the estimate for the hallway. Monte Carlo methods do not bootstrap, that is, they do not build estimates on other estimates. A consequence is that estimating one state costs the same however many states there are, so a Monte Carlo method can study a few states of interest by starting many episodes from them and ignoring the rest. The price is waiting: an estimate changes only when its episode ends.</p>
+  </div>
+</section>
+
+<section id="action-values">
+  <div class="prose">
+    <h2><span class="n">2</span>Values of actions</h2>
+    <p>State values are enough to choose actions only with a model of the world: knowing that a move from the hallway leads to the study, the robot could compare the rooms each move leads to. Without a model it needs the value of each action directly:</p>
+    <div class="disp"><i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>) = <span class="nowrap">E<sub>π</sub>[<i>G</i><sub><i>t</i></sub> | <i>S</i><sub><i>t</i></sub> = <i>s</i>, <i>A</i><sub><i>t</i></sub> = <i>a</i>]</span></div>
+    <p>the return to expect after taking action <i>a</i> in state <i>s</i> and following π afterward. Monte Carlo estimates it the same way, by averaging the returns after visits to the pair (<i>s</i>, <i>a</i>), first visits or all visits. For the wandering robot, going from the study to the charger is worth −1, and going back to the hallway −1 + (−8) = −9; going from the hallway to the study is worth −6, and back to the kitchen −10.</p>
+    <p>The complication is that many pairs may never be visited. If the robot always went from the study straight to the charger, it would never see a return for going back to the hallway, and could never learn whether that move is better or worse. To compare actions, every pair has to keep being tried. One way to guarantee it is exploring starts: each episode starts from a state–action pair chosen at random, with every pair having some chance. That is easy in a simulation and usually impossible in the real world, where episodes start wherever they start.</p>
+  </div>
+</section>
+
+<section id="control">
+  <div class="prose">
+    <h2><span class="n">3</span>Improving the policy</h2>
+    <p>With action values, a better policy is easy to find: in each state, take the action with the largest value. A policy that does that with respect to <i>q</i> is greedy:</p>
+    <div class="disp">π(<i>s</i>) ≐ <span class="nowrap">argmax<sub><i>a</i></sub> <i>q</i>(<i>s</i>, <i>a</i>)</span></div>
+    <p>The greedy policy is at least as good as π everywhere. Following it for one step and π afterward is worth <span class="nowrap">max<sub><i>a</i></sub> <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>)</span>, which is at least <i>v</i><sub>π</sub>(<i>s</i>), the value of following π all along; by the policy improvement theorem, following it every step is at least as good too. In the home, the greedy policy with respect to the values above goes from the hallway to the study (−6 beats −10) and from the study to the charger (−1 beats −9). That is the best policy, with values −3, −2 and −1.</p>
+    <p>Control alternates the two steps: evaluate the current policy, make the policy greedy with respect to the evaluation, and repeat. Each step moves toward what the other needs, and when neither changes anything, both the policy and its values are optimal. This pattern is called generalized policy iteration (GPI). Evaluation need not be complete: Monte Carlo methods alternate after every episode, updating the values of the pairs visited and then the policy at those states.</p>
+    <p>Monte Carlo with Exploring Starts, Monte Carlo ES, does exactly that. It starts each episode from a random pair and then follows the current greedy policy; after the episode, it averages each visited pair's first-visit return into <i>Q</i> and makes the policy greedy in the states visited. It cannot settle on a policy that is not optimal: the values would converge to that policy's values, and the greedy step would then change it. That it always converges to the optimum is widely believed but has not been formally proved.</p>
+  </div>
+</section>
+
+<section id="soft">
+  <div class="prose">
+    <h2><span class="n">4</span>Control without exploring starts</h2>
+    <p>Without exploring starts, the only way to keep trying every action is for the policy itself to keep choosing them. There are two ways to do that. On-policy methods evaluate and improve the same policy that makes the decisions. Off-policy methods evaluate or improve a policy different from the one that generates the experience. This section is about an on-policy method.</p>
+    <p>The policy is kept soft, with <span class="nowrap">π(<i>a</i>|<i>s</i>) &gt; 0</span> for every action. An ε-soft policy gives every action at least <span class="nowrap">ε/|𝒜(<i>s</i>)|</span>, where |𝒜(<i>s</i>)| is the number of actions in <i>s</i>. The closest of them to greedy is ε-greedy: it gives each non-greedy action exactly ε/|𝒜(<i>s</i>)| and the greedy action the rest, <span class="nowrap">1 − ε + ε/|𝒜(<i>s</i>)|</span>. On-policy first-visit Monte Carlo control is Monte Carlo ES with one change: episodes start however they start, and the improvement step makes the policy ε-greedy with respect to <i>Q</i> instead of greedy.</p>
+    <p>This still improves the policy. For any ε-soft π, the ε-greedy policy π′ with respect to <i>q</i><sub>π</sub> satisfies, in every state,</p>
+    <div class="disp">Σ<sub><i>a</i></sub> π′(<i>a</i>|<i>s</i>) <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>) <span class="nowrap">≥ <i>v</i><sub>π</sub>(<i>s</i>)</span></div>
+    <p>because π′ puts its extra weight on the largest <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>), and a weighted average never exceeds its largest term. By the policy improvement theorem, π′ is at least as good as π. In the study, with ε = 0.2 and two actions, π′ goes to the charger with probability 0.9: <span class="nowrap">0.9(−1) + 0.1(−9) = −1.8</span>, well above the wandering robot's −5.</p>
+    <p>Where does it end? The process stops improving only at the best ε-soft policy, which is not the best policy: it keeps exploring forever, and exploring costs something. In the home, the ε-greedy policy with ε = 0.2 around the best moves has values −3.47, −2.47 and −1.25, against −3, −2 and −1 without exploration. Letting ε shrink over time closes that gap.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">5</span>Summary</h2>
+    <p>The key ideas next to their NumPy equivalents. <code>r[t+1]</code> holds <i>R</i><sub><i>t</i>+1</sub>, <code>s</code> the states of an episode, and <code>v</code>, <code>q</code> and <code>n</code> the estimates and the visit counts.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Return, backward</div>
+      <div class="f"><i>G</i><sub><i>t</i></sub> = <i>R</i><sub><i>t</i>+1</sub> + γ<i>G</i><sub><i>t</i>+1</sub></div>
+      <div class="c"><code>g = gamma * g + r[t+1]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">First visit of a state</div>
+      <div class="f"><i>S</i><sub><i>t</i></sub> ∉ {<i>S</i><sub>0</sub>, …, <i>S</i><sub><i>t</i>−1</sub>}</div>
+      <div class="c"><code>first = s[t] not in s[:t]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Running average</div>
+      <div class="f"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + [<i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)] / <i>N</i>(<i>S</i><sub><i>t</i></sub>)</div>
+      <div class="c"><code>n[s[t]] += 1<br>v[s[t]] += (g - v[s[t]]) / n[s[t]]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Constant-α Monte Carlo</div>
+      <div class="f"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + α[<i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</div>
+      <div class="c"><code>v[s[t]] += alpha * (g - v[s[t]])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Greedy policy</div>
+      <div class="f">π(<i>s</i>) = argmax<sub><i>a</i></sub> <i>q</i>(<i>s</i>, <i>a</i>)</div>
+      <div class="c"><code>pi = np.argmax(q, axis=1)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">ε-greedy policy</div>
+      <div class="f">ε/|𝒜(<i>s</i>)| each, plus 1 − ε for the greedy action</div>
+      <div class="c"><code>m = len(q[s])<br>pi_s = np.full(m, eps / m)<br>pi_s[np.argmax(q[s])] += 1 - eps</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Improvement holds</div>
+      <div class="f">Σ<sub><i>a</i></sub> π′(<i>a</i>|<i>s</i>) <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>) ≥ <i>v</i><sub>π</sub>(<i>s</i>)</div>
+      <div class="c"><code>lhs = (pi_prime * q_pi).sum(1)<br>np.all(lhs &gt;= v_pi)</code></div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,6 @@
+{
+  "layout": "note.njk",
+  "course": "Reinforcement Learning",
+  "courseOrder": 2,
+  "source": "Based on Prof. Rodrigo Toro's Reinforcement Learning course (IIC3675) at UC Chile, which follows Sutton and Barto, <a href=\"http://incompleteideas.net/book/the-book-2nd.html\"><i>Reinforcement Learning: An Introduction</i></a> (2nd ed., 2020)."
+}

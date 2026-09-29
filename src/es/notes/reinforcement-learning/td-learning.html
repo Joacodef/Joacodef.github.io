@@ -1,0 +1,195 @@
+---
+title: Predicción TD y Sarsa
+module: Aprendizaje por diferencias temporales
+order: 5
+description: Actualizar una estimación después de cada paso, hacia la recompensa recién recibida más la estimación del estado siguiente, en vez de esperar al final del episodio, y la misma idea para aprender a actuar.
+---
+<div class="prose">
+  <p>Los métodos Monte Carlo no aprenden nada de un episodio hasta que termina, porque solo entonces se conoce el retorno. Pero se puede aprender mucho antes. Piensa en el robot del apunte anterior, que anda por una casa con una cocina, un pasillo, un estudio y un cargador, con un costo de 1 por movimiento. Cuando pasa del pasillo de vuelta a la cocina, ya sabe que su viaje se alargó. No necesita llegar al cargador para bajar su estimación del pasillo.</p>
+  <p>El aprendizaje por diferencias temporales (TD) actualiza una estimación justo después de cada paso, hacia la recompensa recién recibida más la estimación actual del estado al que llevó ese paso. Aprende una conjetura a partir de otra conjetura. Resulta que eso funciona bien: los métodos TD no necesitan un modelo del mundo, aprenden mientras el episodio sigue en curso y muchas veces aprenden más rápido que los métodos Monte Carlo. Este apunte cubre TD para predecir valores, a qué converge, y Sarsa, la misma idea para aprender a actuar.</p>
+  <p class="legend">En esta página, <span class="bar" aria-hidden="true"></span>los pasos de un episodio se dibujan con tinta azul, y <span class="dot" aria-hidden="true"></span>el objetivo de una actualización, y la estimación en la que se apoya, con tinta roja.</p>
+</div>
+
+<section id="td0">
+  <div class="prose">
+    <h2><span class="n">1</span>Aprender del paso siguiente</h2>
+    <p>Monte Carlo con α constante mueve la estimación de cada estado visitado hacia el retorno que vino después:</p>
+    <div class="disp"><i>V</i>(<i>S</i><sub><i>t</i></sub>) <span class="nowrap">← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + α[<span class="pt"><i>G</i><sub><i>t</i></sub></span></span> <span class="nowrap">− <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span></div>
+    <p>pero <i>G</i><sub><i>t</i></sub> se conoce solo cuando termina el episodio. El método TD más simple, TD(0) o TD de un paso, usa en cambio la recompensa <i>R</i><sub><i>t</i>+1</sub> y la estimación del estado siguiente, ambas disponibles en el tiempo <i>t</i> + 1:</p>
+    <div class="disp hero-f"><i>V</i>(<i>S</i><sub><i>t</i></sub>) <span class="nowrap">← <i>V</i>(<i>S</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub> + γ<i>V</i>(<i>S</i><sub><i>t</i>+1</sub>)</span></span> <span class="nowrap">− <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span></div>
+    <p>¿Por qué es un objetivo razonable? El retorno de un paso es la recompensa siguiente más el retorno descontado del paso siguiente, <span class="nowrap"><i>G</i><sub><i>t</i></sub> = <i>R</i><sub><i>t</i>+1</sub> + γ<i>G</i><sub><i>t</i>+1</sub></span>, así que el valor de un estado se puede escribir de dos maneras:</p>
+    <div class="disp"><i>v</i><sub>π</sub>(<i>s</i>) = <span class="nowrap">E<sub>π</sub>[<i>G</i><sub><i>t</i></sub> | <i>S</i><sub><i>t</i></sub> = <i>s</i>]</span> <span class="nowrap">= E<sub>π</sub>[<i>R</i><sub><i>t</i>+1</sub> + γ<i>v</i><sub>π</sub>(<i>S</i><sub><i>t</i>+1</sub>) | <i>S</i><sub><i>t</i></sub> = <i>s</i>]</span></div>
+    <p>Monte Carlo estima la primera forma: reemplaza la esperanza por un retorno muestreado. La programación dinámica usa la segunda, calculando la esperanza exactamente a partir de un modelo del mundo pero apoyándose en la estimación actual <i>V</i> en lugar de <i>v</i><sub>π</sub>. TD hace ambas cosas a la vez: muestrea la segunda forma, con una recompensa y un estado siguiente reales, y usa <i>V</i>(<i>S</i><sub><i>t</i>+1</sub>) en lugar de <i>v</i><sub>π</sub>(<i>S</i><sub><i>t</i>+1</sub>). Como la programación dinámica, hace bootstrapping; como Monte Carlo, no necesita modelo.</p>
+    <p>El corchete mide cuánto se equivocó la estimación de <i>S</i><sub><i>t</i></sub>, un paso después. Es el TD error:</p>
+    <div class="disp">δ<sub><i>t</i></sub> ≐ <span class="nowrap"><span class="pt"><i>R</i><sub><i>t</i>+1</sub> + γ<i>V</i>(<i>S</i><sub><i>t</i>+1</sub>)</span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)</span></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 440 190" role="img" aria-label="Dos diagramas de backup. TD(0): un estado, la acción tomada y el estado siguiente, cuya estimación usa el objetivo. Monte Carlo: un estado y todo el resto del episodio hasta el estado terminal.">
+        <line class="bk" x1="130" y1="30" x2="130" y2="82"/>
+        <line class="bk" x1="130" y1="82" x2="130" y2="124"/>
+        <circle class="state" cx="130" cy="30" r="10"/>
+        <circle class="act" cx="130" cy="78" r="5.5"/>
+        <circle class="state tg" cx="130" cy="126" r="10"/>
+        <text class="dg-lab m" x="150" y="35">S<tspan class="sub" dy="4">t</tspan></text>
+        <text class="dg-lab m" x="150" y="131">S<tspan class="sub" dy="4">t+1</tspan></text>
+        <text class="dg-lab" x="130" y="176" text-anchor="middle">TD(0)</text>
+        <line class="bk" x1="310" y1="30" x2="310" y2="90"/>
+        <line class="bk dash" x1="310" y1="96" x2="310" y2="128"/>
+        <circle class="state" cx="310" cy="24" r="8"/>
+        <circle class="act" cx="310" cy="46" r="4.5"/>
+        <circle class="state" cx="310" cy="68" r="8"/>
+        <circle class="act" cx="310" cy="90" r="4.5"/>
+        <rect class="state" x="302" y="130" width="16" height="16"/>
+        <text class="dg-lab m" x="328" y="29">S<tspan class="sub" dy="4">t</tspan></text>
+        <text class="dg-lab m" x="328" y="143">S<tspan class="sub" dy="4">T</tspan></text>
+        <text class="dg-lab" x="310" y="176" text-anchor="middle">Monte Carlo</text>
+      </svg>
+      <figcaption>Lo que mira cada actualización. TD(0) usa un paso, la recompensa <i>R</i><sub><i>t</i>+1</sub> y la estimación del estado siguiente, en rojo. Monte Carlo usa todas las recompensas hasta el final del episodio y ninguna estimación.</figcaption>
+    </figure>
+
+    <h3>El algoritmo</h3>
+    <p>TD(0) tabular, para una política π y un tamaño de paso α en (0, 1]:</p>
+    <ol class="steps">
+      <li>Parte con cualquier <i>V</i>(<i>s</i>), salvo <span class="nowrap"><i>V</i>(terminal) = 0</span>.</li>
+      <li>Al comienzo de cada episodio, observa el primer estado <i>S</i>.</li>
+      <li>Toma la acción que π da para <i>S</i>, y observa la recompensa <i>R</i> y el estado siguiente <i>S</i>′.</li>
+      <li>Actualiza <span class="nowrap"><i>V</i>(<i>S</i>) ← <i>V</i>(<i>S</i>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i> + γ<i>V</i>(<i>S</i>′)</span> − <i>V</i>(<i>S</i>)]</span>.</li>
+      <li>Haz <i>S</i> ← <i>S</i>′, y vuelve al paso 3 hasta que <i>S</i> sea terminal.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="trip">
+  <div class="prose">
+    <h2><span class="n">2</span>Un viaje, paso a paso</h2>
+    <p>Supón que las estimaciones del robot son <span class="nowrap"><i>V</i>(cocina) = −5</span>, <span class="nowrap"><i>V</i>(pasillo) = −4</span> y <span class="nowrap"><i>V</i>(estudio) = −2</span>, promedios de dos viajes con suerte; los valores reales de su andar al azar son −9, −8 y −5. Su siguiente viaje va cocina, pasillo, cocina, pasillo, estudio, cargador. Con γ = 1 y α = 0.5, TD(0) hace una actualización por movimiento:</p>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col"><i>t</i></th><th scope="col">Movimiento</th><th scope="col">TD error</th><th scope="col">Actualización</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">0</th><td>cocina → pasillo</td><td class="pt"><span class="nowrap">−1 − 4 + 5</span> <span class="nowrap">= 0</span></td><td>ninguna</td></tr>
+          <tr><th scope="row">1</th><td>pasillo → cocina</td><td class="pt"><span class="nowrap">−1 − 5 + 4</span> <span class="nowrap">= −2</span></td><td><i>V</i>(pasillo): <span class="nowrap">−4 → −5</span></td></tr>
+          <tr><th scope="row">2</th><td>cocina → pasillo</td><td class="pt"><span class="nowrap">−1 − 5 + 5</span> <span class="nowrap">= −1</span></td><td><i>V</i>(cocina): <span class="nowrap">−5 → −5.5</span></td></tr>
+          <tr><th scope="row">3</th><td>pasillo → estudio</td><td class="pt"><span class="nowrap">−1 − 2 + 5</span> <span class="nowrap">= 2</span></td><td><i>V</i>(pasillo): <span class="nowrap">−5 → −4</span></td></tr>
+          <tr><th scope="row">4</th><td>estudio → cargador</td><td class="pt"><span class="nowrap">−1 + 0 + 2</span> <span class="nowrap">= 1</span></td><td><i>V</i>(estudio): <span class="nowrap">−2 → −1.5</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>En <i>t</i> = 1, volver a la cocina le dice al robot que el pasillo era peor de lo que creía, y TD baja la estimación del pasillo en el acto. En <i>t</i> = 3 el robot llega al estudio desde el pasillo, que es una mejor noticia, y la estimación vuelve a subir. Monte Carlo con α constante espera hasta el cargador, y luego mueve la estimación de cada visita hacia su retorno: la cocina hacia −5 y luego −3, terminando en −4, el pasillo hacia −4 y −2, terminando en −3, y el estudio hacia −1, terminando en −1.5.</p>
+
+    <h3>El error de Monte Carlo como suma de TD errors</h3>
+    <p>Si la tabla no cambia durante el episodio, el error de la actualización Monte Carlo es la suma descontada de los TD errors del resto del episodio, porque las estimaciones intermedias se cancelan de a pares:</p>
+    <div class="disp"><i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>) <span class="nowrap">= δ<sub><i>t</i></sub> + γδ<sub><i>t</i>+1</sub> + ⋯</span> <span class="nowrap">= Σ<span class="lims"><span><i>T</i>−1</span><span><i>k</i>=<i>t</i></span></span>γ<sup><i>k</i>−<i>t</i></sup>δ<sub><i>k</i></sub></span></div>
+    <p>Con la tabla fija en −5, −4 y −2, los TD errors de este viaje son 0, −2, 0, 1 y 1, que suman 0: exactamente <span class="nowrap"><i>G</i><sub>0</sub> − <i>V</i>(cocina) = −5 − (−5)</span>. TD(0) cambia la tabla sobre la marcha, así que entonces la identidad se cumple solo en forma aproximada; el tercer TD error de arriba es −1 en vez de 0 porque el pasillo ya se había actualizado.</p>
+  </div>
+</section>
+
+<section id="why">
+  <div class="prose">
+    <h2><span class="n">3</span>¿Por qué aprender de una conjetura?</h2>
+    <p>Comparado con la programación dinámica, TD no necesita modelo: ni probabilidades de recompensas y estados siguientes, solo experiencia. Comparado con Monte Carlo, aprende en línea, un paso a la vez. Eso importa cuando los episodios son largos, cuando la tarea nunca termina, y cuando algunas políticas harían que un episodio durara para siempre: Monte Carlo no puede aprender nada de un episodio que nunca termina, mientras que TD se da cuenta durante el episodio de que las cosas van mal.</p>
+    <p>Además es correcto. Para una política fija π, TD(0) converge a <i>v</i><sub>π</sub>: en promedio con un α constante lo bastante pequeño, y con probabilidad 1 si α se achica de la forma habitual, con una suma que crece sin límite y una suma de cuadrados que se mantiene finita. Qué método aprende más rápido no se ha demostrado en general, pero en la práctica TD suele ganarle a Monte Carlo con α constante en tareas con azar.</p>
+  </div>
+</section>
+
+<section id="batch">
+  <div class="prose">
+    <h2><span class="n">4</span>Actualización por lotes: a qué converge cada método</h2>
+    <p>Con una cantidad fija de experiencia, digamos unos pocos episodios, se puede repasar una y otra vez hasta que las estimaciones dejen de cambiar. En la actualización por lotes (batch updating), se calculan y suman los incrementos de cada paso de cada episodio, la tabla cambia una sola vez por su suma, y se vuelve a procesar todo el lote, hasta que converge. Con un α lo bastante pequeño, TD(0) por lotes converge a una única respuesta que no depende de α, y lo mismo Monte Carlo por lotes, pero las dos respuestas son distintas.</p>
+    <p>Un ejemplo. A veces otro robot ocupa el cargador. Llegar a él desde el estudio da +1 si está libre y 0 si está ocupado, y moverse del pasillo al estudio da −1; γ = 1. Se registraron cinco episodios:</p>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col">Episodios</th><th scope="col">Qué pasó</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">1</th><td>pasillo, −1, estudio, 0 (el cargador estaba ocupado)</td></tr>
+          <tr><th scope="row">3</th><td>estudio, +1</td></tr>
+          <tr><th scope="row">1</th><td>estudio, 0</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Ambos métodos le dan al estudio el promedio de sus cinco retornos, 0, 1, 1, 1 y 0: <span class="nowrap"><i>V</i>(estudio) = 0.6</span>. Discrepan sobre el pasillo. Monte Carlo por lotes promedia el único retorno del pasillo, <span class="nowrap"><i>V</i>(pasillo) = −1 + 0 = −1</span>. TD(0) por lotes dice que el pasillo siempre llevó al estudio con una recompensa de −1, así que <span class="nowrap"><i>V</i>(pasillo) = −1 + 0.6 = −0.4</span>.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 440 130" role="img" aria-label="El modelo que sugieren los datos: desde el pasillo, siempre al estudio con recompensa −1; desde el estudio, al final con recompensa +1 tres de cada cinco veces y 0 dos de cada cinco veces.">
+        <defs><marker id="td-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+        <line class="ln-path" x1="72" y1="65" x2="196" y2="65" marker-end="url(#td-head)"/>
+        <line class="ln-path" x1="224" y1="58" x2="354" y2="32" marker-end="url(#td-head)"/>
+        <line class="ln-path" x1="224" y1="72" x2="354" y2="98" marker-end="url(#td-head)"/>
+        <circle class="state" cx="60" cy="65" r="10"/>
+        <circle class="state" cx="210" cy="65" r="10"/>
+        <rect class="state" x="360" y="22" width="16" height="16"/>
+        <rect class="state" x="360" y="90" width="16" height="16"/>
+        <text class="dg-lab" x="134" y="55" text-anchor="middle">siempre, −1</text>
+        <text class="dg-lab" x="290" y="30" text-anchor="middle">3/5, +1</text>
+        <text class="dg-lab" x="290" y="112" text-anchor="middle">2/5, 0</text>
+        <text class="dg-lab" x="60" y="98" text-anchor="middle">pasillo</text>
+        <text class="dg-lab" x="210" y="98" text-anchor="middle">estudio</text>
+      </svg>
+      <figcaption>El proceso tal como lo describen los datos: las transiciones vistas, con cuántas veces ocurrió cada una y su recompensa. TD(0) por lotes da los valores que son exactamente correctos para este modelo.</figcaption>
+    </figure>
+    <p>Monte Carlo por lotes encuentra las estimaciones con el menor error cuadrático sobre los datos vistos: −1 calza perfecto con el único retorno del pasillo. TD(0) por lotes encuentra las estimaciones que son exactamente correctas para el modelo de máxima verosimilitud del proceso, construido con los datos: la probabilidad de cada transición es la fracción de veces que se observó, y su recompensa es el promedio de las recompensas observadas. Es la estimación de equivalencia de certeza (certainty equivalence), la respuesta que se obtiene al tratar el modelo estimado como si fuera seguro. Si el proceso es de Markov, la respuesta de TD debería predecir mejor los retornos futuros: el único mal resultado después del pasillo fue culpa del cargador, y cinco visitas al estudio dicen más sobre el cargador que una.</p>
+    <p>Esto ayuda a explicar por qué TD tiende a aprender más rápido. Calcular directamente la estimación de equivalencia de certeza rara vez es práctico: con <i>n</i> estados, el modelo solo puede necesitar memoria del orden de <i>n</i><sup>2</sup>, y resolverlo, unos <i>n</i><sup>3</sup> pasos. TD se acerca a la misma respuesta con memoria del orden de <i>n</i>, y TD en línea, que no repasa, igual avanza más o menos hacia ella.</p>
+  </div>
+</section>
+
+<section id="sarsa">
+  <div class="prose">
+    <h2><span class="n">5</span>Sarsa: TD para control</h2>
+    <p>Para aprender a actuar sin modelo, TD aprende valores de acción, y la política mejora en el camino: evaluar con TD, actuar de forma ε-greedy con respecto a las estimaciones actuales, y repetir, como en la iteración de políticas generalizada. La actualización es la misma de TD(0), de un par estado–acción al siguiente:</p>
+    <div class="disp hero-f"><i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">← <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub></span></span> <span class="nowrap pt">+ γ<i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>A</i><sub><i>t</i>+1</sub>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
+    <p>Se hace después de cada transición desde un estado no terminal, con <span class="nowrap"><i>Q</i>(terminal, ·) = 0</span>. Usa las cinco cantidades <i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>, <i>R</i><sub><i>t</i>+1</sub>, <i>S</i><sub><i>t</i>+1</sub> y <i>A</i><sub><i>t</i>+1</sub>, que le dan su nombre al método. Sarsa es on-policy: <i>A</i><sub><i>t</i>+1</sub> es la acción que la política de verdad toma después, así que Sarsa aprende los valores de la política que sigue, exploración incluida.</p>
+    <p>Sarsa converge con probabilidad 1 a una política óptima y sus valores de acción si todos los pares se siguen visitando, los tamaños de paso se achican de la forma habitual y la política se vuelve greedy en el límite, por ejemplo ε-greedy con ε = 1/<i>t</i>.</p>
+
+    <h3>El algoritmo</h3>
+    <p>Para un tamaño de paso α en (0, 1] y un ε &gt; 0 pequeño, con <i>Q</i>(<i>s</i>, <i>a</i>) arbitraria salvo <span class="nowrap"><i>Q</i>(terminal, ·) = 0</span>:</p>
+    <ol class="steps">
+      <li>Al comienzo de cada episodio, observa <i>S</i> y elige <i>A</i> de forma ε-greedy con respecto a <i>Q</i>.</li>
+      <li>Toma <i>A</i>, y observa <i>R</i> y <i>S</i>′. Elige <i>A</i>′ en <i>S</i>′ de forma ε-greedy con respecto a <i>Q</i>.</li>
+      <li>Actualiza <span class="nowrap"><i>Q</i>(<i>S</i>, <i>A</i>) ← <i>Q</i>(<i>S</i>, <i>A</i>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i> + γ<i>Q</i>(<i>S</i>′, <i>A</i>′)</span> − <i>Q</i>(<i>S</i>, <i>A</i>)]</span>.</li>
+      <li>Haz <i>S</i> ← <i>S</i>′ y <i>A</i> ← <i>A</i>′, y vuelve al paso 2 hasta que <i>S</i> sea terminal.</li>
+    </ol>
+    <p>Aprender dentro del episodio es lo que le permite a Sarsa escapar de una política que nunca terminaría. Supón que todos los valores de acción del robot parten en 0 y que, al desempatar, su política lo manda del pasillo de vuelta a la cocina, desde donde el único movimiento es volver al pasillo. Seguida de forma greedy, esa política va y viene para siempre, y un método Monte Carlo esperaría para siempre un retorno. Con Sarsa, α = 0.5 y γ = 1, la primera vez que el robot vuelve a la cocina, <i>Q</i>(pasillo, cocina) baja a <span class="nowrap">0.5(−1 + 0 − 0) = −0.5</span>, por debajo del 0 del movimiento al estudio, que aún no ha probado, y la próxima vez que está en el pasillo se va al estudio.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">6</span>Resumen</h2>
+    <p>Las ideas clave junto a sus equivalentes en NumPy, con las tablas <code>v</code> y <code>q</code> indexadas por estado, y por estado y acción.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Actualización TD(0)</div>
+      <div class="f"><i>V</i>(<i>S</i>) ← <i>V</i>(<i>S</i>) + α[<span class="pt"><i>R</i> + γ<i>V</i>(<i>S</i>′)</span> − <i>V</i>(<i>S</i>)]</div>
+      <div class="c"><code>g = r + gamma * v[s_next]<br>v[s] += alpha * (g - v[s])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">TD error</div>
+      <div class="f">δ<sub><i>t</i></sub> = <span class="pt"><i>R</i><sub><i>t</i>+1</sub> + γ<i>V</i>(<i>S</i><sub><i>t</i>+1</sub>)</span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)</div>
+      <div class="c"><code>delta = r + gamma * v[s_next]<br>delta -= v[s]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Monte Carlo con α constante</div>
+      <div class="f"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + α[<span class="pt"><i>G</i><sub><i>t</i></sub></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</div>
+      <div class="c"><code>v[s] += alpha * (g - v[s])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Error de Monte Carlo como TD errors</div>
+      <div class="f"><i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>) = <span class="nowrap">Σ<sub><i>k</i></sub> γ<sup><i>k</i>−<i>t</i></sup>δ<sub><i>k</i></sub></span>, con <i>V</i> fija</div>
+      <div class="c"><code>k = np.arange(len(deltas))<br>err = gamma**k @ deltas</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">TD(0) por lotes converge a</div>
+      <div class="f">los valores del modelo de máxima verosimilitud (equivalencia de certeza)</div>
+      <div class="c"><span class="none">Sin código: es una propiedad del método.</span></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Actualización de Sarsa</div>
+      <div class="f"><i>Q</i>(<i>S</i>, <i>A</i>) ← <i>Q</i>(<i>S</i>, <i>A</i>) + α[<span class="pt"><i>R</i> + γ<i>Q</i>(<i>S</i>′, <i>A</i>′)</span> − <i>Q</i>(<i>S</i>, <i>A</i>)]</div>
+      <div class="c"><code>g = r + gamma * q[s_next, a_next]<br>q[s, a] += alpha * (g - q[s, a])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Fin de un episodio</div>
+      <div class="f"><i>V</i>(terminal) = 0 y <i>Q</i>(terminal, ·) = 0</div>
+      <div class="c"><code>g = r&nbsp;&nbsp;# s_next es terminal</code></div>
+    </div>
+  </div>
+</section>
