@@ -22,7 +22,7 @@ What holds only for the notes of Prof. Domingo Mery's Computer Vision course at 
 - Changes of coordinates follow the Apuntes: `M′ = RM + t` from the old system to the new one, with `R = R_X R_Y R_Z` built from the axis-turning matrices (`R_Z = [cos sin 0; −sin cos 0; 0 0 1]`), and `M = S′M′` back, with `R′ = Rᵀ` and `t′ = −R′t`. The camera model is `λw = KPS′M′`.
 - Several views: cameras `A`, `B` and `C`, optical centers `C₁`, `C₂` and `C₃`, corresponding points `m₁`, `m₂` and `m₃`; `F = [BC₁]ₓBA⁺` with `A⁺ = Aᵀ(AAᵀ)⁻¹`.
 - In code snippets, name variables after the formulas' symbols: `m1`, `ell`, `ell_1`, `mat_a`, `mat_b`, `mat_f`, `mat_q`, `mat_r`.
-- Spanish terms from the Apuntes and the glossary: recta, producto punto, producto cruz, punto ideal, línea en el infinito (the Apuntes' term, kept although the notes say "recta" for a line), punto principal, matriz de calibración, factor de torcimiento, bloqueo del cardán, línea epipolar, matriz fundamental, mínimos cuadrados, reconstrucción 3D, error de reproyección, tensor trifocal, trilinealidades. Write "sin", not "sen", in formulas.
+- Spanish terms from the Apuntes and the glossary: recta, producto punto, producto cruz, punto ideal, línea en el infinito (the Apuntes' term, kept although the notes say "recta" for a line), razón de cruz, punto de fuga, homografía, punto principal, matriz de calibración, factor de torcimiento, bloqueo del cardán, línea epipolar, matriz fundamental, mínimos cuadrados, reconstrucción 3D, error de reproyección, tensor trifocal, trilinealidades. Write "sin", not "sen", in formulas.
 
 ## Figures
 

@@ -339,7 +339,8 @@ export function svgPoint(svg, ev) {
   return { x: q.x, y: q.y };
 }
 
-// Pointer and keyboard dragging. move(s) receives the pointer in SVG units;
+// Pointer and keyboard dragging. move(s) receives the point the handle's center should follow, in SVG units: the
+// pointer, shifted by where on the handle it was grabbed, so a handle grabbed off its center does not jump to the pointer.
 // step([dx, dy]) receives an arrow key as a direction, with ArrowUp as [0, 1].
 export function makeDraggable(h, { move, step }) {
   const svg = h.ownerSVGElement;
@@ -349,7 +350,10 @@ export function makeDraggable(h, { move, step }) {
     try { h.setPointerCapture(e.pointerId); } catch {}
     h.classList.add("drag");
     h.focus?.({ preventScroll: true });
-    const onMove = (ev) => move(svgPoint(svg, ev));
+    // The handle's center in SVG units is its own origin, wherever its groups put it.
+    const at = svgPoint(svg, e), m = svg.getScreenCTM()?.inverse().multiply(h.getScreenCTM());
+    const off = m ? { x: m.e - at.x, y: m.f - at.y } : { x: 0, y: 0 };
+    const onMove = (ev) => { const p = svgPoint(svg, ev); move({ x: p.x + off.x, y: p.y + off.y }); };
     const up = (ev) => {
       try { h.releasePointerCapture(ev.pointerId); } catch {}
       h.classList.remove("drag");

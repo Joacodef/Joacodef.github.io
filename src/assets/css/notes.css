@@ -26,6 +26,8 @@
 .asks svg { width: 100%; height: auto; display: block; background: var(--card); border-radius: 12px; }
 .asks p { color: var(--ink-2); font-size: 0.95rem; line-height: 1.4; margin: 0.5rem 0.2rem 0; }
 .asks .ln-path { stroke-width: 2.4; }
+/* Four pictures: two by two on wider screens, kept narrower so each stays small. */
+@media (min-width: 481px) { .asks.four { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 30rem; } }
 @media (max-width: 480px) {
   .asks { grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
   .asks li { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 0.9rem; align-items: center; }
@@ -76,7 +78,8 @@ sup.t { font-style: normal; font-size: 0.62em; margin-left: 0.06em; line-height:
 /* Interactive figures */
 .fig { max-width: 980px; margin: 2.2rem auto 1rem; background: var(--paper-2); border-radius: 18px; padding: clamp(14px, 3vw, 28px); display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
 @media (min-width: 840px) { .fig { grid-template-columns: minmax(0, 440px) minmax(0, 1fr); align-items: start; } }
-.fig svg { width: 100%; height: auto; display: block; background: var(--card); border-radius: 12px; user-select: none; -webkit-user-select: none; }
+/* No scroll anchoring inside a figure: a label moving as the reader drags would scroll the page under the pointer. */
+.fig svg { width: 100%; height: auto; display: block; background: var(--card); border-radius: 12px; user-select: none; -webkit-user-select: none; overflow-anchor: none; }
 .ro { font-size: 1rem; line-height: 1.6; min-width: 0; }
 .ro .eq { font-family: var(--serif); font-size: 1.18rem; line-height: 2.3; margin: 0.1rem 0 0.9rem; overflow-x: auto; }
 .ro p { margin: 0.45rem 0; }
