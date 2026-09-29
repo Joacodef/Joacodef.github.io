@@ -371,18 +371,27 @@ export function makeDraggable(h, { move, step }) {
 
 /* ---------- Plane ---------- */
 
-export function createPlane(svg, { max = 40 } = {}) {
-  const S = 10, OX = 34, OY = 422;
+// The plane is always drawn 400 units wide: `max` sets how many data units that is, with ticks every `tick` units,
+// labels every `labelStep`, and, with `grid`, faint lines at every tick. Label distances passed to placeAlong and
+// placeLineLabel are in units of the default 40-unit plane, so they look the same at any max.
+export function createPlane(svg, { max = 40, tick = 5, labelStep = 10, grid = false } = {}) {
+  const S = 400 / max, OX = 34, OY = 422, k = max / 40;
   svg.setAttribute("viewBox", "0 0 460 456");
   const X = (x) => OX + S * x;
   const Y = (y) => OY - S * y;
 
-  // Axes with ticks every 5 units and labels every 10.
+  if (grid) {
+    const gg = el("g", { class: "grid" }, svg);
+    for (let v = tick; v <= max; v += tick) {
+      el("line", { x1: X(v), y1: OY, x2: X(v), y2: Y(max) }, gg);
+      el("line", { x1: OX, y1: Y(v), x2: X(max), y2: Y(v) }, gg);
+    }
+  }
   const g = el("g", { class: "axes" }, svg);
   el("line", { x1: OX, y1: OY, x2: X(max), y2: OY }, g);
   el("line", { x1: OX, y1: OY, x2: OX, y2: Y(max) }, g);
-  for (let v = 0; v <= max; v += 5) {
-    const major = v % 10 === 0;
+  for (let v = 0; v <= max; v += tick) {
+    const major = v % labelStep === 0;
     el("line", { x1: X(v), y1: OY, x2: X(v), y2: OY + (major ? 6 : 3.5) }, g);
     el("line", { x1: OX, y1: Y(v), x2: OX - (major ? 6 : 3.5), y2: Y(v) }, g);
     if (!major) continue;
@@ -416,22 +425,34 @@ export function createPlane(svg, { max = 40 } = {}) {
     return t;
   }
 
-  // Places a label next to point p, pushed along dir (flipped if it would leave the plane).
-  function placeAlong(t, p, dir, dist) {
-    const n = Math.hypot(dir[0], dir[1]) || 1, ux = dir[0] / n, uy = dir[1] / n;
-    let cx = p.x + ux * dist, cy = p.y + uy * dist;
-    if (cx < 1.5 || cx > max - 1.5 || cy < 1.5 || cy > max - 1.5) { cx = p.x - ux * dist; cy = p.y - uy * dist; }
+  // Places a label next to point p, pushed along dir, or against it if it would leave the plane. With a memo, the
+  // label takes whichever of dir and −dir is closer to the direction it took last time, and flips only when that
+  // side would leave the plane: so it neither follows a vector whose sign flips nor flips back after an edge.
+  // Returns 1 or −1, the sign it used.
+  function placeAlong(t, p, dir, dist, memo) {
+    dist *= k;
+    const n = Math.hypot(dir[0], dir[1]) || 1, ux = dir[0] / n, uy = dir[1] / n, edge = 1.5 * k;
+    const out = (s) => { const cx = p.x + s * ux * dist, cy = p.y + s * uy * dist; return cx < edge || cx > max - edge || cy < edge || cy > max - edge; };
+    let s = memo?.dir && memo.dir[0] * ux + memo.dir[1] * uy < 0 ? -1 : 1;
+    if (out(s) && (!memo || !out(-s))) s = -s;
+    if (memo) memo.dir = [s * ux, s * uy];
+    const cx = p.x + s * ux * dist, cy = p.y + s * uy * dist;
     t.setAttribute("x", X(cx)); t.setAttribute("y", Y(cy) + 7); t.setAttribute("text-anchor", "middle");
+    return s;
   }
 
-  // Labels a line near its right end, offset to one side.
-  function placeLineLabel(t, l, seg) {
+  // Labels a line near its right end, offset to one side. With a memo, it stays near the end it was near last time
+  // and on the same side, so it does not leap to the other end when the line turns past vertical.
+  function placeLineLabel(t, l, seg, memo) {
     const [e1, e2] = seg;
-    const end = e2[0] > e1[0] + 1e-9 || (Math.abs(e2[0] - e1[0]) < 1e-9 && e2[1] > e1[1]) ? e2 : e1;
+    const right = e2[0] > e1[0] + 1e-9 || (Math.abs(e2[0] - e1[0]) < 1e-9 && e2[1] > e1[1]) ? e2 : e1;
+    const near = (a) => Math.hypot(a[0] - memo.at[0], a[1] - memo.at[1]);
+    const end = memo?.at ? (near(e1) <= near(e2) ? e1 : e2) : right;
     const other = end === e2 ? e1 : e2;
     const dl = Math.hypot(other[0] - end[0], other[1] - end[1]) || 1;
-    const back = Math.min(3.2, dl / 2);
-    placeAlong(t, { x: end[0] + ((other[0] - end[0]) / dl) * back, y: end[1] + ((other[1] - end[1]) / dl) * back }, [l[0], l[1]], 1.9);
+    const back = Math.min(3.2 * k, dl / 2);
+    if (memo) memo.at = end;
+    placeAlong(t, { x: end[0] + ((other[0] - end[0]) / dl) * back, y: end[1] + ((other[1] - end[1]) / dl) * back }, [l[0], l[1]], 1.9, memo && (memo.side ??= {}));
   }
 
   function place(h, p) { h.setAttribute("transform", `translate(${X(p.x)},${Y(p.y)})`); }
@@ -707,6 +728,33 @@ export function placeClear(S, t, p, dist, line, obstacles, away = false) {
     if (!best || score > best.score) best = { dir, score };
   }
   put(best.dir);
+}
+
+// Places label t beside point p of space S, `clear` units from it, across the screen direction `line` (the line the
+// point lies on), on the side it took last time, kept in memo.side. As the view turns or the point moves, the label
+// then glides with them instead of jumping between directions. It changes sides only when its side would leave the
+// figure or cover a quarter of itself with one of the obstacles, and the other side would not; grazing an obstacle
+// does not move it. Its distance grows with its size across the line, so a long label clears its point at any angle.
+export function placeBeside(S, t, p, clear, line, obstacles, memo) {
+  const ln = Math.hypot(line[0], line[1]);
+  const n = ln > 1e-9 ? [line[1] / ln, -line[0] / ln] : [0, -1];
+  // The first time, the side to the right of the line, or above it when the line runs across the screen.
+  if (!memo.side) memo.side = n[0] - n[1] >= 0 ? 1 : -1;
+  const [px, py] = S.project(p);
+  t.setAttribute("text-anchor", "middle");
+  t.setAttribute("x", 0); t.setAttribute("y", 0);
+  const b = t.getBBox();
+  const put = (s) => {
+    const ux = n[0] * s, uy = n[1] * s, d = clear + (Math.abs(ux) * b.width + Math.abs(uy) * b.height) / 2;
+    const cx = px + ux * d, cy = py + uy * d;
+    return { x: cx - b.width / 2, y: cy - b.height / 2, width: b.width, height: b.height, cx, cy };
+  };
+  const covered = (r, o) => Math.max(0, Math.min(r.x + r.width, o.x + o.width) - Math.max(r.x, o.x)) * Math.max(0, Math.min(r.y + r.height, o.y + o.height) - Math.max(r.y, o.y));
+  const blocked = (r) => r.x < 2 || r.y < 2 || r.x + r.width > S.width - 2 || r.y + r.height > S.height - 2 || obstacles.some((o) => covered(r, o) > 0.25 * r.width * r.height);
+  if (blocked(put(memo.side)) && !blocked(put(-memo.side))) memo.side = -memo.side;
+  const r = put(memo.side);
+  t.setAttribute("x", r.cx - (b.x + b.width / 2));
+  t.setAttribute("y", r.cy - (b.y + b.height / 2));
 }
 
 // The multiples of `step` for which t·v stays inside the figure of space S, within [lo, hi].

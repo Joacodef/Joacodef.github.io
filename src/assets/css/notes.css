@@ -15,9 +15,22 @@
 .dot { display: inline-block; width: 0.62em; height: 0.62em; border-radius: 50%; background: var(--red); margin: 0 0.35em 0 0.1em; vertical-align: 0.02em; }
 .bar { display: inline-block; width: 1.3em; height: 2.5px; background: var(--blue); margin: 0 0.35em 0 0.1em; vertical-align: 0.3em; }
 
+/* Opening formulas, in the notes not yet reworked to open without them. */
 .duo { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.4rem; margin: 2.2rem 0 0.5rem; }
 .duo .big { font-family: var(--serif); font-size: clamp(2.4rem, 9vw, 3.8rem); line-height: 1.1; margin: 0; white-space: nowrap; }
 .duo .cap { margin: 0.25rem 0 0; color: var(--ink-2); font-size: 0.98rem; }
+/* Small pictures of the questions a note answers, each with its caption: in a row, or on phones one per row with
+   the caption beside its picture. */
+.asks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 1.5rem 0 1.3rem; padding: 0; list-style: none; }
+.asks li { margin: 0; }
+.asks svg { width: 100%; height: auto; display: block; background: var(--card); border-radius: 12px; }
+.asks p { color: var(--ink-2); font-size: 0.95rem; line-height: 1.4; margin: 0.5rem 0.2rem 0; }
+.asks .ln-path { stroke-width: 2.4; }
+@media (max-width: 480px) {
+  .asks { grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
+  .asks li { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 0.9rem; align-items: center; }
+  .asks p { margin: 0; }
+}
 
 .note section { border-top: 1px solid var(--rule); padding: 3rem 0 1.2rem; margin-top: 2rem; }
 .note section h2 { font-size: clamp(1.5rem, 3.6vw, 1.95rem); display: flex; gap: 0.55em; align-items: baseline; margin: 0 0 0.8em; }
@@ -125,6 +138,8 @@ sup.t { font-style: normal; font-size: 0.62em; margin-left: 0.06em; line-height:
 .fan-edge.dash { stroke-dasharray: 4 4; }
 .vec { stroke: var(--blue); stroke-width: 2.6; stroke-linecap: round; }
 .ln-ring { fill: var(--card); stroke: var(--blue); stroke-width: 2.4; }
+/* A fixed point that a line turns about: small and filled, so it is not taken for a handle. */
+.ln-dot { fill: var(--blue); }
 .right-angle { fill: none; stroke: var(--ink-2); stroke-width: 1.2; }
 /* Transformation figures: the shape before the transformation is dashed, its image is a blue grid. */
 .before { fill: none; stroke: var(--ink-3); stroke-width: 1.4; stroke-dasharray: 6 5; }

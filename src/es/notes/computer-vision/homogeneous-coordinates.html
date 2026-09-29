@@ -2,48 +2,51 @@
 title: Coordenadas homogéneas
 module: Geometría
 order: 1
-description: Puntos y rectas en el plano, resumidos para repasar, con figuras interactivas.
+description: Tres números para cada punto y cada recta del plano, para que unir dos puntos y cortar dos rectas tome un solo producto cruz.
 scripts:
   - /assets/js/notes/computer-vision/homogeneous-coordinates.js
 ---
 <div class="prose">
-  <div class="duo">
-    <div>
-      <p class="big"><i class="ln">ℓ</i> = <span class="pt"><i>m</i><sub>1</sub></span> × <span class="pt"><i>m</i><sub>2</sub></span></p>
-      <p class="cap">La recta que pasa por dos puntos.</p>
-    </div>
-    <div>
-      <p class="big"><span class="pt"><i>m</i></span> = <span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span></p>
-      <p class="cap">El punto donde se cortan dos rectas.</p>
-    </div>
-  </div>
+  <p>Dos preguntas aparecen todo el tiempo cuando un computador trabaja con geometría: ¿qué recta pasa por dos puntos dados, y dónde se cortan dos rectas dadas?</p>
+  <ul class="asks">
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Dos puntos rojos y la recta azul que pasa por ellos"><line class="ln-path" x1="14" y1="107.7" x2="186" y2="28.3"/><circle class="pt-dot" cx="52" cy="90.2" r="6.5"/><circle class="pt-dot" cx="146" cy="46.8" r="6.5"/></svg>
+      <p>La recta que pasa por dos puntos</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Dos rectas azules y el punto rojo donde se cortan"><line class="ln-path" x1="14" y1="100" x2="186" y2="38"/><line class="ln-path" x1="14" y1="36" x2="186" y2="104"/><circle class="pt-dot" cx="98.7" cy="69.5" r="6.5"/></svg>
+      <p>El punto donde se cortan dos rectas</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Dos rectas azules paralelas"><line class="ln-path" x1="14" y1="84" x2="186" y2="32"/><line class="ln-path" x1="14" y1="112" x2="186" y2="60"/></svg>
+      <p>Dos rectas paralelas: ¿se cortan?</p>
+    </li>
+  </ul>
+  <p>Con las <i>x</i> e <i>y</i> del colegio son dos cálculos distintos, y cada uno falla en algún caso: una recta escrita con su pendiente no puede ser vertical, y el corte de dos rectas paralelas termina en una división por cero. Las coordenadas homogéneas describen cada punto y cada recta del plano con tres números en vez de dos. Así, ambas preguntas tienen la misma respuesta, un producto cruz, e incluso dos rectas paralelas tienen un punto donde se cortan. La geometría de cámaras de los apuntes que siguen está escrita en ellas.</p>
   <p class="legend">En esta página, los <span class="dot" aria-hidden="true"></span>puntos se dibujan con tinta roja y las <span class="bar" aria-hidden="true"></span>rectas con tinta azul.</p>
 </div>
 
 <section id="point">
   <div class="prose">
-    <h2><span class="n">1</span>El punto homogéneo</h2>
-    <p>Un punto del plano con coordenadas cartesianas (<i>x</i>, <i>y</i>) se escribe en coordenadas homogéneas agregando una tercera componente igual a 1:</p>
+    <h2><span class="n">1</span>Una tercera coordenada para cada punto</h2>
+    <p>Escribe el punto (<i>x</i>, <i>y</i>) con un tercer número, 1:</p>
     <div class="disp"><span class="pt"><i>m</i></span> = <span class="col pt"><span><i>x</i></span><span><i>y</i></span><span>1</span></span></div>
-    <p>La ventaja es que los puntos y las rectas pasan a ser vectores de tres componentes, y las operaciones geométricas del plano se reducen a productos punto y productos cruz.</p>
-
-    <h3>La escala no importa</h3>
-    <p>Cualquier múltiplo λ<i>m</i> con λ ≠ 0 representa el mismo punto. Estos tres vectores son todos el punto (2, 3):</p>
+    <p>Por ahora, el tercer número no agrega nada. Lo que hace útiles a estas coordenadas es una regla sobre los tres a la vez: multiplicar el vector por cualquier número λ distinto de 0 da el mismo punto. Estos tres vectores son todos el punto (2, 3):</p>
     <div class="disp num"><span class="col pt"><span>2</span><span>3</span><span>1</span></span> ∼ <span class="col pt"><span>4</span><span>6</span><span>2</span></span> ∼ <span class="col pt"><span>−1</span><span>−1.5</span><span>−0.5</span></span></div>
-    <p>La razón está en cómo volvemos a coordenadas cartesianas: dividimos por la tercera componente. Si <span class="pt"><i>m</i></span> = [<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup>, el punto es</p>
+    <p>Para leer el punto de vuelta, divide los dos primeros números por el tercero. Si <span class="pt"><i>m</i></span> = <span class="nowrap">[<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup></span>, el punto es</p>
     <div class="disp">(<i>x</i>, <i>y</i>) = <span class="nowrap">(<span class="frac"><span><i>p</i></span><span><i>r</i></span></span>, <span class="frac"><span><i>q</i></span><span><i>r</i></span></span>)</span></div>
-    <p>y la división cancela el factor λ: <span class="nowrap">λ<i>p</i> / λ<i>r</i> = <i>p</i> / <i>r</i></span>. Por eso el resultado de una operación no necesita terminar en 1; solo hay que dividir por <i>r</i> antes de leerlo.</p>
+    <p>La división cancela λ, porque <span class="nowrap">λ<i>p</i> / λ<i>r</i> = <i>p</i> / <i>r</i></span>. Así, un cálculo puede terminar con cualquier tercer número: divide por él antes de leer el resultado. λ = 0 queda fuera porque convierte todo punto en <span class="nowrap">[0&ensp;0&ensp;0]<sup class="t">T</sup></span>, y un vector cuyo tercer número es 0 no tiene nada por lo cual dividir; la sección 6 muestra qué significa un vector así.</p>
 
     <h3>Cada punto es una recta que pasa por el origen</h3>
-    <p>Lee un vector [<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup> como una posición en un espacio con ejes <i>p</i>, <i>q</i> y <i>r</i>. El plano cartesiano está en ese espacio como el plano <span class="nowrap"><i>r</i> = 1</span>, y <span class="pt"><i>m</i></span> = [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup> es un punto sobre él. Cada múltiplo λ<span class="pt"><i>m</i></span> está en la recta que pasa por el origen y por <span class="pt"><i>m</i></span>, y esa recta cruza el plano una sola vez, en <span class="pt"><i>m</i></span>. Dividir por <i>r</i> desliza un vector a lo largo de su recta, de vuelta al plano.</p>
-    <p>El tercer eje solo le da a la tercera componente un lugar donde dibujarse. Los puntos que nos interesan viven todos en el plano <span class="nowrap"><i>r</i> = 1</span>.</p>
+    <p>Detrás de la regla hay una imagen. Lee <span class="nowrap">[<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup></span> como una posición en un espacio con ejes <i>p</i>, <i>q</i> y <i>r</i>. El plano de siempre está en ese espacio a la altura <span class="nowrap"><i>r</i> = 1</span>, así que <span class="pt"><i>m</i></span> = <span class="nowrap">[<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup></span> es un punto sobre él. Cada múltiplo λ<span class="pt"><i>m</i></span> está en la recta que pasa por el origen y por <span class="pt"><i>m</i></span>, y esa recta cruza el plano una sola vez, en <span class="pt"><i>m</i></span>. Dividir por <i>r</i> desliza un vector a lo largo de su recta, de vuelta al plano. Un λ negativo lo deja al otro lado del origen, siempre en la misma recta.</p>
+    <p>Si el origen fuera un ojo y el plano <span class="nowrap"><i>r</i> = 1</span> una ventana, cada una de estas rectas sería una línea de visión: todo lo que está sobre ella cae en el mismo lugar de la ventana. Así ve una cámara, y los apuntes de cámaras vuelven a esta imagen. La recta roja de la figura no es una recta del plano: contiene todos los vectores que representan a <span class="pt"><i>m</i></span>.</p>
   </div>
 
   <div class="fig">
     <svg id="fig-scale" role="group" aria-label="Espacio con ejes p, q y r. El plano r = 1 contiene el punto m, y una recta roja que pasa por el origen contiene todos los múltiplos de m. Usa las flechas del teclado para girar la vista."></svg>
     <div class="ro" id="fig-scale-out" aria-live="polite"></div>
     <div class="fig-foot">
-      <p>Arrastra λ<span class="pt"><i>m</i></span> a lo largo de la recta y <span class="pt"><i>m</i></span> por el plano, y arrastra el fondo para girar la vista. Con el teclado, selecciona la figura, λ<span class="pt"><i>m</i></span> o <span class="pt"><i>m</i></span> con Tab y usa las flechas. La recta roja no es una recta del plano: contiene todos los vectores que representan a <span class="pt"><i>m</i></span>.</p>
+      <p>Arrastra <span class="pt"><i>m</i></span> por el plano y λ<span class="pt"><i>m</i></span> a lo largo de su recta, y arrastra el fondo para girar la vista. Con el teclado, selecciona la figura, λ<span class="pt"><i>m</i></span> o <span class="pt"><i>m</i></span> con Tab y usa las flechas.</p>
       <button type="button" class="btn" id="fig-scale-reset">Reiniciar</button>
     </div>
   </div>
@@ -51,25 +54,41 @@ scripts:
 
 <section id="line">
   <div class="prose">
-    <h2><span class="n">2</span>La recta como vector</h2>
-    <p>La recta <i>ax</i> + <i>by</i> + <i>c</i> = 0 queda descrita por completo por sus tres coeficientes, así que también puede escribirse como un vector:</p>
+    <h2><span class="n">2</span>Una recta también son tres números</h2>
+    <p>Una recta del plano tiene una ecuación <span class="nowrap"><i>ax</i> + <i>by</i> + <i>c</i> = 0</span>. Sus tres coeficientes la describen por completo, así que la recta también puede escribirse como un vector:</p>
     <div class="disp"><span class="ln"><i>ℓ</i></span> = <span class="col ln"><span><i>a</i></span><span><i>b</i></span><span><i>c</i></span></span>&ensp;⟷&ensp;<span class="nowrap"><i>ax</i> + <i>by</i> + <i>c</i> = 0</span></div>
-    <p>Igual que con los puntos, λ<i>ℓ</i> es la misma recta: multiplicar toda la ecuación por λ no cambia qué puntos la cumplen. Estos tres vectores son todos la recta <span class="nowrap"><i>x</i> + <i>y</i> = 3</span>:</p>
-    <div class="disp num"><span class="col ln"><span>1</span><span>1</span><span>−3</span></span> ∼ <span class="col ln"><span>2</span><span>2</span><span>−6</span></span> ∼ <span class="col ln"><span>−1</span><span>−1</span><span>3</span></span></div>
+    <p>Por ejemplo, <span class="ln nowrap">[1&ensp;−2&ensp;4]<sup class="t">T</sup></span> es la recta <span class="nowrap"><i>x</i> − 2<i>y</i> + 4 = 0</span>. Igual que con los puntos, la escala no importa: multiplicar toda la ecuación por λ no cambia qué puntos la cumplen, así que <span class="ln nowrap">[2&ensp;−4&ensp;8]<sup class="t">T</sup></span> y <span class="ln nowrap">[−1&ensp;2&ensp;−4]<sup class="t">T</sup></span> son la misma recta.</p>
 
     <h3>Cuándo un punto está en una recta</h3>
-    <p>Si reemplazas <span class="pt"><i>m</i></span> = [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup> en la ecuación de la recta, lo que obtienes es exactamente un producto punto:</p>
-    <div class="disp"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = <i>ax</i> + <i>by</i> + <i>c</i> = 0</div>
-    <p>Por ejemplo, la recta <span class="ln nowrap">[1&ensp;−1&ensp;10]<sup class="t">T</sup></span> es <i>x</i> − <i>y</i> + 10 = 0. El punto (10, 20) está en ella porque 1·10 + (−1)·20 + 10·1 = 0.</p>
+    <p>Reemplaza <span class="pt"><i>m</i></span> = <span class="nowrap">[<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup></span> en el lado izquierdo de la ecuación, y lo que calculas es un producto punto:</p>
+    <div class="disp"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = <span class="nowrap"><i>ax</i> + <i>by</i> + <i>c</i></span></div>
+    <p>El punto está en la recta exactamente cuando <span class="nowrap"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0</span>. El punto (2, 3) está en <span class="nowrap"><i>x</i> − 2<i>y</i> + 4 = 0</span>, porque <span class="nowrap">1·2 + (−2)·3 + 4·1 = 0</span>; el punto (6, 3) no, porque <span class="nowrap">1·6 + (−2)·3 + 4·1 = 4</span>. La prueba solo pregunta si el resultado es cero, así que da la misma respuesta con cualquier múltiplo de <span class="ln"><i>ℓ</i></span> o de <span class="pt"><i>m</i></span>.</p>
 
-    <h3>Evaluar la recta en un <i>x</i> dado</h3>
-    <p>Despejando <i>y</i> de la ecuación:</p>
+    <h3>La recta en un <i>x</i> dado</h3>
+    <p>Para dibujar una recta, o saber dónde está en un <i>x</i> dado, despeja <i>y</i> de su ecuación:</p>
     <div class="disp"><i>y</i> = <span class="nowrap">−(<i>ax</i> + <i>c</i>) / <i>b</i></span></div>
-    <p>Esto vale cuando <i>b</i> ≠ 0; si <i>b</i> = 0, la recta es vertical. Con la recta anterior y <i>x</i> = 14, <span class="nowrap"><i>y</i> = −(14 + 10) / (−1) = 24</span>.</p>
+    <p>Esto requiere <span class="nowrap"><i>b</i> ≠ 0</span>; con <span class="nowrap"><i>b</i> = 0</span> la recta es vertical, <span class="nowrap"><i>x</i> = −<i>c</i>/<i>a</i></span>. En <span class="nowrap"><i>x</i> = 6</span>, la recta anterior tiene <span class="nowrap"><i>y</i> = −(6 + 4) / (−2) = 5</span>: el punto (6, 5), justo encima de (6, 3).</p>
+  </div>
 
-    <h3>Cada recta es un plano que pasa por el origen</h3>
-    <p>Vuelve al espacio de la sección 1, con ejes <i>p</i>, <i>q</i> y <i>r</i>. Los vectores [<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup> con <span class="nowrap"><i>ap</i> + <i>bq</i> + <i>cr</i> = 0</span> forman un plano que pasa por el origen, y <span class="ln"><i>ℓ</i></span> = [<i>a</i>&ensp;<i>b</i>&ensp;<i>c</i>]<sup class="t">T</sup> es perpendicular a él, ya que su producto punto con cualquier vector del plano es cero. Ese plano corta a <span class="nowrap"><i>r</i> = 1</span> exactamente en la recta <span class="nowrap"><i>ax</i> + <i>by</i> + <i>c</i> = 0</span>. Escalar <span class="ln"><i>ℓ</i></span> estira o invierte el vector perpendicular, pero el plano sigue siendo el mismo, y la recta también.</p>
-    <p>Así, un punto es una recta que pasa por el origen, y una recta es un plano que pasa por el origen. El punto <span class="pt"><i>m</i></span> está en <span class="ln"><i>ℓ</i></span> cuando la recta de <span class="pt"><i>m</i></span> está dentro del plano de <span class="ln"><i>ℓ</i></span>, que es lo que dice <span class="nowrap"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0</span>.</p>
+  <div class="fig">
+    <svg id="fig-on-line" role="group" aria-label="Plano de 0 a 10 con la recta ℓ y un punto m que puedes arrastrar. Un anillo marca el punto de la recta con el mismo x que m."></svg>
+    <div class="ro">
+      <p class="coef-row"><span class="ln"><i>ℓ</i></span> = <span class="col ln coef"><input id="fig-on-line-a" type="number" step="1" min="-9" max="9" value="1" aria-label="a, el coeficiente de x"><input id="fig-on-line-b" type="number" step="1" min="-9" max="9" value="-2" aria-label="b, el coeficiente de y"><input id="fig-on-line-c" type="number" step="1" min="-9" max="9" value="4" aria-label="c, el término constante"></span> <span class="nowrap">⟷ <span id="fig-on-line-eq"></span></span></p>
+      <div id="fig-on-line-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Cambia <i>a</i>, <i>b</i> y <i>c</i> para mover la recta, y arrastra <span class="pt"><i>m</i></span> hasta ella. El anillo marca el punto de la recta en el <i>x</i> de <span class="pt"><i>m</i></span>. Con el teclado, selecciona <span class="pt"><i>m</i></span> o un coeficiente con Tab y usa las flechas.</p>
+      <button type="button" class="btn" id="fig-on-line-reset">Reiniciar</button>
+    </div>
+  </div>
+</section>
+
+<section id="plane">
+  <div class="prose">
+    <h2><span class="n">3</span>Cada recta es un plano que pasa por el origen</h2>
+    <p>Vuelve al espacio de la sección 1, con ejes <i>p</i>, <i>q</i> y <i>r</i>. Los vectores <span class="nowrap">[<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup></span> con <span class="nowrap"><i>ap</i> + <i>bq</i> + <i>cr</i> = 0</span> forman un plano que pasa por el origen, y <span class="ln"><i>ℓ</i></span> = <span class="nowrap">[<i>a</i>&ensp;<i>b</i>&ensp;<i>c</i>]<sup class="t">T</sup></span> es perpendicular a él, ya que su producto punto con cualquier vector del plano es cero. Ese plano corta a <span class="nowrap"><i>r</i> = 1</span> exactamente en la recta <span class="nowrap"><i>ax</i> + <i>by</i> + <i>c</i> = 0</span>.</p>
+    <p>Así, un punto es una recta que pasa por el origen, y una recta es un plano que pasa por el origen. El punto <span class="pt"><i>m</i></span> está en <span class="ln"><i>ℓ</i></span> cuando la recta de <span class="pt"><i>m</i></span> está dentro del plano de <span class="ln"><i>ℓ</i></span>, que es lo que dice <span class="nowrap"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0</span>. Escalar <span class="ln"><i>ℓ</i></span> estira o invierte el vector perpendicular, pero el plano sigue siendo el mismo, y la recta también. El vector cero es perpendicular a todos los vectores y no define ningún plano, por eso aquí también λ ≠ 0.</p>
+    <p>Las dos secciones que siguen usan esta imagen: unir dos puntos y cortar dos rectas se reducen a planos que pasan por el origen.</p>
   </div>
 
   <div class="fig">
@@ -87,15 +106,16 @@ scripts:
 
 <section id="line-through-points">
   <div class="prose">
-    <h2><span class="n">3</span>La recta que pasa por dos puntos</h2>
+    <h2><span class="n">4</span>La recta que pasa por dos puntos</h2>
     <div class="disp hero-f"><span class="ln"><i>ℓ</i></span> = <span class="pt"><i>m</i><sub>1</sub></span> × <span class="pt"><i>m</i><sub>2</sub></span></div>
-    <p>¿Por qué funciona? El producto cruz da un vector perpendicular a ambos factores, y perpendicular significa producto punto cero. Así, <span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i><sub>1</sub></span> = 0 y <span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i><sub>2</sub></span> = 0, que es exactamente la condición para que ambos puntos estén en <span class="ln"><i>ℓ</i></span>.</p>
-    <p>Para puntos de la forma [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup>, el producto cruz queda:</p>
+    <p>¿Por qué funciona? El producto cruz de dos vectores es perpendicular a ambos, y perpendicular significa producto punto cero. Así, <span class="nowrap"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i><sub>1</sub></span> = 0</span> y <span class="nowrap"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i><sub>2</sub></span> = 0</span>, que es la prueba de la sección 2 para ambos puntos: <span class="ln"><i>ℓ</i></span> pasa por los dos. En la imagen de la sección 3, las rectas de <span class="pt"><i>m</i><sub>1</sub></span> y <span class="pt"><i>m</i><sub>2</sub></span> abren un plano que pasa por el origen, el plano de la recta que pasa por ambos puntos, y <span class="pt"><i>m</i><sub>1</sub></span> × <span class="pt"><i>m</i><sub>2</sub></span> es el vector perpendicular a él.</p>
+    <p>Para puntos de la forma <span class="nowrap">[<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup></span>, el producto cruz queda</p>
     <div class="disp"><span class="ln"><i>ℓ</i></span> = <span class="col ln"><span><i>y</i><sub>1</sub> − <i>y</i><sub>2</sub></span><span><i>x</i><sub>2</sub> − <i>x</i><sub>1</sub></span><span><i>x</i><sub>1</sub><i>y</i><sub>2</sub> − <i>x</i><sub>2</sub><i>y</i><sub>1</sub></span></span></div>
+    <p>El resultado rara vez está en su forma más simple. Para los puntos (2, 1) y (8, 5) da <span class="ln nowrap">[−4&ensp;6&ensp;2]<sup class="t">T</sup></span>, que dividido por −2 es <span class="ln nowrap">[2&ensp;−3&ensp;−1]<sup class="t">T</sup></span>, la recta <span class="nowrap">2<i>x</i> − 3<i>y</i> − 1 = 0</span>. Por la sección 2, ambos vectores son la misma recta.</p>
   </div>
 
   <div class="fig">
-    <svg id="fig-line" role="group" aria-label="Plano con dos puntos que se pueden arrastrar y la recta que pasa por ellos"></svg>
+    <svg id="fig-line" role="group" aria-label="Plano de 0 a 10 con dos puntos que puedes arrastrar y la recta que pasa por ellos"></svg>
     <div class="ro" id="fig-line-out" aria-live="polite"></div>
     <div class="fig-foot">
       <p>Arrastra <span class="pt"><i>m</i><sub>1</sub></span> y <span class="pt"><i>m</i><sub>2</sub></span>. Con el teclado, selecciona un punto con Tab y muévelo con las flechas.</p>
@@ -106,31 +126,55 @@ scripts:
 
 <section id="intersection">
   <div class="prose">
-    <h2><span class="n">4</span>La intersección de dos rectas</h2>
+    <h2><span class="n">5</span>Dónde se cortan dos rectas</h2>
     <div class="disp hero-f"><span class="pt"><i>m</i></span> = <span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span></div>
-    <p>Es la misma operación con los papeles intercambiados. El vector <span class="pt"><i>m</i></span> es perpendicular tanto a <span class="ln"><i>ℓ</i><sub>1</sub></span> como a <span class="ln"><i>ℓ</i><sub>2</sub></span>, así que <span class="ln"><i>ℓ</i><sub>1</sub></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0 y <span class="ln"><i>ℓ</i><sub>2</sub></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0: el punto está en ambas rectas.</p>
-    <p>El resultado [<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup> casi nunca viene con <i>r</i> = 1, así que dividir por <i>r</i> es un paso obligatorio antes de leer las coordenadas.</p>
+    <p>Es la misma operación con los papeles intercambiados. El vector <span class="pt"><i>m</i></span> es perpendicular tanto a <span class="ln"><i>ℓ</i><sub>1</sub></span> como a <span class="ln"><i>ℓ</i><sub>2</sub></span>, así que <span class="nowrap"><span class="ln"><i>ℓ</i><sub>1</sub></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0</span> y <span class="nowrap"><span class="ln"><i>ℓ</i><sub>2</sub></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0</span>: el punto está en ambas rectas. En la imagen de la sección 3, los planos de las dos rectas se cortan en una recta que pasa por el origen, y esa recta es el punto <span class="pt"><i>m</i></span>.</p>
+    <p>El resultado <span class="nowrap">[<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup></span> rara vez termina en 1, así que divide por <i>r</i> antes de leerlo. La recta <span class="nowrap">2<i>x</i> − 3<i>y</i> − 1 = 0</span> de la sección 4 y la recta <span class="nowrap">2<i>x</i> + <i>y</i> − 13 = 0</span> dan <span class="pt nowrap">[40&ensp;24&ensp;8]<sup class="t">T</sup></span>, y al dividir por 8 queda el punto (5, 3).</p>
+    <p>Cuando las dos rectas son paralelas, <i>r</i> da 0 y no hay nada por lo cual dividir. No es una falla del método: la sección 6 muestra qué significa el vector.</p>
   </div>
 
   <div class="fig">
-    <svg id="fig-meet" role="group" aria-label="Plano con dos rectas ajustables y su punto de intersección"></svg>
+    <svg id="fig-meet" role="group" aria-label="Plano de 0 a 10 con dos rectas, cada una por dos círculos que puedes arrastrar, y el punto donde se cortan"></svg>
     <div class="ro" id="fig-meet-out" aria-live="polite"></div>
     <div class="fig-foot">
-      <p>Arrastra los círculos de los extremos para mover cada recta. Las rectas se simplifican antes del producto cruz; cualquier múltiplo daría el mismo punto. Prueba a hacerlas paralelas y mira <i>r</i>.</p>
+      <p>Arrastra los círculos para mover las rectas. Cada recta es el producto cruz de sus dos círculos, dividido hasta su forma más simple; cualquier múltiplo daría el mismo punto. Prueba a hacerlas paralelas.</p>
       <button type="button" class="btn" id="fig-meet-reset">Reiniciar</button>
+    </div>
+  </div>
+</section>
+
+<section id="parallel">
+  <div class="prose">
+    <h2><span class="n">6</span>Las rectas paralelas se cortan en el infinito</h2>
+    <p>Dos rectas paralelas siempre pueden escribirse con los mismos <i>a</i> y <i>b</i>, así que solo difieren en <i>c</i>: <span class="ln"><i>ℓ</i><sub>1</sub></span> = <span class="nowrap">[<i>a</i>&ensp;<i>b</i>&ensp;<i>c</i>]<sup class="t">T</sup></span> y <span class="ln"><i>ℓ</i><sub>2</sub></span> = <span class="nowrap">[<i>a</i>&ensp;<i>b</i>&ensp;<i>c</i>′]<sup class="t">T</sup></span>. Su producto cruz es</p>
+    <div class="disp"><span class="pt"><i>m</i></span> = <span class="nowrap"><span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span></span> <span class="nowrap">= (<i>c</i>′ − <i>c</i>)&thinsp;<span class="nowrap">[<i>b</i>&ensp;−<i>a</i>&ensp;0]<sup class="t">T</sup></span></span></div>
+    <p>Su tercer número es 0, así que no se puede dividir para obtener un punto del plano. Sus dos primeros números apuntan a lo largo de ambas rectas: moverse en (<i>b</i>, −<i>a</i>) no cambia <i>ax</i> + <i>by</i>, porque <span class="nowrap"><i>ab</i> − <i>ba</i> = 0</span>.</p>
+    <p>La imagen en el espacio muestra lo que pasó. Los planos de las dos rectas siguen cortándose en una recta que pasa por el origen, pero para rectas paralelas esa recta queda en el suelo <span class="nowrap"><i>r</i> = 0</span>, paralela al plano <span class="nowrap"><i>r</i> = 1</span>, así que nunca llega a él. Cuando una recta gira hacia la paralela, el corte se aleja y la recta de <span class="pt"><i>m</i></span> se aplana; pasada la paralela, el corte vuelve por el lado opuesto.</p>
+    <p>Un vector <span class="nowrap">[<i>p</i>&ensp;<i>q</i>&ensp;0]<sup class="t">T</sup></span> se llama punto ideal, o punto en el infinito: el punto donde se cortan todas las rectas con dirección (<i>p</i>, <i>q</i>). Con los puntos ideales, dos rectas distintas cualesquiera se cortan en exactamente un punto, incluso si son paralelas.</p>
+
+    <h3>La línea en el infinito</h3>
+    <p>Todo punto ideal cumple <span class="nowrap">0·<i>p</i> + 0·<i>q</i> + 1·0 = 0</span>, así que todos están en una misma recta, <span class="nowrap"><span class="ln"><i>ℓ</i><sub>∞</sub></span> = <span class="nowrap">[0&ensp;0&ensp;1]<sup class="t">T</sup></span></span>, la línea en el infinito. Su plano en el espacio es el suelo, <span class="nowrap"><i>r</i> = 0</span>.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-parallel" role="group" aria-label="Espacio con ejes p, q y r y el plano r = 1. Dos rectas sobre el plano, cada una con su plano que pasa por el origen, y la recta roja donde esos planos se cortan. Usa las flechas del teclado para girar la vista."></svg>
+    <div class="ro" id="fig-parallel-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Arrastra el círculo azul para girar <span class="ln"><i>ℓ</i><sub>2</sub></span> en torno al punto pequeño, y arrastra el fondo para girar la vista. Baja el círculo de a un paso: el corte se aleja, las rectas se vuelven paralelas, y el corte vuelve por el otro lado. Con el teclado, selecciona la figura o el círculo con Tab y usa las flechas.</p>
+      <button type="button" class="btn" id="fig-parallel-reset">Reiniciar</button>
     </div>
   </div>
 </section>
 
 <section id="summary">
   <div class="prose">
-    <h2><span class="n">5</span>Resumen</h2>
+    <h2><span class="n">7</span>Resumen</h2>
     <p>Las ideas clave junto a sus equivalentes en NumPy.</p>
   </div>
   <div class="sum">
     <div class="sum-row">
       <div class="k">Punto en forma homogénea</div>
-      <div class="f"><span class="pt"><i>m</i></span> = [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup></div>
+      <div class="f"><span class="pt"><i>m</i></span> = <span class="nowrap">[<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup></span></div>
       <div class="c"><code>m = np.array([x, y, 1])</code></div>
     </div>
     <div class="sum-row">
@@ -144,9 +188,19 @@ scripts:
       <div class="c"><span class="none">No hay código: es una propiedad, no una operación.</span></div>
     </div>
     <div class="sum-row">
+      <div class="k">La recta como vector</div>
+      <div class="f"><span class="ln"><i>ℓ</i></span> = <span class="nowrap">[<i>a</i>&ensp;<i>b</i>&ensp;<i>c</i>]<sup class="t">T</sup></span> ⟷ <span class="nowrap"><i>ax</i> + <i>by</i> + <i>c</i> = 0</span></div>
+      <div class="c"><code>ell = np.array([a, b, c])</code></div>
+    </div>
+    <div class="sum-row">
       <div class="k">Punto en una recta</div>
       <div class="f"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0</div>
       <div class="c"><code>np.isclose(np.dot(ell, m), 0)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k"><i>y</i> para un <i>x</i> dado</div>
+      <div class="f"><i>y</i> = −(<i>ax</i> + <i>c</i>) / <i>b</i></div>
+      <div class="c"><code>y = -(a*x + c)/b</code></div>
     </div>
     <div class="sum-row">
       <div class="k">Recta que pasa por dos puntos</div>
@@ -156,12 +210,17 @@ scripts:
     <div class="sum-row">
       <div class="k">Intersección de dos rectas</div>
       <div class="f"><span class="pt"><i>m</i></span> = <span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span>, luego dividir por <i>r</i></div>
-      <div class="c"><code>mi = np.cross(ell_1, ell_2)</code></div>
+      <div class="c"><code>m = np.cross(ell_1, ell_2)</code></div>
     </div>
     <div class="sum-row">
-      <div class="k"><i>y</i> para un <i>x</i> dado</div>
-      <div class="f"><i>y</i> = −(<i>ax</i> + <i>c</i>) / <i>b</i></div>
-      <div class="c"><code>y = -(a*x + c)/b</code></div>
+      <div class="k">Rectas paralelas</div>
+      <div class="f"><i>r</i> = 0: el punto ideal <span class="nowrap">(<i>c</i>′ − <i>c</i>)&thinsp;<span class="nowrap">[<i>b</i>&ensp;−<i>a</i>&ensp;0]<sup class="t">T</sup></span></span></div>
+      <div class="c"><code>np.isclose(m[2], 0)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Línea en el infinito</div>
+      <div class="f"><span class="ln"><i>ℓ</i><sub>∞</sub></span> = <span class="nowrap">[0&ensp;0&ensp;1]<sup class="t">T</sup></span></div>
+      <div class="c"><code>ell_inf = np.array([0, 0, 1])</code></div>
     </div>
   </div>
 </section>

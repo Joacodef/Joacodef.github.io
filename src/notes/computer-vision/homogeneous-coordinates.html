@@ -2,48 +2,51 @@
 title: Homogeneous coordinates
 module: Geometry
 order: 1
-description: Points and lines in the plane, summarized for review, with interactive figures.
+description: Three numbers for every point and every line of the plane, so that joining two points and crossing two lines each take one cross product.
 scripts:
   - /assets/js/notes/computer-vision/homogeneous-coordinates.js
 ---
 <div class="prose">
-  <div class="duo">
-    <div>
-      <p class="big"><i class="ln">ℓ</i> = <span class="pt"><i>m</i><sub>1</sub></span> × <span class="pt"><i>m</i><sub>2</sub></span></p>
-      <p class="cap">The line through two points.</p>
-    </div>
-    <div>
-      <p class="big"><span class="pt"><i>m</i></span> = <span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span></p>
-      <p class="cap">The point where two lines meet.</p>
-    </div>
-  </div>
+  <p>Two questions come up constantly when a computer works with geometry: which line passes through two given points, and where do two given lines cross?</p>
+  <ul class="asks">
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Two red points and the blue line through them"><line class="ln-path" x1="14" y1="107.7" x2="186" y2="28.3"/><circle class="pt-dot" cx="52" cy="90.2" r="6.5"/><circle class="pt-dot" cx="146" cy="46.8" r="6.5"/></svg>
+      <p>The line through two points</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Two blue lines and the red point where they cross"><line class="ln-path" x1="14" y1="100" x2="186" y2="38"/><line class="ln-path" x1="14" y1="36" x2="186" y2="104"/><circle class="pt-dot" cx="98.7" cy="69.5" r="6.5"/></svg>
+      <p>The point where two lines cross</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Two parallel blue lines"><line class="ln-path" x1="14" y1="84" x2="186" y2="32"/><line class="ln-path" x1="14" y1="112" x2="186" y2="60"/></svg>
+      <p>Two parallel lines: do they meet?</p>
+    </li>
+  </ul>
+  <p>With the <i>x</i> and <i>y</i> we learn at school, these are two different calculations, and each has a case where it breaks: a line written with a slope cannot be vertical, and the crossing of two parallel lines comes out as a division by zero. Homogeneous coordinates describe every point and every line of the plane with three numbers instead of two. Then both questions have the same answer, one cross product, and even two parallel lines get a point where they meet. The camera geometry in the notes that follow is written in them.</p>
   <p class="legend">Throughout this page, <span class="dot" aria-hidden="true"></span>points are drawn in red ink and <span class="bar" aria-hidden="true"></span>lines in blue ink.</p>
 </div>
 
 <section id="point">
   <div class="prose">
-    <h2><span class="n">1</span>The homogeneous point</h2>
-    <p>A point of the plane with Cartesian coordinates (<i>x</i>, <i>y</i>) is written in homogeneous coordinates by appending a third component equal to 1:</p>
+    <h2><span class="n">1</span>A third coordinate for every point</h2>
+    <p>Write the point (<i>x</i>, <i>y</i>) with a third number, 1:</p>
     <div class="disp"><span class="pt"><i>m</i></span> = <span class="col pt"><span><i>x</i></span><span><i>y</i></span><span>1</span></span></div>
-    <p>The payoff is that points and lines both become three-component vectors, and the geometric operations of the plane reduce to dot and cross products.</p>
-
-    <h3>Scale does not matter</h3>
-    <p>Any multiple λ<i>m</i> with λ ≠ 0 represents the same point. All three of these vectors are the point (2, 3):</p>
+    <p>The third number adds nothing yet. What makes these coordinates useful is a rule about all three together: multiplying the vector by any number λ other than 0 gives the same point. These three vectors are all the point (2, 3):</p>
     <div class="disp num"><span class="col pt"><span>2</span><span>3</span><span>1</span></span> ∼ <span class="col pt"><span>4</span><span>6</span><span>2</span></span> ∼ <span class="col pt"><span>−1</span><span>−1.5</span><span>−0.5</span></span></div>
-    <p>The reason is how we return to Cartesian coordinates: we divide by the third component. If <span class="pt"><i>m</i></span> = [<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup>, the point is</p>
+    <p>To read the point back, divide the first two numbers by the third. If <span class="pt"><i>m</i></span> = <span class="nowrap">[<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup></span>, the point is</p>
     <div class="disp">(<i>x</i>, <i>y</i>) = <span class="nowrap">(<span class="frac"><span><i>p</i></span><span><i>r</i></span></span>, <span class="frac"><span><i>q</i></span><span><i>r</i></span></span>)</span></div>
-    <p>and the division cancels the factor λ: <span class="nowrap">λ<i>p</i> / λ<i>r</i> = <i>p</i> / <i>r</i></span>. That is why the result of an operation does not need to end in 1; you only have to divide by <i>r</i> before reading it.</p>
+    <p>The division cancels λ, since <span class="nowrap">λ<i>p</i> / λ<i>r</i> = <i>p</i> / <i>r</i></span>. So a calculation may end with any third number: divide by it before reading the result. λ = 0 is left out because it turns every point into <span class="nowrap">[0&ensp;0&ensp;0]<sup class="t">T</sup></span>, and a vector whose third number is 0 has nothing to divide by; section 6 shows what such a vector means.</p>
 
     <h3>Each point is a line through the origin</h3>
-    <p>Read a vector [<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup> as a position in a space with axes <i>p</i>, <i>q</i> and <i>r</i>. The Cartesian plane sits in that space as the plane <span class="nowrap"><i>r</i> = 1</span>, and <span class="pt"><i>m</i></span> = [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup> is a point on it. Every multiple λ<span class="pt"><i>m</i></span> lies on the line through the origin and <span class="pt"><i>m</i></span>, and that line crosses the plane only once, at <span class="pt"><i>m</i></span>. Dividing by <i>r</i> slides a vector along its line, back to the plane.</p>
-    <p>The third axis only gives the third component somewhere to be drawn. The points we care about all live on the plane <span class="nowrap"><i>r</i> = 1</span>.</p>
+    <p>The rule has a picture behind it. Read <span class="nowrap">[<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup></span> as a position in a space with axes <i>p</i>, <i>q</i> and <i>r</i>. The ordinary plane sits in that space at height <span class="nowrap"><i>r</i> = 1</span>, so <span class="pt"><i>m</i></span> = <span class="nowrap">[<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup></span> is a point on it. Every multiple λ<span class="pt"><i>m</i></span> lies on the line through the origin and <span class="pt"><i>m</i></span>, and that line crosses the plane only once, at <span class="pt"><i>m</i></span>. Dividing by <i>r</i> slides a vector along its line, back to the plane. A negative λ puts it on the other side of the origin, still on the same line.</p>
+    <p>If the origin were an eye and the plane <span class="nowrap"><i>r</i> = 1</span> a window, each of these lines would be a line of sight: everything along it lands on the same spot of the window. That is how a camera sees, and the camera notes return to this picture. The red line in the figure is not a line of the plane: it holds every vector that stands for <span class="pt"><i>m</i></span>.</p>
   </div>
 
   <div class="fig">
     <svg id="fig-scale" role="group" aria-label="Space with axes p, q and r. The plane r = 1 holds the point m, and a red line through the origin holds every multiple of m. Use the arrow keys to turn the view."></svg>
     <div class="ro" id="fig-scale-out" aria-live="polite"></div>
     <div class="fig-foot">
-      <p>Drag λ<span class="pt"><i>m</i></span> along the line and <span class="pt"><i>m</i></span> across the plane, and drag the background to turn the view. With a keyboard, select the figure, λ<span class="pt"><i>m</i></span> or <span class="pt"><i>m</i></span> with Tab and use the arrow keys. The red line is not a line of the plane: it holds every vector that stands for <span class="pt"><i>m</i></span>.</p>
+      <p>Drag <span class="pt"><i>m</i></span> across the plane and λ<span class="pt"><i>m</i></span> along its line, and drag the background to turn the view. With a keyboard, select the figure, λ<span class="pt"><i>m</i></span> or <span class="pt"><i>m</i></span> with Tab and use the arrow keys.</p>
       <button type="button" class="btn" id="fig-scale-reset">Reset</button>
     </div>
   </div>
@@ -51,25 +54,41 @@ scripts:
 
 <section id="line">
   <div class="prose">
-    <h2><span class="n">2</span>The line as a vector</h2>
-    <p>The line <i>ax</i> + <i>by</i> + <i>c</i> = 0 is fully described by its three coefficients, so it can also be written as a vector:</p>
+    <h2><span class="n">2</span>A line is three numbers too</h2>
+    <p>A line of the plane has an equation <span class="nowrap"><i>ax</i> + <i>by</i> + <i>c</i> = 0</span>. Its three coefficients describe it completely, so the line can be written as a vector too:</p>
     <div class="disp"><span class="ln"><i>ℓ</i></span> = <span class="col ln"><span><i>a</i></span><span><i>b</i></span><span><i>c</i></span></span>&ensp;⟷&ensp;<span class="nowrap"><i>ax</i> + <i>by</i> + <i>c</i> = 0</span></div>
-    <p>As with points, λ<i>ℓ</i> is the same line: multiplying the whole equation by λ does not change which points satisfy it. All three of these vectors are the line <span class="nowrap"><i>x</i> + <i>y</i> = 3</span>:</p>
-    <div class="disp num"><span class="col ln"><span>1</span><span>1</span><span>−3</span></span> ∼ <span class="col ln"><span>2</span><span>2</span><span>−6</span></span> ∼ <span class="col ln"><span>−1</span><span>−1</span><span>3</span></span></div>
+    <p>For example, <span class="ln nowrap">[1&ensp;−2&ensp;4]<sup class="t">T</sup></span> is the line <span class="nowrap"><i>x</i> − 2<i>y</i> + 4 = 0</span>. As with points, scale does not matter: multiplying the whole equation by λ does not change which points satisfy it, so <span class="ln nowrap">[2&ensp;−4&ensp;8]<sup class="t">T</sup></span> and <span class="ln nowrap">[−1&ensp;2&ensp;−4]<sup class="t">T</sup></span> are the same line.</p>
 
     <h3>When a point lies on a line</h3>
-    <p>If you substitute <span class="pt"><i>m</i></span> = [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup> into the equation of the line, what you get is exactly a dot product:</p>
-    <div class="disp"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = <i>ax</i> + <i>by</i> + <i>c</i> = 0</div>
-    <p>For example, the line <span class="ln nowrap">[1&ensp;−1&ensp;10]<sup class="t">T</sup></span> is <i>x</i> − <i>y</i> + 10 = 0. The point (10, 20) lies on it because 1·10 + (−1)·20 + 10·1 = 0.</p>
+    <p>Put <span class="pt"><i>m</i></span> = <span class="nowrap">[<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup></span> into the left side of the equation, and what you compute is a dot product:</p>
+    <div class="disp"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = <span class="nowrap"><i>ax</i> + <i>by</i> + <i>c</i></span></div>
+    <p>The point lies on the line exactly when <span class="nowrap"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0</span>. The point (2, 3) lies on <span class="nowrap"><i>x</i> − 2<i>y</i> + 4 = 0</span>, since <span class="nowrap">1·2 + (−2)·3 + 4·1 = 0</span>; the point (6, 3) does not, since <span class="nowrap">1·6 + (−2)·3 + 4·1 = 4</span>. The test only asks whether the result is zero, so it gives the same answer for any multiple of <span class="ln"><i>ℓ</i></span> or of <span class="pt"><i>m</i></span>.</p>
 
-    <h3>Evaluating the line at a given <i>x</i></h3>
-    <p>Solving the equation for <i>y</i>:</p>
+    <h3>The line at a given <i>x</i></h3>
+    <p>To draw a line, or to find where it is at a given <i>x</i>, solve its equation for <i>y</i>:</p>
     <div class="disp"><i>y</i> = <span class="nowrap">−(<i>ax</i> + <i>c</i>) / <i>b</i></span></div>
-    <p>This holds when <i>b</i> ≠ 0; if <i>b</i> = 0, the line is vertical. With the line above and <i>x</i> = 14, <span class="nowrap"><i>y</i> = −(14 + 10) / (−1) = 24</span>.</p>
+    <p>This needs <span class="nowrap"><i>b</i> ≠ 0</span>; with <span class="nowrap"><i>b</i> = 0</span> the line is vertical, <span class="nowrap"><i>x</i> = −<i>c</i>/<i>a</i></span>. At <span class="nowrap"><i>x</i> = 6</span>, the line above has <span class="nowrap"><i>y</i> = −(6 + 4) / (−2) = 5</span>: the point (6, 5), right above (6, 3).</p>
+  </div>
 
-    <h3>Each line is a plane through the origin</h3>
-    <p>Go back to the space of section 1, with axes <i>p</i>, <i>q</i> and <i>r</i>. The vectors [<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup> with <span class="nowrap"><i>ap</i> + <i>bq</i> + <i>cr</i> = 0</span> form a plane through the origin, and <span class="ln"><i>ℓ</i></span> = [<i>a</i>&ensp;<i>b</i>&ensp;<i>c</i>]<sup class="t">T</sup> is perpendicular to it, since its dot product with every vector in the plane is zero. That plane meets <span class="nowrap"><i>r</i> = 1</span> exactly in the line <span class="nowrap"><i>ax</i> + <i>by</i> + <i>c</i> = 0</span>. Scaling <span class="ln"><i>ℓ</i></span> stretches or flips the perpendicular vector, but the plane stays the same, and so does the line.</p>
-    <p>So a point is a line through the origin, and a line is a plane through the origin. The point <span class="pt"><i>m</i></span> lies on <span class="ln"><i>ℓ</i></span> when the line of <span class="pt"><i>m</i></span> lies inside the plane of <span class="ln"><i>ℓ</i></span>, which is what <span class="nowrap"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0</span> says.</p>
+  <div class="fig">
+    <svg id="fig-on-line" role="group" aria-label="Plane from 0 to 10 with the line ℓ and a point m you can drag. A ring marks the point of the line with the same x as m."></svg>
+    <div class="ro">
+      <p class="coef-row"><span class="ln"><i>ℓ</i></span> = <span class="col ln coef"><input id="fig-on-line-a" type="number" step="1" min="-9" max="9" value="1" aria-label="a, the coefficient of x"><input id="fig-on-line-b" type="number" step="1" min="-9" max="9" value="-2" aria-label="b, the coefficient of y"><input id="fig-on-line-c" type="number" step="1" min="-9" max="9" value="4" aria-label="c, the constant term"></span> <span class="nowrap">⟷ <span id="fig-on-line-eq"></span></span></p>
+      <div id="fig-on-line-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Change <i>a</i>, <i>b</i> and <i>c</i> to move the line, and drag <span class="pt"><i>m</i></span> onto it. The ring marks the line's point at <span class="pt"><i>m</i></span>'s <i>x</i>. With a keyboard, select <span class="pt"><i>m</i></span> or a coefficient with Tab and use the arrow keys.</p>
+      <button type="button" class="btn" id="fig-on-line-reset">Reset</button>
+    </div>
+  </div>
+</section>
+
+<section id="plane">
+  <div class="prose">
+    <h2><span class="n">3</span>Every line is a plane through the origin</h2>
+    <p>Go back to the space of section 1, with axes <i>p</i>, <i>q</i> and <i>r</i>. The vectors <span class="nowrap">[<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup></span> with <span class="nowrap"><i>ap</i> + <i>bq</i> + <i>cr</i> = 0</span> form a plane through the origin, and <span class="ln"><i>ℓ</i></span> = <span class="nowrap">[<i>a</i>&ensp;<i>b</i>&ensp;<i>c</i>]<sup class="t">T</sup></span> is perpendicular to it, since its dot product with every vector in the plane is zero. That plane meets <span class="nowrap"><i>r</i> = 1</span> exactly in the line <span class="nowrap"><i>ax</i> + <i>by</i> + <i>c</i> = 0</span>.</p>
+    <p>So a point is a line through the origin, and a line is a plane through the origin. The point <span class="pt"><i>m</i></span> lies on <span class="ln"><i>ℓ</i></span> when the line of <span class="pt"><i>m</i></span> lies inside the plane of <span class="ln"><i>ℓ</i></span>, which is what <span class="nowrap"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0</span> says. Scaling <span class="ln"><i>ℓ</i></span> stretches or flips the perpendicular vector, but the plane stays the same, and so does the line. The zero vector is perpendicular to every vector and picks out no plane, which is why λ ≠ 0 here too.</p>
+    <p>The next two sections use this picture: joining two points and crossing two lines both come down to planes through the origin.</p>
   </div>
 
   <div class="fig">
@@ -87,15 +106,16 @@ scripts:
 
 <section id="line-through-points">
   <div class="prose">
-    <h2><span class="n">3</span>The line through two points</h2>
+    <h2><span class="n">4</span>The line through two points</h2>
     <div class="disp hero-f"><span class="ln"><i>ℓ</i></span> = <span class="pt"><i>m</i><sub>1</sub></span> × <span class="pt"><i>m</i><sub>2</sub></span></div>
-    <p>Why does this work? The cross product returns a vector perpendicular to both factors, and perpendicular means a zero dot product. So <span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i><sub>1</sub></span> = 0 and <span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i><sub>2</sub></span> = 0, which is exactly the condition for both points to lie on <span class="ln"><i>ℓ</i></span>.</p>
-    <p>For points of the form [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup>, the cross product becomes:</p>
+    <p>Why does this work? The cross product of two vectors is perpendicular to both, and perpendicular means a zero dot product. So <span class="nowrap"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i><sub>1</sub></span> = 0</span> and <span class="nowrap"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i><sub>2</sub></span> = 0</span>, which is the test of section 2 for both points: <span class="ln"><i>ℓ</i></span> passes through both. In the picture of section 3, the lines of <span class="pt"><i>m</i><sub>1</sub></span> and <span class="pt"><i>m</i><sub>2</sub></span> span one plane through the origin, the plane of the line through both points, and <span class="pt"><i>m</i><sub>1</sub></span> × <span class="pt"><i>m</i><sub>2</sub></span> is the vector perpendicular to it.</p>
+    <p>For points of the form <span class="nowrap">[<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup></span>, the cross product works out to</p>
     <div class="disp"><span class="ln"><i>ℓ</i></span> = <span class="col ln"><span><i>y</i><sub>1</sub> − <i>y</i><sub>2</sub></span><span><i>x</i><sub>2</sub> − <i>x</i><sub>1</sub></span><span><i>x</i><sub>1</sub><i>y</i><sub>2</sub> − <i>x</i><sub>2</sub><i>y</i><sub>1</sub></span></span></div>
+    <p>The result is rarely in its simplest form. For the points (2, 1) and (8, 5) it is <span class="ln nowrap">[−4&ensp;6&ensp;2]<sup class="t">T</sup></span>, which divided by −2 is <span class="ln nowrap">[2&ensp;−3&ensp;−1]<sup class="t">T</sup></span>, the line <span class="nowrap">2<i>x</i> − 3<i>y</i> − 1 = 0</span>. By section 2, both vectors are the same line.</p>
   </div>
 
   <div class="fig">
-    <svg id="fig-line" role="group" aria-label="Plane with two draggable points and the line through them"></svg>
+    <svg id="fig-line" role="group" aria-label="Plane from 0 to 10 with two points you can drag and the line through them"></svg>
     <div class="ro" id="fig-line-out" aria-live="polite"></div>
     <div class="fig-foot">
       <p>Drag <span class="pt"><i>m</i><sub>1</sub></span> and <span class="pt"><i>m</i><sub>2</sub></span>. With a keyboard, select a point with Tab and move it with the arrow keys.</p>
@@ -106,31 +126,55 @@ scripts:
 
 <section id="intersection">
   <div class="prose">
-    <h2><span class="n">4</span>The intersection of two lines</h2>
+    <h2><span class="n">5</span>Where two lines cross</h2>
     <div class="disp hero-f"><span class="pt"><i>m</i></span> = <span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span></div>
-    <p>It is the same operation with the roles swapped. The vector <span class="pt"><i>m</i></span> is perpendicular to both <span class="ln"><i>ℓ</i><sub>1</sub></span> and <span class="ln"><i>ℓ</i><sub>2</sub></span>, so <span class="ln"><i>ℓ</i><sub>1</sub></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0 and <span class="ln"><i>ℓ</i><sub>2</sub></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0: the point lies on both lines.</p>
-    <p>The result [<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup> almost never comes with <i>r</i> = 1, so dividing by <i>r</i> is a required step before reading the coordinates.</p>
+    <p>It is the same operation with the roles swapped. The vector <span class="pt"><i>m</i></span> is perpendicular to both <span class="ln"><i>ℓ</i><sub>1</sub></span> and <span class="ln"><i>ℓ</i><sub>2</sub></span>, so <span class="nowrap"><span class="ln"><i>ℓ</i><sub>1</sub></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0</span> and <span class="nowrap"><span class="ln"><i>ℓ</i><sub>2</sub></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0</span>: the point lies on both lines. In the picture of section 3, the planes of the two lines meet in a line through the origin, and that line is the point <span class="pt"><i>m</i></span>.</p>
+    <p>The result <span class="nowrap">[<i>p</i>&ensp;<i>q</i>&ensp;<i>r</i>]<sup class="t">T</sup></span> rarely ends in 1, so divide by <i>r</i> before reading it. The line <span class="nowrap">2<i>x</i> − 3<i>y</i> − 1 = 0</span> of section 4 and the line <span class="nowrap">2<i>x</i> + <i>y</i> − 13 = 0</span> give <span class="pt nowrap">[40&ensp;24&ensp;8]<sup class="t">T</sup></span>, and dividing by 8 gives the point (5, 3).</p>
+    <p>When the two lines are parallel, <i>r</i> comes out 0 and there is nothing to divide by. That is not a failure of the method: section 6 shows what the vector means.</p>
   </div>
 
   <div class="fig">
-    <svg id="fig-meet" role="group" aria-label="Plane with two adjustable lines and their intersection point"></svg>
+    <svg id="fig-meet" role="group" aria-label="Plane from 0 to 10 with two lines, each through two circles you can drag, and the point where they cross"></svg>
     <div class="ro" id="fig-meet-out" aria-live="polite"></div>
     <div class="fig-foot">
-      <p>Drag the endpoint circles to move each line. The lines are simplified before the cross product; any multiple would give the same point. Try making them parallel and watch <i>r</i>.</p>
+      <p>Drag the circles to move the lines. Each line is the cross product of its two circles, divided down to its simplest form; any multiple would give the same point. Try making the lines parallel.</p>
       <button type="button" class="btn" id="fig-meet-reset">Reset</button>
+    </div>
+  </div>
+</section>
+
+<section id="parallel">
+  <div class="prose">
+    <h2><span class="n">6</span>Parallel lines meet at infinity</h2>
+    <p>Two parallel lines can always be written with the same <i>a</i> and <i>b</i>, so they differ only in <i>c</i>: <span class="ln"><i>ℓ</i><sub>1</sub></span> = <span class="nowrap">[<i>a</i>&ensp;<i>b</i>&ensp;<i>c</i>]<sup class="t">T</sup></span> and <span class="ln"><i>ℓ</i><sub>2</sub></span> = <span class="nowrap">[<i>a</i>&ensp;<i>b</i>&ensp;<i>c</i>′]<sup class="t">T</sup></span>. Their cross product is</p>
+    <div class="disp"><span class="pt"><i>m</i></span> = <span class="nowrap"><span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span></span> <span class="nowrap">= (<i>c</i>′ − <i>c</i>)&thinsp;<span class="nowrap">[<i>b</i>&ensp;−<i>a</i>&ensp;0]<sup class="t">T</sup></span></span></div>
+    <p>Its third number is 0, so it cannot be divided into a point of the plane. Its first two numbers point along both lines: moving by (<i>b</i>, −<i>a</i>) leaves <i>ax</i> + <i>by</i> unchanged, since <span class="nowrap"><i>ab</i> − <i>ba</i> = 0</span>.</p>
+    <p>The picture in space shows what happened. The planes of the two lines still meet in a line through the origin, but for parallel lines that line lies flat on the floor <span class="nowrap"><i>r</i> = 0</span>, parallel to the plane <span class="nowrap"><i>r</i> = 1</span>, so it never reaches it. As one line turns toward parallel, the crossing runs off and the line of <span class="pt"><i>m</i></span> flattens; past parallel, the crossing comes back from the opposite side.</p>
+    <p>A vector <span class="nowrap">[<i>p</i>&ensp;<i>q</i>&ensp;0]<sup class="t">T</sup></span> is called an ideal point, or a point at infinity: the point where all the lines with direction (<i>p</i>, <i>q</i>) meet. With ideal points, any two different lines meet at exactly one point, even parallel ones.</p>
+
+    <h3>The line at infinity</h3>
+    <p>Every ideal point satisfies <span class="nowrap">0·<i>p</i> + 0·<i>q</i> + 1·0 = 0</span>, so all of them lie on one line, <span class="nowrap"><span class="ln"><i>ℓ</i><sub>∞</sub></span> = <span class="nowrap">[0&ensp;0&ensp;1]<sup class="t">T</sup></span></span>, the line at infinity. Its plane in space is the floor, <span class="nowrap"><i>r</i> = 0</span>.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-parallel" role="group" aria-label="Space with axes p, q and r and the plane r = 1. Two lines on the plane, each with its plane through the origin, and the red line where those planes meet. Use the arrow keys to turn the view."></svg>
+    <div class="ro" id="fig-parallel-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Drag the blue circle to turn <span class="ln"><i>ℓ</i><sub>2</sub></span> about the small dot, and drag the background to turn the view. Move the circle down one step at a time: the crossing runs off, the lines become parallel, and the crossing comes back from the other side. With a keyboard, select the figure or the circle with Tab and use the arrow keys.</p>
+      <button type="button" class="btn" id="fig-parallel-reset">Reset</button>
     </div>
   </div>
 </section>
 
 <section id="summary">
   <div class="prose">
-    <h2><span class="n">5</span>Summary</h2>
+    <h2><span class="n">7</span>Summary</h2>
     <p>The key ideas next to their NumPy equivalents.</p>
   </div>
   <div class="sum">
     <div class="sum-row">
       <div class="k">Point in homogeneous form</div>
-      <div class="f"><span class="pt"><i>m</i></span> = [<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup></div>
+      <div class="f"><span class="pt"><i>m</i></span> = <span class="nowrap">[<i>x</i>&ensp;<i>y</i>&ensp;1]<sup class="t">T</sup></span></div>
       <div class="c"><code>m = np.array([x, y, 1])</code></div>
     </div>
     <div class="sum-row">
@@ -144,9 +188,19 @@ scripts:
       <div class="c"><span class="none">No code: it is a property, not an operation.</span></div>
     </div>
     <div class="sum-row">
+      <div class="k">Line as a vector</div>
+      <div class="f"><span class="ln"><i>ℓ</i></span> = <span class="nowrap">[<i>a</i>&ensp;<i>b</i>&ensp;<i>c</i>]<sup class="t">T</sup></span> ⟷ <span class="nowrap"><i>ax</i> + <i>by</i> + <i>c</i> = 0</span></div>
+      <div class="c"><code>ell = np.array([a, b, c])</code></div>
+    </div>
+    <div class="sum-row">
       <div class="k">Point on a line</div>
       <div class="f"><span class="ln"><i>ℓ</i></span><sup class="t">T</sup><span class="pt"><i>m</i></span> = 0</div>
       <div class="c"><code>np.isclose(np.dot(ell, m), 0)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k"><i>y</i> for a given <i>x</i></div>
+      <div class="f"><i>y</i> = −(<i>ax</i> + <i>c</i>) / <i>b</i></div>
+      <div class="c"><code>y = -(a*x + c)/b</code></div>
     </div>
     <div class="sum-row">
       <div class="k">Line through two points</div>
@@ -156,12 +210,17 @@ scripts:
     <div class="sum-row">
       <div class="k">Intersection of two lines</div>
       <div class="f"><span class="pt"><i>m</i></span> = <span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span>, then divide by <i>r</i></div>
-      <div class="c"><code>mi = np.cross(ell_1, ell_2)</code></div>
+      <div class="c"><code>m = np.cross(ell_1, ell_2)</code></div>
     </div>
     <div class="sum-row">
-      <div class="k"><i>y</i> for a given <i>x</i></div>
-      <div class="f"><i>y</i> = −(<i>ax</i> + <i>c</i>) / <i>b</i></div>
-      <div class="c"><code>y = -(a*x + c)/b</code></div>
+      <div class="k">Parallel lines</div>
+      <div class="f"><i>r</i> = 0: the ideal point <span class="nowrap">(<i>c</i>′ − <i>c</i>)&thinsp;<span class="nowrap">[<i>b</i>&ensp;−<i>a</i>&ensp;0]<sup class="t">T</sup></span></span></div>
+      <div class="c"><code>np.isclose(m[2], 0)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Line at infinity</div>
+      <div class="f"><span class="ln"><i>ℓ</i><sub>∞</sub></span> = <span class="nowrap">[0&ensp;0&ensp;1]<sup class="t">T</sup></span></div>
+      <div class="c"><code>ell_inf = np.array([0, 0, 1])</code></div>
     </div>
   </div>
 </section>
