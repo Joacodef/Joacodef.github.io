@@ -34,8 +34,23 @@ export default function (eleventyConfig) {
       .sort((a, b) => (a.data.order ?? 0) - (b.data.order ?? 0))
   );
 
+  // The courses of a list of notes, in the order set by `courseOrder` in each course folder's JSON file.
+  const courseNames = (notes) => {
+    const order = new Map();
+    for (const n of notes) if (!order.has(n.data.course)) order.set(n.data.course, n.data.courseOrder ?? Infinity);
+    return [...order].sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0])).map(([course]) => course);
+  };
+  eleventyConfig.addFilter("courses", courseNames);
   // The notes of one course, in reading order.
   eleventyConfig.addFilter("byCourse", (notes, course) => notes.filter((n) => n.data.course === course));
+  // Up to `count` notes for the homepage: the first note of each course, then the second of each, and so on.
+  eleventyConfig.addFilter("firstNotes", (notes, count) => {
+    const courses = courseNames(notes).map((c) => notes.filter((n) => n.data.course === c));
+    const out = [];
+    for (let i = 0; out.length < count && courses.some((c) => i < c.length); i++)
+      for (const c of courses) if (i < c.length && out.length < count) out.push(c[i]);
+    return out;
+  });
   // Where the note at `url` sits in its course: its number, how many notes the course has, and the notes before and after it.
   eleventyConfig.addFilter("noteSequence", (notes, url) => {
     const note = notes.find((n) => n.url === url);

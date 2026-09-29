@@ -1,4 +1,4 @@
-import { createPlane, createSpace, makeHandle, makeDraggable, cross, dot, simplify, clipLine, fmt, isRounded, paren, T, sym, col, row, frac, equation, wholeNumberInput, mathLabel, markBox, placeClear, stepRange, clampTo, tr } from "../plane.js";
+import { createPlane, createSpace, makeHandle, makeDraggable, cross, dot, simplify, clipLine, fmt, isRounded, paren, T, sym, col, row, frac, equation, wholeNumberInput, mathLabel, markBox, placeClear, stepRange, clampTo, tr } from "../../plane.js";
 
 const ELL = "ℓ";
 const scaleVec = (v, t) => v.map((c) => c * t);

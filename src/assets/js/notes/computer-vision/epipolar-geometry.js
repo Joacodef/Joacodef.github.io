@@ -1,4 +1,4 @@
-import { createSpace, el, makeHandle, makeDraggable, apply, transpose, cross, dot, solve, lstsq, fmt, fmtSig, col, mat, modeButtons, wholeNumberInput, mathLabel, clipLine, pinv, fundamental, lineDistance, opticalCenter, pixelFrame, xrayCamera, XRAY, tr } from "../plane.js";
+import { createSpace, el, makeHandle, makeDraggable, apply, transpose, cross, dot, solve, lstsq, fmt, fmtSig, col, mat, modeButtons, wholeNumberInput, mathLabel, clipLine, pinv, fundamental, lineDistance, opticalCenter, pixelFrame, xrayCamera, XRAY, tr } from "../../plane.js";
 
 const add = (a, b) => a.map((x, i) => x + b[i]);
 const sub = (a, b) => a.map((x, i) => x - b[i]);

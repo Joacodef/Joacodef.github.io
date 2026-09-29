@@ -15,7 +15,8 @@ Custom domain `joaquindeferrari.com`: DNS lives on Cloudflare as DNS-only record
 - Tagline, "Currently" line, links, menu: `src/_data/site.json`
 - Publications: `src/_data/publications.json` (`"selected": true` puts one on the homepage)
 - Research lines: `src/_data/research.json`
-- Notes: `src/notes/<course>/`, and their Spanish versions in `src/es/notes/<course>/`. The note layout's text in each language: `src/_data/i18n.json`.
+- Notes: `src/notes/<course>/`, and their Spanish versions in `src/es/notes/<course>/`. Each course folder's JSON file sets the course's name, its `source` credit and its place on the notes page (`courseOrder`); its figure scripts are in `src/assets/js/notes/<course>/`. The note layout's text in each language: `src/_data/i18n.json`.
+- Rules for writing notes: `.claude/rules/notes.md` for every course, and `.claude/rules/notes-<course>.md` for each course's own sources and notation. Private course materials: `course-materials/` (gitignored; see its README).
 - Prefer editing these JSON files over templates when the change is about content.
 
 ## Content rules

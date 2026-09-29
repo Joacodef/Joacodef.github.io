@@ -15,10 +15,8 @@ permalink: /es/notes/
     {%- endif %}
   </header>
 
-  {%- set courses = [] %}
-  {%- for n in collections.notesEs %}{% if not (n.data.course in courses) %}{% set courses = (courses.push(n.data.course), courses) %}{% endif %}{% endfor %}
-
-  {%- for course in courses %}
+  {#- Courses in the order set by `courseOrder` in each course folder's JSON file. #}
+  {%- for course in collections.notesEs | courses %}
   <section class="section" aria-labelledby="c-{{ loop.index }}">
     <div class="section-head"><h2 id="c-{{ loop.index }}">{{ course }}</h2></div>
     {#- The notes of a course are read in order, so they are numbered. #}

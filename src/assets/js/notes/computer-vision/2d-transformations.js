@@ -1,4 +1,4 @@
-import { el, createPlane, makeHandle, makeDraggable, cross, simplify, fmt, fmtSig, sym, col, row, frac, mat, apply, homography, modeButtons, tr } from "../plane.js";
+import { el, createPlane, makeHandle, makeDraggable, cross, simplify, fmt, fmtSig, sym, col, row, frac, mat, apply, homography, modeButtons, tr } from "../../plane.js";
 
 const ELL = "ℓ";
 const rad = (deg) => (deg * Math.PI) / 180;

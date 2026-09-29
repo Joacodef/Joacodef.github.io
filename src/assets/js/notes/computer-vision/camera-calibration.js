@@ -1,4 +1,4 @@
-import { createSpace, el, makeHandle, makeDraggable, apply, solve, dot, transpose, fmt, fmtSig, mat, modeButtons, mathLabel, placeClear, projectionMatrix, opticalCenter, decomposeCamera, anglesOf, tr } from "../plane.js";
+import { createSpace, el, makeHandle, makeDraggable, apply, solve, dot, transpose, fmt, fmtSig, mat, modeButtons, mathLabel, placeClear, projectionMatrix, opticalCenter, decomposeCamera, anglesOf, tr } from "../../plane.js";
 
 const add = (a, b) => a.map((x, i) => x + b[i]);
 const times = (v, k) => v.map((x) => x * k);

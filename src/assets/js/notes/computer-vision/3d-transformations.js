@@ -1,4 +1,4 @@
-import { createSpace, makeHandle, makeDraggable, apply, matMul, transpose, dot, rotX, rotY, rotZ, rotation3d, fmt, T, sym, col, mat, frac, modeButtons, wholeNumberInput, mathLabel, markBox, placeClear, stepRange, clampTo, tr } from "../plane.js";
+import { createSpace, makeHandle, makeDraggable, apply, matMul, transpose, dot, rotX, rotY, rotZ, rotation3d, fmt, T, sym, col, mat, frac, modeButtons, wholeNumberInput, mathLabel, markBox, placeClear, stepRange, clampTo, tr } from "../../plane.js";
 
 const rad = (d) => (d * Math.PI) / 180;
 const add = (a, b) => a.map((x, i) => x + b[i]);

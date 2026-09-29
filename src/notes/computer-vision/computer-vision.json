@@ -1,5 +1,6 @@
 {
   "layout": "note.njk",
   "course": "Computer Vision",
+  "courseOrder": 1,
   "source": "Based on the Geometry module (CV02) of Prof. Domingo Mery's Computer Vision course at UC Chile. Course materials: <a href=\"https://github.com/domingomery/cv\">github.com/domingomery/cv</a>."
 }
