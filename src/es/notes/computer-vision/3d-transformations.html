@@ -168,36 +168,9 @@ scripts:
   </div>
 </section>
 
-<section id="example">
-  <div class="prose">
-    <h2><span class="n">8</span>Un ejemplo resuelto</h2>
-    <p>El ejemplo tiene dos partes: un punto que se lleva entre dos sistemas de coordenadas del espacio, y un punto que se proyecta sobre una imagen. Las longitudes están en centímetros.</p>
-    <ol class="steps">
-      <li><b>El planteamiento.</b> Una caja tiene su propio sistema de coordenadas, girado respecto de <i>X</i>, <i>Y</i>, <i>Z</i> primero en <span class="nowrap">ω<sub><i>Z</i></sub> = 0°</span>, luego en <span class="nowrap">ω<sub><i>Y</i></sub> = 10°</span> y luego en <span class="nowrap">ω<sub><i>X</i></sub> = 15°</span>, con su origen en <span class="nowrap"><i>t</i>′ = (1, 3, 2)</span>. Una esquina de la caja tiene coordenadas <span class="nowrap"><span class="pt"><i>M</i>′</span> = <span class="pt">[2&ensp;1&ensp;1&ensp;1]<sup class="t">T</sup></span></span> en el sistema de la caja. ¿Dónde está en <i>X</i>, <i>Y</i> y <i>Z</i>?</li>
-      <li><b>Los giros.</b> Con <span class="nowrap">cos 15° ≈ 0.9659</span>, <span class="nowrap">sin 15° ≈ 0.2588</span>, <span class="nowrap">cos 10° ≈ 0.9848</span> y <span class="nowrap">sin 10° ≈ 0.1736</span>, y <span class="nowrap"><i>R</i><sub><i>Z</i></sub> = <i>I</i></span> porque <span class="nowrap">ω<sub><i>Z</i></sub> = 0</span>:
-        <span class="f"><span class="nowrap"><i>R</i><sub><i>X</i></sub> ≈ <span class="mat"><span>1</span><span>0</span><span>0</span><span>0</span><span>0.9659</span><span>0.2588</span><span>0</span><span>−0.2588</span><span>0.9659</span></span>,</span>&ensp; <span class="nowrap"><i>R</i><sub><i>Y</i></sub> ≈ <span class="mat"><span>0.9848</span><span>0</span><span>−0.1736</span><span>0</span><span>1</span><span>0</span><span>0.1736</span><span>0</span><span>0.9848</span></span></span></span></li>
-      <li><b>Su producto.</b> Sus filas son los ejes de la caja, escritos en <i>X</i>, <i>Y</i> y <i>Z</i>:
-        <span class="f"><span class="nowrap"><i>R</i> = <i>R</i><sub><i>X</i></sub><i>R</i><sub><i>Y</i></sub></span> <span class="nowrap">≈ <span class="mat"><span>0.9848</span><span>0</span><span>−0.1736</span><span>0.0449</span><span>0.9659</span><span>0.2549</span><span>0.1677</span><span>−0.2588</span><span>0.9513</span></span></span></span></li>
-      <li><b>De vuelta a <i>X</i>, <i>Y</i> y <i>Z</i>.</b> Con <span class="nowrap"><i>R</i>′ = <i>R</i><sup class="t">T</sup></span>:
-        <span class="f"><span class="nowrap"><i>R</i>′<span class="col pt"><span>2</span><span>1</span><span>1</span></span> ≈ <span class="col"><span>2.1823</span><span>0.7071</span><span>0.8588</span></span>,</span>&ensp; <span class="nowrap"><span class="pt"><i>M</i></span> = <i>R</i>′<span class="pt"><i>M</i>′</span> + <i>t</i>′</span> <span class="nowrap">≈ <span class="col pt"><span>3.1823</span><span>3.7071</span><span>2.8588</span></span></span></span>
-        así que la esquina está en <span class="pt nowrap">(3.1823, 3.7071, 2.8588)</span>.</li>
-      <li><b>Comprobar la longitud.</b> Una rotación conserva las longitudes, así que <span class="pt"><i>M</i></span> está tan lejos de <i>t</i>′ como <span class="pt"><i>M</i>′</span> del origen de la caja:
-        <span class="f"><span class="nowrap">‖<span class="pt"><i>M</i></span> − <i>t</i>′‖</span> <span class="nowrap">≈ √(2.1823² + 0.7071² + 0.8588²)</span> <span class="nowrap">≈ 2.449,</span><br><span class="nowrap">‖<span class="pt"><i>M</i>′</span>‖ = √(2² + 1² + 1²)</span> <span class="nowrap">= √6 ≈ 2.449</span> <span class="ok">✓</span></span></li>
-      <li><b>Volver a ir hacia adelante.</b> El origen original, escrito en el sistema de la caja, es <span class="nowrap"><i>t</i> = −<i>Rt</i>′</span> <span class="nowrap">≈ (−0.6375, −3.4525, −1.2938)</span>, y <span class="nowrap"><span class="pt"><i>M</i>′</span> = <i>R</i><span class="pt"><i>M</i></span> + <i>t</i></span> devuelve (2, 1, 1).</li>
-      <li><b>Comprobar el orden.</b> Girar en el otro orden, primero en torno a <i>X</i>, luego <i>Y</i> y luego <i>Z</i>, de modo que <span class="nowrap"><i>R</i> = <i>R</i><sub><i>Z</i></sub><i>R</i><sub><i>Y</i></sub><i>R</i><sub><i>X</i></sub></span>, pondría la esquina en <span class="pt nowrap">(3.1433, 3.8009, 2.8746)</span>. Ni siquiera los giros pequeños conmutan.</li>
-      <li><b>Proyectar un punto.</b> Ahora una cámara con <span class="nowrap"><i>f</i> = 100</span> ve el punto <span class="nowrap"><span class="pt"><i>M</i></span> = (20, 30, 50)</span>, dado en las coordenadas de la cámara:
-        <span class="f"><span class="nowrap"><i>P</i><span class="pt"><i>M</i></span> = <span class="mat" style="--cols: 4"><span>100</span><span>0</span><span>0</span><span>0</span><span>0</span><span>100</span><span>0</span><span>0</span><span>0</span><span>0</span><span>1</span><span>0</span></span><span class="col pt"><span>20</span><span>30</span><span>50</span><span>1</span></span></span> <span class="nowrap">= <span class="col pt"><span>2000</span><span>3000</span><span>50</span></span></span></span></li>
-      <li><b>Dividir por λ.</b> Aquí <span class="nowrap">λ = <i>Z</i> = 50</span>:
-        <span class="f"><span class="nowrap"><span class="pt"><i>m</i></span> = (<span class="frac"><span>2000</span><span>50</span></span>, <span class="frac"><span>3000</span><span>50</span></span>)</span> <span class="nowrap">= <span class="pt">(40, 60)</span></span></span>
-        Comprobación con los triángulos semejantes: <span class="nowrap">50/100 = 20/40 = 30/60</span> <span class="ok">✓</span></li>
-      <li><b>La profundidad se pierde.</b> El punto (10, 15, 25), a mitad de camino hacia <i>C</i> sobre el mismo rayo, da <span class="nowrap"><i>P</i><span class="pt"><i>M</i></span> = <span class="pt">[1000&ensp;1500&ensp;25]<sup class="t">T</sup></span></span>, y al dividir por 25 se obtiene el mismo <span class="pt"><i>m</i></span> = <span class="pt">(40, 60)</span>.</li>
-    </ol>
-  </div>
-</section>
-
 <section id="summary">
   <div class="prose">
-    <h2><span class="n">9</span>Resumen</h2>
+    <h2><span class="n">8</span>Resumen</h2>
     <p>Las ideas clave junto a sus equivalentes en NumPy.</p>
   </div>
   <div class="sum">

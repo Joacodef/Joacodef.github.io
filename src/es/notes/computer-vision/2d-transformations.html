@@ -180,35 +180,9 @@ scripts:
   </div>
 </section>
 
-<section id="example">
-  <div class="prose">
-    <h2><span class="n">7</span>Un ejemplo resuelto</h2>
-    <p>Una foto muestra un panel rectangular en ángulo, y queremos una imagen de frente de 440 × 600, con un margen de 20 píxeles. El ejemplo usa todas las secciones: cuatro pares de puntos, el sistema <span class="nowrap"><i>Ah</i> = <i>b</i></span>, la homografía misma y una comprobación con productos cruz. Las coordenadas están en píxeles, con <i>y</i> apuntando hacia abajo.</p>
-    <ol class="steps">
-      <li><b>Los pares.</b> Cada esquina del resultado, <span class="pt"><i>m</i><sub><i>i</i></sub></span>, y el lugar de la foto donde aparece esa esquina del panel, <span class="pt"><i>m</i>′<sub><i>i</i></sub></span>:
-        <span class="f"><span class="nowrap"><span class="pt">(20, 20)</span> ↔ <span class="pt">(74, 120)</span>,</span>&ensp; <span class="nowrap"><span class="pt">(20, 620)</span> ↔ <span class="pt">(94, 500)</span>,</span> <span class="nowrap"><span class="pt">(460, 620)</span> ↔ <span class="pt">(385, 535)</span>,</span>&ensp; <span class="nowrap"><span class="pt">(460, 20)</span> ↔ <span class="pt">(350, 20)</span></span></span></li>
-      <li><b>Dos filas por par.</b> Para el primer par, <span class="nowrap"><i>x</i> = <i>y</i> = 20</span>, <span class="nowrap"><i>x</i>′ = 74</span> e <span class="nowrap"><i>y</i>′ = 120</span>, así que <span class="nowrap">−<i>xx</i>′ = −<i>yx</i>′ = −1480</span> y <span class="nowrap">−<i>xy</i>′ = −<i>yy</i>′ = −2400</span>:
-        <span class="f"><span class="nowrap">[20&nbsp;20&nbsp;1&nbsp;0&nbsp;0&nbsp;0&nbsp;−1480&nbsp;−1480]&thinsp;<i>h</i></span> <span class="nowrap">= 74</span><br><span class="nowrap">[0&nbsp;0&nbsp;0&nbsp;20&nbsp;20&nbsp;1&nbsp;−2400&nbsp;−2400]&thinsp;<i>h</i></span> <span class="nowrap">= 120</span></span>
-        Los otros tres pares agregan seis filas más.</li>
-      <li><b>Resolver.</b> Con <span class="nowrap"><i>h</i> = <i>A</i><sup class="t">−1</sup><i>b</i></span> y <span class="nowrap"><i>h</i><sub>33</sub> = 1</span>:
-        <span class="f"><span class="nowrap"><i>H</i> ≈</span> <span class="mat"><span>0.415</span><span>0.0298</span><span>64.2</span><span>−0.236</span><span>0.609</span><span>111</span><span>−5.85·10<sup class="t">−4</sup></span><span>−3.32·10<sup class="t">−5</sup></span><span>1</span></span></span></li>
-      <li><b>Comprobar una esquina.</b> La primera esquina va donde debe:
-        <span class="f"><span class="nowrap"><i>H</i><span class="col pt"><span>20</span><span>20</span><span>1</span></span></span> <span class="nowrap">≈ <span class="col pt"><span>73.08</span><span>118.52</span><span>0.9876</span></span></span> <span class="nowrap">→ (<span class="frac"><span>73.08</span><span>0.9876</span></span>, <span class="frac"><span>118.52</span><span>0.9876</span></span>)</span> <span class="nowrap">≈ <span class="pt">(74.00, 120.00)</span></span></span></li>
-      <li><b>Encontrar de dónde viene el centro.</b> El centro del resultado es (240, 320):
-        <span class="f"><span class="nowrap"><i>H</i><span class="col pt"><span>240</span><span>320</span><span>1</span></span></span> <span class="nowrap">≈ <span class="col pt"><span>173.25</span><span>249.22</span><span>0.8489</span></span></span> <span class="nowrap">→ <span class="pt">(204.09, 293.59)</span></span></span>
-        así que ese píxel del resultado muestra la foto en (204.09, 293.59).</li>
-      <li><b>Comprobar con rectas.</b> El centro de un rectángulo es donde se cruzan sus diagonales, y <i>H</i> conserva las rectas, así que la respuesta debe ser donde se cruzan las diagonales del panel en la foto. Con productos cruz, y cada recta simplificada:
-        <span class="f"><span class="nowrap"><span class="ln"><i>ℓ</i><sub>1</sub></span> = <span class="pt"><i>m</i>′<sub>1</sub></span> × <span class="pt"><i>m</i>′<sub>3</sub></span></span> <span class="nowrap">∼ <span class="ln">[415&ensp;−311&ensp;6610]<sup class="t">T</sup></span>,</span>&ensp; <span class="nowrap"><span class="ln"><i>ℓ</i><sub>2</sub></span> = <span class="pt"><i>m</i>′<sub>2</sub></span> × <span class="pt"><i>m</i>′<sub>4</sub></span></span> <span class="nowrap">∼ <span class="ln">[15&ensp;8&ensp;−5410]<sup class="t">T</sup></span></span></span>
-        <span class="f"><span class="nowrap"><span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span> = <span class="col pt"><span>1629630</span><span>2344300</span><span>7985</span></span></span> <span class="nowrap">→ (<span class="frac"><span>1629630</span><span>7985</span></span>, <span class="frac"><span>2344300</span><span>7985</span></span>)</span> <span class="nowrap">≈ <span class="pt">(204.09, 293.59)</span> <span class="ok">✓</span></span></span>
-        El mismo punto. No es el promedio de las cuatro esquinas en la foto, (225.75, 293.75): una transformación proyectiva conserva las rectas, pero no los puntos medios.</li>
-      <li><b>Construir la imagen.</b> Hacer el paso 5 para cada píxel del resultado, e interpolar ahí la foto como en la sección 5, da la imagen enderezada.</li>
-    </ol>
-  </div>
-</section>
-
 <section id="summary">
   <div class="prose">
-    <h2><span class="n">8</span>Resumen</h2>
+    <h2><span class="n">7</span>Resumen</h2>
     <p>Las ideas clave junto a sus equivalentes en NumPy y OpenCV.</p>
   </div>
   <div class="sum">

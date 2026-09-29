@@ -180,35 +180,9 @@ scripts:
   </div>
 </section>
 
-<section id="example">
-  <div class="prose">
-    <h2><span class="n">7</span>A worked example</h2>
-    <p>A photo shows a rectangular panel at an angle, and we want a straight 440 × 600 image of it, with a 20-pixel margin. The example uses every section: four point pairs, the system <span class="nowrap"><i>Ah</i> = <i>b</i></span>, the homography itself, and a check with cross products. Coordinates are in pixels, with <i>y</i> pointing down.</p>
-    <ol class="steps">
-      <li><b>The pairs.</b> Each corner of the output, <span class="pt"><i>m</i><sub><i>i</i></sub></span>, and the place in the photo where that corner of the panel appears, <span class="pt"><i>m</i>′<sub><i>i</i></sub></span>:
-        <span class="f"><span class="nowrap"><span class="pt">(20, 20)</span> ↔ <span class="pt">(74, 120)</span>,</span>&ensp; <span class="nowrap"><span class="pt">(20, 620)</span> ↔ <span class="pt">(94, 500)</span>,</span> <span class="nowrap"><span class="pt">(460, 620)</span> ↔ <span class="pt">(385, 535)</span>,</span>&ensp; <span class="nowrap"><span class="pt">(460, 20)</span> ↔ <span class="pt">(350, 20)</span></span></span></li>
-      <li><b>Two rows per pair.</b> For the first pair, <span class="nowrap"><i>x</i> = <i>y</i> = 20</span>, <span class="nowrap"><i>x</i>′ = 74</span> and <span class="nowrap"><i>y</i>′ = 120</span>, so <span class="nowrap">−<i>xx</i>′ = −<i>yx</i>′ = −1480</span> and <span class="nowrap">−<i>xy</i>′ = −<i>yy</i>′ = −2400</span>:
-        <span class="f"><span class="nowrap">[20&nbsp;20&nbsp;1&nbsp;0&nbsp;0&nbsp;0&nbsp;−1480&nbsp;−1480]&thinsp;<i>h</i></span> <span class="nowrap">= 74</span><br><span class="nowrap">[0&nbsp;0&nbsp;0&nbsp;20&nbsp;20&nbsp;1&nbsp;−2400&nbsp;−2400]&thinsp;<i>h</i></span> <span class="nowrap">= 120</span></span>
-        The other three pairs add six more rows.</li>
-      <li><b>Solve.</b> With <span class="nowrap"><i>h</i> = <i>A</i><sup class="t">−1</sup><i>b</i></span> and <span class="nowrap"><i>h</i><sub>33</sub> = 1</span>:
-        <span class="f"><span class="nowrap"><i>H</i> ≈</span> <span class="mat"><span>0.415</span><span>0.0298</span><span>64.2</span><span>−0.236</span><span>0.609</span><span>111</span><span>−5.85·10<sup class="t">−4</sup></span><span>−3.32·10<sup class="t">−5</sup></span><span>1</span></span></span></li>
-      <li><b>Check a corner.</b> The first corner goes where it should:
-        <span class="f"><span class="nowrap"><i>H</i><span class="col pt"><span>20</span><span>20</span><span>1</span></span></span> <span class="nowrap">≈ <span class="col pt"><span>73.08</span><span>118.52</span><span>0.9876</span></span></span> <span class="nowrap">→ (<span class="frac"><span>73.08</span><span>0.9876</span></span>, <span class="frac"><span>118.52</span><span>0.9876</span></span>)</span> <span class="nowrap">≈ <span class="pt">(74.00, 120.00)</span></span></span></li>
-      <li><b>Find where the center comes from.</b> The center of the output is (240, 320):
-        <span class="f"><span class="nowrap"><i>H</i><span class="col pt"><span>240</span><span>320</span><span>1</span></span></span> <span class="nowrap">≈ <span class="col pt"><span>173.25</span><span>249.22</span><span>0.8489</span></span></span> <span class="nowrap">→ <span class="pt">(204.09, 293.59)</span></span></span>
-        so that pixel of the output shows the photo at (204.09, 293.59).</li>
-      <li><b>Check with lines.</b> The center of a rectangle is where its diagonals cross, and <i>H</i> keeps lines, so the answer must be where the diagonals of the panel cross in the photo. With cross products, and each line simplified:
-        <span class="f"><span class="nowrap"><span class="ln"><i>ℓ</i><sub>1</sub></span> = <span class="pt"><i>m</i>′<sub>1</sub></span> × <span class="pt"><i>m</i>′<sub>3</sub></span></span> <span class="nowrap">∼ <span class="ln">[415&ensp;−311&ensp;6610]<sup class="t">T</sup></span>,</span>&ensp; <span class="nowrap"><span class="ln"><i>ℓ</i><sub>2</sub></span> = <span class="pt"><i>m</i>′<sub>2</sub></span> × <span class="pt"><i>m</i>′<sub>4</sub></span></span> <span class="nowrap">∼ <span class="ln">[15&ensp;8&ensp;−5410]<sup class="t">T</sup></span></span></span>
-        <span class="f"><span class="nowrap"><span class="ln"><i>ℓ</i><sub>1</sub></span> × <span class="ln"><i>ℓ</i><sub>2</sub></span> = <span class="col pt"><span>1629630</span><span>2344300</span><span>7985</span></span></span> <span class="nowrap">→ (<span class="frac"><span>1629630</span><span>7985</span></span>, <span class="frac"><span>2344300</span><span>7985</span></span>)</span> <span class="nowrap">≈ <span class="pt">(204.09, 293.59)</span> <span class="ok">✓</span></span></span>
-        The same point. It is not the average of the four corners in the photo, (225.75, 293.75): a projective transformation keeps lines, but not midpoints.</li>
-      <li><b>Build the image.</b> Doing step 5 for every pixel of the output, and interpolating the photo there as in section 5, gives the straightened image.</li>
-    </ol>
-  </div>
-</section>
-
 <section id="summary">
   <div class="prose">
-    <h2><span class="n">8</span>Summary</h2>
+    <h2><span class="n">7</span>Summary</h2>
     <p>The key ideas next to their NumPy and OpenCV equivalents.</p>
   </div>
   <div class="sum">

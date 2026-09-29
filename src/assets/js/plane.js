@@ -198,6 +198,19 @@ export function xrayCamera(k) {
   return matMul(XRAY_P0, [[c, -s, 0, 0], [s, c, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]);
 }
 
+/* ---------- Cameras on a circle ---------- */
+
+// A camera whose optical center stands on a horizontal circle of radius `radius` around the Z axis, `deg` degrees from
+// the X axis toward Y, and looks at the axis: A = K[R′ | t′], with K = [f 0 W/2; 0 f H/2; 0 0 1] for images of W × H
+// pixels. The rows of R′ are the camera's axes in the object's system: to the right, down (−Z) and toward the axis. The
+// third row of A is then a unit vector, so λ is a point's depth, and every such camera sees the plane of the circle,
+// Z = 0, as the row v = H/2.
+export function circleCamera(deg, { radius = 1000, f = 8000, W = 2000, H = 1600 } = {}) {
+  const t = (deg * Math.PI) / 180, c = Math.cos(t), s = Math.sin(t), C = [radius * c, radius * s, 0];
+  const Rp = [[-s, c, 0], [0, 0, -1], [-c, -s, 0]];
+  return matMul([[f, 0, W / 2], [0, f, H / 2], [0, 0, 1]], Rp.map((r) => [...r, -dot(r, C)]));
+}
+
 // Splits the camera A = k[K | 0]S′ = kK[R′ | t′] into the calibration matrix K = [α γ u0; 0 β v0; 0 0 1], the turn
 // R′ (its rows are the camera's axes X, Y and Z written in the object's system) and t′ (the object's origin seen from
 // the camera). The rows of R′ are perpendicular unit vectors and K is upper triangular, so they come off the rows of

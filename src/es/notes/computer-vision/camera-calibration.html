@@ -193,42 +193,9 @@ scripts:
   </div>
 </section>
 
-<section id="example">
-  <div class="prose">
-    <h2><span class="n">8</span>Un ejemplo resuelto</h2>
-    <p>La mesa de la sección 1, desde sus esquinas marcadas hasta su cámara. Los largos están en milímetros y las coordenadas de imagen en píxeles.</p>
-    <ol class="steps">
-      <li><b>Los datos.</b> Cada esquina <span class="pt"><i>M</i>′<sub><i>i</i></sub></span> y el píxel <span class="pt"><i>w</i><sub><i>i</i></sub></span> donde se marcó:
-        <span class="f"><span class="nowrap">0: <span class="pt">(800, 0, 0)</span></span> <span class="nowrap">→ <span class="pt">(268, 1178)</span></span><br><span class="nowrap">1: <span class="pt">(800, 0, 900)</span></span> <span class="nowrap">→ <span class="pt">(166, 294)</span></span><br><span class="nowrap">2: <span class="pt">(0, 0, 900)</span></span> <span class="nowrap">→ <span class="pt">(412, 328)</span></span><br><span class="nowrap">3: <span class="pt">(0, 0, 0)</span></span> <span class="nowrap">→ <span class="pt">(470, 940)</span></span><br><span class="nowrap">4: <span class="pt">(800, 1250, 0)</span></span> <span class="nowrap">→ <span class="pt">(1654, 1118)</span></span><br><span class="nowrap">5: <span class="pt">(800, 1250, 900)</span></span> <span class="nowrap">→ <span class="pt">(1704, 246)</span></span><br><span class="nowrap">6: <span class="pt">(0, 1250, 900)</span></span> <span class="nowrap">→ <span class="pt">(1426, 304)</span></span><br><span class="nowrap">7: <span class="pt">(0, 1250, 0)</span></span> <span class="nowrap">→ <span class="pt">(1420, 900)</span></span></span></li>
-      <li><b>Dos filas por esquina.</b> Para la esquina 1, <span class="nowrap"><i>X</i>′ = 800</span>, <span class="nowrap"><i>Y</i>′ = 0</span>, <span class="nowrap"><i>Z</i>′ = 900</span>, <span class="nowrap"><i>u</i> = 166</span> y <span class="nowrap"><i>v</i> = 294</span>, así que <span class="nowrap">−<i>uX</i>′ = −132800</span>, <span class="nowrap">−<i>uZ</i>′ = −149400</span>, <span class="nowrap">−<i>vX</i>′ = −235200</span> y <span class="nowrap">−<i>vZ</i>′ = −264600</span>. Omitiendo los términos con <span class="nowrap"><i>Y</i>′ = 0</span>:
-        <span class="f"><span class="nowrap">800<i>a</i><sub>11</sub> + 900<i>a</i><sub>13</sub> + <i>a</i><sub>14</sub></span> <span class="nowrap">− 132800<i>a</i><sub>31</sub> − 149400<i>a</i><sub>33</sub></span> <span class="nowrap">= 166</span><br><span class="nowrap">800<i>a</i><sub>21</sub> + 900<i>a</i><sub>23</sub> + <i>a</i><sub>24</sub></span> <span class="nowrap">− 235200<i>a</i><sub>31</sub> − 264600<i>a</i><sub>33</sub></span> <span class="nowrap">= 294</span></span>
-        Las otras siete esquinas agregan catorce filas más: 16 ecuaciones para 11 incógnitas.</li>
-      <li><b>Resolver por mínimos cuadrados.</b> Con <span class="nowrap"><i>a</i><sub>34</sub> = 1</span>:
-        <span class="f fit"><span class="nowrap"><i>A</i> ≈</span> <span class="mat" style="--cols: 4"><span>−0.3538</span><span>0.7804</span><span>−0.09307</span><span>468.29</span><span>−0.1647</span><span>−0.01722</span><span>−0.6978</span><span>937.66</span><span>−3.967·10<sup class="t">−4</sup></span><span>1.457·10<sup class="t">−5</sup></span><span>−7.448·10<sup class="t">−5</sup></span><span>1</span></span></span></li>
-      <li><b>Reproyectar una esquina.</b> La esquina 1 cae a 5.13 píxeles de donde se marcó:
-        <span class="f"><span class="nowrap"><i>A</i><span class="col pt"><span>800</span><span>0</span><span>900</span><span>1</span></span></span> <span class="nowrap">≈ <span class="col pt"><span>101.46</span><span>177.91</span><span>0.6156</span></span></span> <span class="nowrap">→ (<span class="frac"><span>101.46</span><span>0.6156</span></span>, <span class="frac"><span>177.91</span><span>0.6156</span></span>)</span> <span class="nowrap">≈ <span class="pt">(164.82, 289.01)</span></span></span></li>
-      <li><b>El error promedio.</b> Las ocho esquinas caen a 4.23, 5.13, 3.91, 2.90, 2.46, 4.89, 3.98 y 2.06 píxeles de sus clics, así que
-        <span class="f"><span class="nowrap"><i>J</i> ≈ 29.56 / 8</span> <span class="nowrap">≈ 3.69 píxeles</span></span>
-        Cada λ<sub><i>i</i></sub> es positivo, de 0.62 a 1.02, así que cada esquina está delante de la cámara.</li>
-      <li><b>Dónde estaba la cámara.</b> Con <i>B</i> y <i>b</i> tomados de <i>A</i>:
-        <span class="f"><span class="nowrap"><i>C</i> = −<i>B</i><sup class="t">−1</sup><i>b</i></span> <span class="nowrap">≈ (2398.66, 578.54, 763.40)</span></span>
-        Es decir, 2.4 m delante de las patas traseras y 1.6 m delante de las delanteras, a 579 mm a lo largo de la mesa, cerca de la mitad de sus 1250 mm, y 76 cm sobre el suelo.</li>
-      <li><b>Los parámetros intrínsecos.</b> Con <span class="nowrap"><i>k</i> = ‖<i>m</i><sub>3</sub>‖ ≈ 4.039·10<sup class="t">−4</sup></span>, positivo porque <span class="nowrap"><i>a</i><sub>34</sub> = 1</span> es la profundidad del origen de la mesa por <i>k</i>:
-        <span class="f"><span class="nowrap">α ≈ 1899.31,</span>&ensp; <span class="nowrap">β ≈ 1624.13,</span>&ensp; <span class="nowrap">γ ≈ −15.40,</span>&ensp; <span class="nowrap"><i>u</i><sub>0</sub> ≈ 972.63,</span>&ensp; <span class="nowrap"><i>v</i><sub>0</sub> ≈ 717.51</span></span>
-        El punto principal está 52 píxeles a la derecha del centro de la imagen, (921, 704), y 14 más abajo, y el torcimiento es pequeño, como se espera. Pero β es un 15% menor que α, aproximadamente, más de lo que explicarían los píxeles de una cámara. Ocho esquinas, cada una marcada con unos pocos píxeles de error, determinan los cinco parámetros intrínsecos solo de forma aproximada. Más puntos, repartidos por toda la imagen, y varias vistas lo hacen mejor.</li>
-      <li><b>Los parámetros extrínsecos.</b> El origen de la mesa, visto desde la cámara, y los ángulos a partir de <span class="nowrap"><i>R</i> = <i>R</i>′<sup class="t">T</sup></span>:
-        <span class="f"><span class="nowrap"><i>t</i>′ ≈ (−654.7, 335.6, 2475.8),</span>&ensp; <span class="nowrap">ω ≈ (168.93°, 79.17°, 76.70°)</span></span>
-        La base de la pata trasera izquierda está 65 cm a la izquierda, 34 cm más abajo y 2.48 m adelante. Como comprobación, el origen original en el sistema nuevo, <span class="nowrap"><i>t</i> = −<i>Rt</i>′</span>, es de nuevo <i>C</i>.</li>
-      <li><b>El refinamiento no lineal.</b> Partiendo de estos once números, minimizar <i>J</i> lo baja de 3.69 a 2.69 píxeles, en
-        <span class="f"><span class="nowrap">α ≈ 1915.3,</span>&ensp; <span class="nowrap">β ≈ 1628.1,</span>&ensp; <span class="nowrap">γ ≈ −30.6,</span>&ensp; <span class="nowrap"><i>u</i><sub>0</sub> ≈ 961.5,</span>&ensp; <span class="nowrap"><i>v</i><sub>0</sub> ≈ 727.5,</span><br><span class="nowrap">ω ≈ (172.07°, 79.00°, 79.69°),</span>&ensp; <span class="nowrap"><i>t</i>′ ≈ (−638.9, 323.0, 2495.1)</span></span>
-        Las esquinas 0, 1, 4, 5 y 7 caen ahora exactamente sobre sus clics, y las esquinas 2, 3 y 6 quedan a 7.59, 3.36 y 10.55 píxeles. β es positivo y cada λ<sub><i>i</i></sub> es positivo, así que esta es la cámara, no su imagen especular.</li>
-    </ol>
-  </div>
-</section>
-
 <section id="summary">
   <div class="prose">
-    <h2><span class="n">9</span>Resumen</h2>
+    <h2><span class="n">8</span>Resumen</h2>
     <p>Las ideas clave junto a sus equivalentes en NumPy. En código, los puntos 3D son las columnas de <code>M</code>, sus píxeles las columnas de <code>w</code>, y <i>A</i> es <code>P</code>.</p>
   </div>
   <div class="sum">

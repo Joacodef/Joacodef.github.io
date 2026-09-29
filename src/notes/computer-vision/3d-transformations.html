@@ -168,36 +168,9 @@ scripts:
   </div>
 </section>
 
-<section id="example">
-  <div class="prose">
-    <h2><span class="n">8</span>A worked example</h2>
-    <p>The example has two parts: a point moved between two coordinate systems of space, and a point projected onto an image. Lengths are in centimeters.</p>
-    <ol class="steps">
-      <li><b>The setup.</b> A box has its own coordinate system, turned from <i>X</i>, <i>Y</i>, <i>Z</i> first by <span class="nowrap">ω<sub><i>Z</i></sub> = 0°</span>, then by <span class="nowrap">ω<sub><i>Y</i></sub> = 10°</span> and then by <span class="nowrap">ω<sub><i>X</i></sub> = 15°</span>, with its origin at <span class="nowrap"><i>t</i>′ = (1, 3, 2)</span>. A corner of the box has coordinates <span class="nowrap"><span class="pt"><i>M</i>′</span> = <span class="pt">[2&ensp;1&ensp;1&ensp;1]<sup class="t">T</sup></span></span> in the box's system. Where is it in <i>X</i>, <i>Y</i> and <i>Z</i>?</li>
-      <li><b>The turns.</b> With <span class="nowrap">cos 15° ≈ 0.9659</span>, <span class="nowrap">sin 15° ≈ 0.2588</span>, <span class="nowrap">cos 10° ≈ 0.9848</span> and <span class="nowrap">sin 10° ≈ 0.1736</span>, and <span class="nowrap"><i>R</i><sub><i>Z</i></sub> = <i>I</i></span> because <span class="nowrap">ω<sub><i>Z</i></sub> = 0</span>:
-        <span class="f"><span class="nowrap"><i>R</i><sub><i>X</i></sub> ≈ <span class="mat"><span>1</span><span>0</span><span>0</span><span>0</span><span>0.9659</span><span>0.2588</span><span>0</span><span>−0.2588</span><span>0.9659</span></span>,</span>&ensp; <span class="nowrap"><i>R</i><sub><i>Y</i></sub> ≈ <span class="mat"><span>0.9848</span><span>0</span><span>−0.1736</span><span>0</span><span>1</span><span>0</span><span>0.1736</span><span>0</span><span>0.9848</span></span></span></span></li>
-      <li><b>Their product.</b> Its rows are the box's axes, written in <i>X</i>, <i>Y</i> and <i>Z</i>:
-        <span class="f"><span class="nowrap"><i>R</i> = <i>R</i><sub><i>X</i></sub><i>R</i><sub><i>Y</i></sub></span> <span class="nowrap">≈ <span class="mat"><span>0.9848</span><span>0</span><span>−0.1736</span><span>0.0449</span><span>0.9659</span><span>0.2549</span><span>0.1677</span><span>−0.2588</span><span>0.9513</span></span></span></span></li>
-      <li><b>Back to <i>X</i>, <i>Y</i> and <i>Z</i>.</b> With <span class="nowrap"><i>R</i>′ = <i>R</i><sup class="t">T</sup></span>:
-        <span class="f"><span class="nowrap"><i>R</i>′<span class="col pt"><span>2</span><span>1</span><span>1</span></span> ≈ <span class="col"><span>2.1823</span><span>0.7071</span><span>0.8588</span></span>,</span>&ensp; <span class="nowrap"><span class="pt"><i>M</i></span> = <i>R</i>′<span class="pt"><i>M</i>′</span> + <i>t</i>′</span> <span class="nowrap">≈ <span class="col pt"><span>3.1823</span><span>3.7071</span><span>2.8588</span></span></span></span>
-        so the corner is at <span class="pt nowrap">(3.1823, 3.7071, 2.8588)</span>.</li>
-      <li><b>Check the length.</b> A rotation keeps lengths, so <span class="pt"><i>M</i></span> is as far from <i>t</i>′ as <span class="pt"><i>M</i>′</span> is from the box's origin:
-        <span class="f"><span class="nowrap">‖<span class="pt"><i>M</i></span> − <i>t</i>′‖</span> <span class="nowrap">≈ √(2.1823² + 0.7071² + 0.8588²)</span> <span class="nowrap">≈ 2.449,</span><br><span class="nowrap">‖<span class="pt"><i>M</i>′</span>‖ = √(2² + 1² + 1²)</span> <span class="nowrap">= √6 ≈ 2.449</span> <span class="ok">✓</span></span></li>
-      <li><b>Go forward again.</b> The old origin, written in the box's system, is <span class="nowrap"><i>t</i> = −<i>Rt</i>′</span> <span class="nowrap">≈ (−0.6375, −3.4525, −1.2938)</span>, and <span class="nowrap"><span class="pt"><i>M</i>′</span> = <i>R</i><span class="pt"><i>M</i></span> + <i>t</i></span> gives back (2, 1, 1).</li>
-      <li><b>Check the order.</b> Turning in the other order, first about <i>X</i>, then <i>Y</i>, then <i>Z</i>, so that <span class="nowrap"><i>R</i> = <i>R</i><sub><i>Z</i></sub><i>R</i><sub><i>Y</i></sub><i>R</i><sub><i>X</i></sub></span>, would put the corner at <span class="pt nowrap">(3.1433, 3.8009, 2.8746)</span>. Even small turns do not commute.</li>
-      <li><b>Project a point.</b> Now a camera with <span class="nowrap"><i>f</i> = 100</span> sees the point <span class="nowrap"><span class="pt"><i>M</i></span> = (20, 30, 50)</span>, given in the camera's coordinates:
-        <span class="f"><span class="nowrap"><i>P</i><span class="pt"><i>M</i></span> = <span class="mat" style="--cols: 4"><span>100</span><span>0</span><span>0</span><span>0</span><span>0</span><span>100</span><span>0</span><span>0</span><span>0</span><span>0</span><span>1</span><span>0</span></span><span class="col pt"><span>20</span><span>30</span><span>50</span><span>1</span></span></span> <span class="nowrap">= <span class="col pt"><span>2000</span><span>3000</span><span>50</span></span></span></span></li>
-      <li><b>Divide by λ.</b> Here <span class="nowrap">λ = <i>Z</i> = 50</span>:
-        <span class="f"><span class="nowrap"><span class="pt"><i>m</i></span> = (<span class="frac"><span>2000</span><span>50</span></span>, <span class="frac"><span>3000</span><span>50</span></span>)</span> <span class="nowrap">= <span class="pt">(40, 60)</span></span></span>
-        Check with the similar triangles: <span class="nowrap">50/100 = 20/40 = 30/60</span> <span class="ok">✓</span></li>
-      <li><b>Depth is lost.</b> The point (10, 15, 25), halfway to <i>C</i> along the same ray, gives <span class="nowrap"><i>P</i><span class="pt"><i>M</i></span> = <span class="pt">[1000&ensp;1500&ensp;25]<sup class="t">T</sup></span></span>, and dividing by 25 gives the same <span class="pt"><i>m</i></span> = <span class="pt">(40, 60)</span>.</li>
-    </ol>
-  </div>
-</section>
-
 <section id="summary">
   <div class="prose">
-    <h2><span class="n">9</span>Summary</h2>
+    <h2><span class="n">8</span>Summary</h2>
     <p>The key ideas next to their NumPy equivalents.</p>
   </div>
   <div class="sum">

@@ -25,6 +25,7 @@ Custom domain `joaquindeferrari.com`: DNS lives on Cloudflare as DNS-only record
 - Never publish Joaquín's phone number. Public contact is the institutional email, GitHub, ORCID and LinkedIn.
 - Publication and research facts must match his CV exactly. Never invent venues, metrics, rankings or claims. Mark equal contribution with `*` and keep every DOI.
 - Positioning: the tagline describes a broad identity (machine learning for medical imaging and clinical language, learning from imperfect supervision). The specific current project belongs only in the "Currently" line.
+- Study notes are written for a reader who never took the course. The course materials set a note's subject and keep its theory and formula notation close to the class, so the notes also serve for studying it. Everything else (the names of things, numbers, examples, the data behind figures) is chosen to make the concepts clear, never copied from the class. See `.claude/rules/notes.md`.
 - Notes keep the AI-assistance and "may contain errors" notice from `src/_includes/note.njk`.
 - Credit course sources through the `source` field of each course folder's JSON file.
 

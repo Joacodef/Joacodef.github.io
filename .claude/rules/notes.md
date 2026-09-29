@@ -11,6 +11,12 @@ paths:
 
 These rules hold for the notes of every course. Each course also has a rules file of its own, `notes-<course>.md` in this folder, with its sources, notation and terms (for now, `notes-computer-vision.md`).
 
+## Who the notes are for
+
+- A reader who never took the course, and Joaquín studying for it. Every page must make sense to someone who has only the page: never assume the reader knows the course's names, data or numbering, such as the frame numbers of a data set ("image 40") or the variable names of a lab.
+- The course materials set what a note covers, keep its theory faithful to the class, and give its formula notation, which stays as in class (λm = PM, m for points, ℓ for lines) so the notes also serve for studying.
+- Everything else is the note's own, chosen to make the concepts clear: the names of things, the numbers, the examples and the data behind the figures. The course's examples can suggest what to show, but they are not reproduced.
+
 ## Adding a note
 
 - Put it in a course folder, e.g. `src/notes/computer-vision/2d-transformations.html`.
@@ -23,7 +29,7 @@ These rules hold for the notes of every course. Each course also has a rules fil
 
 - A folder in `src/notes/` with `<folder-name>.json` setting `layout: "note.njk"`, `course` (its name), `courseOrder` (its place on the notes index and on the homepage, 1 first) and a `source` credit, and its Spanish twin in `src/es/notes/` with the Spanish name and credit and the same `courseOrder`.
 - A folder for its figure scripts, `src/assets/js/notes/<course>/`.
-- A rules file, `.claude/rules/notes-<course>.md`, scoped with `paths` to the course's note and script folders, for what holds only for that course: its sources and which one wins when they disagree, its notation and variable names, its Spanish terms, and its example data.
+- A rules file, `.claude/rules/notes-<course>.md`, scoped with `paths` to the course's note and script folders, for what holds only for that course: its sources and which one wins on the theory when they disagree, its formula notation, its Spanish terms, and any data its figures may use.
 - Its materials in `course-materials/<course>/`, set up as `course-materials/README.md` describes.
 
 ## Spanish version
@@ -39,8 +45,8 @@ These rules hold for the notes of every course. Each course also has a rules fil
 
 - Opening formulas in `.duo`, then numbered `<section>`s whose `<h2>` starts with `<span class="n">N</span>`. The opening formulas must fit a 320px-wide screen.
 - Interactive figures sit in `.fig` right after the section that introduces the idea.
-- End with a worked example and a `.sum` summary that pairs each formula with its NumPy equivalent.
-- Build the worked example from the course lab's numbers, but present it as the note's own. The page never mentions "the lab", slides or any other course material a visitor cannot see; the course is credited only through the `source` field. Buttons that restore a figure to its first state are labeled "Reset" ("Reiniciar" in Spanish).
+- End with a `.sum` summary that pairs each formula with its NumPy equivalent. Notes have no "A worked example" section: concrete numbers go in the sections and figures where they explain an idea.
+- Design the examples, and the data of the figures, to make the concepts clear, with the note's own numbers (see "Who the notes are for"). Name what the example uses by what it is, such as a view by where its camera stands, never by its number in a course's data set. The page never mentions "the lab", slides or any other course material a visitor cannot see; the course is credited only through the `source` field. Buttons that restore a figure to its first state are labeled "Reset" ("Reiniciar" in Spanish).
 
 ## Math markup
 
@@ -48,7 +54,7 @@ These rules hold for the notes of every course. Each course also has a rules fil
 - Write an estimate's hat with `.hat` around the letter (`<span class="hat"><i>M</i></span>`, and `class="hat lo"` for a lowercase letter), not with a combining circumflex, which the serif font sets beside the letter. In SVG labels, draw the hat as a text of its own over the letter, as the multiple views figure does. Combining tildes (`&#771;`) render correctly.
 - A heading that contains math wraps its text in a `<span>` after the number (`<h2><span class="n">4</span><span>Estimating <i>H</i> …</span></h2>`): the `h2` is a flex row, and loose text and `<i>` would become separate items with gaps between them.
 - Variables in `<i>`, subscripts in `<sub>`, and the real minus sign `−` (U+2212) in numbers.
-- Follow the course's notation, as its rules file describes. In code snippets, use the variable names from the course's labs.
+- Use the course's formula notation, as its rules file describes. In code snippets, name variables after the formulas' symbols (`m1` for m₁, `mat_a` for A), so code and math read alike.
 - Wrap each side of a long equation in a `.nowrap` span, putting the `=` at the start of the right-hand side (`<span class="nowrap">= …</span>`). On narrow screens the line then breaks before an equals sign, never after it. Do the same in figure readouts.
 
 ## Interactive figures
@@ -71,5 +77,5 @@ These rules hold for the notes of every course. Each course also has a rules fil
 ## Course materials
 
 - Local, gitignored course materials live in `course-materials/<course>/`, with a README for the course and one subfolder per chapter holding its slides and labs (see `course-materials/README.md`).
-- Before writing or editing a note, read `course-materials/<course>/README.md` and the lab files it references, and follow the course's notation and variable names.
+- Before writing or editing a note, read `course-materials/<course>/README.md` and the materials it lists for the note's subject: they set what the note covers, its theory and its formula notation. The labs show what the class computes, not what the page must reproduce.
 - Never copy slides, lab code or assignment text into `src/`. Summarize concepts in your own words and credit the source.

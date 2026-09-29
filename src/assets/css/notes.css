@@ -156,7 +156,7 @@ sup.t { font-style: normal; font-size: 0.62em; margin-left: 0.06em; line-height:
 .cam-axis { stroke: var(--ink-2); stroke-width: 1.4; }
 .corner-lab { fill: var(--ink-2); font-family: var(--sans); font-size: 14px; }
 /* A readout matrix with four wide columns gets a smaller type on phones, so it fits without scrolling. */
-@media (max-width: 560px) { .corner-lab { font-size: 18px; } .ro .eq.fit, .steps .f.fit { font-size: 0.82rem; } }
+@media (max-width: 560px) { .corner-lab { font-size: 18px; } .ro .eq.fit { font-size: 0.82rem; } }
 /* A 3D view turns when its background is dragged. On touch screens only sideways drags turn it, so the page still scrolls. */
 .turnable { cursor: grab; touch-action: pan-y; }
 .turnable.turning { cursor: grabbing; }
@@ -174,6 +174,17 @@ sup.t { font-style: normal; font-size: 0.62em; margin-left: 0.06em; line-height:
 .edge.dash { stroke-dasharray: 6 5; stroke-linecap: butt; }
 .pt-ring.thin { stroke-width: 1.6; }
 .px-pick.thin { stroke-width: 1.2; }
+/* Multiple views: X-ray images of the bar. Air is --img-hi, and each cell of the bar is
+   --img-lo, more opaque the longer the ray through it. Marks on these images get an outline in the card color, which
+   keeps the carmine visible on the bright images of the dark theme. */
+.air { fill: var(--img-hi); }
+.xray { fill: var(--img-lo); }
+.halo { fill: none; stroke: var(--card); }
+.pt-lab.on-img { stroke: var(--card); stroke-width: 1.6; stroke-linejoin: round; paint-order: stroke; }
+/* A click in an image left out of the fit is hollow: it shows the image's air, not the card. The focus ring of a
+   handle on an image is drawn in --img-lo, which stands out from the air in both themes. */
+.handle.out .pt-dot.on-img { fill: var(--img-hi); }
+.handle.on-img .ring { stroke: var(--img-lo); }
 
 .handle { outline: none; touch-action: none; cursor: grab; }
 .handle .hit { fill: transparent; }
@@ -182,12 +193,11 @@ sup.t { font-style: normal; font-size: 0.62em; margin-left: 0.06em; line-height:
 .handle.drag { cursor: grabbing; }
 .grip { fill: var(--card); stroke: var(--blue); stroke-width: 2.4; }
 
-/* Worked example */
+/* Numbered steps, such as the stages of stitching a mosaic */
 ol.steps { list-style: none; counter-reset: s; padding: 0; margin: 1.6rem 0; }
 ol.steps li { counter-increment: s; position: relative; padding: 0 0 1.3rem 2.4rem; }
 ol.steps li::before { content: counter(s); position: absolute; left: 0; top: 0; color: var(--ink-3); font-family: var(--serif); font-size: 1.25rem; line-height: 1.5; }
 ol.steps b { font-weight: 600; }
-.steps .f { display: block; margin-top: 0.25rem; font-family: var(--serif); font-size: 1.12rem; overflow-x: auto; line-height: 2; }
 
 /* Summary */
 .sum { max-width: 860px; margin: 2rem auto 1rem; background: var(--paper-2); border-radius: 18px; padding: clamp(16px, 3.2vw, 30px) clamp(16px, 3.6vw, 34px); }

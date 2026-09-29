@@ -193,42 +193,9 @@ scripts:
   </div>
 </section>
 
-<section id="example">
-  <div class="prose">
-    <h2><span class="n">8</span>A worked example</h2>
-    <p>The table of section 1, from its clicked corners to its camera. Lengths are in millimeters and image coordinates in pixels.</p>
-    <ol class="steps">
-      <li><b>The data.</b> Each corner <span class="pt"><i>M</i>′<sub><i>i</i></sub></span> and the pixel <span class="pt"><i>w</i><sub><i>i</i></sub></span> where it was clicked:
-        <span class="f"><span class="nowrap">0: <span class="pt">(800, 0, 0)</span></span> <span class="nowrap">→ <span class="pt">(268, 1178)</span></span><br><span class="nowrap">1: <span class="pt">(800, 0, 900)</span></span> <span class="nowrap">→ <span class="pt">(166, 294)</span></span><br><span class="nowrap">2: <span class="pt">(0, 0, 900)</span></span> <span class="nowrap">→ <span class="pt">(412, 328)</span></span><br><span class="nowrap">3: <span class="pt">(0, 0, 0)</span></span> <span class="nowrap">→ <span class="pt">(470, 940)</span></span><br><span class="nowrap">4: <span class="pt">(800, 1250, 0)</span></span> <span class="nowrap">→ <span class="pt">(1654, 1118)</span></span><br><span class="nowrap">5: <span class="pt">(800, 1250, 900)</span></span> <span class="nowrap">→ <span class="pt">(1704, 246)</span></span><br><span class="nowrap">6: <span class="pt">(0, 1250, 900)</span></span> <span class="nowrap">→ <span class="pt">(1426, 304)</span></span><br><span class="nowrap">7: <span class="pt">(0, 1250, 0)</span></span> <span class="nowrap">→ <span class="pt">(1420, 900)</span></span></span></li>
-      <li><b>Two rows per corner.</b> For corner 1, <span class="nowrap"><i>X</i>′ = 800</span>, <span class="nowrap"><i>Y</i>′ = 0</span>, <span class="nowrap"><i>Z</i>′ = 900</span>, <span class="nowrap"><i>u</i> = 166</span> and <span class="nowrap"><i>v</i> = 294</span>, so <span class="nowrap">−<i>uX</i>′ = −132800</span>, <span class="nowrap">−<i>uZ</i>′ = −149400</span>, <span class="nowrap">−<i>vX</i>′ = −235200</span> and <span class="nowrap">−<i>vZ</i>′ = −264600</span>. Leaving out the terms with <span class="nowrap"><i>Y</i>′ = 0</span>:
-        <span class="f"><span class="nowrap">800<i>a</i><sub>11</sub> + 900<i>a</i><sub>13</sub> + <i>a</i><sub>14</sub></span> <span class="nowrap">− 132800<i>a</i><sub>31</sub> − 149400<i>a</i><sub>33</sub></span> <span class="nowrap">= 166</span><br><span class="nowrap">800<i>a</i><sub>21</sub> + 900<i>a</i><sub>23</sub> + <i>a</i><sub>24</sub></span> <span class="nowrap">− 235200<i>a</i><sub>31</sub> − 264600<i>a</i><sub>33</sub></span> <span class="nowrap">= 294</span></span>
-        The other seven corners add fourteen more rows: 16 equations for 11 unknowns.</li>
-      <li><b>Solve by least squares.</b> With <span class="nowrap"><i>a</i><sub>34</sub> = 1</span>:
-        <span class="f fit"><span class="nowrap"><i>A</i> ≈</span> <span class="mat" style="--cols: 4"><span>−0.3538</span><span>0.7804</span><span>−0.09307</span><span>468.29</span><span>−0.1647</span><span>−0.01722</span><span>−0.6978</span><span>937.66</span><span>−3.967·10<sup class="t">−4</sup></span><span>1.457·10<sup class="t">−5</sup></span><span>−7.448·10<sup class="t">−5</sup></span><span>1</span></span></span></li>
-      <li><b>Reproject a corner.</b> Corner 1 lands 5.13 pixels from where it was clicked:
-        <span class="f"><span class="nowrap"><i>A</i><span class="col pt"><span>800</span><span>0</span><span>900</span><span>1</span></span></span> <span class="nowrap">≈ <span class="col pt"><span>101.46</span><span>177.91</span><span>0.6156</span></span></span> <span class="nowrap">→ (<span class="frac"><span>101.46</span><span>0.6156</span></span>, <span class="frac"><span>177.91</span><span>0.6156</span></span>)</span> <span class="nowrap">≈ <span class="pt">(164.82, 289.01)</span></span></span></li>
-      <li><b>The average error.</b> The eight corners land 4.23, 5.13, 3.91, 2.90, 2.46, 4.89, 3.98 and 2.06 pixels from their clicks, so
-        <span class="f"><span class="nowrap"><i>J</i> ≈ 29.56 / 8</span> <span class="nowrap">≈ 3.69 pixels</span></span>
-        Every λ<sub><i>i</i></sub> is positive, from 0.62 to 1.02, so every corner is in front of the camera.</li>
-      <li><b>Where the camera stood.</b> With <i>B</i> and <i>b</i> from <i>A</i>:
-        <span class="f"><span class="nowrap"><i>C</i> = −<i>B</i><sup class="t">−1</sup><i>b</i></span> <span class="nowrap">≈ (2398.66, 578.54, 763.40)</span></span>
-        That is 2.4 m in front of the back legs and 1.6 m in front of the front legs, 579 mm along the table, near the middle of its 1250 mm, and 76 cm above the floor.</li>
-      <li><b>The intrinsic parameters.</b> With <span class="nowrap"><i>k</i> = ‖<i>m</i><sub>3</sub>‖ ≈ 4.039·10<sup class="t">−4</sup></span>, positive because <span class="nowrap"><i>a</i><sub>34</sub> = 1</span> is the depth of the table's origin times <i>k</i>:
-        <span class="f"><span class="nowrap">α ≈ 1899.31,</span>&ensp; <span class="nowrap">β ≈ 1624.13,</span>&ensp; <span class="nowrap">γ ≈ −15.40,</span>&ensp; <span class="nowrap"><i>u</i><sub>0</sub> ≈ 972.63,</span>&ensp; <span class="nowrap"><i>v</i><sub>0</sub> ≈ 717.51</span></span>
-        The principal point is 52 pixels to the right of the center of the image, (921, 704), and 14 below it, and the skew is small, as expected. But β is about 15% smaller than α, more than a camera's pixels would explain. Eight corners, each clicked a few pixels off, pin down the five intrinsic parameters only loosely. More points, spread over the whole image, and several views do better.</li>
-      <li><b>The extrinsic parameters.</b> The table's origin, seen from the camera, and the angles from <span class="nowrap"><i>R</i> = <i>R</i>′<sup class="t">T</sup></span>:
-        <span class="f"><span class="nowrap"><i>t</i>′ ≈ (−654.7, 335.6, 2475.8),</span>&ensp; <span class="nowrap">ω ≈ (168.93°, 79.17°, 76.70°)</span></span>
-        The bottom of the back left leg is 65 cm to the left, 34 cm down and 2.48 m ahead. As a check, the old origin in the new system, <span class="nowrap"><i>t</i> = −<i>Rt</i>′</span>, is <i>C</i> again.</li>
-      <li><b>The nonlinear refinement.</b> Starting from these eleven numbers, minimizing <i>J</i> lowers it from 3.69 to 2.69 pixels, at
-        <span class="f"><span class="nowrap">α ≈ 1915.3,</span>&ensp; <span class="nowrap">β ≈ 1628.1,</span>&ensp; <span class="nowrap">γ ≈ −30.6,</span>&ensp; <span class="nowrap"><i>u</i><sub>0</sub> ≈ 961.5,</span>&ensp; <span class="nowrap"><i>v</i><sub>0</sub> ≈ 727.5,</span><br><span class="nowrap">ω ≈ (172.07°, 79.00°, 79.69°),</span>&ensp; <span class="nowrap"><i>t</i>′ ≈ (−638.9, 323.0, 2495.1)</span></span>
-        Corners 0, 1, 4, 5 and 7 now land exactly on their clicks, and corners 2, 3 and 6 are 7.59, 3.36 and 10.55 pixels off. β is positive and every λ<sub><i>i</i></sub> is positive, so this is the camera, not its mirror image.</li>
-    </ol>
-  </div>
-</section>
-
 <section id="summary">
   <div class="prose">
-    <h2><span class="n">9</span>Summary</h2>
+    <h2><span class="n">8</span>Summary</h2>
     <p>The key ideas next to their NumPy equivalents. In code, the 3D points are the columns of <code>M</code>, their pixels the columns of <code>w</code>, and <i>A</i> is <code>P</code>.</p>
   </div>
   <div class="sum">

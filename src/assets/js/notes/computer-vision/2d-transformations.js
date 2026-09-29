@@ -18,7 +18,7 @@ function fourKinds() {
   const group = document.getElementById("fig-kinds-modes");
   if (!svg || !out || !group) return;
   const P = createPlane(svg);
-  // The square before the transformation, numbered as in the worked example: m1 top left, m2 bottom left,
+  // The square before the transformation, its corners numbered m1 top left, m2 bottom left,
   // m3 bottom right, m4 top right.
   const SRC = [[10, 30], [10, 10], [30, 10], [30, 30]];
   const SIDE = 20, TURN = 5;
