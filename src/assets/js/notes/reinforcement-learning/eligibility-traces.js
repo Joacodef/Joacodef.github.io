@@ -100,8 +100,8 @@ function moveBuilds(i, deltaLine, updateLine) {
 
 const slides = [];
 slides.push({ title: tr("Sarsa(λ) on the cliff", "Sarsa(λ) en el acantilado"), builds: [{ ep: 1, move: null, at: -1, time: 0, Q: freshQ(), agent: START, line: tr(
-  `All values start at 0 again, with the agent at ${sym("S", 0)} = A1. Each press is one line of the algorithm. The move the agent chooses turns yellow; every move with a trace is outlined in green, as strongly as its trace; and the value its TD error uses is outlined in red.`,
-  `Todos los valores vuelven a partir en 0, con el agente en ${sym("S", 0)} = A1. Cada vez que presionas Siguiente se ejecuta una línea del algoritmo. El movimiento que el agente elige se pone amarillo; cada movimiento con traza tiene un borde verde, tan marcado como su traza; y el valor que usa su TD error tiene un borde rojo.`) }] });
+  `All values start at 0 again, with the agent at ${sym("S", 0)} = A1.`,
+  `Todos los valores vuelven a partir en 0, con el agente en ${sym("S", 0)} = A1.`) }] });
 {
   const x = X(0), m = moveName(x.s, x.a);
   slides.push({ title: tr("Move 1", "Movimiento 1"), builds: [
@@ -141,8 +141,8 @@ for (let i = 1; i <= 5; i++) {
   steps.forEach((y, i) => { const p = greedyPath(y.post), key = p ? p.join() : ""; if (key !== lastKey) { settle = p ? i : null; lastKey = key; } });
   const x = X(settle), len = greedyPath(x.post).length - 1;
   slides.push({ title: tr("A path one row up", "Un camino una fila más arriba"), builds: [{ ...pos(settle), time: x.t + 1, Q: x.post, agent: x.done ? GOAL : x.s2, line: tr(
-    `In episode ${x.ep} the best moves settle on the route one row up, ${len} moves, the route one-step Sarsa settles on in the Q-learning note, and keep it to the end.`,
-    `En el episodio ${x.ep}, los mejores movimientos se asientan en la ruta una fila más arriba, ${len} movimientos, la misma en que se asienta Sarsa de un paso en la nota de Q-learning, y la mantienen hasta el final.`) }] });
+    `In episode ${x.ep} the best moves settle on the route one row up, ${len} moves, the route of one-step Sarsa in the TD note, and keep it to the end.`,
+    `En el episodio ${x.ep}, los mejores movimientos se asientan en la ruta una fila más arriba, ${len} movimientos, la ruta de Sarsa de un paso en la nota de TD, y la mantienen hasta el final.`) }] });
   const lastI = steps.length - 1, Qf = X(lastI).post, pf = greedyPath(Qf), falls = steps.filter((y) => y.fell !== null), later = falls.filter((y) => steps.indexOf(y) > settle).length;
   const vals = pf.slice(0, -1).map((s) => num(Math.max(...Qf[s]))).join(", ");
   slides.push({ title: tr(`After ${EPISODES} episodes`, `Después de ${EPISODES} episodios`), builds: [{ ...pos(lastI), time: X(lastI).t + 1, Q: Qf, agent: GOAL, line: tr(

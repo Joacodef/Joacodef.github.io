@@ -51,7 +51,7 @@ These rules hold for the notes of every course. Each course also has a rules fil
 
 ## Math markup
 
-- Components in `notes.css`: `.disp` for display math, `.col` for column vectors, `.mat` for matrices (3 columns unless `style="--cols: N"`; `mat()` in `plane.js` writes one), `.frac` for fractions, `sup.t` for the transpose and other superscripts, `.pt` for points (carmine) and `.ln` for lines (blue).
+- Components in `notes.css`: `.disp` for display math, `.col` for column vectors, `.mat` for matrices (3 columns unless `style="--cols: N"`; `mat()` in `plane.js` writes one), `.frac` for fractions, `sup.t` for the transpose and other superscripts, `.pt` for points (carmine) and `.ln` for lines (blue). A note's key formulas are `.disp.hero-f`, set larger; at desktop width they stay on one line, and one too long for that at the hero size, such as Sarsa's update, adds `long`, which sets it smaller.
 - Write an estimate's hat with `.hat` around the letter (`<span class="hat"><i>M</i></span>`, and `class="hat lo"` for a lowercase letter), not with a combining circumflex, which the serif font sets beside the letter. In SVG labels, draw the hat as a text of its own over the letter, as the multiple views figure does. Combining tildes (`&#771;`) render correctly.
 - A heading that contains math wraps its text in a `<span>` after the number (`<h2><span class="n">4</span><span>Estimating <i>H</i> …</span></h2>`): the `h2` is a flex row, and loose text and `<i>` would become separate items with gaps between them.
 - Variables in `<i>`, subscripts in `<sub>`, and the real minus sign `−` (U+2212) in numbers.

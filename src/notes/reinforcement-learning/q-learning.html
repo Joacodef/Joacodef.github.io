@@ -7,7 +7,7 @@ scripts:
   - /assets/js/notes/reinforcement-learning/q-learning.js
 ---
 <div class="prose">
-  <p>The previous note ended with Sarsa, which learns the values of the policy it follows, exploring moves included. Here is a world where that makes a difference. An agent crosses a small grid from its start to a goal. Every move costs 1, and along the bottom edge runs a cliff: a step into it costs 100 and sends the agent back to the start. The shortest route runs right along the edge.</p>
+  <p>The previous note ended with Sarsa on the cliff. Its values count what exploring costs, falls included, so it settles on the route one row up, 9 moves: the best route for an agent that keeps exploring. Once the exploring stops, the edge is two moves shorter and never falls.</p>
   <figure class="diagram">
     <svg viewBox="0 0 394 290" role="img" aria-label="The cliff: a grid 6 cells wide and 4 tall, with the start at the bottom left, the goal at the bottom right, and the cliff between them along the bottom row. One route runs along the edge of the cliff in 7 moves; another runs one row higher in 9.">
       <defs><marker id="c-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path class="head" d="M0 0 L10 5 L0 10 z"/></marker></defs>
@@ -40,9 +40,8 @@ scripts:
       <text class="gw-sg" x="56" y="283" text-anchor="middle">start</text>
       <text class="gw-sg" x="356" y="283" text-anchor="middle">goal</text>
     </svg>
-    <figcaption>Cells are named by column and row, from A1 at the start to F1 at the goal.</figcaption>
+    <figcaption>The shortest route, along the edge, and Sarsa's route, one row up.</figcaption>
   </figure>
-  <p>An agent that keeps exploring now and then makes a random move, and next to the edge a random move down is a fall. Sarsa counts those falls in its values, so to Sarsa the edge is worth less than the route one row up, and that is the route it learns. It is the best route for an agent that keeps exploring, but not the best route: once the exploring stops, the edge is two moves shorter and never falls.</p>
   <p>Q-learning learns the values of the best route while its agent keeps exploring. This note shows how, and what that costs while it learns. Then come Expected Sarsa, which sits between the two; why the maximum in Q-learning's rule is too optimistic, and how two tables fix it; and a shortcut for when the immediate effect of a move is known.</p>
   <p class="legend">Throughout this page, <span class="bar" aria-hidden="true"></span>routes are drawn in blue ink, and <span class="dot" aria-hidden="true"></span>the target of an update, the value an estimate moves toward, in red ink.</p>
 </div>
@@ -79,7 +78,7 @@ scripts:
       <li>Update <span class="nowrap"><i>Q</i>(<i>S</i>, <i>A</i>)</span> <span class="nowrap">← <i>Q</i>(<i>S</i>, <i>A</i>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i></span></span> <span class="nowrap pt">+ γ max<sub><i>a</i></sub> <i>Q</i>(<i>S</i>′, <i>a</i>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i>, <i>A</i>)]</span>.</li>
       <li>Set <i>S</i> ← <i>S</i>′, and go back to step 3 until <i>S</i> is terminal.</li>
     </ol>
-    <p>The figure runs Q-learning on the cliff with α = 0.5, γ = 1 and ε = 0.1, so that in each cell the greedy move has probability 0.925 and each other move 0.025. Each cell is split into four triangles, one per move, each with that move's value (blank while it is untried), and the best value of the cell highlighted in blue. For the first moves, each press is one line of the algorithm: the move chosen turns yellow, the agent takes it, the target uses the best moves of the next cell, outlined in red, and the move updated is outlined in green. After that, Next skips ahead to the moments where the agent learns something new.</p>
+    <p>The figure runs Q-learning on the cliff with the settings of the <a href="/notes/reinforcement-learning/td-learning/#sarsa">Sarsa figure</a>, α = 0.5, γ = 1 and ε = 0.1. Now the agent chooses each move after the last update, and the target uses the best moves of the next cell, outlined in red, whatever the agent does there.</p>
   </div>
 
   <div class="fig steps">
@@ -138,7 +137,7 @@ scripts:
       </svg>
       <figcaption>At the top, the pair being updated. The circle is the next state, reached with reward <i>R</i><sub><i>t</i>+1</sub>. At the bottom, in red, what the target uses: the one action taken next (Sarsa), the best of all next actions (Q-learning; the arc marks a maximum), or all of them, weighted by their probability (Expected Sarsa, section 4).</figcaption>
     </figure>
-    <p>On the cliff, the difference decides the route. Let both methods learn for long enough, with ε = 0.1 and shrinking step sizes. Sarsa's values count the moves its ε-greedy agent will make: along the edge, every step has a 0.025 chance of a random move down into the cliff. That makes the edge worth less to Sarsa than the route one row up, where a random move down only lands on the edge. Q-learning's values assume the greedy move from the next step on, so it keeps to the edge, and while it keeps exploring, it sometimes falls in.</p>
+    <p>On the cliff, the difference decides the route. Let both methods learn for long enough, with ε = 0.1 and shrinking step sizes. Sarsa settles one row up, as in the previous note. Q-learning's values assume the greedy move from the next step on, so it keeps to the edge, and while it keeps exploring, it sometimes falls in.</p>
     <div class="tbl">
       <table>
         <thead><tr><th scope="col">On the cliff, ε = 0.1</th><th scope="col"><span class="nowrap">Q-learning</span></th><th scope="col">Sarsa</th></tr></thead>
@@ -151,7 +150,7 @@ scripts:
       </table>
     </div>
     <p>Q-learning's table describes the better policy, worth −7 per trip once exploring stops, but Sarsa does better while learning. The gap depends on ε. Below <span class="nowrap">ε ≈ 0.02</span>, a random move down is rare enough that Sarsa keeps to the edge too, and above <span class="nowrap">ε ≈ 0.26</span> it moves up to the top row. If ε shrinks toward 0 over time, both end up with the optimal policy.</p>
-    <p>With a purely greedy behavior, ε = 0, the two methods almost coincide: both act greedily, and their targets are equal, since the action Sarsa takes next is the greedy one. The one difference is timing. Sarsa chooses its next action before updating the table, and Q-learning after, so when the next state is the same state, the update can change which action Q-learning then takes.</p>
+    <p>With a purely greedy behavior, ε = 0, the two methods almost coincide: both act greedily, and their targets are equal, since the action Sarsa takes next is the greedy one. The one difference is timing. Sarsa chooses its next action before updating the table, and Q-learning after, so when the next state is the same state, the update can change which action Q-learning then takes. In the Sarsa figure, choosing first cost the agent a second fall from the start.</p>
     <p>Many off-policy methods must correct for the difference between the two policies. One-step Q-learning needs no such correction: given the pair it updates, the reward and the next state do not depend on either policy, and the target uses a maximum instead of the action the behavior takes next.</p>
   </div>
 </section>

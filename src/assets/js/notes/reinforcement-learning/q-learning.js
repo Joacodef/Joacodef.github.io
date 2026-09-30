@@ -57,9 +57,7 @@ function moveBuilds(n, lead) {
     : tied > 1 ? tr(`${tied} of its moves tie for it at ${num(top)} and are outlined in red`, `${tied} de sus movimientos empatan en ${num(top)} y tienen borde rojo`)
     : tr(`the move outlined in red, worth ${num(top)}`, `el movimiento con borde rojo, que vale ${num(top)}`);
   const target = tr(`${R1} and ${S1} are known at <i>t</i> = ${t + 1}. The target adds ${R1} to the best value in ${S1}: ${which}.`, `${R1} y ${S1} se conocen en <i>t</i> = ${t + 1}. El objetivo suma ${R1} al mejor valor en ${S1}: ${which}.`);
-  let update = tr(`Still at <i>t</i> = ${t + 1}, the value of the pair the agent just left, <i>Q</i>(${S0}, ${A0}), moves halfway toward the target, from ${num(x.old)} to ${num(x.nu)}.`, `Todavía en <i>t</i> = ${t + 1}, el valor del par que el agente acaba de dejar, <i>Q</i>(${S0}, ${A0}), avanza la mitad del camino hacia el objetivo, de ${num(x.old)} a ${num(x.nu)}.`);
-  if (x.fell !== null) update += tr(" That is far below the other moves there, so the greedy choice avoids it from now on.", " Eso queda muy por debajo de los demás movimientos ahí, así que la elección greedy lo evita desde ahora.");
-  else if (n === 3) update += tr(" Every move tried so far is now worth −0.5 and every untried one 0, so untried moves look better: at first, the agent tries everything.", " Cada movimiento probado hasta ahora vale −0.5 y cada uno sin probar vale 0, así que los que no se han probado parecen mejores: al principio, el agente lo prueba todo.");
+  const update = tr(`Still at <i>t</i> = ${t + 1}, the value of the pair the agent just left, <i>Q</i>(${S0}, ${A0}), moves halfway toward the target, from ${num(x.old)} to ${num(x.nu)}.`, `Todavía en <i>t</i> = ${t + 1}, el valor del par que el agente acaba de dejar, <i>Q</i>(${S0}, ${A0}), avanza la mitad del camino hacia el objetivo, de ${num(x.old)} a ${num(x.nu)}.`);
   const tgtEq = `${tr("target", "objetivo")} = <span class="pt">${R1} + γ max<sub><i>a</i></sub> <i>Q</i>(${S1}, <i>a</i>) <span class="nowrap">= ${num(x.r)} + ${par(x.maxNext)}</span> <span class="nowrap">= ${num(x.target)}</span></span>`;
   const updEq = `<i>Q</i>(${S0}, ${A0}) <span class="nowrap">← ${num(x.old)} + ${ALPHA}[<span class="pt">${num(x.target)}</span> − ${par(x.old)}]</span> <span class="nowrap">${eqv(x.nu)}</span>`;
   const bump = x.fell === null && x.s2 === x.s ? x.a : null, pos = { ep: x.ep, move: x.t }, pick = [x.s, x.a];
@@ -88,22 +86,22 @@ const firstPath = greedyPath(qAfter(connect)).length - 1;
 const xa = X(fallAfter), At = sym("A", xa.t - 1), St = sym("S", xa.t - 1);
 const finalValues = (() => { const Q = qAfter(last); return greedyPath(Q).slice(0, -1).map((s) => num(Math.max(...Q[s]))).join(", "); })();
 const slides = [
-  { n: 0, title: tr("Nothing learned yet", "Aún no aprende nada"), builds: wholeSlide(0, tr(
-    `Every value starts at 0, so all moves look equally good. The agent stands at ${sym("S", 0)} = A1.`,
-    `Todos los valores parten en 0, así que todos los movimientos parecen igual de buenos. El agente está en ${sym("S", 0)} = A1.`)) },
+  { n: 0, title: tr("Q-learning on the cliff", "Q-learning en el acantilado"), builds: wholeSlide(0, tr(
+    `All values start at 0 again, with the agent at ${sym("S", 0)} = A1.`,
+    `Todos los valores vuelven a partir en 0, con el agente en ${sym("S", 0)} = A1.`)) },
   { n: 1, title: tr("Move 1", "Movimiento 1"), builds: moveBuilds(1, tr("The agent chooses its first move.", "El agente elige su primer movimiento.")) },
   { n: 2, title: tr("Move 2", "Movimiento 2"), builds: moveBuilds(2, nextLead) },
   { n: 3, title: tr("Move 3", "Movimiento 3"), builds: moveBuilds(3, nextLead) },
   { n: falls[0], title: tr("The first fall", "La primera caída"), builds: moveBuilds(falls[0], nextLead) },
   { n: epEnd(1), title: tr("Episode 1 ends", "Termina el episodio 1"), builds: wholeSlide(epEnd(1), tr(
-    `The agent reaches the goal after ${T1} moves, with ${count(f1, "fall", "falls")} on the way. The episode ends at <i>T</i> = ${T1}: no value follows the goal, so the target of the last move is just ${sym("R", T1)} = −1.`,
-    `El agente llega a la meta después de ${T1} movimientos, con ${count(f1, "caída", "caídas")} en el camino. El episodio termina en <i>T</i> = ${T1}: después de la meta no viene ningún valor, así que el objetivo del último movimiento es solo ${sym("R", T1)} = −1.`), true) },
+    `The agent reaches the goal after ${T1} moves, with ${count(f1, "fall", "falls")} on the way.`,
+    `El agente llega a la meta después de ${T1} movimientos, con ${count(f1, "caída", "caídas")} en el camino.`), true) },
   { n: allTried, title: tr("Every move tried", "Todos los movimientos probados"), builds: wholeSlide(allTried, tr(
     `After ${allTried} moves in all, every move in every cell has been tried at least once. From here on the agent's choices rest on real estimates, not on untried zeros.`,
     `Tras ${allTried} movimientos en total, cada movimiento de cada celda se ha probado al menos una vez. Desde aquí, las elecciones del agente se basan en estimaciones reales, no en ceros sin probar.`)) },
   { n: connect, title: tr("A first way through", "Un primer camino"), builds: wholeSlide(connect, tr(
-    `In episode ${X(connect).ep}, following the best move from each cell first leads from A1 to the goal: ${firstPath} moves, not yet the shortest route. The highlighted best values trace it.`,
-    `En el episodio ${X(connect).ep}, seguir el mejor movimiento de cada celda lleva por primera vez de A1 a la meta: ${firstPath} movimientos, todavía no la ruta más corta. Los mejores valores destacados la marcan.`)) },
+    `In episode ${X(connect).ep}, following the best move from each cell first leads from A1 to the goal: ${firstPath} moves, not yet the shortest route.`,
+    `En el episodio ${X(connect).ep}, seguir el mejor movimiento de cada celda lleva por primera vez de A1 a la meta: ${firstPath} movimientos, todavía no la ruta más corta.`)) },
   { n: learned, title: tr("The shortest path", "El camino más corto"), builds: wholeSlide(learned, tr(
     `In episode ${X(learned).ep}, the best moves settle on the shortest path, ${OPT} moves, right along the edge of the cliff. They stay there for the rest of the run.`,
     `En el episodio ${X(learned).ep}, los mejores movimientos se asientan en el camino más corto, de ${OPT} movimientos, justo por el borde del acantilado. Ahí se quedan hasta el final.`)) },

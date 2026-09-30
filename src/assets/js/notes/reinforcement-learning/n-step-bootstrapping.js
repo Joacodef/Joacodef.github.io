@@ -116,8 +116,8 @@ const updateEq = (u, inline) => { const x = updates[u]; const g = inline ? `(${s
 
 const slides = [];
 slides.push({ title: tr(`${N}-step Sarsa on the cliff`, `${N}-step Sarsa en el acantilado`), builds: [{ ep: 1, move: null, at: -1, time: 0, Q: freshQ(), agent: START, line: tr(
-  `All values start at 0 again, with the agent at ${sym("S", 0)} = A1. This time each move is updated ${N} moves after it is made, once the ${N} rewards that follow it are known. Each press is one line of the algorithm.`,
-  `Todos los valores vuelven a partir en 0, con el agente en ${sym("S", 0)} = A1. Esta vez cada movimiento se actualiza ${N} movimientos después de hacerlo, cuando ya se conocen las ${N} recompensas que lo siguen. Cada vez que presionas Siguiente se ejecuta una línea del algoritmo.`) }] });
+  `All values start at 0 again, with the agent at ${sym("S", 0)} = A1. This time each move is updated ${N} moves after it is made, once the ${N} rewards that follow it are known.`,
+  `Todos los valores vuelven a partir en 0, con el agente en ${sym("S", 0)} = A1. Esta vez cada movimiento se actualiza ${N} movimientos después de hacerlo, cuando ya se conocen las ${N} recompensas que lo siguen.`) }] });
 // Moves 1 to 3: take, then choose the next move; no update yet.
 for (let i = 0; i < N - 1; i++) {
   const wait = i === 0
@@ -197,8 +197,8 @@ for (let i = 0; i < N - 1; i++) {
 {
   const i = moveOf(settleU), x = moves[i], len = finalPath.length - 1;
   slides.push({ title: tr("A path away from the edge", "Un camino lejos del borde"), builds: [{ ...at(i), time: x.t + 1, Q: qAfter(settleU + 1), agent: x.s2, line: tr(
-    `In episode ${x.ep} the best moves settle on the top row, ${len} moves, and keep it to the end. Like Sarsa in the Q-learning note, 4-step Sarsa keeps away from the edge: its values include the falls its exploring moves cause there.`,
-    `En el episodio ${x.ep}, los mejores movimientos se asientan en la fila de arriba, ${len} movimientos, y la mantienen hasta el final. Como Sarsa en la nota de Q-learning, 4-step Sarsa se aleja del borde: sus valores incluyen las caídas que ahí causan sus movimientos de exploración.`) }] });
+    `In episode ${x.ep} the best moves settle on the top row, ${len} moves, and keep it to the end. Like one-step Sarsa in the TD note, 4-step Sarsa keeps away from the edge.`,
+    `En el episodio ${x.ep}, los mejores movimientos se asientan en la fila de arriba, ${len} movimientos, y la mantienen hasta el final. Como Sarsa de un paso en la nota de TD, 4-step Sarsa se aleja del borde.`) }] });
 }
 {
   const u = updates[luckU], i = moveOf(luckU), e = epOf(i), fallT = u.tau + u.rs.indexOf(-100), fi = e.first + fallT;

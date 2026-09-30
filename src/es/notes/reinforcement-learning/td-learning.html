@@ -3,6 +3,8 @@ title: Predicción TD y Sarsa
 module: Aprendizaje por diferencias temporales
 order: 5
 description: Actualizar una estimación después de cada paso, hacia la recompensa recién recibida más la estimación del estado siguiente, en vez de esperar al final del episodio, y la misma idea para aprender a actuar.
+scripts:
+  - /assets/js/notes/reinforcement-learning/td-learning.js
 ---
 <div class="prose">
   <p>Los métodos Monte Carlo no aprenden nada de un episodio hasta que termina, porque solo entonces se conoce el retorno. Pero se puede aprender mucho antes. Piensa en el robot del apunte anterior, que anda por una casa con una cocina, un pasillo, un estudio y un cargador, con un costo de 1 por movimiento. Cuando pasa del pasillo de vuelta a la cocina, ya sabe que su viaje se alargó. No necesita llegar al cargador para bajar su estimación del pasillo.</p>
@@ -134,7 +136,7 @@ description: Actualizar una estimación después de cada paso, hacia la recompen
   <div class="prose">
     <h2><span class="n">5</span>Sarsa: TD para control</h2>
     <p>Para aprender a actuar sin modelo, TD aprende valores de acción, y la política mejora en el camino: evaluar con TD, actuar de forma ε-greedy con respecto a las estimaciones actuales, y repetir, como en la iteración de políticas generalizada. La actualización es la misma de TD(0), de un par estado–acción al siguiente:</p>
-    <div class="disp hero-f"><i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">← <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub></span></span> <span class="nowrap pt">+ γ<i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>A</i><sub><i>t</i>+1</sub>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
+    <div class="disp hero-f long"><i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">← <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub></span></span> <span class="nowrap pt">+ γ<i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>A</i><sub><i>t</i>+1</sub>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
     <p>Se hace después de cada transición desde un estado no terminal, con <span class="nowrap"><i>Q</i>(terminal, ·) = 0</span>. Usa las cinco cantidades <i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>, <i>R</i><sub><i>t</i>+1</sub>, <i>S</i><sub><i>t</i>+1</sub> y <i>A</i><sub><i>t</i>+1</sub>, que le dan su nombre al método. Sarsa es on-policy: <i>A</i><sub><i>t</i>+1</sub> es la acción que la política de verdad toma después, así que Sarsa aprende los valores de la política que sigue, exploración incluida.</p>
     <p>Sarsa converge con probabilidad 1 a una política óptima y sus valores de acción si todos los pares se siguen visitando, los tamaños de paso se achican de la forma habitual y la política se vuelve greedy en el límite, por ejemplo ε-greedy con ε = 1/<i>t</i>.</p>
 
@@ -147,6 +149,23 @@ description: Actualizar una estimación después de cada paso, hacia la recompen
       <li>Haz <i>S</i> ← <i>S</i>′ y <i>A</i> ← <i>A</i>′, y vuelve al paso 2 hasta que <i>S</i> sea terminal.</li>
     </ol>
     <p>Aprender dentro del episodio es lo que le permite a Sarsa escapar de una política que nunca terminaría. Supón que todos los valores de acción del robot parten en 0 y que, al desempatar, su política lo manda del pasillo de vuelta a la cocina, desde donde el único movimiento es volver al pasillo. Seguida de forma greedy, esa política va y viene para siempre, y un método Monte Carlo esperaría para siempre un retorno. Con Sarsa, α = 0.5 y γ = 1, la primera vez que el robot vuelve a la cocina, <i>Q</i>(pasillo, cocina) baja a <span class="nowrap">0.5(−1 + 0 − 0) = −0.5</span>, por debajo del 0 del movimiento al estudio, que aún no ha probado, y la próxima vez que está en el pasillo se va al estudio.</p>
+    <p>Para ver aprender a Sarsa, toma una grilla pequeña, de 6 celdas de ancho y 4 de alto, con las celdas nombradas por columna y fila, desde A1 abajo a la izquierda hasta F4 arriba a la derecha. Un agente parte en A1, y un episodio termina cuando llega a la meta, F1, abajo a la derecha. Se mueve arriba, a la derecha, abajo o a la izquierda, cada movimiento da −1, y un movimiento contra una pared lo deja donde está. Entre el inicio y la meta, a lo largo del borde de abajo, hay un acantilado: un paso hacia él da −100 y devuelve al agente al inicio. La ruta más corta va justo por el borde, en 7 movimientos.</p>
+    <p>La figura ejecuta Sarsa ahí con α = 0.5, γ = 1 y ε = 0.1, así que en cada celda el movimiento greedy tiene probabilidad 0.925 y cada uno de los demás 0.025. Cada celda se divide en cuatro triángulos, uno por movimiento, cada uno con el valor de ese movimiento (en blanco mientras no se ha probado), y el mejor valor de la celda se destaca en azul. Cada vez que presionas Siguiente se ejecuta una línea del algoritmo: el movimiento elegido se pone amarillo, el agente lo toma, elige su siguiente movimiento, que se pone amarillo, el objetivo usa el valor de ese movimiento, con borde rojo, y el movimiento actualizado tiene un borde verde. Después de los primeros movimientos, Siguiente salta a los momentos en que el agente aprende algo nuevo.</p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-sarsa" role="group" aria-label="El acantilado: una grilla de 6 celdas de ancho y 4 de alto, cada celda dividida en cuatro triángulos con los valores de sus cuatro movimientos. El inicio está abajo a la izquierda, la meta abajo a la derecha, y el acantilado entre ambos, a lo largo de la fila de abajo."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-sarsa-back">Atrás</button><button type="button" class="btn" id="fig-sarsa-next">Siguiente</button><span class="count" id="fig-sarsa-count"></span><button type="button" class="btn" id="fig-sarsa-reset" hidden>Reiniciar</button></div>
+    <div class="ro" id="fig-sarsa-out"></div>
+    <div class="fig-foot">
+      <p>Siguiente avanza, Atrás retrocede. Teclas: <span class="nowrap">→ y ←</span>.</p>
+      <button type="button" class="btn" id="fig-sarsa-sound" aria-pressed="true">Con sonido</button>
+    </div>
+    <p class="sr-only" id="fig-sarsa-live" aria-live="polite"></p>
+  </div>
+
+  <div class="prose">
+    <p>El objetivo de Sarsa usa el movimiento que el agente de verdad hace después, incluidos los de exploración, así que sus valores cuentan lo que cuesta explorar. Junto al borde, cada paso tiene una probabilidad de 0.025 de un movimiento al azar hacia abajo, al acantilado; una fila más arriba, un movimiento al azar hacia abajo solo cae en el borde. Eso hace que para Sarsa el borde valga menos. En la figura, los valores todavía saltan con cada caída, porque α = 0.5 mueve una estimación la mitad del camino hacia cada objetivo. Con un tamaño de paso pequeño y muchos episodios, se asientan en los valores de la política ε-greedy que sigue el agente, más bajos que los de la figura porque promedian cada caída: en A2, subir vale <span class="nowrap"><i>q</i><sub>π</sub>(A2, arriba) = −9.39</span>, y moverse a la derecha, hacia el borde, <span class="nowrap"><i>q</i><sub>π</sub>(A2, derecha) = −12.01</span>. La ruta una fila más arriba, de 9 movimientos, es lo mejor que puede hacer un agente que sigue explorando. No es la mejor ruta: cuando deja de explorar, el borde es dos movimientos más corto y nunca cae.</p>
   </div>
 </section>
 

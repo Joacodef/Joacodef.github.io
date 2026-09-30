@@ -50,6 +50,8 @@
 sup.t { font-style: normal; font-size: 0.62em; margin-left: 0.06em; line-height: 0; }
 .disp { font-family: var(--serif); margin: 1.4rem 0 1.6rem; padding: 0.35rem 0 0.35rem 1.2rem; border-left: 2px solid var(--rule); border-radius: 0; font-size: 1.28rem; line-height: 2.2; overflow-x: auto; }
 .disp.hero-f { font-size: clamp(1.7rem, 5vw, 2.2rem); line-height: 1.5; }
+/* A key formula too long for one line at that size, such as Sarsa's update: smaller, so it fits the column. */
+.disp.hero-f.long { font-size: clamp(1.4rem, 4vw, 1.75rem); }
 /* Column vectors and matrices share the square brackets, drawn as thin lines at both sides. */
 .col { display: inline-flex; flex-direction: column; align-items: center; }
 /* A matrix: its entries in a grid of --cols columns (3 unless set). */
@@ -269,7 +271,9 @@ ol.steps b { font-weight: 600; }
 .gw-floor { fill: var(--card); }
 .gw-cliff { fill: color-mix(in srgb, var(--ink) 16%, var(--card)); }
 .gw-frame { fill: none; stroke: var(--ink-3); stroke-width: 1.2; }
-.gw-line, .gw-diag { stroke: var(--rule); stroke-width: 1; }
+/* The sides of the cells a shade stronger than the diagonals that split them into moves. */
+.gw-line { stroke: color-mix(in srgb, var(--ink-3) 30%, var(--rule)); stroke-width: 1; }
+.gw-diag { stroke: color-mix(in srgb, var(--rule) 60%, var(--card)); stroke-width: 1; }
 .gw-lab { fill: var(--ink-2); font-family: var(--sans); font-size: 13px; pointer-events: none; }
 .gw-axis { fill: var(--ink-3); font-family: var(--sans); font-size: 11px; }
 .gw-sg { fill: var(--ink-2); font-family: var(--sans); font-size: 12px; pointer-events: none; }

@@ -7,7 +7,7 @@ scripts:
   - /assets/js/notes/reinforcement-learning/q-learning.js
 ---
 <div class="prose">
-  <p>La nota anterior terminó con Sarsa, que aprende los valores de la política que sigue, incluidos sus movimientos de exploración. Este es un mundo donde eso marca una diferencia. Un agente cruza una grilla pequeña desde su inicio hasta una meta. Cada movimiento cuesta 1, y a lo largo del borde de abajo hay un acantilado: un paso hacia él cuesta 100 y devuelve al agente al inicio. La ruta más corta va justo por el borde.</p>
+  <p>La nota anterior terminó con Sarsa en el acantilado. Sus valores cuentan lo que cuesta explorar, caídas incluidas, así que se asienta en la ruta una fila más arriba, de 9 movimientos: la mejor ruta para un agente que sigue explorando. Cuando deja de explorar, el borde es dos movimientos más corto y nunca cae.</p>
   <figure class="diagram">
     <svg viewBox="0 0 394 290" role="img" aria-label="El acantilado: una grilla de 6 celdas de ancho y 4 de alto, con el inicio abajo a la izquierda, la meta abajo a la derecha, y el acantilado entre ambos, a lo largo de la fila de abajo. Una ruta va por el borde del acantilado en 7 movimientos; otra va una fila más arriba en 9.">
       <defs><marker id="c-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path class="head" d="M0 0 L10 5 L0 10 z"/></marker></defs>
@@ -40,9 +40,8 @@ scripts:
       <text class="gw-sg" x="56" y="283" text-anchor="middle">inicio</text>
       <text class="gw-sg" x="356" y="283" text-anchor="middle">meta</text>
     </svg>
-    <figcaption>Las celdas se nombran por columna y fila, desde A1 en el inicio hasta F1 en la meta.</figcaption>
+    <figcaption>La ruta más corta, por el borde, y la ruta de Sarsa, una fila más arriba.</figcaption>
   </figure>
-  <p>Un agente que sigue explorando hace de vez en cuando un movimiento al azar, y junto al borde un movimiento al azar hacia abajo es una caída. Sarsa cuenta esas caídas en sus valores, así que para Sarsa el borde vale menos que la ruta una fila más arriba, y esa es la ruta que aprende. Es la mejor ruta para un agente que sigue explorando, pero no la mejor ruta: cuando deja de explorar, el borde es dos movimientos más corto y nunca cae.</p>
   <p>Q-learning aprende los valores de la mejor ruta mientras su agente sigue explorando. Esta nota muestra cómo, y lo que eso cuesta mientras aprende. Luego vienen Expected Sarsa, que queda entre los dos; por qué el máximo en la regla de Q-learning es demasiado optimista, y cómo lo corrigen dos tablas; y un atajo para cuando se conoce el efecto inmediato de un movimiento.</p>
   <p class="legend">En esta página, <span class="bar" aria-hidden="true"></span>las rutas se dibujan con tinta azul, y <span class="dot" aria-hidden="true"></span>el objetivo de una actualización, el valor hacia el que se mueve una estimación, con tinta roja.</p>
 </div>
@@ -79,7 +78,7 @@ scripts:
       <li>Actualiza <span class="nowrap"><i>Q</i>(<i>S</i>, <i>A</i>)</span> <span class="nowrap">← <i>Q</i>(<i>S</i>, <i>A</i>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i></span></span> <span class="nowrap pt">+ γ max<sub><i>a</i></sub> <i>Q</i>(<i>S</i>′, <i>a</i>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i>, <i>A</i>)]</span>.</li>
       <li>Haz <i>S</i> ← <i>S</i>′, y vuelve al paso 3 hasta que <i>S</i> sea terminal.</li>
     </ol>
-    <p>La figura ejecuta Q-learning en el acantilado con α = 0.5, γ = 1 y ε = 0.1, así que en cada celda el movimiento greedy tiene probabilidad 0.925 y cada uno de los demás 0.025. Cada celda se divide en cuatro triángulos, uno por movimiento, cada uno con el valor de ese movimiento (en blanco mientras no se ha probado), y el mejor valor de la celda se destaca en azul. En los primeros movimientos, cada vez que presionas Siguiente se ejecuta una línea del algoritmo: el movimiento elegido se pone amarillo, el agente lo toma, el objetivo usa los mejores movimientos de la celda siguiente, con borde rojo, y el movimiento actualizado tiene un borde verde. Después, Siguiente salta a los momentos en que el agente aprende algo nuevo.</p>
+    <p>La figura ejecuta Q-learning en el acantilado con los parámetros de la <a href="/es/notes/reinforcement-learning/td-learning/#sarsa">figura de Sarsa</a>, α = 0.5, γ = 1 y ε = 0.1. Ahora el agente elige cada movimiento después de la última actualización, y el objetivo usa los mejores movimientos de la celda siguiente, con borde rojo, haga lo que haga ahí el agente.</p>
   </div>
 
   <div class="fig steps">
@@ -138,7 +137,7 @@ scripts:
       </svg>
       <figcaption>Arriba, el par que se actualiza. El círculo es el estado siguiente, al que se llega con la recompensa <i>R</i><sub><i>t</i>+1</sub>. Abajo, en rojo, lo que usa el objetivo: la acción que se toma después (Sarsa), la mejor de todas las acciones siguientes (Q-learning; el arco marca un máximo), o todas, ponderadas por su probabilidad (Expected Sarsa, sección 4).</figcaption>
     </figure>
-    <p>En el acantilado, la diferencia decide la ruta. Deja que ambos métodos aprendan el tiempo suficiente, con ε = 0.1 y tamaños de paso que se achican. Los valores de Sarsa cuentan los movimientos que hará su agente ε-greedy: por el borde, cada paso tiene una probabilidad de 0.025 de un movimiento al azar hacia abajo, al acantilado. Eso hace que para Sarsa el borde valga menos que la ruta una fila más arriba, donde un movimiento al azar hacia abajo solo cae en el borde. Los valores de Q-learning suponen el movimiento greedy desde el paso siguiente en adelante, así que se queda en el borde, y mientras sigue explorando, a veces se cae.</p>
+    <p>En el acantilado, la diferencia decide la ruta. Deja que ambos métodos aprendan el tiempo suficiente, con ε = 0.1 y tamaños de paso que se achican. Sarsa se asienta una fila más arriba, como en la nota anterior. Los valores de Q-learning suponen el movimiento greedy desde el paso siguiente en adelante, así que se queda en el borde, y mientras sigue explorando, a veces se cae.</p>
     <div class="tbl">
       <table>
         <thead><tr><th scope="col">En el acantilado, ε = 0.1</th><th scope="col"><span class="nowrap">Q-learning</span></th><th scope="col">Sarsa</th></tr></thead>
@@ -151,7 +150,7 @@ scripts:
       </table>
     </div>
     <p>La tabla de Q-learning describe la mejor política, que vale −7 por viaje una vez que deja de explorar, pero a Sarsa le va mejor mientras aprende. La brecha depende de ε. Bajo <span class="nowrap">ε ≈ 0.02</span>, un movimiento al azar hacia abajo es lo bastante raro como para que Sarsa también se quede en el borde, y sobre <span class="nowrap">ε ≈ 0.26</span> sube a la fila de arriba. Si ε se achica hacia 0 con el tiempo, ambos terminan con la política óptima.</p>
-    <p>Con una conducta puramente greedy, ε = 0, los dos métodos casi coinciden: ambos actúan de forma greedy, y sus objetivos son iguales, porque la acción que Sarsa toma después es la greedy. La única diferencia es el momento. Sarsa elige su acción siguiente antes de actualizar la tabla, y Q-learning después, así que cuando el estado siguiente es el mismo estado, la actualización puede cambiar qué acción toma luego Q-learning.</p>
+    <p>Con una conducta puramente greedy, ε = 0, los dos métodos casi coinciden: ambos actúan de forma greedy, y sus objetivos son iguales, porque la acción que Sarsa toma después es la greedy. La única diferencia es el momento. Sarsa elige su acción siguiente antes de actualizar la tabla, y Q-learning después, así que cuando el estado siguiente es el mismo estado, la actualización puede cambiar qué acción toma luego Q-learning. En la figura de Sarsa, elegir primero le costó al agente una segunda caída desde el inicio.</p>
     <p>Muchos métodos off-policy tienen que corregir la diferencia entre las dos políticas. Q-learning de un paso no necesita esa corrección: dado el par que actualiza, la recompensa y el estado siguiente no dependen de ninguna de las dos políticas, y el objetivo usa un máximo en vez de la acción que la política de comportamiento toma después.</p>
   </div>
 </section>

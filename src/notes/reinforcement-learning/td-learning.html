@@ -3,6 +3,8 @@ title: TD prediction and Sarsa
 module: Temporal-difference learning
 order: 5
 description: Updating an estimate after every step, toward the reward just received plus the estimate of the next state, instead of waiting for the end of the episode, and the same idea for learning to act.
+scripts:
+  - /assets/js/notes/reinforcement-learning/td-learning.js
 ---
 <div class="prose">
   <p>Monte Carlo methods learn nothing from an episode until it is over, since only then is the return known. Yet much can be learned before that. Picture the robot of the previous note, wandering through a home with a kitchen, a hallway, a study and a charger, at a cost of 1 per move. When it steps from the hallway back into the kitchen, it already knows its trip just got longer. It need not reach the charger to lower its estimate of the hallway.</p>
@@ -134,7 +136,7 @@ description: Updating an estimate after every step, toward the reward just recei
   <div class="prose">
     <h2><span class="n">5</span>Sarsa: TD for control</h2>
     <p>To learn to act without a model, TD learns action values, and the policy improves along the way: evaluate with TD, act ε-greedily with respect to the current estimates, and repeat, as in generalized policy iteration. The update is the same as TD(0), from one state–action pair to the next:</p>
-    <div class="disp hero-f"><i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">← <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub></span></span> <span class="nowrap pt">+ γ<i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>A</i><sub><i>t</i>+1</sub>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
+    <div class="disp hero-f long"><i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">← <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub></span></span> <span class="nowrap pt">+ γ<i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>A</i><sub><i>t</i>+1</sub>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
     <p>It is made after every transition from a nonterminal state, with <span class="nowrap"><i>Q</i>(terminal, ·) = 0</span>. It uses the five quantities <i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>, <i>R</i><sub><i>t</i>+1</sub>, <i>S</i><sub><i>t</i>+1</sub> and <i>A</i><sub><i>t</i>+1</sub>, which give the method its name. Sarsa is on-policy: <i>A</i><sub><i>t</i>+1</sub> is the action the policy actually takes next, so Sarsa learns the values of the policy it follows, exploration included.</p>
     <p>Sarsa converges with probability 1 to an optimal policy and its action values if every pair keeps being visited, the step sizes shrink in the usual way, and the policy becomes greedy in the limit, for example ε-greedy with ε = 1/<i>t</i>.</p>
 
@@ -147,6 +149,23 @@ description: Updating an estimate after every step, toward the reward just recei
       <li>Set <i>S</i> ← <i>S</i>′ and <i>A</i> ← <i>A</i>′, and go back to step 2 until <i>S</i> is terminal.</li>
     </ol>
     <p>Learning within the episode is what lets Sarsa escape a policy that would never finish. Suppose all of the robot's action values start at 0 and, breaking the tie, its policy sends it from the hallway back to the kitchen, from where the only move is back to the hallway. Followed greedily, that policy shuttles forever, and a Monte Carlo method would wait forever for a return. With Sarsa, α = 0.5 and γ = 1, the first time the robot goes back to the kitchen, <i>Q</i>(hallway, kitchen) drops to <span class="nowrap">0.5(−1 + 0 − 0) = −0.5</span>, below the 0 of the untried move to the study, and the next time it is in the hallway it heads for the study.</p>
+    <p>To watch Sarsa learn, take a small grid, 6 cells wide and 4 tall, with cells named by column and row, from A1 at the bottom left to F4 at the top right. An agent starts in A1, and an episode ends when it reaches the goal, F1, at the bottom right. It moves up, right, down or left, each move gives −1, and a move into a wall leaves it where it is. Between start and goal, along the bottom edge, runs a cliff: a step into it gives −100 and sends the agent back to the start. The shortest route runs right along the edge, in 7 moves.</p>
+    <p>The figure runs Sarsa there with α = 0.5, γ = 1 and ε = 0.1, so that in each cell the greedy move has probability 0.925 and each other move 0.025. Each cell is split into four triangles, one per move, each with that move's value (blank while it is untried), and the best value of the cell highlighted in blue. Each press is one line of the algorithm: the move chosen turns yellow, the agent takes it, its next move is chosen and turns yellow, the target uses that move's value, outlined in red, and the move updated is outlined in green. After the first moves, Next skips ahead to the moments where the agent learns something new.</p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-sarsa" role="group" aria-label="The cliff: a grid 6 cells wide and 4 tall, each cell split into four triangles that hold the values of its four moves. The start is at the bottom left, the goal at the bottom right, and the cliff between them along the bottom row."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-sarsa-back">Back</button><button type="button" class="btn" id="fig-sarsa-next">Next</button><span class="count" id="fig-sarsa-count"></span><button type="button" class="btn" id="fig-sarsa-reset" hidden>Reset</button></div>
+    <div class="ro" id="fig-sarsa-out"></div>
+    <div class="fig-foot">
+      <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
+      <button type="button" class="btn" id="fig-sarsa-sound" aria-pressed="true">Sound on</button>
+    </div>
+    <p class="sr-only" id="fig-sarsa-live" aria-live="polite"></p>
+  </div>
+
+  <div class="prose">
+    <p>Sarsa's target uses the move the agent actually makes next, exploring moves included, so its values count what exploring costs. Next to the edge, every step has a 0.025 chance of a random move down into the cliff; one row up, a random move down only lands on the edge. That makes the edge worth less to Sarsa. In the figure the values still jump with every fall, since α = 0.5 moves an estimate halfway to each target. With a small step size and many episodes, they settle at the values of the ε-greedy policy the agent follows, lower than the figure's because they average in every fall: in A2, moving up is worth <span class="nowrap"><i>q</i><sub>π</sub>(A2, up) = −9.39</span>, and moving right, onto the edge, <span class="nowrap"><i>q</i><sub>π</sub>(A2, right) = −12.01</span>. The route one row up, 9 moves, is the best an agent can do while it keeps exploring. It is not the best route: once the exploring stops, the edge is two moves shorter and never falls.</p>
   </div>
 </section>
 

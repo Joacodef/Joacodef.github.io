@@ -182,7 +182,7 @@ scripts:
       <figcaption>After one episode of Sarsa(λ) with λ = 0.9, every move of the path has a higher value, from 0.5 for the last to 0.22 for the first; thicker arrows rose more. One-step Sarsa would have raised only the last move, and 4-step Sarsa the last four.</figcaption>
     </figure>
     <p>The traces do not remember which moves were useful, only which were recent, so the detour in the middle of the path gets credit too. Later episodes sort this out, as paths that go straight collect their reward sooner.</p>
-    <p>The figure runs Sarsa(λ) on the cliff of the <a href="/notes/reinforcement-learning/q-learning/#update">Q-learning note</a>, with λ = 0.9 as in the room, γ = 1, ε = 0.1 and a smaller step size, α = 0.1: a move visited again and again adds 1 to its trace each time, so its trace can grow well above 1, and a large α would overshoot. Each cell is split into four triangles, one per move, each with that move's value (blank while it is untried), and the best value of the cell highlighted in blue. Each press is one line of the algorithm above: the move chosen turns yellow, every move with a trace is outlined in green, as strongly as its trace, and the value the TD error uses is outlined in red.</p>
+    <p>The figure runs Sarsa(λ) on the cliff of the <a href="/notes/reinforcement-learning/td-learning/#sarsa">TD note</a>, with λ = 0.9 as in the room, γ = 1, ε = 0.1 and a smaller step size, α = 0.1: a move visited again and again adds 1 to its trace each time, so its trace can grow well above 1, and a large α would overshoot. Each press is one line of the algorithm above. Every move with a trace is outlined in green, as strongly as its trace, and the value the TD error uses in red.</p>
   </div>
 
   <div class="fig steps">

@@ -144,7 +144,7 @@ scripts:
       <figcaption>The same first episode, from the start (circle) to the charger (+1). The thick arrows are the moves whose values this episode raises: the last one with one-step Sarsa, the last four with 4-step Sarsa.</figcaption>
     </figure>
     <p>During the episode every target is 0, since the rewards are 0 and the table is still all zeros, until the returns start to reach the charger. One-step Sarsa's only such return is that of the last move, so one value rises, to 0.5. With <i>n</i> = 4, the returns of the last four moves reach the charger, and four values rise to 0.5. The next episode that passes through those cells finds a trail four moves long instead of one.</p>
-    <p>The figure runs 4-step Sarsa on the cliff of the <a href="/notes/reinforcement-learning/q-learning/#update">Q-learning note</a>, with the same settings, α = 0.5, γ = 1 and ε = 0.1, and the same grid of values. Each press is one line of the algorithm: the move chosen turns yellow; a target's window of four moves is outlined in blue, from <i>S</i><sub>τ</sub> on; the move picked after them, whose estimate the target relies on, in red; and the move updated, in green. The first moves show how the updates wait for four rewards. After that, Next skips ahead to the moments where the agent learns something new.</p>
+    <p>The figure runs 4-step Sarsa on the cliff of the <a href="/notes/reinforcement-learning/td-learning/#sarsa">TD note</a>, with the same settings, α = 0.5, γ = 1 and ε = 0.1. A target's window of four moves is outlined in blue, from <i>S</i><sub>τ</sub> on, and the move picked after it, whose estimate the target relies on, in red. The first moves show how the updates wait for four rewards.</p>
   </div>
 
   <div class="fig steps">

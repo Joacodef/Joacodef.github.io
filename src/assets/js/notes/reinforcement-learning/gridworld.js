@@ -2,7 +2,7 @@ import { el, tr } from "../../plane.js";
 
 /* ---------- Grid worlds for the reinforcement learning figures ---------- */
 
-// Shared by the figures that step through a run like slides, one line of their algorithm per press (Q-learning,
+// Shared by the figures that step through a run like slides, one line of their algorithm per press (Sarsa, Q-learning,
 // n-step Sarsa, Sarsa(λ)): the cliff world, the texts for choosing and taking a move, the grid of values, the sounds and
 // the controls. Each figure computes its own run and its slides, and hands them to slideshow().
 
@@ -132,11 +132,15 @@ function createGrid(svg) {
     if (pick) el("polygon", { class: "gw-pick", points: pts(triPts(pick[0])[pick[1]]) }, dyn);
     const all = [...(marks || [])], red = new Set();
     if (maxOf !== undefined && maxOf !== null && maxOf !== GOAL) { const m = Math.max(...Q[maxOf]); Q[maxOf].forEach((v, a) => { if (v === m) all.push({ c: maxOf, a, kind: "tg" }); }); }
-    // Blue steps first, then green, then red, so that the stronger marks stay on top.
-    const order = { step: 0, upd: 1, tg: 2 };
+    // Blue steps first, then green, then red, so that the stronger marks stay on top. A move with marks of two kinds,
+    // such as a pair updated toward a target that uses its own value, shows both: the later one inside the earlier.
+    const order = { step: 0, upd: 1, tg: 2 }, kindsAt = new Map();
     for (const { c, a, kind, w } of all.sort((p, q) => order[p.kind] - order[q.kind])) {
+      const kinds = kindsAt.get(c * 4 + a) || new Set();
+      if (kinds.has(kind)) continue;
+      const k = kinds.size; kinds.add(kind); kindsAt.set(c * 4 + a, kinds);
       const style = w === undefined ? {} : { style: `opacity: ${Math.max(0.15, Math.min(1, w))}; stroke-width: ${2.4 * Math.min(2, Math.max(1, w))}px` };
-      el("polygon", { class: `gw-mark ${kind}`, points: shrink(triPts(c)[a], 0.8), ...style }, dyn);
+      el("polygon", { class: `gw-mark ${kind}`, points: shrink(triPts(c)[a], 0.8 - 0.22 * k), ...style }, dyn);
     }
     for (const { c, a, kind } of all) if (kind === "tg") red.add(c * 4 + a);
     for (let c = 0; c < W * H; c++) {
