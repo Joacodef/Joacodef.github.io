@@ -101,8 +101,8 @@ steps.forEach((x, i) => { const below = x.post[A2][RIGHT] < x.post[A2][UP], was 
 
 const slides = [];
 slides.push({ title: tr("Sarsa on the cliff", "Sarsa en el acantilado"), builds: [{ ep: 1, move: null, at: -1, time: 0, Q: freshQ(), agent: START, line: tr(
-  `All values start at 0, so all moves look equally good. The agent stands at ${sym("S", 0)} = A1.`,
-  `Todos los valores parten en 0, así que todos los movimientos parecen igual de buenos. El agente está en ${sym("S", 0)} = A1.`) }] });
+  `All values start at 0 again, with the agent at ${sym("S", 0)} = A1.`,
+  `Todos los valores vuelven a partir en 0, con el agente en ${sym("S", 0)} = A1.`) }] });
 // Moves 1 to 3: every line of the algorithm.
 for (let i = 0; i < 3; i++) {
   const b = [];

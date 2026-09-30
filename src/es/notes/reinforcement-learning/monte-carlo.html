@@ -3,6 +3,8 @@ title: Predicción y control con Monte Carlo
 module: Métodos Monte Carlo
 order: 4
 description: Aprender cuán bueno es cada estado y cada acción promediando los retornos de episodios completos, y mejorar la política con esos promedios, sin un modelo del mundo.
+scripts:
+  - /assets/js/notes/reinforcement-learning/monte-carlo.js
 ---
 <div class="prose">
   <p>Un robot vive en una casa pequeña con una cocina, un pasillo, un estudio y un cargador. Anda sin rumbo fijo. Desde la cocina siempre va al pasillo. Desde el pasillo elige al azar el estudio o la cocina, y desde el estudio, el cargador o volver al pasillo. Cada movimiento cuesta 1, y un viaje termina en el cargador.</p>
@@ -110,7 +112,32 @@ description: Aprender cuán bueno es cada estado y cada acción promediando los 
     <h2><span class="n">4</span>Control sin exploring starts</h2>
     <p>Sin exploring starts, la única forma de seguir probando todas las acciones es que la propia política las siga eligiendo. Hay dos maneras de hacerlo. Los métodos on-policy evalúan y mejoran la misma política que toma las decisiones. Los métodos off-policy evalúan o mejoran una política distinta de la que genera la experiencia. Esta sección trata de un método on-policy.</p>
     <p>La política se mantiene blanda (soft), con <span class="nowrap">π(<i>a</i>|<i>s</i>) &gt; 0</span> para toda acción. Una política ε-soft le da a cada acción al menos <span class="nowrap">ε/|𝒜(<i>s</i>)|</span>, donde |𝒜(<i>s</i>)| es el número de acciones en <i>s</i>. La más cercana a greedy entre ellas es ε-greedy: le da a cada acción no greedy exactamente ε/|𝒜(<i>s</i>)| y a la acción greedy el resto, <span class="nowrap">1 − ε + ε/|𝒜(<i>s</i>)|</span>. El control Monte Carlo first-visit on-policy es Monte Carlo ES con un cambio: los episodios parten donde parten, y el paso de mejora vuelve la política ε-greedy con respecto a <i>Q</i> en vez de greedy.</p>
-    <p>Esto igual mejora la política. Para cualquier π ε-soft, la política ε-greedy π′ con respecto a <i>q</i><sub>π</sub> cumple, en todo estado,</p>
+
+    <h3>El algoritmo</h3>
+    <p>Control Monte Carlo first-visit on-policy, para un ε &gt; 0 pequeño:</p>
+    <ol class="steps">
+      <li>Parte con cualquier <i>Q</i>(<i>s</i>, <i>a</i>), una lista vacía de retornos para cada par y π ε-greedy con respecto a <i>Q</i>.</li>
+      <li>Genera un episodio siguiendo π: <i>S</i><sub>0</sub>, <i>A</i><sub>0</sub>, <i>R</i><sub>1</sub>, …, <i>S</i><sub><i>T</i>−1</sub>, <i>A</i><sub><i>T</i>−1</sub>, <i>R</i><sub><i>T</i></sub>. Haz <i>G</i> ← 0.</li>
+      <li>Para <i>t</i> = <i>T</i> − 1, <i>T</i> − 2, …, 0: haz <span class="nowrap"><i>G</i> ← γ<i>G</i> + <i>R</i><sub><i>t</i>+1</sub></span>. Si el par <i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub> no aparece antes en el episodio, agrega <i>G</i> a sus retornos, deja <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) en su promedio y vuelve π ε-greedy en <i>S</i><sub><i>t</i></sub> con respecto a <i>Q</i>.</li>
+      <li>Repite desde el paso 2 con cada nuevo episodio.</li>
+    </ol>
+    <p>La figura lo ejecuta en una grilla de 3 celdas de ancho y 3 de alto, con las celdas nombradas por columna y fila, desde A1 abajo a la izquierda hasta C3 arriba a la derecha. Un agente parte en A1 y se mueve arriba, a la derecha, abajo o a la izquierda, y un movimiento contra una pared lo deja donde está. En C3 hay una galleta: llegar a ella da +1 y termina el episodio, y cualquier otro movimiento da 0. Con γ = 0.9, el retorno de un movimiento es 1 si llega a la galleta, 0.9 si la galleta viene un movimiento después, 0.81 si vienen dos, y así: mientras más corto el viaje, mayor el retorno. La política del agente es ε-greedy con ε = 0.1, y todos los valores parten en 0.</p>
+    <p>Cada celda se divide en cuatro triángulos, uno por movimiento, cada uno con el valor de ese movimiento (en blanco mientras no se ha probado), y el mejor valor de la celda se destaca en azul. Cada vez que presionas Siguiente se ejecuta una línea del algoritmo. Durante el episodio, el movimiento elegido se pone amarillo, el agente lo toma, y los movimientos hechos hasta ahí tienen un borde azul punteado; ningún valor cambia. Cuando el agente llega a la galleta, cada vez que presionas Siguiente se da un paso del recorrido hacia atrás, y cada valor que actualiza tiene un borde verde. Después del primer episodio, Siguiente salta a los momentos en que el agente aprende algo nuevo.</p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-mc" role="group" aria-label="Una grilla de 3 celdas de ancho y 3 de alto, cada celda dividida en cuatro triángulos con los valores de sus cuatro movimientos. El agente parte abajo a la izquierda, y la galleta está arriba a la derecha."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-mc-back">Atrás</button><button type="button" class="btn" id="fig-mc-next">Siguiente</button><span class="count" id="fig-mc-count"></span><button type="button" class="btn" id="fig-mc-reset" hidden>Reiniciar</button></div>
+    <div class="ro" id="fig-mc-out"></div>
+    <div class="fig-foot">
+      <p>Siguiente avanza, Atrás retrocede. Teclas: <span class="nowrap">→ y ←</span>.</p>
+      <button type="button" class="btn" id="fig-mc-sound" aria-pressed="true">Con sonido</button>
+    </div>
+    <p class="sr-only" id="fig-mc-live" aria-live="polite"></p>
+  </div>
+
+  <div class="prose">
+    <p>El paso ε-greedy igual mejora la política. Para cualquier π ε-soft, la política ε-greedy π′ con respecto a <i>q</i><sub>π</sub> cumple, en todo estado,</p>
     <div class="disp">Σ<sub><i>a</i></sub> π′(<i>a</i>|<i>s</i>) <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>) <span class="nowrap">≥ <i>v</i><sub>π</sub>(<i>s</i>)</span></div>
     <p>porque π′ pone su peso extra en el mayor <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>), y un promedio ponderado nunca supera a su mayor término. Por el teorema de mejora de políticas, π′ es al menos tan buena como π. En el estudio, con ε = 0.2 y dos acciones, π′ va al cargador con probabilidad 0.9: <span class="nowrap">0.9(−1) + 0.1(−9) = −1.8</span>, muy por encima del −5 del robot que anda al azar.</p>
     <p>¿Dónde termina? El proceso deja de mejorar solo en la mejor política ε-soft, que no es la mejor política: sigue explorando para siempre, y explorar cuesta. En la casa, la política ε-greedy con ε = 0.2 en torno a los mejores movimientos tiene valores −3.47, −2.47 y −1.25, contra −3, −2 y −1 sin exploración. Dejar que ε se achique con el tiempo cierra esa brecha.</p>

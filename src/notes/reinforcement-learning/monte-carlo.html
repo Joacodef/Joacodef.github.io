@@ -3,6 +3,8 @@ title: Monte Carlo prediction and control
 module: Monte Carlo methods
 order: 4
 description: Learning how good each state and action is by averaging the returns of complete episodes, and improving the policy from those averages, with no model of the world.
+scripts:
+  - /assets/js/notes/reinforcement-learning/monte-carlo.js
 ---
 <div class="prose">
   <p>A robot lives in a small home with a kitchen, a hallway, a study and a charger. It wanders. From the kitchen it always goes to the hallway. From the hallway it picks the study or the kitchen at random, and from the study, the charger or back to the hallway. Every move costs 1, and a trip ends at the charger.</p>
@@ -110,7 +112,32 @@ description: Learning how good each state and action is by averaging the returns
     <h2><span class="n">4</span>Control without exploring starts</h2>
     <p>Without exploring starts, the only way to keep trying every action is for the policy itself to keep choosing them. There are two ways to do that. On-policy methods evaluate and improve the same policy that makes the decisions. Off-policy methods evaluate or improve a policy different from the one that generates the experience. This section is about an on-policy method.</p>
     <p>The policy is kept soft, with <span class="nowrap">π(<i>a</i>|<i>s</i>) &gt; 0</span> for every action. An ε-soft policy gives every action at least <span class="nowrap">ε/|𝒜(<i>s</i>)|</span>, where |𝒜(<i>s</i>)| is the number of actions in <i>s</i>. The closest of them to greedy is ε-greedy: it gives each non-greedy action exactly ε/|𝒜(<i>s</i>)| and the greedy action the rest, <span class="nowrap">1 − ε + ε/|𝒜(<i>s</i>)|</span>. On-policy first-visit Monte Carlo control is Monte Carlo ES with one change: episodes start however they start, and the improvement step makes the policy ε-greedy with respect to <i>Q</i> instead of greedy.</p>
-    <p>This still improves the policy. For any ε-soft π, the ε-greedy policy π′ with respect to <i>q</i><sub>π</sub> satisfies, in every state,</p>
+
+    <h3>The algorithm</h3>
+    <p>On-policy first-visit Monte Carlo control, for a small ε &gt; 0:</p>
+    <ol class="steps">
+      <li>Start with any <i>Q</i>(<i>s</i>, <i>a</i>), an empty list of returns for each pair, and π ε-greedy with respect to <i>Q</i>.</li>
+      <li>Generate an episode by following π: <i>S</i><sub>0</sub>, <i>A</i><sub>0</sub>, <i>R</i><sub>1</sub>, …, <i>S</i><sub><i>T</i>−1</sub>, <i>A</i><sub><i>T</i>−1</sub>, <i>R</i><sub><i>T</i></sub>. Set <i>G</i> ← 0.</li>
+      <li>For <i>t</i> = <i>T</i> − 1, <i>T</i> − 2, …, 0: set <span class="nowrap"><i>G</i> ← γ<i>G</i> + <i>R</i><sub><i>t</i>+1</sub></span>. If the pair <i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub> does not appear earlier in the episode, add <i>G</i> to its returns, set <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) to their average, and make π ε-greedy in <i>S</i><sub><i>t</i></sub> with respect to <i>Q</i>.</li>
+      <li>Repeat from step 2 for each new episode.</li>
+    </ol>
+    <p>The figure runs it on a grid 3 cells wide and 3 tall, with cells named by column and row, from A1 at the bottom left to C3 at the top right. An agent starts in A1 and moves up, right, down or left, and a move into a wall leaves it where it is. In C3 there is a cookie: reaching it gives +1 and ends the episode, and every other move gives 0. With γ = 0.9, a move's return is 1 if it reaches the cookie, 0.9 if the cookie comes one move later, 0.81 if two, and so on: the quicker the trip, the larger the return. The agent's policy is ε-greedy with ε = 0.1, and every value starts at 0.</p>
+    <p>Each cell is split into four triangles, one per move, each with that move's value (blank while it is untried), and the best value of the cell highlighted in blue. Each press is one line of the algorithm. During the episode, the move chosen turns yellow, the agent takes it, and the moves made so far are outlined in dashed blue; no value changes. Once the agent reaches the cookie, each press is one step of the sweep back, and every value it updates is outlined in green. After the first episode, Next skips ahead to the moments where the agent learns something new.</p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-mc" role="group" aria-label="A grid 3 cells wide and 3 tall, each cell split into four triangles that hold the values of its four moves. The agent starts at the bottom left, and the cookie is at the top right."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-mc-back">Back</button><button type="button" class="btn" id="fig-mc-next">Next</button><span class="count" id="fig-mc-count"></span><button type="button" class="btn" id="fig-mc-reset" hidden>Reset</button></div>
+    <div class="ro" id="fig-mc-out"></div>
+    <div class="fig-foot">
+      <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
+      <button type="button" class="btn" id="fig-mc-sound" aria-pressed="true">Sound on</button>
+    </div>
+    <p class="sr-only" id="fig-mc-live" aria-live="polite"></p>
+  </div>
+
+  <div class="prose">
+    <p>The ε-greedy step still improves the policy. For any ε-soft π, the ε-greedy policy π′ with respect to <i>q</i><sub>π</sub> satisfies, in every state,</p>
     <div class="disp">Σ<sub><i>a</i></sub> π′(<i>a</i>|<i>s</i>) <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>) <span class="nowrap">≥ <i>v</i><sub>π</sub>(<i>s</i>)</span></div>
     <p>because π′ puts its extra weight on the largest <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>), and a weighted average never exceeds its largest term. By the policy improvement theorem, π′ is at least as good as π. In the study, with ε = 0.2 and two actions, π′ goes to the charger with probability 0.9: <span class="nowrap">0.9(−1) + 0.1(−9) = −1.8</span>, well above the wandering robot's −5.</p>
     <p>Where does it end? The process stops improving only at the best ε-soft policy, which is not the best policy: it keeps exploring forever, and exploring costs something. In the home, the ε-greedy policy with ε = 0.2 around the best moves has values −3.47, −2.47 and −1.25, against −3, −2 and −1 without exploration. Letting ε shrink over time closes that gap.</p>
