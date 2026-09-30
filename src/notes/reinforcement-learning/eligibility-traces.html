@@ -3,6 +3,8 @@ title: Eligibility traces
 module: Temporal-difference learning
 order: 8
 description: Averaging every n-step return with weights that fade by λ, and learning from that average as the episode runs, with a fading memory of the pairs just visited.
+scripts:
+  - /assets/js/notes/reinforcement-learning/eligibility-traces.js
 ---
 <div class="prose">
   <p>An <i>n</i>-step method trusts its estimates after a fixed number of steps, <i>n</i>, and a good <i>n</i> depends on the task. Nothing forces a single choice. A target can average several <i>n</i>-step returns, say half of a short one and half of a long one, and still be a sound target.</p>
@@ -180,6 +182,21 @@ description: Averaging every n-step return with weights that fade by λ, and lea
       <figcaption>After one episode of Sarsa(λ) with λ = 0.9, every move of the path has a higher value, from 0.5 for the last to 0.22 for the first; thicker arrows rose more. One-step Sarsa would have raised only the last move, and 4-step Sarsa the last four.</figcaption>
     </figure>
     <p>The traces do not remember which moves were useful, only which were recent, so the detour in the middle of the path gets credit too. Later episodes sort this out, as paths that go straight collect their reward sooner.</p>
+    <p>The figure runs Sarsa(λ) on the cliff of the <a href="/notes/reinforcement-learning/q-learning/#update">Q-learning note</a>, with λ = 0.9 as in the room, γ = 1, ε = 0.1 and a smaller step size, α = 0.1: a move visited again and again adds 1 to its trace each time, so its trace can grow well above 1, and a large α would overshoot. Each cell is split into four triangles, one per move, each with that move's value (blank while it is untried), and the best value of the cell highlighted in blue. Each press is one line of the algorithm above: the move chosen turns yellow, every move with a trace is outlined in green, as strongly as its trace, and the value the TD error uses is outlined in red.</p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-lambda" role="group" aria-label="The cliff: a grid 6 cells wide and 4 tall, each cell split into four triangles that hold the values of its four moves. The start is at the bottom left, the goal at the bottom right, and the cliff between them along the bottom row."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-lambda-back">Back</button><button type="button" class="btn" id="fig-lambda-next">Next</button><span class="count" id="fig-lambda-count"></span><button type="button" class="btn" id="fig-lambda-reset" hidden>Reset</button></div>
+    <div class="ro" id="fig-lambda-out"></div>
+    <div class="fig-foot">
+      <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
+      <button type="button" class="btn" id="fig-lambda-sound" aria-pressed="true">Sound on</button>
+    </div>
+    <p class="sr-only" id="fig-lambda-live" aria-live="polite"></p>
+  </div>
+
+  <div class="prose">
     <p>The same mechanism works with any way of estimating values. The trace is then a vector <b class="vec">z</b><sub><i>t</i></sub>, the size of the weight vector: when a weight takes part in an estimate, its trace is bumped up, and then it fades. In a table, the weight that takes part is the entry of the pair just visited, which is the +1 of the algorithm above.</p>
   </div>
 </section>

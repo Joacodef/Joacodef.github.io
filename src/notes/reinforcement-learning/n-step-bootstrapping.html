@@ -3,6 +3,8 @@ title: n-step bootstrapping
 module: Temporal-difference learning
 order: 7
 description: "Using n real rewards before trusting an estimate: the range of methods between one-step TD and Monte Carlo."
+scripts:
+  - /assets/js/notes/reinforcement-learning/n-step-bootstrapping.js
 ---
 <div class="prose">
   <p>An agent that learns from experience has to decide how long to wait before it learns from what happened. One-step methods, such as Sarsa and Q-learning, learn after every move: they take the reward they just received and add their own estimate of what the next state is worth, which stands in for everything that follows. Monte Carlo methods do the opposite. They wait until the episode ends and learn from all the rewards that actually came.</p>
@@ -142,7 +144,21 @@ description: "Using n real rewards before trusting an estimate: the range of met
       <figcaption>The same first episode, from the start (circle) to the charger (+1). The thick arrows are the moves whose values this episode raises: the last one with one-step Sarsa, the last four with 4-step Sarsa.</figcaption>
     </figure>
     <p>During the episode every target is 0, since the rewards are 0 and the table is still all zeros, until the returns start to reach the charger. One-step Sarsa's only such return is that of the last move, so one value rises, to 0.5. With <i>n</i> = 4, the returns of the last four moves reach the charger, and four values rise to 0.5. The next episode that passes through those cells finds a trail four moves long instead of one.</p>
+    <p>The figure runs 4-step Sarsa on the cliff of the <a href="/notes/reinforcement-learning/q-learning/#update">Q-learning note</a>, with the same settings, α = 0.5, γ = 1 and ε = 0.1, and the same grid of values. Each press is one line of the algorithm: the move chosen turns yellow; a target's window of four moves is outlined in blue, from <i>S</i><sub>τ</sub> on; the move picked after them, whose estimate the target relies on, in red; and the move updated, in green. The first moves show how the updates wait for four rewards. After that, Next skips ahead to the moments where the agent learns something new.</p>
+  </div>
 
+  <div class="fig steps">
+    <svg id="fig-nstep" role="group" aria-label="The cliff: a grid 6 cells wide and 4 tall, each cell split into four triangles that hold the values of its four moves. The start is at the bottom left, the goal at the bottom right, and the cliff between them along the bottom row."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-nstep-back">Back</button><button type="button" class="btn" id="fig-nstep-next">Next</button><span class="count" id="fig-nstep-count"></span><button type="button" class="btn" id="fig-nstep-reset" hidden>Reset</button></div>
+    <div class="ro" id="fig-nstep-out"></div>
+    <div class="fig-foot">
+      <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
+      <button type="button" class="btn" id="fig-nstep-sound" aria-pressed="true">Sound on</button>
+    </div>
+    <p class="sr-only" id="fig-nstep-live" aria-live="polite"></p>
+  </div>
+
+  <div class="prose">
     <h3><i>n</i>-step Expected Sarsa</h3>
     <p>Expected Sarsa ends its return, instead, in the average value of the actions in <i>S</i><sub><i>t</i>+<i>n</i></sub> under the target policy π:</p>
     <div class="disp"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub> = <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub> + ⋯</span> <span class="nowrap">+ γ<sup><i>n</i>−1</sup><i>R</i><sub><i>t</i>+<i>n</i></sub></span> <span class="nowrap pt">+ γ<sup><i>n</i></sup><span class="ovl"><i>V</i></span><sub><i>t</i>+<i>n</i>−1</sub>(<i>S</i><sub><i>t</i>+<i>n</i></sub>)</span>,&ensp;<span class="nowrap"><span class="ovl"><i>V</i></span><sub><i>t</i></sub>(<i>s</i>) ≐ Σ<sub><i>a</i></sub> π(<i>a</i>|<i>s</i>) <i>Q</i><sub><i>t</i></sub>(<i>s</i>, <i>a</i>)</span></div>

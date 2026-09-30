@@ -7,49 +7,56 @@ scripts:
   - /assets/js/notes/reinforcement-learning/q-learning.js
 ---
 <div class="prose">
-  <p>Picture a robot that has to cross a garden to reach its charger. Nobody gives it a map. All it can do is move, see where it ends up, and receive a reward after each move: −1 per step, so shorter trips are better. From these experiences alone, it has to learn which move is best in each place.</p>
+  <p>The previous note ended with Sarsa, which learns the values of the policy it follows, exploring moves included. Here is a world where that makes a difference. An agent crosses a small grid from its start to a goal. Every move costs 1, and along the bottom edge runs a cliff: a step into it costs 100 and sends the agent back to the start. The shortest route runs right along the edge.</p>
   <figure class="diagram">
-    <svg viewBox="0 0 440 204" role="img" aria-label="Map of the garden. From the start, one route crosses a pond on a bridge to the charger, and another goes the long way round the pond through two stops. From the bridge, a dashed step to the side falls into the pond.">
-      <ellipse class="pond" cx="220" cy="126" rx="96" ry="48"/>
-      <line class="rail" x1="116" y1="116" x2="324" y2="116"/>
-      <line class="rail" x1="116" y1="136" x2="324" y2="136"/>
-      <polyline class="ln-path" points="48,126 150,44 290,44 392,126"/>
-      <line class="ln-path" x1="48" y1="126" x2="392" y2="126"/>
-      <line class="ln-path dash" x1="225" y1="133" x2="258" y2="171"/>
-      <circle class="state" cx="48" cy="126" r="8"/>
-      <circle class="state" cx="150" cy="44" r="6"/>
-      <circle class="state" cx="290" cy="44" r="6"/>
-      <circle class="state" cx="220" cy="126" r="8"/>
-      <circle class="state" cx="392" cy="126" r="8"/>
-      <text class="dg-lab" x="48" y="158" text-anchor="middle">start</text>
-      <text class="dg-lab" x="392" y="158" text-anchor="middle">charger</text>
-      <text class="dg-lab" x="220" y="106" text-anchor="middle">bridge</text>
-      <text class="dg-lab" x="220" y="30" text-anchor="middle">the long way round</text>
-      <text class="dg-lab" x="184" y="156" text-anchor="middle">pond</text>
-      <text class="dg-lab" x="298" y="194" text-anchor="middle">side: −20</text>
+    <svg viewBox="0 0 394 290" role="img" aria-label="The cliff: a grid 6 cells wide and 4 tall, with the start at the bottom left, the goal at the bottom right, and the cliff between them along the bottom row. One route runs along the edge of the cliff in 7 moves; another runs one row higher in 9.">
+      <defs><marker id="c-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path class="head" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+      <rect class="gw-floor" x="26" y="10" width="360" height="240"/>
+      <rect class="gw-cliff" x="86" y="190" width="240" height="60"/>
+      <line class="gw-line" x1="26" y1="70" x2="386" y2="70"/>
+      <line class="gw-line" x1="26" y1="130" x2="386" y2="130"/>
+      <line class="gw-line" x1="26" y1="190" x2="386" y2="190"/>
+      <line class="gw-line" x1="86" y1="10" x2="86" y2="190"/>
+      <line class="gw-line" x1="146" y1="10" x2="146" y2="190"/>
+      <line class="gw-line" x1="206" y1="10" x2="206" y2="190"/>
+      <line class="gw-line" x1="266" y1="10" x2="266" y2="190"/>
+      <line class="gw-line" x1="326" y1="10" x2="326" y2="190"/>
+      <rect class="gw-frame" x="26" y="10" width="360" height="240"/>
+      <text class="gw-lab" x="206" y="225" text-anchor="middle">cliff</text>
+      <polyline class="ln-path dash" points="62,212 62,100 350,100 350,208" marker-end="url(#c-head)"/>
+      <polyline class="ln-path" points="50,212 50,166 362,166 362,208" marker-end="url(#c-head)"/>
+      <text class="dg-lab" x="206" y="90" text-anchor="middle">one row up: 9 moves</text>
+      <text class="dg-lab" x="206" y="156" text-anchor="middle">along the edge: 7 moves</text>
+      <text class="gw-axis" x="56" y="267" text-anchor="middle">A</text>
+      <text class="gw-axis" x="116" y="267" text-anchor="middle">B</text>
+      <text class="gw-axis" x="176" y="267" text-anchor="middle">C</text>
+      <text class="gw-axis" x="236" y="267" text-anchor="middle">D</text>
+      <text class="gw-axis" x="296" y="267" text-anchor="middle">E</text>
+      <text class="gw-axis" x="356" y="267" text-anchor="middle">F</text>
+      <text class="gw-axis" x="16" y="44" text-anchor="middle">4</text>
+      <text class="gw-axis" x="16" y="104" text-anchor="middle">3</text>
+      <text class="gw-axis" x="16" y="164" text-anchor="middle">2</text>
+      <text class="gw-axis" x="16" y="224" text-anchor="middle">1</text>
+      <text class="gw-sg" x="56" y="283" text-anchor="middle">start</text>
+      <text class="gw-sg" x="356" y="283" text-anchor="middle">goal</text>
     </svg>
-    <figcaption>Two routes to the charger. Across the bridge takes 2 steps, the long way round 3. On the bridge, a step to the side drops the robot into the pond: −20, and the trip is over.</figcaption>
+    <figcaption>Cells are named by column and row, from A1 at the start to F1 at the goal.</figcaption>
   </figure>
-  <p>To learn, the robot keeps a table with one number for each place and move: the total reward it expects if it makes that move there and then carries on as well as it can. It also has to keep trying moves that look worse, because that is the only way to find out whether they really are. That creates a problem. If the table records how the robot actually behaves, it describes a robot that now and then steps off the bridge.</p>
-  <p>Q-learning fills in the table of the best behavior anyway, while the robot keeps experimenting. This note shows how, what that costs while it learns, a close relative called Expected Sarsa, why the maximum in its rule is too optimistic and how two tables fix it, and a shortcut for when the immediate effect of a move is known.</p>
+  <p>An agent that keeps exploring now and then makes a random move, and next to the edge a random move down is a fall. Sarsa counts those falls in its values, so to Sarsa the edge is worth less than the route one row up, and that is the route it learns. It is the best route for an agent that keeps exploring, but not the best route: once the exploring stops, the edge is two moves shorter and never falls.</p>
+  <p>Q-learning learns the values of the best route while its agent keeps exploring. This note shows how, and what that costs while it learns. Then come Expected Sarsa, which sits between the two; why the maximum in Q-learning's rule is too optimistic, and how two tables fix it; and a shortcut for when the immediate effect of a move is known.</p>
   <p class="legend">Throughout this page, <span class="bar" aria-hidden="true"></span>routes are drawn in blue ink, and <span class="dot" aria-hidden="true"></span>the target of an update, the value an estimate moves toward, in red ink.</p>
 </div>
 
 <section id="values">
   <div class="prose">
-    <h2><span class="n">1</span>What the table holds</h2>
-    <p>At each step <i>t</i> the robot is in a state <i>S</i><sub><i>t</i></sub> and takes an action <i>A</i><sub><i>t</i></sub>. Then it receives a reward <i>R</i><sub><i>t</i>+1</sub> and lands in the next state <i>S</i><sub><i>t</i>+1</sub>. A trip, called an episode, ends when it reaches a terminal state: the charger, or the pond. What the robot tries to make large is not one reward but the return, the sum of the rewards still to come:</p>
-    <div class="disp"><i>G</i><sub><i>t</i></sub> = <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub> + γ<i>R</i><sub><i>t</i>+2</sub></span> <span class="nowrap">+ γ<sup>2</sup><i>R</i><sub><i>t</i>+3</sub> + ⋯</span></div>
-    <p>The discount rate γ, between 0 and 1, makes a reward count less the later it comes. In the garden γ = 1, since a step costs the same whenever it happens: crossing the bridge gives a return of <span class="nowrap">−1 − 1 = −2</span> from the start, and the long way <span class="nowrap">−3</span>.</p>
-    <p>A policy π says what to do in each state, possibly at random: π(<i>a</i>|<i>s</i>) is the probability of taking action <i>a</i> in state <i>s</i>. The value of an action is the return to expect after taking it and following π from then on:</p>
-    <div class="disp"><i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>) = <span class="nowrap">E<sub>π</sub>[<i>G</i><sub><i>t</i></sub> | <i>S</i><sub><i>t</i></sub> = <i>s</i>, <i>A</i><sub><i>t</i></sub> = <i>a</i>]</span></div>
-    <p>The best any policy can do gives the optimal action values, <span class="nowrap"><i>q</i><sub>*</sub>(<i>s</i>, <i>a</i>) = max<sub>π</sub> <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>)</span>. Knowing <i>q</i><sub>*</sub> is enough to act well: in each state, take the action with the largest value. A policy that does that with a table of values is called greedy with respect to it.</p>
+    <h2><span class="n">1</span>The values of the best behavior</h2>
+    <p>Sarsa learns <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>), the return to expect after taking action <i>a</i> in state <i>s</i> and then following π, exploring moves and all. The best any policy can do gives the optimal action values:</p>
+    <div class="disp"><i>q</i><sub>*</sub>(<i>s</i>, <i>a</i>) = <span class="nowrap">max<sub>π</sub> <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>)</span></div>
+    <p>Knowing <i>q</i><sub>*</sub> is enough to act well: in each state, take the action with the largest value. On the cliff, with γ = 1, <i>q</i><sub>*</sub> counts moves. From A2, the cell above the start, moving right leaves 6 moves to the goal along the edge, so <span class="nowrap"><i>q</i><sub>*</sub>(A2, right) = −6</span>, and moving up costs two more, <span class="nowrap"><i>q</i><sub>*</sub>(A2, up) = −8</span>. From B2, a step down into the cliff costs 100, and from the start the best trip still costs 7: <span class="nowrap"><i>q</i><sub>*</sub>(B2, down) = −107</span>.</p>
     <p>The optimal values are tied together, one step apart, by the Bellman optimality equation. The value of an action is the reward it brings plus the discounted value of acting as well as possible from the state it leads to:</p>
     <div class="disp"><i>q</i><sub>*</sub>(<i>s</i>, <i>a</i>) = <span class="nowrap">E[<i>R</i><sub><i>t</i>+1</sub> + γ max<sub><i>a</i>′</sub> <i>q</i><sub>*</sub>(<i>S</i><sub><i>t</i>+1</sub>, <i>a</i>′)</span> <span class="nowrap">| <i>S</i><sub><i>t</i></sub> = <i>s</i>, <i>A</i><sub><i>t</i></sub> = <i>a</i>]</span></div>
-    <p>In the garden, <span class="nowrap"><i>q</i><sub>*</sub>(bridge, ahead) = −1</span>, since stepping ahead reaches the charger, and <span class="nowrap"><i>q</i><sub>*</sub>(bridge, side) = −20</span>. So <span class="nowrap"><i>q</i><sub>*</sub>(start, bridge)</span> <span class="nowrap">= −1 + max(−1, −20)</span> <span class="nowrap">= −2</span>, which beats <span class="nowrap"><i>q</i><sub>*</sub>(start, around) = −3</span>.</p>
-    <p>The robot does not know the rewards and next states in advance, so it cannot solve this equation. Instead it keeps an estimate <i>Q</i>(<i>s</i>, <i>a</i>) for every pair, and after each step it moves the estimate for the pair it just tried a fraction α of the way toward a target, a better guess at the return built from what just happened:</p>
-    <div class="disp"><i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">← <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt">target</span></span> <span class="nowrap">− <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
-    <p>The step size α, between 0 and 1, sets how far each step moves the estimate: α = 1 replaces it with the target, and a small α averages many targets. The methods on this page differ only in their target.</p>
+    <p>Moving right from A2 leads to B2, whose moves up, right, down and left are worth −7, −5, −107 and −7. So <span class="nowrap"><i>q</i><sub>*</sub>(A2, right)</span> <span class="nowrap">= −1 + max(−7, −5, −107, −7)</span> <span class="nowrap">= −6</span>.</p>
+    <p>The agent does not know the rewards and next states in advance, so it cannot solve this equation. Like Sarsa, it keeps an estimate <i>Q</i>(<i>s</i>, <i>a</i>) for every pair and, after each step, moves the estimate of the pair it just tried a fraction α of the way toward a target. The methods on this page differ only in their target.</p>
   </div>
 </section>
 
@@ -57,13 +64,13 @@ scripts:
   <div class="prose">
     <h2><span class="n">2</span>The Q-learning update</h2>
     <div class="disp"><i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">← <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub></span></span> <span class="nowrap pt">+ γ max<sub><i>a</i></sub> <i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>a</i>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
-    <p>Why this target? It is the inside of the Bellman optimality equation, with its two unknowns replaced by what the robot has. The expectation over rewards and next states becomes the one reward and next state it just observed, and <i>q</i><sub>*</sub> becomes the current table <i>Q</i>. Over many steps the randomness of single rewards and next states averages out, as a sample average approaches an expectation, while the table itself improves.</p>
-    <p>This makes Q-learning a temporal-difference (TD) method: it learns from the difference between an estimate now and a better estimate one step later, without waiting for the episode to end. A terminal state has nothing left to earn, so <span class="nowrap"><i>Q</i>(terminal, ·) = 0</span>, and the target of the last step of an episode is just its reward.</p>
-    <p>An example with numbers. Partway through learning, the table holds <span class="nowrap"><i>Q</i>(start, bridge) = −2.5</span>, <span class="nowrap"><i>Q</i>(bridge, ahead) = −1</span> and <span class="nowrap"><i>Q</i>(bridge, side) = −10</span>, and α = 0.5. The robot takes the bridge from the start, gets <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub> = −1</span> and lands on the bridge. The target is <span class="nowrap pt">−1 + max(−1, −10) = −2</span>, and the estimate moves halfway to it:</p>
-    <div class="disp num"><i>Q</i>(start, bridge) <span class="nowrap">← −2.5 + 0.5(<span class="pt">−2</span> − (−2.5))</span> <span class="nowrap">= −2.25</span></div>
+    <p>Compare it with Sarsa's. Sarsa's target, <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub> + γ<i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>A</i><sub><i>t</i>+1</sub>)</span>, uses the value of the action the agent takes next. Q-learning's uses the best action in the next state, whatever the agent does there. Why this target? It is the inside of the Bellman optimality equation, with its two unknowns replaced by what the agent has. The expectation over rewards and next states becomes the one reward and next state it just observed, and <i>q</i><sub>*</sub> becomes the current table <i>Q</i>. Over many steps the randomness of single rewards and next states averages out, as a sample average approaches an expectation, while the table itself improves.</p>
+    <p>An example with numbers, with α = 0.5. Partway through learning, the table holds <span class="nowrap"><i>Q</i>(A2, right) = −8</span>, and in B2 up −7, right −5, down −60 and left −7. The agent moves right from A2 to B2 and gets −1. The target is <span class="nowrap pt">−1 + max(−7, −5, −60, −7) = −6</span>, and the estimate moves halfway to it:</p>
+    <div class="disp num"><i>Q</i>(A2, right) <span class="nowrap">← −8 + 0.5(<span class="pt">−6</span> − (−8))</span> <span class="nowrap">= −7</span></div>
+    <p>The target is the same whatever the agent does next in B2, even if its next move is a random step down into the cliff.</p>
 
     <h3>The algorithm</h3>
-    <p>For a step size α in (0, 1] and a small ε &gt; 0:</p>
+    <p>The loop is Sarsa's, with one change: the target does not use the next action, so the agent does not have to choose it before updating. It chooses each action at the start of its step, from the table as it stands. For a step size α in (0, 1] and a small ε &gt; 0:</p>
     <ol class="steps">
       <li>Start with any table <i>Q</i>(<i>s</i>, <i>a</i>), except <span class="nowrap"><i>Q</i>(terminal, ·) = 0</span>.</li>
       <li>At the start of each episode, observe the first state <i>S</i>.</li>
@@ -72,16 +79,15 @@ scripts:
       <li>Update <span class="nowrap"><i>Q</i>(<i>S</i>, <i>A</i>)</span> <span class="nowrap">← <i>Q</i>(<i>S</i>, <i>A</i>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i></span></span> <span class="nowrap pt">+ γ max<sub><i>a</i></sub> <i>Q</i>(<i>S</i>′, <i>a</i>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i>, <i>A</i>)]</span>.</li>
       <li>Set <i>S</i> ← <i>S</i>′, and go back to step 3 until <i>S</i> is terminal.</li>
     </ol>
-    <p>An ε-greedy policy takes the greedy action, the one with the largest <i>Q</i>(<i>S</i>, <i>a</i>), except that with probability ε it picks an action at random among all of them, the greedy one included. With |𝒜(<i>s</i>)| actions available, the greedy action gets probability <span class="nowrap">1 − ε + ε/|𝒜(<i>s</i>)|</span> and each other action <span class="nowrap">ε/|𝒜(<i>s</i>)|</span>. On the bridge, with two actions and ε = 0.2, the robot steps ahead with probability 0.9 and to the side with probability 0.1.</p>
-    <p>Here is the algorithm at work on a small grid with a cliff along one edge. The agent starts in one corner and must reach the goal in the other. Every move costs 1, and a step into the cliff costs 100 and sends the agent back to the start. It learns with α = 0.5, γ = 1 and ε = 0.1, and blue arrows mark each cell's best move once one move beats the others. The first moves are shown one part at a time: the move, its target and the update. After that, Next skips ahead to the moments where the agent learns something new.</p>
+    <p>The figure runs Q-learning on the cliff with α = 0.5, γ = 1 and ε = 0.1, so that in each cell the greedy move has probability 0.925 and each other move 0.025. Each cell is split into four triangles, one per move, each with that move's value (blank while it is untried), and the best value of the cell highlighted in blue. For the first moves, each press is one line of the algorithm: the move chosen turns yellow, the agent takes it, the target uses the best moves of the next cell, outlined in red, and the move updated is outlined in green. After that, Next skips ahead to the moments where the agent learns something new.</p>
   </div>
 
   <div class="fig steps">
-    <svg id="fig-cliff" role="group" aria-label="The cliff: a grid 6 cells wide and 4 tall. The start is at the bottom left, the goal at the bottom right, and the cliff between them along the bottom row."></svg>
+    <svg id="fig-cliff" role="group" aria-label="The cliff: a grid 6 cells wide and 4 tall, each cell split into four triangles that hold the values of its four moves. The start is at the bottom left, the goal at the bottom right, and the cliff between them along the bottom row."></svg>
     <div class="ctl"><button type="button" class="btn" id="fig-cliff-back">Back</button><button type="button" class="btn" id="fig-cliff-next">Next</button><span class="count" id="fig-cliff-count"></span><button type="button" class="btn" id="fig-cliff-reset" hidden>Reset</button></div>
     <div class="ro" id="fig-cliff-out"></div>
     <div class="fig-foot">
-      <p>Next goes forward, Back goes back. Press a cell to see its values; press it again to follow the slides. Keys: <span class="nowrap">→ and ←</span>.</p>
+      <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
       <button type="button" class="btn" id="fig-cliff-sound" aria-pressed="true">Sound on</button>
     </div>
     <p class="sr-only" id="fig-cliff-live" aria-live="polite"></p>
@@ -95,10 +101,8 @@ scripts:
 <section id="off-policy">
   <div class="prose">
     <h2><span class="n">3</span>Learning about one policy while following another</h2>
-    <p>The robot behaves ε-greedily, yet its target uses <span class="nowrap">max<sub><i>a</i></sub> <i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>a</i>)</span>, the value of the greedy action in the next state, whatever action it actually takes there. So Q-learning learns the values of the greedy policy, while its experience comes from the ε-greedy one. The policy being learned about is the target policy, and the one that produces the behavior is the behavior policy. When the two differ, the method is off-policy. The behavior policy still matters in one way: it decides which pairs get visited, and so updated.</p>
-    <p>Sarsa learns about the policy it follows, which makes it on-policy. Its target uses the action it actually takes next:</p>
-    <div class="disp"><i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">← <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub></span></span> <span class="nowrap pt">+ γ<i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>A</i><sub><i>t</i>+1</sub>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
-    <p>Its name lists what one update uses: <i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>, <i>R</i><sub><i>t</i>+1</sub>, <i>S</i><sub><i>t</i>+1</sub>, <i>A</i><sub><i>t</i>+1</sub>. When <i>A</i><sub><i>t</i>+1</sub> is an exploring step, Sarsa's target includes what exploring costs, and Q-learning's never does. So Sarsa learns <i>q</i><sub>π</sub> for the ε-greedy policy it follows, and Q-learning learns <i>q</i><sub>*</sub>. A backup diagram shows the difference: what each update looks at, from the pair being updated at the top to what the target is built from at the bottom.</p>
+    <p>The agent behaves ε-greedily, yet its target uses <span class="nowrap">max<sub><i>a</i></sub> <i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>a</i>)</span>, the value of the greedy action in the next state, whatever action it actually takes there. So Q-learning learns the values of the greedy policy, while its experience comes from the ε-greedy one. The policy being learned about is the target policy, and the one that produces the behavior is the behavior policy. When the two differ, the method is off-policy. The behavior policy still matters in one way: it decides which pairs get visited, and so updated.</p>
+    <p>Sarsa is on-policy: its target uses the action it takes next, so when that action is an exploring move, the target includes what exploring costs. Sarsa learns <i>q</i><sub>π</sub> for the ε-greedy policy it follows, and Q-learning learns <i>q</i><sub>*</sub>. A backup diagram shows the difference: what each update looks at, from the pair being updated at the top to what the target is built from at the bottom.</p>
     <figure class="diagram">
       <svg viewBox="0 0 440 196" role="img" aria-label="Three backup diagrams. Each starts at the top with the pair being updated, goes to the next state, and ends in the next actions its target uses: one sampled action for Sarsa, the maximum over all actions for Q-learning, and all actions for Expected Sarsa.">
         <line class="bk" x1="80" y1="24" x2="80" y2="70"/>
@@ -134,21 +138,19 @@ scripts:
       </svg>
       <figcaption>At the top, the pair being updated. The circle is the next state, reached with reward <i>R</i><sub><i>t</i>+1</sub>. At the bottom, in red, what the target uses: the one action taken next (Sarsa), the best of all next actions (Q-learning; the arc marks a maximum), or all of them, weighted by their probability (Expected Sarsa, section 4).</figcaption>
     </figure>
-    <p>In the garden the difference decides the route. Take ε = 0.2 and let both methods learn for long enough, with shrinking step sizes. For Sarsa, a trip onto the bridge includes a one-in-ten chance of stepping to the side:</p>
-    <div class="disp num"><i>q</i><sub>π</sub>(start, bridge) <span class="nowrap">= −1 + 0.9(−1) + 0.1(−20)</span> <span class="nowrap">= −3.9</span></div>
-    <p>That is worse than the −3 of the long way, so Sarsa learns to go around. Q-learning's value of the bridge assumes the greedy move from there on, <span class="nowrap">−1 + max(−1, −20) = −2</span>, so it takes the bridge, and while it keeps exploring it sometimes falls in. On the bridge itself both learn the same values, −1 for ahead and −20 for the side step, since the episode ends right after either.</p>
+    <p>On the cliff, the difference decides the route. Let both methods learn for long enough, with ε = 0.1 and shrinking step sizes. Sarsa's values count the moves its ε-greedy agent will make: along the edge, every step has a 0.025 chance of a random move down into the cliff. That makes the edge worth less to Sarsa than the route one row up, where a random move down only lands on the edge. Q-learning's values assume the greedy move from the next step on, so it keeps to the edge, and while it keeps exploring, it sometimes falls in.</p>
     <div class="tbl">
       <table>
-        <thead><tr><th scope="col">In the garden, ε = 0.2</th><th scope="col"><span class="nowrap">Q-learning</span></th><th scope="col">Sarsa</th></tr></thead>
+        <thead><tr><th scope="col">On the cliff, ε = 0.1</th><th scope="col"><span class="nowrap">Q-learning</span></th><th scope="col">Sarsa</th></tr></thead>
         <tbody>
-          <tr><th scope="row"><i>Q</i>(start, bridge)</th><td>−2</td><td>−3.9</td></tr>
-          <tr><th scope="row"><i>Q</i>(start, around)</th><td>−3</td><td>−3</td></tr>
-          <tr><th scope="row">Greedy action at the start</th><td>bridge</td><td>around</td></tr>
-          <tr><th scope="row">Average return while exploring</th><td>−3.81</td><td>−3.09</td></tr>
+          <tr><th scope="row"><i>Q</i>(A2, right), along the edge</th><td>−6</td><td>−12.01</td></tr>
+          <tr><th scope="row"><i>Q</i>(A2, up), one row up</th><td>−8</td><td>−9.39</td></tr>
+          <tr><th scope="row">Route of the greedy policy</th><td>the edge, 7 moves</td><td>one row up, 9 moves</td></tr>
+          <tr><th scope="row">Average return per episode while exploring</th><td>−21.77</td><td>−13.36</td></tr>
         </tbody>
       </table>
     </div>
-    <p>Q-learning's table describes the better policy, worth −2 per trip once exploring stops, but Sarsa does better while learning. The gap depends on ε. Below <span class="nowrap">ε = 2/19 ≈ 0.105</span>, the bridge's value for Sarsa, <span class="nowrap">−2 − 9.5ε</span>, is above −3, and Sarsa takes the bridge too; if ε shrinks toward 0 over time, both end up with the optimal policy.</p>
+    <p>Q-learning's table describes the better policy, worth −7 per trip once exploring stops, but Sarsa does better while learning. The gap depends on ε. Below <span class="nowrap">ε ≈ 0.02</span>, a random move down is rare enough that Sarsa keeps to the edge too, and above <span class="nowrap">ε ≈ 0.26</span> it moves up to the top row. If ε shrinks toward 0 over time, both end up with the optimal policy.</p>
     <p>With a purely greedy behavior, ε = 0, the two methods almost coincide: both act greedily, and their targets are equal, since the action Sarsa takes next is the greedy one. The one difference is timing. Sarsa chooses its next action before updating the table, and Q-learning after, so when the next state is the same state, the update can change which action Q-learning then takes.</p>
     <p>Many off-policy methods must correct for the difference between the two policies. One-step Q-learning needs no such correction: given the pair it updates, the reward and the next state do not depend on either policy, and the target uses a maximum instead of the action the behavior takes next.</p>
   </div>
@@ -159,19 +161,20 @@ scripts:
     <h2><span class="n">4</span>Expected Sarsa</h2>
     <div class="disp"><i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">← <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub></span></span> <span class="nowrap pt">+ γ Σ<sub><i>a</i></sub> π(<i>a</i>|<i>S</i><sub><i>t</i>+1</sub>) <i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>a</i>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
     <p>Sarsa's target uses the value of the one next action the policy happens to pick, and Q-learning's the value of the best one. Expected Sarsa's target averages the values of all next actions, each weighted by how likely π is to take it. This average, written <span class="nowrap"><span class="ovl"><i>V</i></span>(<i>S</i><sub><i>t</i>+1</sub>)</span>, is the value of the next state that the table implies under π. It is also what Sarsa's target is worth on average, so Expected Sarsa moves every time the way Sarsa moves on average, without the randomness that the choice of <i>A</i><sub><i>t</i>+1</sub> adds. The price is a sum over the actions at every step.</p>
-    <p>Here are the three targets for the step of section 2, from the start onto the bridge, with ε = 0.2 and α = 0.5:</p>
+    <p>Here are the three targets for the step of section 2, from A2 to B2, now with B2's values at <i>q</i><sub>*</sub> (up −7, right −5, down −107, left −7) and ε = 0.1, so that the agent moves right next with probability 0.925 and makes each other move with probability 0.025:</p>
     <div class="tbl">
       <table>
         <thead><tr><th scope="col">Method</th><th scope="col">Target</th></tr></thead>
         <tbody>
-          <tr><th scope="row"><span class="nowrap">Q-learning</span></th><td class="pt"><span class="nowrap">−1 + max(−1, −10)</span> <span class="nowrap">= −2</span></td></tr>
-          <tr><th scope="row">Sarsa, if it then steps ahead (0.9)</th><td class="pt"><span class="nowrap">−1 + (−1)</span> <span class="nowrap">= −2</span></td></tr>
-          <tr><th scope="row">Sarsa, if it then steps to the side (0.1)</th><td class="pt"><span class="nowrap">−1 + (−10)</span> <span class="nowrap">= −11</span></td></tr>
-          <tr><th scope="row">Expected Sarsa</th><td class="pt"><span class="nowrap">−1 + 0.9(−1)</span> <span class="nowrap">+ 0.1(−10)</span> <span class="nowrap">= −2.9</span></td></tr>
+          <tr><th scope="row"><span class="nowrap">Q-learning</span></th><td class="pt"><span class="nowrap">−1 + max(−7, −5, −107, −7)</span> <span class="nowrap">= −6</span></td></tr>
+          <tr><th scope="row">Sarsa, if it then moves right (0.925)</th><td class="pt"><span class="nowrap">−1 + (−5)</span> <span class="nowrap">= −6</span></td></tr>
+          <tr><th scope="row">Sarsa, if it then moves up or left (0.05)</th><td class="pt"><span class="nowrap">−1 + (−7)</span> <span class="nowrap">= −8</span></td></tr>
+          <tr><th scope="row">Sarsa, if it then steps down into the cliff (0.025)</th><td class="pt"><span class="nowrap">−1 + (−107)</span> <span class="nowrap">= −108</span></td></tr>
+          <tr><th scope="row">Expected Sarsa</th><td class="pt"><span class="nowrap">−1 + 0.925(−5)</span> <span class="nowrap">+ 0.05(−7)</span> <span class="nowrap">+ 0.025(−107)</span> <span class="nowrap">= −8.65</span></td></tr>
         </tbody>
       </table>
     </div>
-    <p>Sarsa's two possible targets average <span class="nowrap">0.9(−2) + 0.1(−11) = −2.9</span>, Expected Sarsa's target. So the new estimate is −2.25 after Q-learning's update. After Sarsa's it is −2.25 or −6.75, depending on the action that happens to come next, and after Expected Sarsa's it is always −2.7. With less noise in its updates, Expected Sarsa tolerates a larger step size. In the garden the moves themselves are certain and all the randomness comes from the policy, so Expected Sarsa can even use α = 1 and replace each estimate by its target, while Sarsa needs a small α to average its random targets.</p>
+    <p>Sarsa's possible targets average <span class="nowrap">0.925(−6) + 0.05(−8)</span> <span class="nowrap">+ 0.025(−108) = −8.65</span>, Expected Sarsa's target. With α = 0.5, starting from <span class="nowrap"><i>Q</i>(A2, right) = −6</span>, Q-learning's update leaves it at −6. Sarsa's leaves it at −6, moves it to −7, or, one time in forty, drops it to −57, depending on the move that happens to come next; Expected Sarsa's always gives about −7.33. With less noise in its updates, Expected Sarsa tolerates a larger step size. On the cliff the moves themselves are certain and all the randomness comes from the policy, so Expected Sarsa can even use α = 1 and replace each estimate by its target, while Sarsa needs a small α to average its random targets.</p>
     <p>Expected Sarsa can also learn off-policy: the weights π can come from a target policy other than the behavior. If π is greedy, the average puts all its weight on the best action, and the target is Q-learning's. So Expected Sarsa includes Q-learning as a special case.</p>
   </div>
 </section>

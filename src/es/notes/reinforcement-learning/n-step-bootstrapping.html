@@ -3,6 +3,8 @@ title: n-step bootstrapping
 module: Aprendizaje por diferencias temporales
 order: 7
 description: "Usar n recompensas reales antes de confiar en una estimación: los métodos que van de TD de un paso a Monte Carlo."
+scripts:
+  - /assets/js/notes/reinforcement-learning/n-step-bootstrapping.js
 ---
 <div class="prose">
   <p>Un agente que aprende de la experiencia tiene que decidir cuánto esperar antes de aprender de lo que pasó. Los métodos de un paso, como Sarsa y Q-learning, aprenden después de cada movimiento: toman la recompensa que acaban de recibir y le suman su propia estimación de cuánto vale el estado siguiente, que reemplaza a todo lo que viene después. Los métodos Monte Carlo hacen lo contrario. Esperan a que termine el episodio y aprenden de todas las recompensas que llegaron de verdad.</p>
@@ -142,7 +144,21 @@ description: "Usar n recompensas reales antes de confiar en una estimación: los
       <figcaption>El mismo primer episodio, desde el inicio (círculo) hasta el cargador (+1). Las flechas gruesas son los movimientos cuyo valor sube con este episodio: el último con Sarsa de un paso, los cuatro últimos con 4-step Sarsa.</figcaption>
     </figure>
     <p>Durante el episodio todos los objetivos son 0, porque las recompensas son 0 y la tabla sigue toda en cero, hasta que los retornos empiezan a llegar al cargador. El único retorno así de Sarsa de un paso es el del último movimiento, así que sube un solo valor, a 0.5. Con <i>n</i> = 4, los retornos de los cuatro últimos movimientos llegan al cargador, y suben cuatro valores a 0.5. El siguiente episodio que pase por esas celdas encuentra un rastro de cuatro movimientos en vez de uno.</p>
+    <p>La figura ejecuta 4-step Sarsa en el acantilado de la <a href="/es/notes/reinforcement-learning/q-learning/#update">nota de Q-learning</a>, con los mismos parámetros, α = 0.5, γ = 1 y ε = 0.1, y la misma grilla de valores. Cada vez que presionas Siguiente se ejecuta una línea del algoritmo: el movimiento elegido se pone amarillo; la ventana de cuatro movimientos de un objetivo tiene borde azul, desde <i>S</i><sub>τ</sub>; el movimiento elegido después de ellos, en cuya estimación se apoya el objetivo, borde rojo; y el movimiento actualizado, borde verde. Los primeros movimientos muestran cómo las actualizaciones esperan cuatro recompensas. Después, Siguiente salta a los momentos en que el agente aprende algo nuevo.</p>
+  </div>
 
+  <div class="fig steps">
+    <svg id="fig-nstep" role="group" aria-label="El acantilado: una grilla de 6 celdas de ancho y 4 de alto, cada celda dividida en cuatro triángulos con los valores de sus cuatro movimientos. El inicio está abajo a la izquierda, la meta abajo a la derecha, y el acantilado entre ambos, a lo largo de la fila de abajo."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-nstep-back">Atrás</button><button type="button" class="btn" id="fig-nstep-next">Siguiente</button><span class="count" id="fig-nstep-count"></span><button type="button" class="btn" id="fig-nstep-reset" hidden>Reiniciar</button></div>
+    <div class="ro" id="fig-nstep-out"></div>
+    <div class="fig-foot">
+      <p>Siguiente avanza, Atrás retrocede. Teclas: <span class="nowrap">→ y ←</span>.</p>
+      <button type="button" class="btn" id="fig-nstep-sound" aria-pressed="true">Con sonido</button>
+    </div>
+    <p class="sr-only" id="fig-nstep-live" aria-live="polite"></p>
+  </div>
+
+  <div class="prose">
     <h3><i>n</i>-step Expected Sarsa</h3>
     <p>Expected Sarsa, en cambio, termina su retorno en el valor promedio de las acciones en <i>S</i><sub><i>t</i>+<i>n</i></sub> bajo la política objetivo π:</p>
     <div class="disp"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub> = <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub> + ⋯</span> <span class="nowrap">+ γ<sup><i>n</i>−1</sup><i>R</i><sub><i>t</i>+<i>n</i></sub></span> <span class="nowrap pt">+ γ<sup><i>n</i></sup><span class="ovl"><i>V</i></span><sub><i>t</i>+<i>n</i>−1</sub>(<i>S</i><sub><i>t</i>+<i>n</i></sub>)</span>,&ensp;<span class="nowrap"><span class="ovl"><i>V</i></span><sub><i>t</i></sub>(<i>s</i>) ≐ Σ<sub><i>a</i></sub> π(<i>a</i>|<i>s</i>) <i>Q</i><sub><i>t</i></sub>(<i>s</i>, <i>a</i>)</span></div>

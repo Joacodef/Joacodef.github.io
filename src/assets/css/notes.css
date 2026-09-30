@@ -262,32 +262,32 @@ ol.steps b { font-weight: 600; }
 /* Bars of weights and traces. */
 .bar-w { fill: var(--ink-3); fill-opacity: 0.3; stroke: var(--ink-2); stroke-width: 1.2; }
 
-/* Grid worlds: cells the reader presses to see their values, the agent as an ink dot, the best move in each cell as a
-   blue arrow and the path the best moves take as a dashed blue line. The cell whose values a target uses is outlined
-   in carmine. */
+/* Grid worlds: each cell the agent can stand on is split by its diagonals into four triangles, one per move, each
+   showing that move's value, with the best value of the cell on a blue highlight. Marks on the triangles: the move just
+   chosen in yellow, updated moves in green (as strong as their trace), the move a target uses in red, and the steps of
+   an n-step window in blue. */
 .gw-floor { fill: var(--card); }
 .gw-cliff { fill: color-mix(in srgb, var(--ink) 16%, var(--card)); }
 .gw-frame { fill: none; stroke: var(--ink-3); stroke-width: 1.2; }
-.gw-line { stroke: var(--rule); stroke-width: 1; }
-.gw-cell { cursor: pointer; outline: none; }
-.gw-focus { fill: none; stroke: var(--ink-3); stroke-width: 1.5; stroke-dasharray: 3 3; opacity: 0; pointer-events: none; }
-.gw-cell:focus-visible .gw-focus { opacity: 1; }
+.gw-line, .gw-diag { stroke: var(--rule); stroke-width: 1; }
 .gw-lab { fill: var(--ink-2); font-family: var(--sans); font-size: 13px; pointer-events: none; }
 .gw-axis { fill: var(--ink-3); font-family: var(--sans); font-size: 11px; }
 .gw-sg { fill: var(--ink-2); font-family: var(--sans); font-size: 12px; pointer-events: none; }
-.gw-tag { fill: var(--ink); font-family: var(--serif); font-style: italic; font-size: 14px; pointer-events: none; }
-.gw-tag .sub { font-size: 0.72em; }
-.gw-best { stroke: var(--blue); stroke-width: 2.4; stroke-linecap: round; pointer-events: none; }
-.gw-head { fill: var(--blue); pointer-events: none; }
-.gw-path { fill: none; stroke: var(--blue); stroke-width: 2; stroke-dasharray: 5 4; stroke-linejoin: round; opacity: 0.8; pointer-events: none; }
-.gw-sel { fill: none; stroke: var(--ink); stroke-width: 2; pointer-events: none; }
-.gw-sel.tg { stroke: var(--red); }
+/* A thin halo in the cell's color keeps a value legible where a mark crosses it. */
+.gw-q { fill: var(--ink-2); font-family: var(--sans); font-size: 10px; font-variant-numeric: tabular-nums; pointer-events: none; paint-order: stroke; stroke: var(--card); stroke-width: 2.5px; stroke-linejoin: round; }
+.gw-q.best { fill: var(--blue); font-weight: 600; stroke: none; }
+.gw-qbest { fill: color-mix(in srgb, var(--blue) 16%, var(--card)); }
+.gw-pick { fill: color-mix(in srgb, var(--pick) 42%, transparent); pointer-events: none; }
+.gw-mark { fill: none; stroke-width: 2.4; stroke-linejoin: round; pointer-events: none; }
+.gw-mark.upd { stroke: var(--ok); }
+.gw-mark.tg { stroke: var(--red); }
+.gw-mark.step { stroke: var(--blue); stroke-width: 1.6; stroke-dasharray: 4 3; }
 .gw-agent { fill: var(--ink); }
 .gw-agent-g { pointer-events: none; transition: transform 0.3s ease; }
 .gw-agent-g.jump { transition: none; }
 .gw-fall { fill: none; stroke: var(--ink); stroke-width: 2; pointer-events: none; }
 .gw-wall { stroke: var(--ink); stroke-width: 4; stroke-linecap: round; pointer-events: none; }
-@media (max-width: 560px) { .gw-axis, .gw-sg { font-size: 14px; } .gw-lab { font-size: 16px; } .gw-tag { font-size: 17px; } }
+@media (max-width: 560px) { .gw-axis, .gw-sg { font-size: 14px; } .gw-lab { font-size: 16px; } .gw-q { font-size: 11px; } }
 
 /* Figures stepped through like slides, with Next and Back. The controls sit right under the drawing, so the growing
    text never moves them, and new text appears only at the bottom, with earlier text dimmed above it. */
@@ -313,14 +313,6 @@ ol.steps b { font-weight: 600; }
 /* On a new slide, its first text waits for the title to finish fading in. */
 .ro .enter.after-title { animation-delay: 0.4s; }
 @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-/* The four values of a cell, around its name: the best in blue, the one just updated underlined. */
-.qv { display: grid; grid-template-columns: repeat(3, auto); justify-content: start; gap: 0.1rem 0.9rem; margin: 0.3rem 0 0; font-variant-numeric: tabular-nums; }
-.qv span { text-align: center; }
-.qv .best { color: var(--blue); font-weight: 600; }
-.qv .changed { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
-.qv .mid { color: var(--ink-3); font-size: 0.9rem; align-self: center; }
-.fig svg.arr { display: inline-block; width: 0.8em; height: 0.8em; vertical-align: -0.05em; background: none; border-radius: 0; transform: rotate(var(--r)); }
-.arr path { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 @media (prefers-reduced-motion: reduce) { .gw-agent-g { transition: none; } .ro .enter { animation: none; } }
 /* Text for screen readers only. */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

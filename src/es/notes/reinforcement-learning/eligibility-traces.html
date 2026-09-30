@@ -3,6 +3,8 @@ title: Eligibility traces
 module: Aprendizaje por diferencias temporales
 order: 8
 description: Promediar todos los retornos de n pasos con pesos que decaen por λ, y aprender de ese promedio mientras avanza el episodio, con una memoria que se desvanece de los pares recién visitados.
+scripts:
+  - /assets/js/notes/reinforcement-learning/eligibility-traces.js
 ---
 <div class="prose">
   <p>Un método n-step confía en sus estimaciones después de un número fijo de pasos, <i>n</i>, y un buen <i>n</i> depende de la tarea. Nada obliga a elegir uno solo. Un objetivo puede promediar varios retornos de <i>n</i> pasos, por ejemplo la mitad de uno corto y la mitad de uno largo, y seguir siendo un objetivo válido.</p>
@@ -180,6 +182,21 @@ description: Promediar todos los retornos de n pasos con pesos que decaen por λ
       <figcaption>Después de un episodio de Sarsa(λ) con λ = 0.9, cada movimiento del camino tiene un valor más alto, desde 0.5 para el último hasta 0.22 para el primero; las flechas más gruesas subieron más. Sarsa de un paso habría subido solo el último movimiento, y 4-step Sarsa los cuatro últimos.</figcaption>
     </figure>
     <p>Las trazas no recuerdan qué movimientos fueron útiles, solo cuáles fueron recientes, así que el desvío en medio del camino también recibe crédito. Los episodios siguientes lo corrigen, porque los caminos que van directo cobran su recompensa antes.</p>
+    <p>La figura ejecuta Sarsa(λ) en el acantilado de la <a href="/es/notes/reinforcement-learning/q-learning/#update">nota de Q-learning</a>, con λ = 0.9 como en la sala, γ = 1, ε = 0.1 y un tamaño de paso menor, α = 0.1: un movimiento que se repite una y otra vez suma 1 a su traza cada vez, así que su traza puede crecer muy por encima de 1, y con un α grande los valores se pasarían de largo. Cada celda se divide en cuatro triángulos, uno por movimiento, cada uno con el valor de ese movimiento (en blanco mientras no se ha probado), y el mejor valor de la celda se destaca en azul. Cada vez que presionas Siguiente se ejecuta una línea del algoritmo de arriba: el movimiento elegido se pone amarillo, cada movimiento con traza tiene un borde verde, tan marcado como su traza, y el valor que usa el TD error, un borde rojo.</p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-lambda" role="group" aria-label="El acantilado: una grilla de 6 celdas de ancho y 4 de alto, cada celda dividida en cuatro triángulos con los valores de sus cuatro movimientos. El inicio está abajo a la izquierda, la meta abajo a la derecha, y el acantilado entre ambos, a lo largo de la fila de abajo."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-lambda-back">Atrás</button><button type="button" class="btn" id="fig-lambda-next">Siguiente</button><span class="count" id="fig-lambda-count"></span><button type="button" class="btn" id="fig-lambda-reset" hidden>Reiniciar</button></div>
+    <div class="ro" id="fig-lambda-out"></div>
+    <div class="fig-foot">
+      <p>Siguiente avanza, Atrás retrocede. Teclas: <span class="nowrap">→ y ←</span>.</p>
+      <button type="button" class="btn" id="fig-lambda-sound" aria-pressed="true">Con sonido</button>
+    </div>
+    <p class="sr-only" id="fig-lambda-live" aria-live="polite"></p>
+  </div>
+
+  <div class="prose">
     <p>El mismo mecanismo funciona con cualquier forma de estimar valores. La traza es entonces un vector <b class="vec">z</b><sub><i>t</i></sub>, del tamaño del vector de pesos: cuando un peso participa en una estimación, su traza sube, y luego se desvanece. En una tabla, el peso que participa es la entrada del par recién visitado, que es el +1 del algoritmo de arriba.</p>
   </div>
 </section>
