@@ -281,7 +281,11 @@ ol.steps b { font-weight: 600; }
 .gw-q { fill: var(--ink-2); font-family: var(--sans); font-size: 10px; font-variant-numeric: tabular-nums; pointer-events: none; paint-order: stroke; stroke: var(--card); stroke-width: 2.5px; stroke-linejoin: round; }
 .gw-q.best { fill: var(--blue); font-weight: 600; stroke: none; }
 .gw-qbest { fill: color-mix(in srgb, var(--blue) 16%, var(--card)); }
+.gw-qback { fill: color-mix(in srgb, var(--blue) 16%, var(--card)); }
+.gw-q.on { stroke: color-mix(in srgb, var(--blue) 16%, var(--card)); }
+.gw-head { fill: color-mix(in srgb, var(--blue) 45%, var(--card)); }
 .gw-pick { fill: color-mix(in srgb, var(--pick) 42%, transparent); pointer-events: none; }
+.gw-route { fill: none; stroke: color-mix(in srgb, var(--blue) 16%, var(--card)); stroke-width: 13; stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
 .gw-mark { fill: none; stroke-width: 2.4; stroke-linejoin: round; pointer-events: none; }
 .gw-mark.upd { stroke: var(--ok); }
 .gw-mark.tg { stroke: var(--red); }

@@ -1,5 +1,5 @@
 import { tr } from "../../plane.js";
-import { START, GOAL, W, H, cellName, stepEnv, rngFrom, freshQ, epsGreedy, greedyPath, num, par, eqv, count, sym, reason, takeText, slideshow } from "./gridworld.js";
+import { START, GOAL, W, H, NAME, cellName, stepEnv, rngFrom, freshQ, epsGreedy, greedyPath, num, par, eqv, count, sym, reason, takeText, slideshow } from "./gridworld.js";
 
 /* ---------- Section 2: Q-learning on the cliff, stepped through like slides ---------- */
 
@@ -40,7 +40,9 @@ let allTried = null, connect = null, learned = null;
     if (p && p.length - 1 === OPT) { if (learned === null) learned = n; } else learned = null;
   }
 }
-const fallAfter = falls.find((n) => n > learned);
+// The first fall after that which is a random move in mid-episode: the move before it was updated just before it was
+// chosen, so that update's target could have used it, and did not.
+const fallAfter = falls.find((n) => n > learned && X(n).explored && X(n - 1).ep === X(n).ep);
 const fallsIn = (a, b) => falls.filter((n) => n > a && n <= b).length;
 
 // The four builds of a detailed move, one per line of the algorithm: choose A (in yellow), take it, build the target
@@ -83,8 +85,31 @@ function wholeSlide(n, line, withEq) {
 const nextLead = tr("It chooses its next move from the table as it stands, after the last update.", "Elige su siguiente movimiento con la tabla tal como está, después de la última actualización.");
 const T1 = X(epEnd(1)).t, f1 = fallsIn(0, epEnd(1));
 const firstPath = greedyPath(qAfter(connect)).length - 1;
-const xa = X(fallAfter), At = sym("A", xa.t - 1), St = sym("S", xa.t - 1);
+// The random fall, from the update of the move before it: that target used the best move in the cell (red), and the
+// random move is chosen after it (yellow), then taken and updated, which lowers only its own value.
+function exploreBuilds(n) {
+  const x = X(n), p = X(n - 1), t = x.t - 1, pair = `<i>Q</i>(${sym("S", t)}, ${sym("A", t)})`;
+  const [choose, take, target, update] = moveBuilds(n, tr("Only after that update does it choose its next move.", "Solo después de esa actualización elige su siguiente movimiento.")), before = moveBuilds(n - 1, "")[3];
+  const bestMark = before.marks.filter((m) => m.kind === "tg"), bestA = bestMark[0].a;
+  // In the updates' equations, the target written out as the reward plus the best value it borrows; on a phone the line
+  // can then break before the subtraction.
+  const spell = (eq, y) => eq.replace(`<span class="pt">${num(y.target)}</span> − ${par(y.old)}]</span>`, `<span class="pt">${num(y.r)} + ${par(y.maxNext)}</span></span> <span class="nowrap">− ${par(y.old)}]</span>`);
+  return [
+    { ...before, eq: spell(before.eq, p), line: tr(
+      `The agent has just stepped ${NAME[p.a]} from ${cellName(p.s)} to ${cellName(x.s)} and updated that move. Its target used the best move in ${cellName(x.s)}, ${NAME[bestA]}, worth ${num(p.maxNext)}, outlined in red.`,
+      `El agente acaba de pasar de ${cellName(p.s)} a ${cellName(x.s)}, hacia ${NAME[p.a]}, y de actualizar ese movimiento. Su objetivo usó el mejor movimiento en ${cellName(x.s)}, ${NAME[bestA]}, que vale ${num(p.maxNext)}, con borde rojo.`) },
+    { ...choose, marks: bestMark, line: choose.line + tr(
+      ` Sarsa would have chosen it before that update, and its target would have used this move's value, ${num(x.old)}, instead of ${num(p.maxNext)}.`,
+      ` Sarsa lo habría elegido antes de esa actualización, y su objetivo habría usado el valor de este movimiento, ${num(x.old)}, en vez de ${num(p.maxNext)}.`) },
+    take,
+    { ...update, marks: [...target.marks, { c: x.s, a: x.a, kind: "upd" }], eq: spell(update.eq, x), line: tr(
+      `Still at <i>t</i> = ${t + 1}, ${pair} moves halfway toward ${num(x.r)} plus the best value in ${cellName(x.s2)}, outlined in red: from ${num(x.old)} to ${num(x.nu)}. The fall lowers only this value, so the best moves still follow the edge, where any random step toward the cliff falls in.`,
+      `Todavía en <i>t</i> = ${t + 1}, ${pair} avanza la mitad del camino hacia ${num(x.r)} más el mejor valor en ${cellName(x.s2)}, con borde rojo: de ${num(x.old)} a ${num(x.nu)}. La caída baja solo este valor, así que los mejores movimientos siguen por el borde, donde cualquier paso al azar hacia el acantilado cae.`) },
+  ];
+}
 const finalValues = (() => { const Q = qAfter(last); return greedyPath(Q).slice(0, -1).map((s) => num(Math.max(...Q[s]))).join(", "); })();
+// A slide about the route of the best moves draws it, in blue.
+const withRoute = (builds) => builds.map((b) => ({ ...b, route: greedyPath(b.Q) }));
 const slides = [
   { n: 0, title: tr("Q-learning on the cliff", "Q-learning en el acantilado"), builds: wholeSlide(0, tr(
     `All values start at 0 again, with the agent at ${sym("S", 0)} = A1.`,
@@ -99,22 +124,21 @@ const slides = [
   { n: allTried, title: tr("Every move tried", "Todos los movimientos probados"), builds: wholeSlide(allTried, tr(
     `After ${allTried} moves in all, every move in every cell has been tried at least once. From here on the agent's choices rest on real estimates, not on untried zeros.`,
     `Tras ${allTried} movimientos en total, cada movimiento de cada celda se ha probado al menos una vez. Desde aquí, las elecciones del agente se basan en estimaciones reales, no en ceros sin probar.`)) },
-  { n: connect, title: tr("A first way through", "Un primer camino"), builds: wholeSlide(connect, tr(
+  { n: connect, title: tr("A first way through", "Un primer camino"), builds: withRoute(wholeSlide(connect, tr(
     `In episode ${X(connect).ep}, following the best move from each cell first leads from A1 to the goal: ${firstPath} moves, not yet the shortest route.`,
-    `En el episodio ${X(connect).ep}, seguir el mejor movimiento de cada celda lleva por primera vez de A1 a la meta: ${firstPath} movimientos, todavía no la ruta más corta.`)) },
-  { n: learned, title: tr("The shortest path", "El camino más corto"), builds: wholeSlide(learned, tr(
+    `En el episodio ${X(connect).ep}, seguir el mejor movimiento de cada celda lleva por primera vez de A1 a la meta: ${firstPath} movimientos, todavía no la ruta más corta.`))) },
+  { n: learned, title: tr("The shortest path", "El camino más corto"), builds: withRoute(wholeSlide(learned, tr(
     `In episode ${X(learned).ep}, the best moves settle on the shortest path, ${OPT} moves, right along the edge of the cliff. They stay there for the rest of the run.`,
-    `En el episodio ${X(learned).ep}, los mejores movimientos se asientan en el camino más corto, de ${OPT} movimientos, justo por el borde del acantilado. Ahí se quedan hasta el final.`)) },
-  { n: fallAfter, title: tr("Exploration still costs", "Explorar sigue costando"), builds: wholeSlide(fallAfter, tr(
-    `${At} is a random move, which happens one time in ten, and takes the agent from ${St} = ${cellName(xa.s)} into the cliff, although its best moves avoid it. Only the value of that move changes; the best values along the edge stay as they are, since Q-learning's target uses the best next move, not the random one. The agent keeps the edge path, and keeps paying for exploring.`,
-    `${At} es un movimiento al azar, algo que pasa una vez de cada diez, y lleva al agente de ${St} = ${cellName(xa.s)} al acantilado, aunque sus mejores movimientos lo evitan. Solo cambia el valor de ese movimiento; los mejores valores a lo largo del borde siguen iguales, porque el objetivo de Q-learning usa el mejor movimiento siguiente, no el que se eligió al azar. El agente mantiene el camino por el borde, y sigue pagando por explorar.`), true) },
-  { n: last, title: tr(`After ${EPISODES} episodes`, `Después de ${EPISODES} episodios`), builds: wholeSlide(last, tr(
+    `En el episodio ${X(learned).ep}, los mejores movimientos se asientan en el camino más corto, de ${OPT} movimientos, justo por el borde del acantilado. Ahí se quedan hasta el final.`))) },
+  { n: fallAfter - 1, end: fallAfter, title: tr("Exploration still costs", "Explorar sigue costando"), builds: exploreBuilds(fallAfter) },
+  { n: last, title: tr(`After ${EPISODES} episodes`, `Después de ${EPISODES} episodios`), builds: withRoute(wholeSlide(last, tr(
     `Along the path, the best values are ${finalValues}: about minus the number of moves left. The agent fell ${falls.length} times, ${fallsIn(learned, last)} of them after it had learned the path.`,
-    `A lo largo del camino, los mejores valores son ${finalValues}: cerca de −1 por cada movimiento que falta. El agente cayó ${falls.length} veces, ${fallsIn(learned, last)} de ellas después de haber aprendido el camino.`)) },
+    `A lo largo del camino, los mejores valores son ${finalValues}: cerca de −1 por cada movimiento que falta. El agente cayó ${falls.length} veces, ${fallsIn(learned, last)} de ellas después de haber aprendido el camino.`))) },
 ];
-// How far each slide jumps ahead of the one before it, when it skips moves.
+// How far each slide jumps ahead of the one before it, when it skips moves: from the last move the slide before shows
+// (end, when it plays past its n) to the one this slide starts at.
 for (let i = 1; i < slides.length; i++) {
-  const from = slides[i - 1].n, to = slides[i].n, moves = to - from;
+  const from = slides[i - 1].end ?? slides[i - 1].n, to = slides[i].n, moves = to - from;
   if (moves <= 1) continue;
   const epFrom = from ? X(from).ep + (X(from).done ? 1 : 0) : 1, epTo = X(to).ep;
   slides[i].skip = { from, to, moves, text: tr(`${moves} moves later`, `${moves} movimientos después`) + (epTo !== epFrom ? tr(`, in episode ${epTo}`, `, en el episodio ${epTo}`) : "") };

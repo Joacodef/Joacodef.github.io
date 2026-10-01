@@ -151,6 +151,9 @@ function createGrid(svg, world) {
     el("text", { class: "gw-lab", x: mid(GOAL)[0], y: y0(GOAL) + C * 0.3, "text-anchor": "middle" }, svg).textContent = world.goalName;
     el("text", { class: "gw-lab", x: mid(GOAL)[0], y: y0(GOAL) + C * 0.8, "text-anchor": "middle" }, svg).textContent = `+${world.goalReward}`;
   } else el("text", { class: "gw-sg", x: x0(GOAL) + C / 2, y: MT + H * C + 33, "text-anchor": "middle" }, svg).textContent = tr("goal", "meta");
+  // The arrowhead of a route, named after the figure so that two figures on a page keep their own.
+  const head = el("marker", { id: `${svg.id}-head`, viewBox: "0 0 10 10", refX: 8, refY: 5, markerWidth: 1.7, markerHeight: 1.7, orient: "auto" }, el("defs", {}, svg));
+  el("path", { class: "gw-head", d: "M0 0 L10 5 L0 10 z" }, head);
   const dyn = el("g", {}, svg);
   const agentG = el("g", { class: "gw-agent-g" }, svg);
   const agentDot = el("circle", { class: "gw-agent", cx: 0, cy: 0, r: 8 }, agentG);
@@ -158,13 +161,26 @@ function createGrid(svg, world) {
 
   // g: Q (the values drawn), agent (its cell), jump (move it without gliding; it never glides out of the cliff),
   // pick ([cell, action] just chosen), marks ([{ c, a, kind, w }] with kind "upd", "tg" or "step" and w a trace),
-  // maxOf (a cell whose best moves a target uses, marked in red), ring or rings (cliff cells the agent fell into) and
-  // bump (the action of a wall hit).
+  // maxOf (a cell whose best moves a target uses, marked in red), ring or rings (cliff cells the agent fell into),
+  // bump (the action of a wall hit) and route (the cells the best moves lead through, from the start to the goal).
   function draw(g, animate) {
-    const { Q, agent, jump, pick, marks, maxOf, ring, rings, bump } = g;
+    const { Q, agent, jump, pick, marks, maxOf, ring, rings, bump, route } = g;
     dyn.replaceChildren();
     if (pick) el("polygon", { class: "gw-pick", points: pts(triPts(pick[0])[pick[1]]) }, dyn);
+    // A route: a light blue band through the middles of its cells, under the values, its arrowhead stopping short of
+    // the goal's middle, where the agent may stand.
+    if (route) {
+      const p = route.map(mid), [ex, ey] = p.at(-1), [px, py] = p.at(-2), d = Math.hypot(ex - px, ey - py), cut = C * 0.2;
+      p[p.length - 1] = [ex - ((ex - px) / d) * cut, ey - ((ey - py) / d) * cut];
+      el("polyline", { class: "gw-route", points: pts(p), "marker-end": `url(#${svg.id}-head)` }, dyn);
+    }
     const all = [...(marks || [])], red = new Set();
+    // The values a route's band runs over: the move it leaves each cell by, and the one back where it enters the next.
+    const onRoute = new Set();
+    for (let i = 0; route && i + 1 < route.length; i++) {
+      const [s, n] = [route[i], route[i + 1]], a = ACTS.findIndex(([dx, dy]) => dx === (n % W) - (s % W) && dy === Math.floor(n / W) - Math.floor(s / W));
+      onRoute.add(s * 4 + a).add(n * 4 + ((a + 2) % 4));
+    }
     if (maxOf !== undefined && maxOf !== null && maxOf !== GOAL) { const m = Math.max(...Q[maxOf]); Q[maxOf].forEach((v, a) => { if (v === m) all.push({ c: maxOf, a, kind: "tg" }); }); }
     // Blue steps first, then green, then red, so that the stronger marks stay on top. A move with marks of two kinds,
     // such as a pair updated toward a target that uses its own value, shows both: the later one inside the earlier.
@@ -182,9 +198,10 @@ function createGrid(svg, world) {
       const q = Q[c], m = Math.max(...q), best = q.filter((v) => v === m).length === 1 ? q.indexOf(m) : -1;
       for (let a = 0; a < 4; a++) {
         if (q[a] === 0 && !red.has(c * 4 + a)) continue;
-        const [tx, ty] = triText(c, a), t = el("text", { class: `gw-q${a === best ? " best" : ""}`, x: tx, y: ty, "text-anchor": "middle" }, dyn);
+        const [tx, ty] = triText(c, a), t = el("text", { class: `gw-q${a === best ? " best" : onRoute.has(c * 4 + a) ? " on" : ""}`, x: tx, y: ty, "text-anchor": "middle" }, dyn);
         t.textContent = qText(q[a], decimals);
-        if (a === best) { const bb = t.getBBox(); dyn.insertBefore(el("rect", { class: "gw-qbest", x: bb.x - 2.5, y: bb.y - 0.5, width: bb.width + 5, height: bb.height + 1, rx: 3 }), t); }
+        // The best value on a blue highlight; any other value on a route on the band's color, so that it sits on the band.
+        if (a === best || onRoute.has(c * 4 + a)) { const bb = t.getBBox(); dyn.insertBefore(el("rect", { class: a === best ? "gw-qbest" : "gw-qback", x: bb.x - 2.5, y: bb.y - 0.5, width: bb.width + 5, height: bb.height + 1, rx: 3 }), t); }
       }
     }
     for (const f of [ring, ...(rings || [])]) if (f !== null && f !== undefined) { const [fx, fy] = mid(f); el("circle", { class: "gw-fall", cx: fx, cy: fy, r: 13 }, dyn); }
