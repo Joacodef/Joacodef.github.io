@@ -354,7 +354,8 @@ function chime() {
 // Each slide has a title, its builds (one per press) and, when it skips moves, skip = { from, to, moves, text, note },
 // where moves is how many steps it skips and note, when given, replaces the line that counts them while they play.
 // A build has what the grid's draw() takes, plus ep, move, time and stage ("after" in the sweep that follows an episode)
-// for the status line, line and eq for its text, and sound ("fall" or "wall") when its move calls for one.
+// for the status line, line and eq for its text (fit sets a long eq smaller on phones), and sound ("fall" or "wall")
+// when its move calls for one.
 // frame(m) gives the state at step m of a skip, from + 1 to to − 1, with Q, agent, ring, ep, move, time and stage, and
 // the marks of that step: pick (the move about to be taken) and marks (what was just updated).
 // world is the cliff unless given; with perCell, builds and frames give V, one value per cell, instead of Q.
@@ -371,7 +372,7 @@ export function slideshow({ svg, slides, frame, world = cliff, perCell = false }
     // New blocks only ever appear at the bottom; earlier ones stay above, dimmed.
     const shown = sl.builds.slice(0, b + 1), enter = animate && b === 0 ? " enter" : "";
     let html = `<p class="lbl">${status(bd.ep, bd.move, bd.time, bd.stage)}</p>${sl.skip ? `<p class="later${enter}">${sl.skip.text}</p>` : ""}<p class="slide${enter}">${sl.title}</p>`;
-    html += `<div class="lines">${shown.map((d, i) => `<div class="${i < shown.length - 1 ? "old" : animate ? (b === 0 ? "enter after-title" : "enter") : ""}"><p>${d.line}</p>${d.eq ? `<div class="eq">${d.eq}</div>` : ""}</div>`).join("")}</div>`;
+    html += `<div class="lines">${shown.map((d, i) => `<div class="${i < shown.length - 1 ? "old" : animate ? (b === 0 ? "enter after-title" : "enter") : ""}"><p>${d.line}</p>${d.eq ? `<div class="eq${d.fit ? " fit" : ""}">${d.eq}</div>` : ""}</div>`).join("")}</div>`;
     out.innerHTML = html;
     if (animate) live.textContent = shown[shown.length - 1].line.replace(/<[^>]+>/g, "");
     countEl.textContent = tr(`${k + 1} of ${slides.length}`, `${k + 1} de ${slides.length}`);

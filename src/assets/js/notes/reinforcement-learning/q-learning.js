@@ -1,11 +1,12 @@
 import { tr } from "../../plane.js";
-import { START, GOAL, W, H, NAME, cellName, stepEnv, rngFrom, freshQ, epsGreedy, greedyPath, num, par, eqv, count, sym, reason, takeText, slideshow } from "./gridworld.js";
+import { START, GOAL, W, H, NAME, cellName, stepEnv, rngFrom, freshQ, epsGreedy, greedyPath, num, par, eqv, count, sym, reason, takeText, chooseTakeText, slideshow } from "./gridworld.js";
 
 /* ---------- Section 2: Q-learning on the cliff, stepped through like slides ---------- */
 
-// Learning: α = 0.5, γ = 1 and ε = 0.1, with ties broken at random. With this seed the best moves settle on the
-// shortest path, 7 moves, in episode 19; the figure shows 30 episodes, under a thousand moves in all.
-const ALPHA = 0.5, EPS = 0.1, SEED = 817, EPISODES = 30, OPT = 7;
+// Learning: α = 0.5, γ = 1 and ε = 0.1, with ties broken at random. This seed has a short first episode, 12 moves with
+// one fall, which the figure plays move by move; the best moves settle on the shortest path, 7 moves, in episode 23,
+// and the figure shows 30 episodes, under a thousand moves in all.
+const ALPHA = 0.5, EPS = 0.1, SEED = 499916, EPISODES = 30, OPT = 7;
 
 // The whole run, computed once: every move, with what its update used.
 const steps = [];
@@ -81,6 +82,15 @@ function wholeSlide(n, line, withEq) {
   return [{ ep: x ? x.ep : 1, move: x ? x.t : null, Q, agent: to, ring: fell ? x.fell : null, sound: fell ? "fall" : undefined, marks: withEq ? [{ c: x.s, a: x.a, kind: "upd" }] : [], line, eq, time: x ? t + 1 : 0 }];
 }
 
+// The other moves of episode 1, one press each: why the move was chosen and where it led, then its update, with the best
+// moves of the next cell in red and the pair updated in green. extra, when given, follows the first sentence.
+function oneBuild(n, extra = "", end = "") {
+  const [, take, target, update] = moveBuilds(n, ""), x = X(n), t = x.t - 1;
+  const rest = x.done ? end : tr(`The target adds ${sym("R", t + 1)} to the best value in ${sym("S", t + 1)}, outlined in red, and ${`<i>Q</i>(${sym("S", t)}, ${sym("A", t)})`} moves halfway toward it.`,
+    `El objetivo suma ${sym("R", t + 1)} al mejor valor en ${sym("S", t + 1)}, con borde rojo, y ${`<i>Q</i>(${sym("S", t)}, ${sym("A", t)})`} avanza la mitad del camino hacia él.`);
+  return { ...update, taken: take.taken, bump: take.bump, sound: take.sound, jump: x.fell !== null, time: t + 1,
+    line: `${chooseTakeText(qAfter(n - 1)[x.s], x.explored, { s: x.s, a: x.a, t, s2: x.s2, fell: x.fell })}${extra} ${rest}` };
+}
 // Q-learning chooses each move after the last update, from the table as it stands.
 const nextLead = tr("It chooses its next move from the table as it stands, after the last update.", "Elige su siguiente movimiento con la tabla tal como está, después de la última actualización.");
 const T1 = X(epEnd(1)).t, f1 = fallsIn(0, epEnd(1));
@@ -117,10 +127,21 @@ const slides = [
   { n: 1, title: tr("Move 1", "Movimiento 1"), builds: moveBuilds(1, tr("The agent chooses its first move.", "El agente elige su primer movimiento.")) },
   { n: 2, title: tr("Move 2", "Movimiento 2"), builds: moveBuilds(2, nextLead) },
   { n: 3, title: tr("Move 3", "Movimiento 3"), builds: moveBuilds(3, nextLead) },
+  // Any moves between move 3 and the first fall, one press each.
+  ...Array.from({ length: Math.max(0, falls[0] - 4) }, (_, k) => ({ n: 4 + k, title: tr(`Move ${4 + k}`, `Movimiento ${4 + k}`), builds: [oneBuild(4 + k)] })),
   { n: falls[0], title: tr("The first fall", "La primera caída"), builds: moveBuilds(falls[0], nextLead) },
-  { n: epEnd(1), title: tr("Episode 1 ends", "Termina el episodio 1"), builds: wholeSlide(epEnd(1), tr(
-    `The agent reaches the goal after ${T1} moves, with ${count(f1, "fall", "falls")} on the way.`,
-    `El agente llega a la meta después de ${T1} movimientos, con ${count(f1, "caída", "caídas")} en el camino.`), true) },
+  // The rest of episode 1, one press each. The move right after a fall from the start shows that the fall's update came
+  // before the choice.
+  ...Array.from({ length: epEnd(1) - falls[0] - 1 }, (_, k) => {
+    const n = falls[0] + 1 + k, f = X(falls[0]), m = NAME[f.a];
+    const after = k === 0 && f.s === START && X(n).s === START && X(n).a !== f.a ? tr(
+      ` ${m[0].toUpperCase() + m.slice(1)}, now at ${num(f.nu)}, was left out: the choice came after the update that counted the fall.`,
+      ` ${m[0].toUpperCase() + m.slice(1)}, ahora en ${num(f.nu)}, quedó fuera: la elección vino después de la actualización que contó la caída.`) : "";
+    return { n, title: tr(`Move ${X(n).t}`, `Movimiento ${X(n).t}`), builds: [oneBuild(n, after)] };
+  }),
+  { n: epEnd(1), title: tr("Episode 1 ends", "Termina el episodio 1"), builds: [oneBuild(epEnd(1), "", tr(
+    `The episode ends at <i>T</i> = ${T1}, after ${count(f1, "fall", "falls")}: no move follows the goal, so the target of the last move is just ${sym("R", T1)} = −1.`,
+    `El episodio termina en <i>T</i> = ${T1}, después de ${count(f1, "caída", "caídas")}: después de la meta no viene ningún movimiento, así que el objetivo del último movimiento es solo ${sym("R", T1)} = −1.`))] },
   { n: allTried, title: tr("Every move tried", "Todos los movimientos probados"), builds: wholeSlide(allTried, tr(
     `After ${allTried} moves in all, every move in every cell has been tried at least once. From here on the agent's choices rest on real estimates, not on untried zeros.`,
     `Tras ${allTried} movimientos en total, cada movimiento de cada celda se ha probado al menos una vez. Desde aquí, las elecciones del agente se basan en estimaciones reales, no en ceros sin probar.`)) },
