@@ -2,10 +2,10 @@ import { el, tr } from "../../plane.js";
 
 /* ---------- Grid worlds for the reinforcement learning figures ---------- */
 
-// Shared by the figures that step through a run like slides, one line of their algorithm per press (Monte Carlo control
-// on the cookie grid; Sarsa, Q-learning, n-step Sarsa and Sarsa(λ) on the cliff): the two worlds, the texts for choosing
-// and taking a move, the grid of values, the sounds and the controls. Each figure computes its own run and its slides,
-// and hands them to slideshow().
+// Shared by the figures that step through a run like slides, one line of their algorithm per press (Monte Carlo
+// prediction and control and TD(0) on the cookie grid; Sarsa, Q-learning, n-step Sarsa and Sarsa(λ) on the cliff): the
+// two worlds, the texts for choosing and taking a move, the grid of values, the sounds and the controls. Each figure
+// computes its own run and its slides, and hands them to slideshow().
 
 export const ACTS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 export const NAME = [tr("up", "arriba"), tr("right", "derecha"), tr("down", "abajo"), tr("left", "izquierda")];
@@ -75,6 +75,18 @@ function makeWorld({ W, H, start, goal, cliff = [], step, goalReward = step, fal
     }
     return null;
   }
+  // The cells state values lead through from the start: in each cell, the move with the largest reward plus γ times the
+  // next cell's value (0 at the goal), or null when they loop.
+  function valuePath(V, gamma) {
+    let s = start; const path = [s];
+    for (let k = 0; k < W * H; k++) {
+      const score = (a) => { const o = stepEnv(s, a); return o.fell !== null ? -Infinity : o.r + (o.done ? 0 : gamma * V[o.s2]); };
+      const n = stepEnv(s, [0, 1, 2, 3].reduce((b, a) => (score(a) > score(b) ? a : b), 0)).s2;
+      if (n === s || path.includes(n)) return null;
+      path.push(n); if (n === goal) return path; s = n;
+    }
+    return null;
+  }
   // Why a move was chosen in state s at time t, from the values pre it was chosen from: a random move, a tie, or the best.
   function reason(pre, explored, s, a, t) {
     const m = Math.max(...pre), A = sym("A", t), go = NAME[a], ties = [0, 1, 2, 3].filter((b) => pre[b] === m);
@@ -93,21 +105,48 @@ function makeWorld({ W, H, start, goal, cliff = [], step, goalReward = step, fal
       : s2 === goal && goalName ? tr(`It takes ${A} and reaches the ${goalName}: ${R(r)}.`, `Toma ${A} y llega a la ${goalName}: ${R(r)}.`)
       : tr(`It takes ${A} and moves to ${S1(cellName(s2))}: ${R(r)}.`, `Toma ${A} y pasa a ${S1(cellName(s2))}: ${R(r)}.`);
   }
-  return { W, H, START: start, GOAL: goal, isCliff, cellName, moveName, stepEnv, freshQ, greedyPath, reason, takeText, cell, decimals, goalName, goalReward };
+  // Choosing and taking a move in one press, once the first moves have gone through every line: why the move was chosen,
+  // from the values pre, then where it led.
+  function chooseTakeText(pre, explored, { s, a, t, s2, fell }) {
+    const nw = (x) => `<span class="nowrap">${x}</span>`, R = nw(`${sym("R", t + 1)} = ${num(stepEnv(s, a).r)}`), S1 = (c) => nw(`${sym("S", t + 1)} = ${c}`);
+    const then = fell !== null && fell !== undefined ? tr(`It steps off into the cliff: ${R}, and it is sent back to the start, so ${S1(cellName(start))}.`, `Cae al acantilado: ${R}, y vuelve al inicio, así que ${S1(cellName(start))}.`)
+      : s2 === s ? tr(`It hits the wall and stays where it is: ${R} and ${S1(cellName(s))}.`, `Choca con la pared y se queda donde está: ${R} y ${S1(cellName(s))}.`)
+      : s2 === goal && goalName ? tr(`It reaches the ${goalName}: ${R}.`, `Llega a la ${goalName}: ${R}.`)
+      : s2 === goal ? tr(`It reaches the goal: ${R}.`, `Llega a la meta: ${R}.`)
+      : tr(`It moves to ${S1(cellName(s2))}: ${R}.`, `Pasa a ${S1(cellName(s2))}: ${R}.`);
+    return `${reason(pre, explored, s, a, t)} ${then}`;
+  }
+  // The same for a policy that picks each move at random: the pick alone, and, once choosing and taking share a press,
+  // the pick with what followed.
+  function randomPick({ s, a, t }) {
+    const A = `<span class="nowrap">${sym("A", t)} = ${NAME[a]}</span>`;
+    return tr(`In ${sym("S", t)} = ${cellName(s)}, the policy picks one of the four moves at random: ${A}.`, `En ${sym("S", t)} = ${cellName(s)}, la política elige uno de los cuatro movimientos al azar: ${A}.`);
+  }
+  function randomTake({ s, a, t, s2 }) {
+    const nw = (x) => `<span class="nowrap">${x}</span>`, S0 = `${sym("S", t)} = ${cellName(s)}`, A = nw(`${sym("A", t)} = ${NAME[a]}`);
+    const R = nw(`${sym("R", t + 1)} = ${num(stepEnv(s, a).r)}`), S1 = nw(`${sym("S", t + 1)} = ${cellName(s2)}`);
+    return s2 === goal && goalName ? tr(`In ${S0}, the policy picks ${A} at random, which reaches the ${goalName}: ${R}.`, `En ${S0}, la política elige al azar ${A}, que llega a la ${goalName}: ${R}.`)
+      : s2 === s ? tr(`In ${S0}, the policy picks ${A} at random, into the wall, so the agent stays: ${R} and ${S1}.`, `En ${S0}, la política elige al azar ${A}, contra la pared, así que el agente se queda: ${R} y ${S1}.`)
+      : tr(`In ${S0}, the policy picks ${A} at random, and the agent moves to ${S1}: ${R}.`, `En ${S0}, la política elige al azar ${A}, y el agente pasa a ${S1}: ${R}.`);
+  }
+  return { W, H, START: start, GOAL: goal, isCliff, cellName, moveName, stepEnv, freshQ, greedyPath, valuePath, reason, takeText, chooseTakeText, randomPick, randomTake, cell, decimals, goalName, goalReward };
 }
 // The cliff: 6 × 4, from A1 to F1, with the cliff from B1 to E1; every move gives −1.
 export const cliff = makeWorld({ W: 6, H: 4, start: 18, goal: 23, cliff: [19, 20, 21, 22], step: -1 });
 // The cookie grid: 3 × 3, from A1 to the cookie in C3, which gives +1; every other move gives 0.
 export const cookie = makeWorld({ W: 3, H: 3, start: 6, goal: 2, step: 0, goalReward: 1, goalName: tr("cookie", "galleta"), cell: 120, decimals: 2 });
 // The cliff's own names, which the cliff figures import.
-export const { W, H, START, GOAL, isCliff, cellName, moveName, stepEnv, freshQ, greedyPath, reason, takeText } = cliff;
+export const { W, H, START, GOAL, isCliff, cellName, moveName, stepEnv, freshQ, greedyPath, reason, takeText, chooseTakeText } = cliff;
 
 /* ---------- Drawing ---------- */
 
 // Each cell the agent can stand on is split by its diagonals into four triangles, one per move (up, right, down, left,
 // as in ACTS), each showing that move's value. The best value of a cell sits on a blue highlight, and an untried move,
-// still at 0, is left blank unless a target uses it. On top of that a figure marks moves: the one just chosen in yellow, updated ones in green
-// (as strong as their trace), the one a target uses in red, and the steps of an n-step window in blue.
+// still at 0, is left blank unless a target uses it. On top of that a figure marks moves: the one just chosen in yellow
+// (fading as the agent takes it), updated ones in green (as strong as their trace), the one a target uses in red, and the
+// steps of an n-step window in blue.
+// A figure that estimates the value of each cell instead (perCell) draws no diagonals and one value per cell, above
+// the agent, and its green and red marks outline the whole cell; the move just chosen is still its triangle, in yellow.
 const ML = 26, MT = 10, MB = 38;
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 // On a phone, at most the world's decimals (one on the cliff, whose cells are small), and whole numbers from 10 on, so
@@ -121,10 +160,12 @@ const pts = (p) => p.map((q) => q.join(",")).join(" ");
 // A triangle shrunk toward its middle, so that outlines of neighboring triangles do not touch.
 const shrink = (p, k) => { const gx = (p[0][0] + p[1][0] + p[2][0]) / 3, gy = (p[0][1] + p[1][1] + p[2][1]) / 3; return p.map(([x, y]) => `${gx + (x - gx) * k},${gy + (y - gy) * k}`).join(" "); };
 
-function createGrid(svg, world) {
+function createGrid(svg, world, perCell) {
   const { W, H, START, GOAL, isCliff, cell: C, decimals } = world, k = C / 60;
   const x0 = (s) => ML + (s % W) * C, y0 = (s) => MT + Math.floor(s / W) * C, mid = (s) => [x0(s) + C / 2, y0(s) + C / 2];
   const triPts = (c) => { const X0 = x0(c), Y0 = y0(c), [cx, cy] = mid(c); return [[[X0, Y0], [X0 + C, Y0], [cx, cy]], [[X0 + C, Y0], [X0 + C, Y0 + C], [cx, cy]], [[X0 + C, Y0 + C], [X0, Y0 + C], [cx, cy]], [[X0, Y0 + C], [X0, Y0], [cx, cy]]]; };
+  // A cell's outline, inset so that it clears the cell's sides; a second mark on the same cell goes inside the first.
+  const square = (c, n) => { const d = C * (0.06 + 0.06 * n), X0 = x0(c) + d, Y0 = y0(c) + d, L = C - 2 * d; return pts([[X0, Y0], [X0 + L, Y0], [X0 + L, Y0 + L], [X0, Y0 + L]]); };
   const triText = (c, a) => { const [cx, cy] = mid(c); return [[cx, y0(c) + 12 * k], [x0(c) + C - 13 * k, cy + 3.5], [cx, y0(c) + C - 4 * k], [x0(c) + 13 * k, cy + 3.5]][a]; };
   const cliffCells = [...Array(W * H).keys()].filter(isCliff);
   svg.setAttribute("viewBox", `0 0 ${ML + W * C + 8} ${MT + H * C + MB}`);
@@ -134,7 +175,7 @@ function createGrid(svg, world) {
   for (let i = 1; i < H; i++) el("line", { class: "gw-line", x1: ML, y1: MT + i * C, x2: ML + W * C, y2: MT + i * C }, svg);
   for (let i = 1; i < W; i++) el("line", { class: "gw-line", x1: ML + i * C, y1: MT, x2: ML + i * C, y2: MT + bottom * C }, svg);
   for (let s = 0; s < W * H; s++) {
-    if (isCliff(s) || s === GOAL) continue;
+    if (isCliff(s) || s === GOAL || perCell) continue;
     el("line", { class: "gw-diag", x1: x0(s), y1: y0(s), x2: x0(s) + C, y2: y0(s) + C }, svg);
     el("line", { class: "gw-diag", x1: x0(s) + C, y1: y0(s), x2: x0(s), y2: y0(s) + C }, svg);
   }
@@ -181,13 +222,17 @@ function createGrid(svg, world) {
     eating.onfinish = () => { cookie.style.visibility = "hidden"; eating.cancel(); eating = null; };
   }
 
-  // g: Q (the values drawn), agent (its cell), jump (move it without gliding; it never glides out of the cliff),
-  // pick ([cell, action] just chosen), marks ([{ c, a, kind, w }] with kind "upd", "tg" or "step" and w a trace),
-  // maxOf (a cell whose best moves a target uses, marked in red), ring or rings (cliff cells the agent fell into),
-  // bump (the action of a wall hit) and route (the cells the best moves lead through, from the start to the goal).
+  // g: Q (the values drawn) or, with perCell, V (one per cell), agent (its cell), jump (move it without gliding; it
+  // never glides out of the cliff), pick ([cell, action] just chosen), taken ([cell, action] the agent is taking: its
+  // yellow fades as the agent glides, and without animation it is gone), marks ([{ c, a, kind, w }] with kind "upd",
+  // "tg" or "step", w a trace, and no a for a mark on a whole cell), maxOf (a cell whose best moves a target uses, marked
+  // in red), ring or rings (cliff cells the agent fell into), bump (the action of a wall hit) and route (the cells the
+  // best moves lead through, from the start to the goal).
   function draw(g, animate) {
-    const { Q, agent, jump, pick, marks, maxOf, ring, rings, bump, route } = g;
+    const { Q, V, agent, jump, pick, taken, marks, maxOf, ring, rings, bump, route } = g;
     dyn.replaceChildren();
+    if (taken && animate && !reducedMotion.matches)
+      el("polygon", { class: "gw-pick", points: pts(triPts(taken[0])[taken[1]]) }, dyn).animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: "ease-in", fill: "forwards" });
     if (pick) el("polygon", { class: "gw-pick", points: pts(triPts(pick[0])[pick[1]]) }, dyn);
     // A route: a light blue band through the middles of its cells, under the values, its arrowhead stopping short of
     // the goal's middle, where the agent may stand; on the cookie grid, just inside the goal, clear of its name and reward.
@@ -208,15 +253,23 @@ function createGrid(svg, world) {
     // such as a pair updated toward a target that uses its own value, shows both: the later one inside the earlier.
     const order = { step: 0, upd: 1, tg: 2 }, kindsAt = new Map();
     for (const { c, a, kind, w } of all.sort((p, q) => order[p.kind] - order[q.kind])) {
-      const kinds = kindsAt.get(c * 4 + a) || new Set();
+      const key = a === undefined ? -1 - c : c * 4 + a, kinds = kindsAt.get(key) || new Set();
       if (kinds.has(kind)) continue;
-      const k = kinds.size; kinds.add(kind); kindsAt.set(c * 4 + a, kinds);
+      const k = kinds.size; kinds.add(kind); kindsAt.set(key, kinds);
       const style = w === undefined ? {} : { style: `opacity: ${Math.max(0.15, Math.min(1, w))}; stroke-width: ${2.4 * Math.min(2, Math.max(1, w))}px` };
-      el("polygon", { class: `gw-mark ${kind}`, points: shrink(triPts(c)[a], 0.8 - 0.22 * k), ...style }, dyn);
+      el("polygon", { class: `gw-mark ${kind}`, points: a === undefined ? square(c, k) : shrink(triPts(c)[a], 0.8 - 0.22 * k), ...style }, dyn);
     }
     for (const { c, a, kind } of all) if (kind === "tg") red.add(c * 4 + a);
     for (let c = 0; c < W * H; c++) {
       if (isCliff(c) || c === GOAL) continue;
+      // One value per cell, above the agent, with no best value to highlight. A route's band runs over it where it leaves
+      // the cell upward or enters it from above (the cell's up entry in onRoute), and there it sits on the band's color.
+      if (V) {
+        const on = onRoute.has(c * 4), t = el("text", { class: `gw-v${on ? " on" : ""}`, x: mid(c)[0], y: y0(c) + C * 0.3, "text-anchor": "middle" }, dyn);
+        t.textContent = qText(V[c], decimals);
+        if (on) { const bb = t.getBBox(); dyn.insertBefore(el("rect", { class: "gw-qback", x: bb.x - 3, y: bb.y - 0.5, width: bb.width + 6, height: bb.height + 1, rx: 3 }), t); }
+        continue;
+      }
       const q = Q[c], m = Math.max(...q), best = q.filter((v) => v === m).length === 1 ? q.indexOf(m) : -1;
       for (let a = 0; a < 4; a++) {
         if (q[a] === 0 && !red.has(c * 4 + a)) continue;
@@ -304,12 +357,12 @@ function chime() {
 // for the status line, line and eq for its text, and sound ("fall" or "wall") when its move calls for one.
 // frame(m) gives the state at step m of a skip, from + 1 to to − 1, with Q, agent, ring, ep, move, time and stage, and
 // the marks of that step: pick (the move about to be taken) and marks (what was just updated).
-// world is the cliff unless given.
-export function slideshow({ svg, slides, frame, world = cliff }) {
+// world is the cliff unless given; with perCell, builds and frames give V, one value per cell, instead of Q.
+export function slideshow({ svg, slides, frame, world = cliff, perCell = false }) {
   const id = svg.id, $ = (s) => document.getElementById(`${id}-${s}`);
   const out = $("out"), live = $("live"), nextBtn = $("next"), backBtn = $("back"), resetBtn = $("reset"), countEl = $("count");
   let k = 0, b = 0, ff = null, soundOn = true;
-  const grid = createGrid(svg, world);
+  const grid = createGrid(svg, world, perCell);
 
   function render(animate) {
     const sl = slides[k], bd = sl.builds[b];
@@ -346,7 +399,7 @@ export function slideshow({ svg, slides, frame, world = cliff }) {
       if (m !== shown) {
         shown = m;
         const f = frame(m);
-        grid.draw({ Q: f.Q, agent: f.agent, ring: f.ring, jump: true, pick: f.pick, marks: f.marks }, false);
+        grid.draw({ Q: f.Q, V: f.V, agent: f.agent, ring: f.ring, jump: true, pick: f.pick, marks: f.marks }, false);
         out.innerHTML = `<p class="lbl">${status(f.ep, f.move, f.time, f.stage)}</p><p class="slide ff">${tr("Skipping ahead", "Adelantando")}</p><p class="muted">${skip.note ?? tr(`${skip.moves} moves go by.`, `Pasan ${skip.moves} movimientos.`)} ${tr("Press Next to jump to the end.", "Presiona Siguiente para saltar al final.")}</p>`;
       }
       if (now - start >= dur) finishFF(true, prevAgent);

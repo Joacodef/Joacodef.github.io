@@ -57,6 +57,18 @@ scripts:
       <li>Update <span class="nowrap"><i>V</i>(<i>S</i>) ← <i>V</i>(<i>S</i>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i> + γ<i>V</i>(<i>S</i>′)</span> − <i>V</i>(<i>S</i>)]</span>.</li>
       <li>Set <i>S</i> ← <i>S</i>′, and go back to step 3 until <i>S</i> is terminal.</li>
     </ol>
+    <p>The figure runs TD(0) on the <a href="/notes/reinforcement-learning/monte-carlo/#prediction">same 30 episodes as the first figure of the previous note</a>: the random moves are the same, and only the learning differs. γ = 0.9 again, α = 0.5, and every estimate starts at 0. Every move is now followed by its TD error, whose target uses the estimate outlined in red, and by the update.</p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-td0" role="group" aria-label="A grid 3 cells wide and 3 tall, each cell holding one estimate. The agent starts at the bottom left, and the cookie is at the top right."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-td0-back">Back</button><button type="button" class="btn" id="fig-td0-next">Next</button><span class="count" id="fig-td0-count"></span><button type="button" class="btn" id="fig-td0-reset" hidden>Reset</button></div>
+    <div class="ro" id="fig-td0-out"></div>
+    <div class="fig-foot">
+      <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
+      <button type="button" class="btn" id="fig-td0-sound" aria-pressed="true">Sound on</button>
+    </div>
+    <p class="sr-only" id="fig-td0-live" aria-live="polite"></p>
   </div>
 </section>
 
@@ -149,8 +161,8 @@ scripts:
       <li>Set <i>S</i> ← <i>S</i>′ and <i>A</i> ← <i>A</i>′, and go back to step 2 until <i>S</i> is terminal.</li>
     </ol>
     <p>Learning within the episode is what lets Sarsa escape a policy that would never finish. Suppose all of the robot's action values start at 0 and, breaking the tie, its policy sends it from the hallway back to the kitchen, from where the only move is back to the hallway. Followed greedily, that policy shuttles forever, and a Monte Carlo method would wait forever for a return. With Sarsa, α = 0.5 and γ = 1, the first time the robot goes back to the kitchen, <i>Q</i>(hallway, kitchen) drops to <span class="nowrap">0.5(−1 + 0 − 0) = −0.5</span>, below the 0 of the untried move to the study, and the next time it is in the hallway it heads for the study.</p>
-    <p>To watch Sarsa learn, take a larger grid than the cookie grid of the previous note: 6 cells wide and 4 tall, from A1 at the bottom left to F4 at the top right. The agent starts in A1, and an episode ends when it reaches the goal, F1, at the bottom right. Every move gives −1, and between start and goal, along the bottom edge, runs a cliff: a step into it gives −100 and sends the agent back to the start. The shortest route runs right along the edge, in 7 moves.</p>
-    <p>The figure runs Sarsa there with α = 0.5, γ = 1 and ε = 0.1, so that in each cell the greedy move has probability 0.925 and each other move 0.025. It reads like the Monte Carlo figure, but each move is updated right after it is made: the agent first chooses its next move, in yellow, and the target uses that move's value, outlined in red.</p>
+    <p>To watch Sarsa learn, take a larger grid than the cookie grid: 6 cells wide and 4 tall, from A1 at the bottom left to F4 at the top right. The agent starts in A1, and an episode ends when it reaches the goal, F1, at the bottom right. Every move gives −1, and between start and goal, along the bottom edge, runs a cliff: a step into it gives −100 and sends the agent back to the start. The shortest route runs right along the edge, in 7 moves.</p>
+    <p>The figure runs Sarsa there with α = 0.5, γ = 1 and ε = 0.1, so that in each cell the greedy move has probability 0.925 and each other move 0.025. Each cell holds the values of its four moves again, as in the Monte Carlo control figure. Before each update, the agent chooses its next move, in yellow, and the target uses that move's value, outlined in red.</p>
   </div>
 
   <div class="fig steps">

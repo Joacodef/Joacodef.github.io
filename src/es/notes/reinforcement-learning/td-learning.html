@@ -57,6 +57,18 @@ scripts:
       <li>Actualiza <span class="nowrap"><i>V</i>(<i>S</i>) ← <i>V</i>(<i>S</i>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i> + γ<i>V</i>(<i>S</i>′)</span> − <i>V</i>(<i>S</i>)]</span>.</li>
       <li>Haz <i>S</i> ← <i>S</i>′, y vuelve al paso 3 hasta que <i>S</i> sea terminal.</li>
     </ol>
+    <p>La figura ejecuta TD(0) sobre los <a href="/es/notes/reinforcement-learning/monte-carlo/#prediction">mismos 30 episodios de la primera figura del apunte anterior</a>: los movimientos al azar son los mismos, y solo cambia el aprendizaje. Otra vez γ = 0.9, con α = 0.5 y todas las estimaciones partiendo en 0. Ahora a cada movimiento le siguen su TD error, cuyo objetivo usa la estimación con borde rojo, y la actualización.</p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-td0" role="group" aria-label="Una grilla de 3 celdas de ancho y 3 de alto, cada celda con una estimación. El agente parte abajo a la izquierda, y la galleta está arriba a la derecha."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-td0-back">Atrás</button><button type="button" class="btn" id="fig-td0-next">Siguiente</button><span class="count" id="fig-td0-count"></span><button type="button" class="btn" id="fig-td0-reset" hidden>Reiniciar</button></div>
+    <div class="ro" id="fig-td0-out"></div>
+    <div class="fig-foot">
+      <p>Siguiente avanza, Atrás retrocede. Teclas: <span class="nowrap">→ y ←</span>.</p>
+      <button type="button" class="btn" id="fig-td0-sound" aria-pressed="true">Con sonido</button>
+    </div>
+    <p class="sr-only" id="fig-td0-live" aria-live="polite"></p>
   </div>
 </section>
 
@@ -149,8 +161,8 @@ scripts:
       <li>Haz <i>S</i> ← <i>S</i>′ y <i>A</i> ← <i>A</i>′, y vuelve al paso 2 hasta que <i>S</i> sea terminal.</li>
     </ol>
     <p>Aprender dentro del episodio es lo que le permite a Sarsa escapar de una política que nunca terminaría. Supón que todos los valores de acción del robot parten en 0 y que, al desempatar, su política lo manda del pasillo de vuelta a la cocina, desde donde el único movimiento es volver al pasillo. Seguida de forma greedy, esa política va y viene para siempre, y un método Monte Carlo esperaría para siempre un retorno. Con Sarsa, α = 0.5 y γ = 1, la primera vez que el robot vuelve a la cocina, <i>Q</i>(pasillo, cocina) baja a <span class="nowrap">0.5(−1 + 0 − 0) = −0.5</span>, por debajo del 0 del movimiento al estudio, que aún no ha probado, y la próxima vez que está en el pasillo se va al estudio.</p>
-    <p>Para ver aprender a Sarsa, toma una grilla más grande que la de la galleta de la nota anterior: de 6 celdas de ancho y 4 de alto, desde A1 abajo a la izquierda hasta F4 arriba a la derecha. El agente parte en A1, y un episodio termina cuando llega a la meta, F1, abajo a la derecha. Cada movimiento da −1, y entre el inicio y la meta, a lo largo del borde de abajo, hay un acantilado: un paso hacia él da −100 y devuelve al agente al inicio. La ruta más corta va justo por el borde, en 7 movimientos.</p>
-    <p>La figura ejecuta Sarsa ahí con α = 0.5, γ = 1 y ε = 0.1, así que en cada celda el movimiento greedy tiene probabilidad 0.925 y cada uno de los demás 0.025. Se lee como la figura de Monte Carlo, pero cada movimiento se actualiza justo después de hacerlo: el agente primero elige su siguiente movimiento, en amarillo, y el objetivo usa el valor de ese movimiento, con borde rojo.</p>
+    <p>Para ver aprender a Sarsa, toma una grilla más grande que la de la galleta: de 6 celdas de ancho y 4 de alto, desde A1 abajo a la izquierda hasta F4 arriba a la derecha. El agente parte en A1, y un episodio termina cuando llega a la meta, F1, abajo a la derecha. Cada movimiento da −1, y entre el inicio y la meta, a lo largo del borde de abajo, hay un acantilado: un paso hacia él da −100 y devuelve al agente al inicio. La ruta más corta va justo por el borde, en 7 movimientos.</p>
+    <p>La figura ejecuta Sarsa ahí con α = 0.5, γ = 1 y ε = 0.1, así que en cada celda el movimiento greedy tiene probabilidad 0.925 y cada uno de los demás 0.025. Cada celda vuelve a guardar los valores de sus cuatro movimientos, como en la figura de control Monte Carlo. Antes de cada actualización, el agente elige su siguiente movimiento, en amarillo, y el objetivo usa el valor de ese movimiento, con borde rojo.</p>
   </div>
 
   <div class="fig steps">

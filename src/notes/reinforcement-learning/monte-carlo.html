@@ -34,7 +34,7 @@ scripts:
   </figure>
   <p>How good is each room, that is, how many moves will the trip take from there? The robot cannot work it out, since it does not know the layout. But it can find out from experience. Each time it reaches the charger, it knows how many moves the trip actually took from every room it passed through, and averaging those numbers over many trips gives the answer.</p>
   <p>That is a Monte Carlo method: estimate values by averaging what actually happened in complete episodes. This note does it first for a fixed way of behaving, then for the value of each action, and then uses those values to behave better. Along the way it runs into the one thing Monte Carlo methods cannot do without: continuing to try every action.</p>
-  <p class="legend">Throughout this page, <span class="bar" aria-hidden="true"></span>the robot's moves are drawn in blue ink.</p>
+  <p class="legend">Throughout this page, <span class="bar" aria-hidden="true"></span>the robot's moves are drawn in blue ink, and <span class="dot" aria-hidden="true"></span>the return an estimate moves toward, the target of its update, in red ink.</p>
 </div>
 
 <section id="prediction">
@@ -75,11 +75,26 @@ scripts:
       <li>For <i>t</i> = <i>T</i> − 1, <i>T</i> − 2, …, 0: set <span class="nowrap"><i>G</i> ← γ<i>G</i> + <i>R</i><sub><i>t</i>+1</sub></span>. If <i>S</i><sub><i>t</i></sub> does not appear earlier in the episode, add <i>G</i> to the returns of <i>S</i><sub><i>t</i></sub> and set <i>V</i>(<i>S</i><sub><i>t</i></sub>) to their average.</li>
       <li>Repeat from step 2 for each new episode. Every-visit Monte Carlo is the same without the check of step 3.</li>
     </ol>
+    <p>The figure runs it on a grid 3 cells wide and 3 tall, with cells named by column and row, from A1 at the bottom left to C3 at the top right. An agent starts in A1 and moves up, right, down or left, and a move into a wall leaves it where it is. In C3 there is a cookie: reaching it gives +1 and ends the episode, and every other move gives 0. With γ = 0.9, the return from a cell is 1 if the next move reaches the cookie, 0.9 if the cookie comes one move later, 0.81 if two, and so on: the quicker the trip, the larger the return. The policy picks each of the four moves at random, and every estimate starts at 0.</p>
+    <p>Each cell shows its estimate. Each press is one line of the algorithm. During the episode, the move chosen turns yellow, the agent takes it, and the cells it has left are outlined in dashed blue; no estimate changes. Once the agent reaches the cookie, each press is one step of the sweep back, and every estimate it updates is outlined in green. After the first episode, Next skips ahead to the moments where something new is learned.</p>
+  </div>
 
+  <div class="fig steps">
+    <svg id="fig-pred" role="group" aria-label="A grid 3 cells wide and 3 tall, each cell holding one estimate. The agent starts at the bottom left, and the cookie is at the top right."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-pred-back">Back</button><button type="button" class="btn" id="fig-pred-next">Next</button><span class="count" id="fig-pred-count"></span><button type="button" class="btn" id="fig-pred-reset" hidden>Reset</button></div>
+    <div class="ro" id="fig-pred-out"></div>
+    <div class="fig-foot">
+      <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
+      <button type="button" class="btn" id="fig-pred-sound" aria-pressed="true">Sound on</button>
+    </div>
+    <p class="sr-only" id="fig-pred-live" aria-live="polite"></p>
+  </div>
+
+  <div class="prose">
     <h3>Averaging as you go</h3>
     <p>There is no need to keep every return. After a new return <i>G</i><sub><i>t</i></sub>, the average of the <i>N</i>(<i>S</i><sub><i>t</i></sub>) returns seen so far moves toward it:</p>
-    <div class="disp"><i>V</i>(<i>S</i><sub><i>t</i></sub>) <span class="nowrap">← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + <span class="frac"><span>1</span><span><i>N</i>(<i>S</i><sub><i>t</i></sub>)</span></span>[<i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span></div>
-    <p>For the hallway, the first return, −2, gives <i>V</i> = −2, and the second, −6, gives <span class="nowrap">−2 + ½(−6 + 2) = −4</span>, the same average as before. A constant step size α in place of 1/<i>N</i> gives constant-α Monte Carlo, <span class="nowrap"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + α[<i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span>, which weights recent returns more. That suits problems that change over time, such as learning about a policy that keeps changing.</p>
+    <div class="disp"><i>V</i>(<i>S</i><sub><i>t</i></sub>) <span class="nowrap">← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + <span class="frac"><span>1</span><span><i>N</i>(<i>S</i><sub><i>t</i></sub>)</span></span>[<span class="pt"><i>G</i><sub><i>t</i></sub></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span></div>
+    <p>For the hallway, the first return, −2, gives <i>V</i> = −2, and the second, −6, gives <span class="nowrap">−2 + ½(−6 + 2) = −4</span>, the same average as before. A constant step size α in place of 1/<i>N</i> gives constant-α Monte Carlo, <span class="nowrap"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + α[<span class="pt"><i>G</i><sub><i>t</i></sub></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span>, which weights recent returns more. That suits problems that change over time, such as learning about a policy that keeps changing.</p>
 
     <h3>No bootstrapping</h3>
     <p>Each estimate comes from its own returns only: the estimate for the kitchen does not use the estimate for the hallway. Monte Carlo methods do not bootstrap, that is, they do not build estimates on other estimates. A consequence is that estimating one state costs the same however many states there are, so a Monte Carlo method can study a few states of interest by starting many episodes from them and ignoring the rest. The price is waiting: an estimate changes only when its episode ends.</p>
@@ -121,8 +136,7 @@ scripts:
       <li>For <i>t</i> = <i>T</i> − 1, <i>T</i> − 2, …, 0: set <span class="nowrap"><i>G</i> ← γ<i>G</i> + <i>R</i><sub><i>t</i>+1</sub></span>. If the pair <i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub> does not appear earlier in the episode, add <i>G</i> to its returns, set <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) to their average, and make π ε-greedy in <i>S</i><sub><i>t</i></sub> with respect to <i>Q</i>.</li>
       <li>Repeat from step 2 for each new episode.</li>
     </ol>
-    <p>The figure runs it on a grid 3 cells wide and 3 tall, with cells named by column and row, from A1 at the bottom left to C3 at the top right. An agent starts in A1 and moves up, right, down or left, and a move into a wall leaves it where it is. In C3 there is a cookie: reaching it gives +1 and ends the episode, and every other move gives 0. With γ = 0.9, a move's return is 1 if it reaches the cookie, 0.9 if the cookie comes one move later, 0.81 if two, and so on: the quicker the trip, the larger the return. The agent's policy is ε-greedy with ε = 0.1, and every value starts at 0.</p>
-    <p>Each cell is split into four triangles, one per move, each with that move's value (blank while it is untried), and the best value of the cell highlighted in blue. Each press is one line of the algorithm. During the episode, the move chosen turns yellow, the agent takes it, and the moves made so far are outlined in dashed blue; no value changes. Once the agent reaches the cookie, each press is one step of the sweep back, and every value it updates is outlined in green. After the first episode, Next skips ahead to the moments where the agent learns something new.</p>
+    <p>The figure runs it on the <a href="#prediction">cookie grid of section 1</a>, with ε = 0.1 and every value starting at 0. Each cell is now split into four triangles, one per move, each with that move's value (blank while it is untried), and the best value of the cell highlighted in blue. The presses work as in section 1: the episode plays with the table unchanged, its moves outlined in dashed blue, then the sweep goes back one step per press, outlining each updated value in green.</p>
   </div>
 
   <div class="fig steps">
@@ -162,12 +176,12 @@ scripts:
     </div>
     <div class="sum-row">
       <div class="k">Running average</div>
-      <div class="f"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + [<i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)] / <i>N</i>(<i>S</i><sub><i>t</i></sub>)</div>
+      <div class="f"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + [<span class="pt"><i>G</i><sub><i>t</i></sub></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)] / <i>N</i>(<i>S</i><sub><i>t</i></sub>)</div>
       <div class="c"><code>n[s[t]] += 1<br>v[s[t]] += (g - v[s[t]]) / n[s[t]]</code></div>
     </div>
     <div class="sum-row">
       <div class="k">Constant-α Monte Carlo</div>
-      <div class="f"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + α[<i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</div>
+      <div class="f"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + α[<span class="pt"><i>G</i><sub><i>t</i></sub></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</div>
       <div class="c"><code>v[s[t]] += alpha * (g - v[s[t]])</code></div>
     </div>
     <div class="sum-row">

@@ -56,7 +56,7 @@ function chooseBuild(i, lead) {
 // Take A: the agent moves along the yellow move and sees R and S′.
 function takeBuild(i) {
   const x = X(i), bump = x.fell === null && x.s2 === x.s ? x.a : null, { marks, rings } = traced(i, false);
-  return { ...pos(i), time: x.t, Q: x.pre, agent: x.fell !== null ? x.fell : x.s2, ring: x.fell, pick: [x.s, x.a], bump, sound: x.fell !== null ? "fall" : bump !== null ? "wall" : undefined, marks, rings,
+  return { ...pos(i), time: x.t, Q: x.pre, agent: x.fell !== null ? x.fell : x.s2, ring: x.fell, taken: [x.s, x.a], bump, sound: x.fell !== null ? "fall" : bump !== null ? "wall" : undefined, marks, rings,
     line: takeText({ s: x.s, a: x.a, t: x.t, s2: x.s2, fell: x.fell }) };
 }
 // Choose A′ in S′, before any update, from the table as it stands.
@@ -76,7 +76,7 @@ function updateBuild(i, line) {
   return { ...pos(i), time: x.t + 1, Q: x.post, agent: x.s2, marks: [...marks, ...(boot ? [{ c: boot[0], a: boot[1], kind: "tg" }] : [])], rings, line, eq: updEq(i) };
 }
 const deltaEq = (i) => { const x = X(i), t = x.t; return `δ<sub>${t}</sub> = <span class="pt">${sym("R", t + 1)}${x.next ? ` + γ<i>Q</i>(${sym("S", t + 1)}, ${sym("A", t + 1)})` : ""} − <i>Q</i>(${sym("S", t)}, ${sym("A", t)})</span> <span class="nowrap pt">= ${num(x.r)}${x.next ? ` + ${par(x.pre[x.s2][x.next.a])}` : ""} − ${par(x.pre[x.s][x.a])}</span> <span class="nowrap pt">= ${num(x.delta)}</span>`; };
-const updEq = (i) => `<i>Q</i>(<i>s</i>, <i>a</i>) <span class="nowrap">← <i>Q</i>(<i>s</i>, <i>a</i>) + ${ALPHA} · <span class="pt">${par(X(i).delta)}</span> · <i>z</i>(<i>s</i>, <i>a</i>)</span>`;
+const updEq = (i) => `<span class="upd"><i>Q</i>(<i>s</i>, <i>a</i>)</span> <span class="nowrap">← <i>Q</i>(<i>s</i>, <i>a</i>) + ${ALPHA} · <span class="pt">${par(X(i).delta)}</span> · <i>z</i>(<i>s</i>, <i>a</i>)</span>`;
 const zNow = (i) => { const x = X(i); return x.z[x.s][x.a]; };
 const markText = (i) => {
   const x = X(i), z = zNow(i), m = moveName(x.s, x.a);

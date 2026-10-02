@@ -44,6 +44,8 @@
 /* Serif variables are slightly larger than the text; line-height 1 keeps them from pushing lines apart. */
 .note .prose p i, .ro p i { font-size: 1.06em; line-height: 1; }
 .pt { color: var(--red); }
+/* In a figure's readout, the value being updated, green like its outline on the grid. */
+.ro .upd { color: var(--ok); }
 .ln { color: var(--blue); }
 .nowrap { white-space: nowrap; }
 .note sub { font-size: 0.68em; line-height: 0; font-style: normal; }
@@ -285,8 +287,10 @@ ol.steps b { font-weight: 600; }
 .gw-q { fill: var(--ink-2); font-family: var(--sans); font-size: 10px; font-variant-numeric: tabular-nums; pointer-events: none; paint-order: stroke; stroke: var(--card); stroke-width: 2.5px; stroke-linejoin: round; }
 .gw-q.best { fill: var(--blue); font-weight: 600; stroke: none; }
 .gw-qbest { fill: color-mix(in srgb, var(--blue) 16%, var(--card)); }
+/* One value per cell, in the TD(0) figure. */
+.gw-v { fill: var(--ink); font-family: var(--sans); font-size: 15px; font-variant-numeric: tabular-nums; pointer-events: none; paint-order: stroke; stroke: var(--card); stroke-width: 3px; stroke-linejoin: round; }
 .gw-qback { fill: color-mix(in srgb, var(--blue) 16%, var(--card)); }
-.gw-q.on { stroke: color-mix(in srgb, var(--blue) 16%, var(--card)); }
+.gw-q.on, .gw-v.on { stroke: color-mix(in srgb, var(--blue) 16%, var(--card)); }
 .gw-head { fill: color-mix(in srgb, var(--blue) 45%, var(--card)); }
 .gw-pick { fill: color-mix(in srgb, var(--pick) 42%, transparent); pointer-events: none; }
 .gw-route { fill: none; stroke: color-mix(in srgb, var(--blue) 16%, var(--card)); stroke-width: 13; stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
@@ -299,7 +303,7 @@ ol.steps b { font-weight: 600; }
 .gw-agent-g.jump { transition: none; }
 .gw-fall { fill: none; stroke: var(--ink); stroke-width: 2; pointer-events: none; }
 .gw-wall { stroke: var(--ink); stroke-width: 4; stroke-linecap: round; pointer-events: none; }
-@media (max-width: 560px) { .gw-axis, .gw-sg { font-size: 14px; } .gw-lab { font-size: 16px; } .gw-q { font-size: 11px; } }
+@media (max-width: 560px) { .gw-axis, .gw-sg { font-size: 14px; } .gw-lab { font-size: 16px; } .gw-q { font-size: 11px; } .gw-v { font-size: 17px; } }
 
 /* Figures stepped through like slides, with Next and Back. The controls sit right under the drawing, so the growing
    text never moves them, and new text appears only at the bottom, with earlier text dimmed above it. */

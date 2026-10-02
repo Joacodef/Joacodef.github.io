@@ -83,7 +83,7 @@ function chooseBuild(i, lead) {
 // Take A_t: the agent moves along the yellow move; the window so far is outlined in blue.
 function takeBuild(i, extra = "") {
   const x = moves[i], e = epOf(i), bump = x.fell === null && x.s2 === x.s ? x.a : null;
-  return { ...at(i), time: x.t, Q: qAfter(doneBefore(i)), agent: x.fell !== null ? x.fell : x.s2, ring: x.fell, pick: [x.s, x.a], bump, sound: x.fell !== null ? "fall" : bump !== null ? "wall" : undefined,
+  return { ...at(i), time: x.t, Q: qAfter(doneBefore(i)), agent: x.fell !== null ? x.fell : x.s2, ring: x.fell, taken: [x.s, x.a], bump, sound: x.fell !== null ? "fall" : bump !== null ? "wall" : undefined,
     marks: steps(e, winStart(x), x.t), rings: ringsOf(e, winStart(x), x.t), line: takeText({ s: x.s, a: x.a, t: x.t, s2: x.s2, fell: x.fell }) + extra };
 }
 // Choose A_t+1 in S_t+1, before any update, from the table as it stands.
@@ -110,7 +110,7 @@ function updateBuild(u, line, eq) {
 }
 const targetEq = (u) => { const x = updates[u]; return `${Gsym(x.tau, x.tau + N)} = <span class="pt">${x.rs.map((_, j) => sym("R", x.tau + 1 + j)).join(" + ")}${x.boot === null ? "" : ` + ${pairOf(x.tau + N)}`} <span class="nowrap">= ${sumText(x.rs)}${x.boot === null ? "" : ` + ${par(x.boot)}`}</span> <span class="nowrap">${eqv(x.G)}</span></span>`; };
 // The update, with the target as a number, or with inline its rewards and the value it ends on.
-const updateEq = (u, inline) => { const x = updates[u]; const g = inline ? `(${sumText(x.rs)}${x.boot === null ? "" : ` + ${par(x.boot)}`})` : num(x.G); return `${pairOf(x.tau)} <span class="nowrap">← ${num(x.old)} + ${ALPHA}[<span class="pt">${g}</span> − ${par(x.old)}]</span> <span class="nowrap">${eqv(x.nu)}</span>`; };
+const updateEq = (u, inline) => { const x = updates[u]; const g = inline ? `(${sumText(x.rs)}${x.boot === null ? "" : ` + ${par(x.boot)}`})` : num(x.G); return `<span class="upd">${pairOf(x.tau)}</span> <span class="nowrap">← ${num(x.old)} + ${ALPHA}[<span class="pt">${g}</span> − ${par(x.old)}]</span> <span class="nowrap">${eqv(x.nu)}</span>`; };
 
 /* ---------- Slides ---------- */
 

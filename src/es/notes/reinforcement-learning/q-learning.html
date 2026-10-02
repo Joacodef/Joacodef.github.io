@@ -7,7 +7,7 @@ scripts:
   - /assets/js/notes/reinforcement-learning/q-learning.js
 ---
 <div class="prose">
-  <p>La nota anterior terminó con Sarsa en el acantilado. Sus valores cuentan lo que cuesta explorar, caídas incluidas, así que se asienta en la ruta una fila más arriba, de 9 movimientos: la mejor ruta para un agente que sigue explorando. Cuando deja de explorar, el borde es dos movimientos más corto y nunca cae.</p>
+  <p>El apunte anterior terminó con Sarsa en el acantilado. Sus valores cuentan lo que cuesta explorar, caídas incluidas, así que se asienta en la ruta una fila más arriba, de 9 movimientos: la mejor ruta para un agente que sigue explorando. Cuando deja de explorar, el borde es dos movimientos más corto y nunca cae.</p>
   <figure class="diagram">
     <svg viewBox="0 0 394 290" role="img" aria-label="El acantilado: una grilla de 6 celdas de ancho y 4 de alto, con el inicio abajo a la izquierda, la meta abajo a la derecha, y el acantilado entre ambos, a lo largo de la fila de abajo. Una ruta va por el borde del acantilado en 7 movimientos; otra va una fila más arriba en 9.">
       <defs><marker id="c-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path class="head" d="M0 0 L10 5 L0 10 z"/></marker></defs>
@@ -137,7 +137,7 @@ scripts:
       </svg>
       <figcaption>Arriba, el par que se actualiza. El círculo es el estado siguiente, al que se llega con la recompensa <i>R</i><sub><i>t</i>+1</sub>. Abajo, en rojo, lo que usa el objetivo: la acción que se toma después (Sarsa), la mejor de todas las acciones siguientes (Q-learning; el arco marca un máximo), o todas, ponderadas por su probabilidad (Expected Sarsa, sección 4).</figcaption>
     </figure>
-    <p>En el acantilado, la diferencia decide la ruta. Deja que ambos métodos aprendan el tiempo suficiente, con ε = 0.1 y tamaños de paso que se achican. Sarsa se asienta una fila más arriba, como en la nota anterior. Los valores de Q-learning suponen el movimiento greedy desde el paso siguiente en adelante, así que se queda en el borde, y mientras sigue explorando, a veces se cae.</p>
+    <p>En el acantilado, la diferencia decide la ruta. Deja que ambos métodos aprendan el tiempo suficiente, con ε = 0.1 y tamaños de paso que se achican. Sarsa se asienta una fila más arriba, como en el apunte anterior. Los valores de Q-learning suponen el movimiento greedy desde el paso siguiente en adelante, así que se queda en el borde, y mientras sigue explorando, a veces se cae.</p>
     <div class="tbl">
       <table>
         <thead><tr><th scope="col">En el acantilado, ε = 0.1</th><th scope="col"><span class="nowrap">Q-learning</span></th><th scope="col">Sarsa</th></tr></thead>

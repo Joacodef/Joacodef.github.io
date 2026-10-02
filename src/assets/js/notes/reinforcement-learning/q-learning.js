@@ -61,13 +61,13 @@ function moveBuilds(n, lead) {
   const target = tr(`${R1} and ${S1} are known at <i>t</i> = ${t + 1}. The target adds ${R1} to the best value in ${S1}: ${which}.`, `${R1} y ${S1} se conocen en <i>t</i> = ${t + 1}. El objetivo suma ${R1} al mejor valor en ${S1}: ${which}.`);
   const update = tr(`Still at <i>t</i> = ${t + 1}, the value of the pair the agent just left, <i>Q</i>(${S0}, ${A0}), moves halfway toward the target, from ${num(x.old)} to ${num(x.nu)}.`, `Todavía en <i>t</i> = ${t + 1}, el valor del par que el agente acaba de dejar, <i>Q</i>(${S0}, ${A0}), avanza la mitad del camino hacia el objetivo, de ${num(x.old)} a ${num(x.nu)}.`);
   const tgtEq = `${tr("target", "objetivo")} = <span class="pt">${R1} + γ max<sub><i>a</i></sub> <i>Q</i>(${S1}, <i>a</i>) <span class="nowrap">= ${num(x.r)} + ${par(x.maxNext)}</span> <span class="nowrap">= ${num(x.target)}</span></span>`;
-  const updEq = `<i>Q</i>(${S0}, ${A0}) <span class="nowrap">← ${num(x.old)} + ${ALPHA}[<span class="pt">${num(x.target)}</span> − ${par(x.old)}]</span> <span class="nowrap">${eqv(x.nu)}</span>`;
+  const updEq = `<span class="upd"><i>Q</i>(${S0}, ${A0})</span> <span class="nowrap">← ${num(x.old)} + ${ALPHA}[<span class="pt">${num(x.target)}</span> − ${par(x.old)}]</span> <span class="nowrap">${eqv(x.nu)}</span>`;
   const bump = x.fell === null && x.s2 === x.s ? x.a : null, pos = { ep: x.ep, move: x.t }, pick = [x.s, x.a];
   // The target's moves: the best ones in the next state, from the values before the update.
   const tg = x.done ? [] : next.map((v, a) => (v === Math.max(...next) ? { c: x.s2, a, kind: "tg" } : null)).filter(Boolean);
   return [
     { ...pos, time: t, Q: Qpre, agent: x.s, pick, line: `${lead} ${reason(Qpre[x.s], x.explored, x.s, x.a, t)}` },
-    { ...pos, time: t, Q: Qpre, agent: x.fell !== null ? x.fell : x.s2, ring: x.fell, pick, bump, sound: x.fell !== null ? "fall" : bump !== null ? "wall" : undefined, line: takeText({ s: x.s, a: x.a, t, s2: x.s2, fell: x.fell }) },
+    { ...pos, time: t, Q: Qpre, agent: x.fell !== null ? x.fell : x.s2, ring: x.fell, taken: pick, bump, sound: x.fell !== null ? "fall" : bump !== null ? "wall" : undefined, line: takeText({ s: x.s, a: x.a, t, s2: x.s2, fell: x.fell }) },
     { ...pos, time: t + 1, Q: Qpre, agent: x.s2, jump: x.fell !== null, ring: x.fell, marks: tg, line: target, eq: tgtEq },
     { ...pos, time: t + 1, Q: qAfter(n), agent: x.s2, ring: x.fell, marks: [...tg, { c: x.s, a: x.a, kind: "upd" }], line: update, eq: updEq },
   ];
@@ -76,7 +76,7 @@ function moveBuilds(n, lead) {
 function wholeSlide(n, line, withEq) {
   const x = n ? X(n) : null, Q = qAfter(n), t = x ? x.t - 1 : 0, to = x ? (x.done ? GOAL : x.s2) : START;
   let eq = null;
-  if (withEq) eq = `<i>Q</i>(${sym("S", t)}, ${sym("A", t)}) <span class="nowrap">← ${num(x.old)} + ${ALPHA}[<span class="pt">${x.done ? "−1" : `${num(x.r)} + ${par(x.maxNext)}`}</span> − ${par(x.old)}]</span> <span class="nowrap">${eqv(x.nu)}</span>`;
+  if (withEq) eq = `<span class="upd"><i>Q</i>(${sym("S", t)}, ${sym("A", t)})</span> <span class="nowrap">← ${num(x.old)} + ${ALPHA}[<span class="pt">${x.done ? "−1" : `${num(x.r)} + ${par(x.maxNext)}`}</span> − ${par(x.old)}]</span> <span class="nowrap">${eqv(x.nu)}</span>`;
   const fell = withEq && x.fell !== null;
   return [{ ep: x ? x.ep : 1, move: x ? x.t : null, Q, agent: to, ring: fell ? x.fell : null, sound: fell ? "fall" : undefined, marks: withEq ? [{ c: x.s, a: x.a, kind: "upd" }] : [], line, eq, time: x ? t + 1 : 0 }];
 }

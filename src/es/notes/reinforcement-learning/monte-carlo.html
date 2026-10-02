@@ -34,7 +34,7 @@ scripts:
   </figure>
   <p>¿Cuán buena es cada pieza, es decir, cuántos movimientos tomará el viaje desde ahí? El robot no puede calcularlo, porque no conoce la distribución de la casa. Pero puede averiguarlo con la experiencia. Cada vez que llega al cargador, sabe cuántos movimientos tomó de verdad el viaje desde cada pieza por la que pasó, y promediar esos números sobre muchos viajes da la respuesta.</p>
   <p>Eso es un método Monte Carlo: estimar valores promediando lo que de verdad ocurrió en episodios completos. Este apunte lo hace primero para una forma fija de comportarse, luego para el valor de cada acción, y después usa esos valores para comportarse mejor. En el camino se topa con lo único de lo que los métodos Monte Carlo no pueden prescindir: seguir probando todas las acciones.</p>
-  <p class="legend">En esta página, <span class="bar" aria-hidden="true"></span>los movimientos del robot se dibujan con tinta azul.</p>
+  <p class="legend">En esta página, <span class="bar" aria-hidden="true"></span>los movimientos del robot se dibujan con tinta azul, y <span class="dot" aria-hidden="true"></span>el retorno hacia el que se mueve una estimación, el objetivo de su actualización, con tinta roja.</p>
 </div>
 
 <section id="prediction">
@@ -75,11 +75,26 @@ scripts:
       <li>Para <i>t</i> = <i>T</i> − 1, <i>T</i> − 2, …, 0: haz <span class="nowrap"><i>G</i> ← γ<i>G</i> + <i>R</i><sub><i>t</i>+1</sub></span>. Si <i>S</i><sub><i>t</i></sub> no aparece antes en el episodio, agrega <i>G</i> a los retornos de <i>S</i><sub><i>t</i></sub> y deja <i>V</i>(<i>S</i><sub><i>t</i></sub>) en su promedio.</li>
       <li>Repite desde el paso 2 con cada nuevo episodio. Monte Carlo every-visit es igual, sin la revisión del paso 3.</li>
     </ol>
+    <p>La figura lo ejecuta en una grilla de 3 celdas de ancho y 3 de alto, con las celdas nombradas por columna y fila, desde A1 abajo a la izquierda hasta C3 arriba a la derecha. Un agente parte en A1 y se mueve arriba, a la derecha, abajo o a la izquierda, y un movimiento contra una pared lo deja donde está. En C3 hay una galleta: llegar a ella da +1 y termina el episodio, y cualquier otro movimiento da 0. Con γ = 0.9, el retorno desde una celda es 1 si el siguiente movimiento llega a la galleta, 0.9 si la galleta viene un movimiento después, 0.81 si vienen dos, y así: mientras más corto el viaje, mayor el retorno. La política elige cada uno de los cuatro movimientos al azar, y todas las estimaciones parten en 0.</p>
+    <p>Cada celda muestra su estimación. Cada vez que presionas Siguiente se ejecuta una línea del algoritmo. Durante el episodio, el movimiento elegido se pone amarillo, el agente lo toma, y las celdas que va dejando tienen un borde azul punteado; ninguna estimación cambia. Cuando el agente llega a la galleta, cada vez que presionas Siguiente se da un paso del recorrido hacia atrás, y cada estimación que actualiza tiene un borde verde. Después del primer episodio, Siguiente salta a los momentos en que se aprende algo nuevo.</p>
+  </div>
 
+  <div class="fig steps">
+    <svg id="fig-pred" role="group" aria-label="Una grilla de 3 celdas de ancho y 3 de alto, cada celda con una estimación. El agente parte abajo a la izquierda, y la galleta está arriba a la derecha."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-pred-back">Atrás</button><button type="button" class="btn" id="fig-pred-next">Siguiente</button><span class="count" id="fig-pred-count"></span><button type="button" class="btn" id="fig-pred-reset" hidden>Reiniciar</button></div>
+    <div class="ro" id="fig-pred-out"></div>
+    <div class="fig-foot">
+      <p>Siguiente avanza, Atrás retrocede. Teclas: <span class="nowrap">→ y ←</span>.</p>
+      <button type="button" class="btn" id="fig-pred-sound" aria-pressed="true">Con sonido</button>
+    </div>
+    <p class="sr-only" id="fig-pred-live" aria-live="polite"></p>
+  </div>
+
+  <div class="prose">
     <h3>Promediar sobre la marcha</h3>
     <p>No hace falta guardar todos los retornos. Después de un nuevo retorno <i>G</i><sub><i>t</i></sub>, el promedio de los <i>N</i>(<i>S</i><sub><i>t</i></sub>) retornos vistos hasta ahora se mueve hacia él:</p>
-    <div class="disp"><i>V</i>(<i>S</i><sub><i>t</i></sub>) <span class="nowrap">← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + <span class="frac"><span>1</span><span><i>N</i>(<i>S</i><sub><i>t</i></sub>)</span></span>[<i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span></div>
-    <p>Para el pasillo, el primer retorno, −2, da <i>V</i> = −2, y el segundo, −6, da <span class="nowrap">−2 + ½(−6 + 2) = −4</span>, el mismo promedio de antes. Un paso constante α en lugar de 1/<i>N</i> da Monte Carlo con α constante, <span class="nowrap"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + α[<i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span>, que pesa más los retornos recientes. Eso sirve en problemas que cambian con el tiempo, como aprender sobre una política que sigue cambiando.</p>
+    <div class="disp"><i>V</i>(<i>S</i><sub><i>t</i></sub>) <span class="nowrap">← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + <span class="frac"><span>1</span><span><i>N</i>(<i>S</i><sub><i>t</i></sub>)</span></span>[<span class="pt"><i>G</i><sub><i>t</i></sub></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span></div>
+    <p>Para el pasillo, el primer retorno, −2, da <i>V</i> = −2, y el segundo, −6, da <span class="nowrap">−2 + ½(−6 + 2) = −4</span>, el mismo promedio de antes. Un paso constante α en lugar de 1/<i>N</i> da Monte Carlo con α constante, <span class="nowrap"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + α[<span class="pt"><i>G</i><sub><i>t</i></sub></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span>, que pesa más los retornos recientes. Eso sirve en problemas que cambian con el tiempo, como aprender sobre una política que sigue cambiando.</p>
 
     <h3>Sin bootstrapping</h3>
     <p>Cada estimación sale solo de sus propios retornos: la estimación de la cocina no usa la del pasillo. Los métodos Monte Carlo no hacen bootstrapping, es decir, no construyen estimaciones sobre otras estimaciones. Una consecuencia es que estimar un estado cuesta lo mismo sin importar cuántos estados haya, así que un método Monte Carlo puede estudiar unos pocos estados de interés partiendo muchos episodios desde ellos e ignorando el resto. El precio es esperar: una estimación cambia solo cuando termina su episodio.</p>
@@ -121,8 +136,7 @@ scripts:
       <li>Para <i>t</i> = <i>T</i> − 1, <i>T</i> − 2, …, 0: haz <span class="nowrap"><i>G</i> ← γ<i>G</i> + <i>R</i><sub><i>t</i>+1</sub></span>. Si el par <i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub> no aparece antes en el episodio, agrega <i>G</i> a sus retornos, deja <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) en su promedio y vuelve π ε-greedy en <i>S</i><sub><i>t</i></sub> con respecto a <i>Q</i>.</li>
       <li>Repite desde el paso 2 con cada nuevo episodio.</li>
     </ol>
-    <p>La figura lo ejecuta en una grilla de 3 celdas de ancho y 3 de alto, con las celdas nombradas por columna y fila, desde A1 abajo a la izquierda hasta C3 arriba a la derecha. Un agente parte en A1 y se mueve arriba, a la derecha, abajo o a la izquierda, y un movimiento contra una pared lo deja donde está. En C3 hay una galleta: llegar a ella da +1 y termina el episodio, y cualquier otro movimiento da 0. Con γ = 0.9, el retorno de un movimiento es 1 si llega a la galleta, 0.9 si la galleta viene un movimiento después, 0.81 si vienen dos, y así: mientras más corto el viaje, mayor el retorno. La política del agente es ε-greedy con ε = 0.1, y todos los valores parten en 0.</p>
-    <p>Cada celda se divide en cuatro triángulos, uno por movimiento, cada uno con el valor de ese movimiento (en blanco mientras no se ha probado), y el mejor valor de la celda se destaca en azul. Cada vez que presionas Siguiente se ejecuta una línea del algoritmo. Durante el episodio, el movimiento elegido se pone amarillo, el agente lo toma, y los movimientos hechos hasta ahí tienen un borde azul punteado; ningún valor cambia. Cuando el agente llega a la galleta, cada vez que presionas Siguiente se da un paso del recorrido hacia atrás, y cada valor que actualiza tiene un borde verde. Después del primer episodio, Siguiente salta a los momentos en que el agente aprende algo nuevo.</p>
+    <p>La figura lo ejecuta en la <a href="#prediction">grilla de la galleta de la sección 1</a>, con ε = 0.1 y todos los valores partiendo en 0. Ahora cada celda se divide en cuatro triángulos, uno por movimiento, cada uno con el valor de ese movimiento (en blanco mientras no se ha probado), y el mejor valor de la celda se destaca en azul. Los pasos funcionan como en la sección 1: el episodio se juega con la tabla sin cambios, con sus movimientos con borde azul punteado, y luego el recorrido retrocede un paso cada vez que presionas Siguiente, con un borde verde en cada valor actualizado.</p>
   </div>
 
   <div class="fig steps">
@@ -162,12 +176,12 @@ scripts:
     </div>
     <div class="sum-row">
       <div class="k">Promedio sobre la marcha</div>
-      <div class="f"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + [<i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)] / <i>N</i>(<i>S</i><sub><i>t</i></sub>)</div>
+      <div class="f"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + [<span class="pt"><i>G</i><sub><i>t</i></sub></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)] / <i>N</i>(<i>S</i><sub><i>t</i></sub>)</div>
       <div class="c"><code>n[s[t]] += 1<br>v[s[t]] += (g - v[s[t]]) / n[s[t]]</code></div>
     </div>
     <div class="sum-row">
       <div class="k">Monte Carlo con α constante</div>
-      <div class="f"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + α[<i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</div>
+      <div class="f"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + α[<span class="pt"><i>G</i><sub><i>t</i></sub></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</div>
       <div class="c"><code>v[s[t]] += alpha * (g - v[s[t]])</code></div>
     </div>
     <div class="sum-row">
