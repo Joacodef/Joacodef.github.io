@@ -146,10 +146,21 @@ function createGrid(svg, world) {
   for (let i = 0; i < W; i++) el("text", { class: "gw-axis", x: ML + i * C + C / 2, y: MT + H * C + 17, "text-anchor": "middle" }, svg).textContent = "ABCDEF"[i];
   for (let j = 0; j < H; j++) el("text", { class: "gw-axis", x: ML - 10, y: MT + j * C + C / 2 + 4, "text-anchor": "middle" }, svg).textContent = String(H - j);
   el("text", { class: "gw-sg", x: x0(START) + C / 2, y: MT + H * C + 33, "text-anchor": "middle" }, svg).textContent = tr("start", "inicio");
-  // The goal: named inside its cell with its reward, above and below where the agent stands, or below the grid.
+  // The goal: on the cookie grid, a cookie in the middle of its cell, with its reward beside it; the agent eats it on
+  // reaching it, and it is back for the next episode. On the cliff, the goal is named below the grid.
+  let cookie = null;
   if (world.goalName) {
-    el("text", { class: "gw-lab", x: mid(GOAL)[0], y: y0(GOAL) + C * 0.3, "text-anchor": "middle" }, svg).textContent = world.goalName;
-    el("text", { class: "gw-lab", x: mid(GOAL)[0], y: y0(GOAL) + C * 0.8, "text-anchor": "middle" }, svg).textContent = `+${world.goalReward}`;
+    const [gx, gy] = mid(GOAL), R = C * 0.19, g = cookie = el("g", { class: "gw-cookie-g" }, svg);
+    el("title", {}, g).textContent = `${world.goalName}, +${world.goalReward}`;
+    // A bite, up and to the right: a circle of radius rb centered just outside the rim. The outline runs the long way
+    // around the cookie between the two points where the circles cross, then back along the bite.
+    const ang = -Math.PI * 2 / 9, d = R * 1.08, rb = R * 0.42, phi = Math.acos((R * R + d * d - rb * rb) / (2 * R * d));
+    const P = (t) => `${gx + R * Math.cos(t)} ${gy + R * Math.sin(t)}`;
+    el("path", { class: "gw-cookie", d: `M${P(ang + phi)} A${R} ${R} 0 1 1 ${P(ang - phi)} A${rb} ${rb} 0 0 0 ${P(ang + phi)} Z` }, g);
+    // The chips, as fractions of the radius: across and down from the middle, and size.
+    for (const [u, v, r] of [[-0.5, -0.32, 0.13], [-0.08, -0.62, 0.11], [0.56, 0.22, 0.12], [-0.52, 0.36, 0.11], [0.1, 0.6, 0.13], [0.04, 0.02, 0.1]])
+      el("circle", { class: "gw-chip", cx: gx + u * R, cy: gy + v * R, r: r * R }, g);
+    el("text", { class: "gw-lab", x: x0(GOAL) + C * 0.86, y: gy + 5, "text-anchor": "middle" }, svg).textContent = `+${world.goalReward}`;
   } else el("text", { class: "gw-sg", x: x0(GOAL) + C / 2, y: MT + H * C + 33, "text-anchor": "middle" }, svg).textContent = tr("goal", "meta");
   // The arrowhead of a route, named after the figure so that two figures on a page keep their own.
   const head = el("marker", { id: `${svg.id}-head`, viewBox: "0 0 10 10", refX: 8, refY: 5, markerWidth: 1.7, markerHeight: 1.7, orient: "auto" }, el("defs", {}, svg));
@@ -157,7 +168,18 @@ function createGrid(svg, world) {
   const dyn = el("g", {}, svg);
   const agentG = el("g", { class: "gw-agent-g" }, svg);
   const agentDot = el("circle", { class: "gw-agent", cx: 0, cy: 0, r: 8 }, agentG);
-  let drawnAt = START;
+  let drawnAt = START, eating = null;
+  // The cookie is there unless the agent stands on the goal. When the agent has just glided onto it, it shrinks and
+  // fades as the agent arrives; with reduced motion, or going back, it simply goes.
+  function showCookie(there, animate) {
+    if (!cookie) return;
+    eating?.cancel(); eating = null;
+    cookie.style.visibility = there ? "" : "hidden";
+    if (there || !animate || reducedMotion.matches) return;
+    cookie.style.visibility = "";
+    eating = cookie.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(0.3)" }], { duration: 260, delay: 200, easing: "ease-in", fill: "forwards" });
+    eating.onfinish = () => { cookie.style.visibility = "hidden"; eating.cancel(); eating = null; };
+  }
 
   // g: Q (the values drawn), agent (its cell), jump (move it without gliding; it never glides out of the cliff),
   // pick ([cell, action] just chosen), marks ([{ c, a, kind, w }] with kind "upd", "tg" or "step" and w a trace),
@@ -168,9 +190,9 @@ function createGrid(svg, world) {
     dyn.replaceChildren();
     if (pick) el("polygon", { class: "gw-pick", points: pts(triPts(pick[0])[pick[1]]) }, dyn);
     // A route: a light blue band through the middles of its cells, under the values, its arrowhead stopping short of
-    // the goal's middle, where the agent may stand.
+    // the goal's middle, where the agent may stand; on the cookie grid, just inside the goal, clear of its name and reward.
     if (route) {
-      const p = route.map(mid), [ex, ey] = p.at(-1), [px, py] = p.at(-2), d = Math.hypot(ex - px, ey - py), cut = C * 0.2;
+      const p = route.map(mid), [ex, ey] = p.at(-1), [px, py] = p.at(-2), d = Math.hypot(ex - px, ey - py), cut = world.goalName ? C / 2 - 6 : C * 0.2;
       p[p.length - 1] = [ex - ((ex - px) / d) * cut, ey - ((ey - py) / d) * cut];
       el("polyline", { class: "gw-route", points: pts(p), "marker-end": `url(#${svg.id}-head)` }, dyn);
     }
@@ -208,6 +230,7 @@ function createGrid(svg, world) {
     const [ax, ay] = mid(agent);
     agentG.classList.toggle("jump", !animate || !!jump || isCliff(drawnAt));
     agentG.style.transform = `translate(${ax}px, ${ay}px)`;
+    showCookie(agent !== GOAL, animate && !jump && drawnAt !== GOAL);
     drawnAt = agent;
     // A wall hit: mark the stretch of wall, and nudge the agent toward it and back.
     if (bump !== null && bump !== undefined) {
@@ -222,8 +245,9 @@ function createGrid(svg, world) {
 
 /* ---------- Sound ---------- */
 
-// Made in the browser: a short woody click for a move, a duller one for a wall hit, a falling tone for a fall, and a
-// rising chime when the run ends. They play only after Next or the right arrow key, and a button turns them off.
+// Made in the browser: a short woody click for a move, a duller one for a wall hit, a falling tone for a fall, a soft
+// crunch for a cookie eaten, and a rising chime when the run ends. They play only after Next or the right arrow key,
+// and a button turns them off.
 let audioCtx = null;
 const ac = () => (audioCtx ??= new (window.AudioContext || window.webkitAudioContext)());
 function click(pitch = 1, level = 1) {
@@ -247,6 +271,18 @@ function fallSound() {
   const th = a.createOscillator(); th.frequency.setValueAtTime(95, t + 0.46); th.frequency.exponentialRampToValueAtTime(55, t + 0.62);
   const g2 = a.createGain(); g2.gain.setValueAtTime(0.0001, t + 0.45); g2.gain.exponentialRampToValueAtTime(0.35, t + 0.47); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.66);
   th.connect(g2).connect(a.destination); th.start(t + 0.45); th.stop(t + 0.7);
+}
+// Three quiet crackles of filtered noise, each a little lower, as the agent arrives at the cookie.
+function crunch() {
+  const a = ac(), t0 = a.currentTime + 0.2;
+  for (let i = 0; i < 3; i++) {
+    const t = t0 + i * 0.075, len = Math.floor(a.sampleRate * 0.05), buf = a.createBuffer(1, len, a.sampleRate), d = buf.getChannelData(0);
+    for (let j = 0; j < len; j++) d[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / len, 2) * (Math.random() < 0.3 ? 1 : 0.25);
+    const src = a.createBufferSource(); src.buffer = buf;
+    const bp = a.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 2800 - i * 600; bp.Q.value = 1.1;
+    const g = a.createGain(); g.gain.value = 0.3 - i * 0.06;
+    src.connect(bp).connect(g).connect(a.destination); src.start(t);
+  }
 }
 function chime() {
   const a = ac(), t = a.currentTime + 0.01;
@@ -296,7 +332,7 @@ export function slideshow({ svg, slides, frame, world = cliff }) {
     if (k === slides.length - 1) chime();
     else if (bd.sound === "fall") fallSound();
     else if (bd.sound === "wall") click(0.55, 0.8);
-    else if (bd.agent !== prevAgent && !bd.jump) click();
+    else if (bd.agent !== prevAgent && !bd.jump) (world.goalName && bd.agent === world.GOAL ? crunch : click)();
   }
   // Fast-forward: when Next skips moves, the grid plays them quickly while the status line counts up, each frame with
   // the marks of its move: yellow for the move about to be taken, green for what was just updated. A short skip plays

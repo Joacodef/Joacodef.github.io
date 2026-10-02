@@ -149,9 +149,9 @@ slides.push({ title: tr("Move 2", "Movimiento 2"), builds: [
   const i = find(1, "sweep", 0), Q = X(i).Q, p = route(Q), loop = e1.moves.find((m) => !m.first), c = loop.s2;
   const best = Q[c].indexOf(Math.max(...Q[c])), others = [0, 1, 2, 3].filter((a) => a !== best && Q[c][a] > 0);
   const vs = others.map((a) => `${NAME[a]} (${num(Q[c][a])})`);
-  slides.push({ title: tr("The loop is cut", "Se corta el bucle"), builds: [stepBuild(i, tr(
+  slides.push({ title: tr("The loop is cut", "Se corta el bucle"), builds: [{ ...stepBuild(i, tr(
     `The sweep reaches <i>t</i> = 0, and only now has the table changed: each move of the episode holds its return, 0.9 for each move farther from the cookie. In ${cellName(c)}, ${NAME[best]} (${num(Q[c][best])}) beats ${listAnd(vs)}, so the best moves cut out the loop and reach the cookie from A1 in ${p.length - 1} moves.`,
-    `El recorrido llega a <i>t</i> = 0, y solo ahora cambió la tabla: cada movimiento del episodio tiene su retorno, 0.9 por cada movimiento más lejos de la galleta. En ${cellName(c)}, ${NAME[best]} (${num(Q[c][best])}) le gana a ${listAnd(vs)}, así que los mejores movimientos cortan el bucle y llegan a la galleta desde A1 en ${p.length - 1} movimientos.`))] });
+    `El recorrido llega a <i>t</i> = 0, y solo ahora cambió la tabla: cada movimiento del episodio tiene su retorno, 0.9 por cada movimiento más lejos de la galleta. En ${cellName(c)}, ${NAME[best]} (${num(Q[c][best])}) le gana a ${listAnd(vs)}, así que los mejores movimientos cortan el bucle y llegan a la galleta desde A1 en ${p.length - 1} movimientos.`)), route: p }] });
 }
 {
   const x = X(second), T2 = episodes[1].moves.length, f = X(firstVisit);
@@ -170,9 +170,9 @@ slides.push({ title: tr("Move 2", "Movimiento 2"), builds: [
 }
 {
   const up = sc.Q[sc.s][UP], other = sc.a === RIGHT ? UP : RIGHT;
-  slides.push({ title: tr("A shortcut", "Un atajo"), builds: [stepBuild(shortcut, tr(
+  slides.push({ title: tr("A shortcut", "Un atajo"), builds: [{ ...stepBuild(shortcut, tr(
     `The sweep reaches <i>t</i> = 0: <i>G</i> ${eqv(sc.G)} is the first return of ${moveName(sc.s, sc.a)}, above ${NAME[other]}'s average, ${num(sc.Q[sc.s][other])}, which holds the long route's returns. The best move in ${cellName(sc.s)} becomes ${NAME[sc.a]}, and the best moves reach the cookie in 4 moves, the shortest route. They keep it to the end.`,
-    `El recorrido llega a <i>t</i> = 0: <i>G</i> ${eqv(sc.G)} es el primer retorno de ${moveName(sc.s, sc.a)}, más que el promedio de ${NAME[other]}, ${num(sc.Q[sc.s][other])}, que guarda los retornos de la ruta larga. El mejor movimiento en ${cellName(sc.s)} pasa a ser ${NAME[sc.a]}, y los mejores movimientos llegan a la galleta en 4 movimientos, la ruta más corta. Ahí se quedan hasta el final.`), qEq(sc))] });
+    `El recorrido llega a <i>t</i> = 0: <i>G</i> ${eqv(sc.G)} es el primer retorno de ${moveName(sc.s, sc.a)}, más que el promedio de ${NAME[other]}, ${num(sc.Q[sc.s][other])}, que guarda los retornos de la ruta larga. El mejor movimiento en ${cellName(sc.s)} pasa a ser ${NAME[sc.a]}, y los mejores movimientos llegan a la galleta en 4 movimientos, la ruta más corta. Ahí se quedan hasta el final.`), qEq(sc)), route: route(sc.Q) }] });
 }
 {
   const Q = X(last).Q, p = route(Q), n = p.length - 1, vals = p.slice(0, -1).map((s) => num(Math.max(...Q[s]))).join(", ");
@@ -180,9 +180,9 @@ slides.push({ title: tr("Move 2", "Movimiento 2"), builds: [
   const shortest = p.slice(0, -1).map((_, j) => num(GAMMA ** (n - 1 - j))).join(", ");
   const a1 = Q[START], off = a1.indexOf(Math.max(...a1)) === RIGHT ? UP : RIGHT;
   const never = [...Array(9).keys()].filter((s) => s !== GOAL && Q[s].every((v) => v === 0)).map(cellName);
-  slides.push({ title: tr(`After ${EPISODES} episodes`, `Después de ${EPISODES} episodios`), builds: [stepBuild(last, tr(
+  slides.push({ title: tr(`After ${EPISODES} episodes`, `Después de ${EPISODES} episodios`), builds: [{ ...stepBuild(last, tr(
     `Along the route the values are ${vals}, a little below the shortest trip's returns, ${shortest}, where early trips and exploring moves are still in the averages. ${NAME[off][0].toUpperCase() + NAME[off].slice(1)} in A1 keeps ${num(a1[off])} from the long route.${never.length ? ` The agent never visited ${listOr(never)}, so their moves have no values.` : ""}`,
-    `A lo largo de la ruta, los valores son ${vals}, un poco por debajo de los retornos del viaje más corto, ${shortest}, donde los viajes del principio y los movimientos de exploración siguen en los promedios. ${NAME[off][0].toUpperCase() + NAME[off].slice(1)} en A1 conserva ${num(a1[off])} de la ruta larga.${never.length ? ` El agente nunca visitó ${listOr(never)}, así que sus movimientos no tienen valores.` : ""}`))] });
+    `A lo largo de la ruta, los valores son ${vals}, un poco por debajo de los retornos del viaje más corto, ${shortest}, donde los viajes del principio y los movimientos de exploración siguen en los promedios. ${NAME[off][0].toUpperCase() + NAME[off].slice(1)} en A1 conserva ${num(a1[off])} de la ruta larga.${never.length ? ` El agente nunca visitó ${listOr(never)}, así que sus movimientos no tienen valores.` : ""}`)), route: p }] });
 }
 // How far each slide jumps ahead of the one before it: the moves it skips, or the steps of a sweep.
 for (let i = 1; i < slides.length; i++) {

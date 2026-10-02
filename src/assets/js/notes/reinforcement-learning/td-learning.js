@@ -143,9 +143,9 @@ for (let i = 0; i < 3; i++) {
 {
   // The state one move before the pull: the route along the edge, which the agent is following.
   const i = pull - 1, x = X(i), route = greedyPath(x.post), len = route.length - 1;
-  slides.push({ title: tr("A first way through", "Un primer camino"), builds: [wholeBuild(i, tr(
-    `In episode ${X(firstRoute).ep}, the best moves first lead from A1 to the goal: along the edge, ${len} moves, the shortest route. The highlighted best values trace it. The agent is in ${cellName(x.s2)}, and its next move, ${NAME[x.next.a]}, follows it.`,
-    `En el episodio ${X(firstRoute).ep}, los mejores movimientos llevan por primera vez de A1 a la meta: por el borde, ${len} movimientos, la ruta más corta. Los mejores valores destacados la marcan. El agente está en ${cellName(x.s2)}, y su siguiente movimiento, ${NAME[x.next.a]}, la sigue.`))] });
+  slides.push({ title: tr("A first way through", "Un primer camino"), builds: [{ ...wholeBuild(i, tr(
+    `In episode ${X(firstRoute).ep}, the best moves first lead from A1 to the goal: along the edge, ${len} moves, the shortest route. The agent is in ${cellName(x.s2)}, and its next move, ${NAME[x.next.a]}, follows it.`,
+    `En el episodio ${X(firstRoute).ep}, los mejores movimientos llevan por primera vez de A1 a la meta: por el borde, ${len} movimientos, la ruta más corta. El agente está en ${cellName(x.s2)}, y su siguiente movimiento, ${NAME[x.next.a]}, la sigue.`)), route }] });
 }
 {
   const i = pull, x = X(i), t = x.t, c = cellName(x.s);
@@ -161,9 +161,9 @@ for (let i = 0; i < 3; i++) {
 }
 {
   const Qf = X(last).post, route = greedyPath(Qf), vals = route.slice(0, -1).map((s) => num(Math.max(...Qf[s]))).join(", ");
-  slides.push({ title: tr(`After ${EPISODES} episodes`, `Después de ${EPISODES} episodios`), builds: [wholeBuild(last, tr(
+  slides.push({ title: tr(`After ${EPISODES} episodes`, `Después de ${EPISODES} episodios`), builds: [{ ...wholeBuild(last, tr(
     `The best moves now run one row up, ${route.length - 1} moves, with values ${vals}: about minus the number of moves left. In A2, up is worth ${num(Qf[A2][UP])} and right, onto the edge, ${num(Qf[A2][RIGHT])}. The agent fell ${falls.length} times, the last time in episode ${falls.at(-1).ep}.`,
-    `Los mejores movimientos ahora van una fila más arriba, ${route.length - 1} movimientos, con valores ${vals}: cerca de −1 por cada movimiento que falta. En A2, arriba vale ${num(Qf[A2][UP])} y derecha, hacia el borde, ${num(Qf[A2][RIGHT])}. El agente cayó ${falls.length} veces, la última en el episodio ${falls.at(-1).ep}.`))] });
+    `Los mejores movimientos ahora van una fila más arriba, ${route.length - 1} movimientos, con valores ${vals}: cerca de −1 por cada movimiento que falta. En A2, arriba vale ${num(Qf[A2][UP])} y derecha, hacia el borde, ${num(Qf[A2][RIGHT])}. El agente cayó ${falls.length} veces, la última en el episodio ${falls.at(-1).ep}.`)), route }] });
 }
 // How far each slide jumps ahead of the one before it, counting moves in the whole run.
 for (let i = 1; i < slides.length; i++) {

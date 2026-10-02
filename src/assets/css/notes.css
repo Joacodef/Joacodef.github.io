@@ -277,6 +277,10 @@ ol.steps b { font-weight: 600; }
 .gw-lab { fill: var(--ink-2); font-family: var(--sans); font-size: 13px; pointer-events: none; }
 .gw-axis { fill: var(--ink-3); font-family: var(--sans); font-size: 11px; }
 .gw-sg { fill: var(--ink-2); font-family: var(--sans); font-size: 12px; pointer-events: none; }
+/* The cookie: dough and chips mixed from the tokens, light dough and dark chips in both themes. */
+.gw-cookie { fill: color-mix(in srgb, color-mix(in srgb, var(--pick) 75%, var(--red)) 45%, var(--img-hi)); stroke: color-mix(in srgb, var(--pick) 45%, var(--img-lo)); stroke-width: 1.4; stroke-linejoin: round; }
+.gw-chip { fill: color-mix(in srgb, var(--red) 30%, var(--img-lo)); }
+.gw-cookie-g { transform-box: fill-box; transform-origin: center; }
 /* A thin halo in the cell's color keeps a value legible where a mark crosses it. */
 .gw-q { fill: var(--ink-2); font-family: var(--sans); font-size: 10px; font-variant-numeric: tabular-nums; pointer-events: none; paint-order: stroke; stroke: var(--card); stroke-width: 2.5px; stroke-linejoin: round; }
 .gw-q.best { fill: var(--blue); font-weight: 600; stroke: none; }

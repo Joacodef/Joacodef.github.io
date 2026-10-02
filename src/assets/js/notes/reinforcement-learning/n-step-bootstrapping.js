@@ -196,7 +196,7 @@ for (let i = 0; i < N - 1; i++) {
 }
 {
   const i = moveOf(settleU), x = moves[i], len = finalPath.length - 1;
-  slides.push({ title: tr("A path away from the edge", "Un camino lejos del borde"), builds: [{ ...at(i), time: x.t + 1, Q: qAfter(settleU + 1), agent: x.s2, line: tr(
+  slides.push({ title: tr("A path away from the edge", "Un camino lejos del borde"), builds: [{ ...at(i), time: x.t + 1, Q: qAfter(settleU + 1), agent: x.s2, route: greedyPath(qAfter(settleU + 1)), line: tr(
     `In episode ${x.ep} the best moves settle on the top row, ${len} moves, and keep it to the end. Like one-step Sarsa in the TD note, 4-step Sarsa keeps away from the edge.`,
     `En el episodio ${x.ep}, los mejores movimientos se asientan en la fila de arriba, ${len} movimientos, y la mantienen hasta el final. Como Sarsa de un paso en la nota de TD, 4-step Sarsa se aleja del borde.`) }] });
 }
@@ -224,7 +224,7 @@ for (let i = 0; i < N - 1; i++) {
   const lastI = moves.length - 1, x = moves[lastI], settleMove = moveOf(settleU);
   const vals = finalPath.slice(0, -1).map((s) => num(Math.max(...finalQ[s]))).join(", ");
   const later = falls.filter((m) => moves.indexOf(m) > settleMove).length;
-  slides.push({ title: tr(`After ${EPISODES} episodes`, `Después de ${EPISODES} episodios`), builds: [{ ...at(lastI), time: x.t + 1, Q: finalQ, agent: x.s2, line: tr(
+  slides.push({ title: tr(`After ${EPISODES} episodes`, `Después de ${EPISODES} episodios`), builds: [{ ...at(lastI), time: x.t + 1, Q: finalQ, agent: x.s2, route: finalPath, line: tr(
     `Along the path, the best values are ${vals}: about minus the number of moves left, most of them a little lower. The agent fell ${falls.length} times, ${later} of them after it had learned the path.`,
     `A lo largo del camino, los mejores valores son ${vals}: cerca de −1 por cada movimiento que falta, la mayoría un poco más bajos. El agente cayó ${falls.length} veces, ${later} de ellas después de haber aprendido el camino.`) }] });
 }

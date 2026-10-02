@@ -140,12 +140,12 @@ for (let i = 1; i <= 5; i++) {
   let settle = null, lastKey = null;
   steps.forEach((y, i) => { const p = greedyPath(y.post), key = p ? p.join() : ""; if (key !== lastKey) { settle = p ? i : null; lastKey = key; } });
   const x = X(settle), len = greedyPath(x.post).length - 1;
-  slides.push({ title: tr("A path one row up", "Un camino una fila más arriba"), builds: [{ ...pos(settle), time: x.t + 1, Q: x.post, agent: x.done ? GOAL : x.s2, line: tr(
+  slides.push({ title: tr("A path one row up", "Un camino una fila más arriba"), builds: [{ ...pos(settle), time: x.t + 1, Q: x.post, agent: x.done ? GOAL : x.s2, route: greedyPath(x.post), line: tr(
     `In episode ${x.ep} the best moves settle on the route one row up, ${len} moves, the route of one-step Sarsa in the TD note, and keep it to the end.`,
     `En el episodio ${x.ep}, los mejores movimientos se asientan en la ruta una fila más arriba, ${len} movimientos, la ruta de Sarsa de un paso en la nota de TD, y la mantienen hasta el final.`) }] });
   const lastI = steps.length - 1, Qf = X(lastI).post, pf = greedyPath(Qf), falls = steps.filter((y) => y.fell !== null), later = falls.filter((y) => steps.indexOf(y) > settle).length;
   const vals = pf.slice(0, -1).map((s) => num(Math.max(...Qf[s]))).join(", ");
-  slides.push({ title: tr(`After ${EPISODES} episodes`, `Después de ${EPISODES} episodios`), builds: [{ ...pos(lastI), time: X(lastI).t + 1, Q: Qf, agent: GOAL, line: tr(
+  slides.push({ title: tr(`After ${EPISODES} episodes`, `Después de ${EPISODES} episodios`), builds: [{ ...pos(lastI), time: X(lastI).t + 1, Q: Qf, agent: GOAL, route: pf, line: tr(
     `Along the path, the best values are ${vals}. Near the goal each is about minus the number of moves left; farther back they are lower, since they include what exploring costs over the rest of the trip, and at the start the cliff is one random move away. The agent fell ${falls.length} times, ${later} of them after it had learned the path.`,
     `A lo largo del camino, los mejores valores son ${vals}. Cerca de la meta, cada uno vale más o menos −1 por cada movimiento que falta; más atrás son más bajos, porque incluyen lo que cuesta explorar en el resto del viaje, y en el inicio el acantilado está a un movimiento al azar. El agente cayó ${falls.length} veces, ${later} de ellas después de haber aprendido el camino.`) }] });
 }
