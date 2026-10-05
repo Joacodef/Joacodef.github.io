@@ -76,7 +76,7 @@ scripts:
       <li>Repeat from step 2 for each new episode. Every-visit Monte Carlo is the same without the check of step 3.</li>
     </ol>
     <p>The figure runs it on a grid 3 cells wide and 3 tall, with cells named by column and row, from A1 at the bottom left to C3 at the top right. An agent starts in A1 and moves up, right, down or left, and a move into a wall leaves it where it is. In C3 there is a cookie: reaching it gives +1 and ends the episode, and every other move gives 0. With γ = 0.9, the return from a cell is 1 if the next move reaches the cookie, 0.9 if the cookie comes one move later, 0.81 if two, and so on: the quicker the trip, the larger the return. The policy picks each of the four moves at random, and every estimate starts at 0.</p>
-    <p>Each cell shows its estimate. Each press is one line of the algorithm. During the episode, the move chosen turns yellow, the agent takes it, and the cells it has left are outlined in dashed blue; no estimate changes. Once the agent reaches the cookie, each press is one step of the sweep back, and every estimate it updates is outlined in green. Later, Next skips ahead to the moments where something new is learned.</p>
+    <p>Each cell shows its estimate, and a heatmap shades it green, the more the closer the estimate is to 1; 0 is not shaded. Each press is one line of the algorithm. During the episode, the move chosen turns yellow, the agent takes it, and the cells it has left are outlined in dashed blue; no estimate changes. Once the agent reaches the cookie, each press is one step of the sweep back, and every estimate it updates is outlined in green. Later, Next skips ahead to the moments where something new is learned. The gear button after Next opens the figure's settings: the heatmap and the sound.</p>
   </div>
 
   <div class="fig steps">
@@ -85,7 +85,6 @@ scripts:
     <div class="ro" id="fig-pred-out"></div>
     <div class="fig-foot">
       <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
-      <button type="button" class="btn" id="fig-pred-sound" aria-pressed="true">Sound on</button>
     </div>
     <p class="sr-only" id="fig-pred-live" aria-live="polite"></p>
   </div>
@@ -136,7 +135,7 @@ scripts:
       <li>For <i>t</i> = <i>T</i> − 1, <i>T</i> − 2, …, 0: set <span class="nowrap"><i>G</i> ← γ<i>G</i> + <i>R</i><sub><i>t</i>+1</sub></span>. If the pair <i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub> does not appear earlier in the episode, add <i>G</i> to its returns, set <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) to their average, and make π ε-greedy in <i>S</i><sub><i>t</i></sub> with respect to <i>Q</i>.</li>
       <li>Repeat from step 2 for each new episode.</li>
     </ol>
-    <p>The figure runs it on the <a href="#prediction">cookie grid of section 1</a>, with ε = 0.1 and every value starting at 0. Each cell is now split into four triangles, one per move, each with that move's value (blank while it is untried), and the best value of the cell highlighted in blue. The presses work as in section 1: the episode plays with the table unchanged, its moves outlined in dashed blue, then the sweep goes back one step per press, outlining each updated value in green.</p>
+    <p>The figure runs it on the <a href="#prediction">cookie grid of section 1</a>, with ε = 0.1 and every value starting at 0. Each cell is now split into four triangles, one per move, each with that move's value (blank while it is untried). When one move is worth more than the others, its value is in bold, and a small blue triangle at the middle of the cell points toward it. The heatmap now shades each move's triangle; in the settings, it can shade each cell by its best value instead. The presses work as in section 1: the episode plays with the table unchanged, its moves outlined in dashed blue, then the sweep goes back one step per press, outlining each updated value in green.</p>
   </div>
 
   <div class="fig steps">
@@ -145,7 +144,6 @@ scripts:
     <div class="ro" id="fig-mc-out"></div>
     <div class="fig-foot">
       <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
-      <button type="button" class="btn" id="fig-mc-sound" aria-pressed="true">Sound on</button>
     </div>
     <p class="sr-only" id="fig-mc-live" aria-live="polite"></p>
   </div>

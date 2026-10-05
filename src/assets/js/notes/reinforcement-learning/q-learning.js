@@ -1,5 +1,5 @@
 import { tr } from "../../plane.js";
-import { START, GOAL, W, H, NAME, cellName, stepEnv, rngFrom, freshQ, epsGreedy, greedyPath, num, par, eqv, count, sym, reason, takeText, chooseTakeText, slideshow } from "./gridworld.js";
+import { START, GOAL, W, H, NAME, cellName, stepEnv, rngFrom, freshQ, epsGreedy, greedyPath, num, par, eqv, count, sym, reason, takeText, chooseTakeText, slideshow, shake } from "./gridworld.js";
 
 /* ---------- Section 2: Q-learning on the cliff, stepped through like slides ---------- */
 
@@ -171,7 +171,7 @@ slideshow({
   // The state after m moves, for the frames of a skip: the move just updated in green, the next one in yellow.
   frame: (m) => {
     const x = X(m), y = m < last ? X(m + 1) : null;
-    return { Q: qAfter(m), agent: x.done ? GOAL : x.s2, ring: x.fell, ep: x.ep, move: x.t, time: x.t,
+    return { Q: qAfter(m), agent: x.done ? GOAL : x.s2, ring: x.fell, ep: x.ep, move: x.t, time: x.t, bumpPose: shake(x, m),
       marks: [{ c: x.s, a: x.a, kind: "upd" }], pick: y && y.ep === x.ep ? [y.s, y.a] : undefined };
   },
 });

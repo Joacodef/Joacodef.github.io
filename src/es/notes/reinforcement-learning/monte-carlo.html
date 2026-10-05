@@ -76,7 +76,7 @@ scripts:
       <li>Repite desde el paso 2 con cada nuevo episodio. Monte Carlo every-visit es igual, sin la revisión del paso 3.</li>
     </ol>
     <p>La figura lo ejecuta en una grilla de 3 celdas de ancho y 3 de alto, con las celdas nombradas por columna y fila, desde A1 abajo a la izquierda hasta C3 arriba a la derecha. Un agente parte en A1 y se mueve arriba, a la derecha, abajo o a la izquierda, y un movimiento contra una pared lo deja donde está. En C3 hay una galleta: llegar a ella da +1 y termina el episodio, y cualquier otro movimiento da 0. Con γ = 0.9, el retorno desde una celda es 1 si el siguiente movimiento llega a la galleta, 0.9 si la galleta viene un movimiento después, 0.81 si vienen dos, y así: mientras más corto el viaje, mayor el retorno. La política elige cada uno de los cuatro movimientos al azar, y todas las estimaciones parten en 0.</p>
-    <p>Cada celda muestra su estimación. Cada vez que presionas Siguiente se ejecuta una línea del algoritmo. Durante el episodio, el movimiento elegido se pone amarillo, el agente lo toma, y las celdas que va dejando tienen un borde azul punteado; ninguna estimación cambia. Cuando el agente llega a la galleta, cada vez que presionas Siguiente se da un paso del recorrido hacia atrás, y cada estimación que actualiza tiene un borde verde. Más adelante, Siguiente salta a los momentos en que se aprende algo nuevo.</p>
+    <p>Cada celda muestra su estimación, y un mapa de calor la sombrea de verde, más cuanto más cerca de 1 está la estimación; el 0 no se sombrea. Cada vez que presionas Siguiente se ejecuta una línea del algoritmo. Durante el episodio, el movimiento elegido se pone amarillo, el agente lo toma, y las celdas que va dejando tienen un borde azul punteado; ninguna estimación cambia. Cuando el agente llega a la galleta, cada vez que presionas Siguiente se da un paso del recorrido hacia atrás, y cada estimación que actualiza tiene un borde verde. Más adelante, Siguiente salta a los momentos en que se aprende algo nuevo. El botón del engranaje, después de Siguiente, abre los ajustes de la figura: el mapa de calor y el sonido.</p>
   </div>
 
   <div class="fig steps">
@@ -85,7 +85,6 @@ scripts:
     <div class="ro" id="fig-pred-out"></div>
     <div class="fig-foot">
       <p>Siguiente avanza, Atrás retrocede. Teclas: <span class="nowrap">→ y ←</span>.</p>
-      <button type="button" class="btn" id="fig-pred-sound" aria-pressed="true">Con sonido</button>
     </div>
     <p class="sr-only" id="fig-pred-live" aria-live="polite"></p>
   </div>
@@ -136,7 +135,7 @@ scripts:
       <li>Para <i>t</i> = <i>T</i> − 1, <i>T</i> − 2, …, 0: haz <span class="nowrap"><i>G</i> ← γ<i>G</i> + <i>R</i><sub><i>t</i>+1</sub></span>. Si el par <i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub> no aparece antes en el episodio, agrega <i>G</i> a sus retornos, deja <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) en su promedio y vuelve π ε-greedy en <i>S</i><sub><i>t</i></sub> con respecto a <i>Q</i>.</li>
       <li>Repite desde el paso 2 con cada nuevo episodio.</li>
     </ol>
-    <p>La figura lo ejecuta en la <a href="#prediction">grilla de la galleta de la sección 1</a>, con ε = 0.1 y todos los valores partiendo en 0. Ahora cada celda se divide en cuatro triángulos, uno por movimiento, cada uno con el valor de ese movimiento (en blanco mientras no se ha probado), y el mejor valor de la celda se destaca en azul. Los pasos funcionan como en la sección 1: el episodio se juega con la tabla sin cambios, con sus movimientos con borde azul punteado, y luego el recorrido retrocede un paso cada vez que presionas Siguiente, con un borde verde en cada valor actualizado.</p>
+    <p>La figura lo ejecuta en la <a href="#prediction">grilla de la galleta de la sección 1</a>, con ε = 0.1 y todos los valores partiendo en 0. Ahora cada celda se divide en cuatro triángulos, uno por movimiento, cada uno con el valor de ese movimiento (en blanco mientras no se ha probado). Cuando un movimiento vale más que los demás, su valor va en negrita, y un pequeño triángulo azul en el centro de la celda apunta hacia él. Ahora el mapa de calor sombrea el triángulo de cada movimiento; en los ajustes, puede sombrear en cambio cada celda según su mejor valor. Los pasos funcionan como en la sección 1: el episodio se juega con la tabla sin cambios, con sus movimientos con borde azul punteado, y luego el recorrido retrocede un paso cada vez que presionas Siguiente, con un borde verde en cada valor actualizado.</p>
   </div>
 
   <div class="fig steps">
@@ -145,7 +144,6 @@ scripts:
     <div class="ro" id="fig-mc-out"></div>
     <div class="fig-foot">
       <p>Siguiente avanza, Atrás retrocede. Teclas: <span class="nowrap">→ y ←</span>.</p>
-      <button type="button" class="btn" id="fig-mc-sound" aria-pressed="true">Con sonido</button>
     </div>
     <p class="sr-only" id="fig-mc-live" aria-live="polite"></p>
   </div>

@@ -1,5 +1,5 @@
 import { tr } from "../../plane.js";
-import { cookie, START, GOAL, NAME, cellName, moveName, stepEnv, rngFrom, freshQ, epsGreedy, greedyPath, num, par, eqv, count, sym, reason, takeText, chooseTakeText, slideshow } from "./gridworld.js";
+import { cookie, START, GOAL, NAME, cellName, moveName, stepEnv, rngFrom, freshQ, epsGreedy, greedyPath, num, par, eqv, count, sym, reason, takeText, chooseTakeText, slideshow, shake } from "./gridworld.js";
 
 /* ---------- Section 1: TD(0) on the cookie grid, one line of the algorithm per press ---------- */
 
@@ -189,7 +189,7 @@ import { cookie, START, GOAL, NAME, cellName, moveName, stepEnv, rngFrom, freshQ
     // The state after move m of the whole run, for the frames of a skip: the cell just updated in green, the next move in yellow.
     frame: (m) => {
       const x = X(m), y = X(m + 1);
-      return { V: x.post, agent: x.s2, ep: x.ep, move: x.t + 1, time: x.t + 1, marks: [{ c: x.s, kind: "upd" }], pick: y && y.ep === x.ep ? [y.s, y.a] : undefined };
+      return { V: x.post, agent: x.s2, ep: x.ep, move: x.t + 1, time: x.t + 1, bumpPose: shake(x, m), marks: [{ c: x.s, kind: "upd" }], pick: y && y.ep === x.ep ? [y.s, y.a] : undefined };
     },
   });
 }
@@ -395,6 +395,6 @@ slideshow({
   // The state after move m of the whole run, for the frames of a skip: the move just updated in green, A′ in yellow.
   frame: (m) => {
     const x = X(m);
-    return { Q: x.post, agent: x.done ? GOAL : x.s2, ring: x.fell, ep: x.ep, move: x.t + 1, time: x.t + 1, marks: [{ c: x.s, a: x.a, kind: "upd" }], pick: x.next ? [x.s2, x.next.a] : undefined };
+    return { Q: x.post, agent: x.done ? GOAL : x.s2, ring: x.fell, ep: x.ep, move: x.t + 1, time: x.t + 1, bumpPose: shake(x, m), marks: [{ c: x.s, a: x.a, kind: "upd" }], pick: x.next ? [x.s2, x.next.a] : undefined };
   },
 });

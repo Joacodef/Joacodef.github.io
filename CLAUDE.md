@@ -32,7 +32,7 @@ Custom domain `joaquindeferrari.com`: DNS lives on Cloudflare as DNS-only record
 ## Design system: "notebook"
 
 - Fonts: Newsreader for headings, formulas and ledes; Public Sans for body text and UI; JetBrains Mono only for code.
-- Colors come only from the tokens in `src/assets/css/site.css` (`--paper`, `--paper-2`, `--card`, `--ink`, `--ink-2`, `--ink-3`, `--rule`, `--blue`, `--red`, `--ok`, `--pick` (the yellow of a move just chosen, in the reinforcement learning figures), and `--img-lo`/`--img-hi` for gray values in figures). Never hardcode hex values in components. Any new token needs both a light and a dark value.
+- Colors come only from the tokens in `src/assets/css/site.css` (`--paper`, `--paper-2`, `--card`, `--ink`, `--ink-2`, `--ink-3`, `--rule`, `--blue`, `--red`, `--ok`, `--pick` (the yellow of a move just chosen, in the reinforcement learning figures), `--coral` and `--heat-max` (the heatmap of those figures: positive values in `--ok`, mixed in up to `--heat-max`, and negative ones, more faintly, in `--coral`, which is mixed from `--red` and `--pick` and so follows both themes), and `--img-lo`/`--img-hi` for gray values in figures). Never hardcode hex values in components. Any new token needs both a light and a dark value.
 - Semantic ink, one fixed color per concept across the whole site:
   - Blue ink: lines, links, anatomy.
   - Carmine (`--red`): points, findings, segmentation masks, "what we look for".

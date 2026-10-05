@@ -1,5 +1,5 @@
 import { tr } from "../../plane.js";
-import { START, NAME, cellName, moveName, stepEnv, rngFrom, freshQ, epsGreedy, greedyPath, num, par, eqv, count, listAnd, sym, reason, takeText, chooseTakeText, slideshow } from "./gridworld.js";
+import { START, NAME, cellName, moveName, stepEnv, rngFrom, freshQ, epsGreedy, greedyPath, num, par, eqv, count, listAnd, sym, reason, takeText, chooseTakeText, slideshow, shake } from "./gridworld.js";
 
 /* ---------- Section 3: 4-step Sarsa on the cliff, stepped through like slides ---------- */
 
@@ -283,7 +283,7 @@ slideshow({
   // behind the agent, and the next move in yellow.
   frame: (m) => {
     const x = moves[m], y = moves[m + 1];
-    return { Q: qAfter(doneAt[m]), agent: x.s2, ring: x.fell, ep: x.ep, move: x.t + 1, time: x.t + 1,
+    return { Q: qAfter(doneAt[m]), agent: x.s2, ring: x.fell, ep: x.ep, move: x.t + 1, time: x.t + 1, bumpPose: shake(x, m),
       marks: x.upd.map((u) => ({ c: updates[u].s, a: updates[u].a, kind: "upd" })), pick: y && y.ep === x.ep ? [y.s, y.a] : undefined };
   },
 });

@@ -77,6 +77,20 @@ scripts:
       <li>Aplícales la actualización de Q-learning: <span class="nowrap"><i>Q</i>(<i>S</i>, <i>A</i>) ← <i>Q</i>(<i>S</i>, <i>A</i>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i></span></span> <span class="nowrap pt">+ γ max<sub><i>a</i></sub> <i>Q</i>(<i>S</i>′, <i>a</i>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i>, <i>A</i>)]</span>.</li>
     </ol>
     <p>Converge a la política óptima del modelo en las mismas condiciones en que Q-learning converge en el ambiente: cada par se sigue eligiendo, y el tamaño de paso se achica de forma adecuada. Si se le pregunta cinco veces por cargar en el estudio, el modelo de muestra podría responder +1, 0, +1, +1 y 0. Con α = 1/<i>n</i> en la <i>n</i>-ésima respuesta, la estimación del Q-planning es el promedio acumulado de las respuestas: 1, 0.5, 0.67, 0.75 y finalmente 0.6, el valor que el modelo de distribución da de inmediato.</p>
+    <p>La figura ejecuta Q-planning en la <a href="/es/notes/reinforcement-learning/monte-carlo/#prediction">grilla de la galleta del apunte de Monte Carlo</a>, con un modelo que conoce todos los movimientos, como si al agente le hubieran dicho las reglas de la grilla. Un movimiento en la grilla siempre hace lo mismo, así que la respuesta del modelo nunca varía y no hay nada que promediar: la figura usa α = 1, con lo que cada paso fija el valor que actualiza en su objetivo. Los 32 valores parten en 0, y se ven todos, porque el modelo guarda todos los movimientos. El agente está en A1 y nunca se mueve. Cada vez que presionas Siguiente se ejecuta una línea de los pasos de arriba, con las marcas de la <a href="/es/notes/reinforcement-learning/q-learning/#update">figura de Q-learning</a>: el estado y el movimiento elegidos, en amarillo, con una copia tenue del agente en ese estado; la respuesta del modelo, que lleva la copia adonde lleva el movimiento; y la actualización, en verde, hacia un objetivo armado con los mejores valores de ahí, en rojo. Después del primer paso, cada vez se ejecuta un paso de planning completo, que la copia juega de una vez.</p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-qplan" role="group" aria-label="Una grilla de 3 celdas de ancho y 3 de alto, cada celda dividida en cuatro triángulos con los valores de sus cuatro movimientos. El agente está abajo a la izquierda, y la galleta arriba a la derecha."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-qplan-back">Atrás</button><button type="button" class="btn" id="fig-qplan-next">Siguiente</button><span class="count" id="fig-qplan-count"></span><button type="button" class="btn" id="fig-qplan-reset" hidden>Reiniciar</button></div>
+    <div class="ro" id="fig-qplan-out"></div>
+    <div class="fig-foot">
+      <p>Siguiente avanza, Atrás retrocede. Teclas: <span class="nowrap">→ y ←</span>.</p>
+    </div>
+    <p class="sr-only" id="fig-qplan-live" aria-live="polite"></p>
+  </div>
+
+  <div class="prose">
     <p>Value iteration usa cada resultado que lista el modelo de distribución; el Q-planning, como Q-learning, usa un resultado a la vez y promedia mediante su tamaño de paso. Además, cada paso de Q-planning es pequeño, así que el planning puede interrumpirse o redirigirse en cualquier momento sin desperdiciar mucho cálculo. Eso importa cuando el planning se mezcla con la acción, como en Dyna, en la sección 3.</p>
   </div>
 </section>
@@ -103,7 +117,7 @@ scripts:
       <li>Cuéntalo: <span class="nowrap"><i>N</i>(<i>S</i>, <i>A</i>) ← <i>N</i>(<i>S</i>, <i>A</i>) + 1</span> y <span class="nowrap"><i>N</i>(<i>S</i>, <i>A</i>, <i>S</i>′, <i>R</i>) ← <i>N</i>(<i>S</i>, <i>A</i>, <i>S</i>′, <i>R</i>) + 1</span>.</li>
       <li>Haz <i>S</i> ← <i>S</i>′, y vuelve al paso 3 hasta que <i>S</i> sea terminal.</li>
     </ol>
-    <p>La figura ejecuta R-Max en la <a href="/es/notes/reinforcement-learning/monte-carlo/#prediction">grilla de la galleta del apunte de Monte Carlo</a>, con <i>k</i> = 1, porque un movimiento en la grilla siempre hace lo mismo, <span class="nowrap"><i>R</i><sub>max</sub> = 1</span>, la recompensa de la galleta, y γ = 0.9. Cada triángulo tiene el valor de un movimiento, <i>Q</i>(<i>s</i>, <i>a</i>) como lo calcula el paso 4. Un movimiento sin probar está sombreado y tiene el 1 que R-Max supone para él; un movimiento <i>known</i> tiene su recompensa más 0.9 veces el valor de la celda adonde lleva. Cada vez que presionas Siguiente se ejecuta una línea del algoritmo: el agente elige un movimiento, en amarillo, lo toma, lo cuenta, en verde, y value iteration corre sobre el nuevo modelo, lo que quita la sombra.</p>
+    <p>La figura ejecuta R-Max en la grilla de la galleta, con <i>k</i> = 1, porque un movimiento en la grilla siempre hace lo mismo, <span class="nowrap"><i>R</i><sub>max</sub> = 1</span>, la recompensa de la galleta, y γ = 0.9. Cada triángulo tiene el valor de un movimiento, <i>Q</i>(<i>s</i>, <i>a</i>) como lo calcula el paso 4. Un movimiento sin probar está sombreado de gris y tiene el 1 que R-Max supone para él; un movimiento <i>known</i> tiene su recompensa más 0.9 veces el valor de la celda adonde lleva. Cada vez que presionas Siguiente se ejecuta una línea del algoritmo: el agente elige un movimiento, en amarillo, lo toma, lo cuenta, en verde, y value iteration corre sobre el nuevo modelo, lo que quita la sombra.</p>
   </div>
 
   <div class="fig steps">
@@ -112,7 +126,6 @@ scripts:
     <div class="ro" id="fig-rmax-out"></div>
     <div class="fig-foot">
       <p>Siguiente avanza, Atrás retrocede. Teclas: <span class="nowrap">→ y ←</span>.</p>
-      <button type="button" class="btn" id="fig-rmax-sound" aria-pressed="true">Con sonido</button>
     </div>
     <p class="sr-only" id="fig-rmax-live" aria-live="polite"></p>
   </div>
@@ -155,7 +168,7 @@ scripts:
       <li>Planea, <i>n</i> veces: elige al azar un estado visto antes y una acción tomada ahí antes, obtén <i>R</i> y <i>S</i>′ de <i>Model</i>, y aplícales la actualización del paso 3.</li>
       <li>Si <i>S</i>′ es terminal, un nuevo episodio parte en su primer estado. Vuelve al paso 1.</li>
     </ol>
-    <p>La figura ejecuta Dyna-Q en la grilla de la galleta con α = 0.5, ε = 0.1, γ = 0.9 y <i>n</i> = 10. Sus marcas son las de la <a href="/es/notes/reinforcement-learning/q-learning/#update">figura de Q-learning</a>, y hay dos cosas nuevas. Un movimiento que el agente ya probó muestra su valor aunque sea 0, así que los triángulos con un número son los movimientos que guarda el modelo; el movimiento recién recordado tiene borde azul. Y durante el planning el agente no se mueve: cada paso de planning actualiza el movimiento que repite, en verde, hacia un objetivo armado con los mejores valores de donde el modelo dice que lleva ese movimiento, en rojo.</p>
+    <p>La figura ejecuta Dyna-Q en la grilla de la galleta con α = 0.5, ε = 0.1, γ = 0.9 y <i>n</i> = 10. Sus marcas son las de la <a href="/es/notes/reinforcement-learning/q-learning/#update">figura de Q-learning</a>, y sus pasos de planning se ven como en la figura de la sección 1. Como ahí, los triángulos con un número son los movimientos que guarda el modelo, 0 incluido, pero este modelo parte vacío: un movimiento muestra su valor una vez que el agente lo probó. El movimiento recién recordado tiene borde azul.</p>
   </div>
 
   <div class="fig steps">
@@ -164,7 +177,6 @@ scripts:
     <div class="ro" id="fig-dyna-out"></div>
     <div class="fig-foot">
       <p>Siguiente avanza, Atrás retrocede. Teclas: <span class="nowrap">→ y ←</span>.</p>
-      <button type="button" class="btn" id="fig-dyna-sound" aria-pressed="true">Con sonido</button>
     </div>
     <p class="sr-only" id="fig-dyna-live" aria-live="polite"></p>
   </div>
@@ -193,9 +205,24 @@ scripts:
   <div class="prose">
     <h2><span class="n">4</span>Cuando el modelo está equivocado</h2>
     <p>Hasta ahora los modelos han sido correctos: en la grilla, un movimiento <i>known</i> hace lo que dice el modelo. Un modelo puede estar equivocado por tres razones: el mundo es aleatorio y se ha visto pocas veces, como un cargador visitado una vez; el modelo generaliza de unos estados a otros, de forma imperfecta; o el mundo cambió desde que el modelo lo aprendió. Planear con un modelo equivocado da una política buena para el modelo, y posiblemente mala para el mundo.</p>
-    <p>Algunos errores se corrigen solos. Cuando un modelo es optimista, y predice más recompensa o mejores movimientos de los que permite el mundo, la política planeada va a buscarlos, descubre que no están, y la experiencia que obtiene corrige el modelo. Los errores en la otra dirección son más difíciles. Cuando el mundo se vuelve mejor de lo que cree el modelo, la política que recomienda el modelo puede no ir nunca adonde está la mejora, y el error puede durar mucho tiempo, o para siempre.</p>
+    <p>Algunos errores se corrigen solos. Cuando un modelo es optimista, y predice más recompensa o mejores movimientos de los que permite el mundo, la política planeada va a buscarlos, descubre que no están, y la experiencia que obtiene corrige el modelo. El optimismo de R-Max, en la sección 2, es un error así, cometido a propósito: su modelo promete <i>R</i><sub>max</sub> por cada movimiento que no ha probado, y probarlo lo corrige. Los errores en la otra dirección son más difíciles. Cuando el mundo se vuelve mejor de lo que cree el modelo, la política que recomienda el modelo puede no ir nunca adonde está la mejora, y el error puede durar mucho tiempo, o para siempre.</p>
     <p>De vuelta en la casa del robot, una noche cierran con llave la puerta del garaje, así que el movimiento que siempre llevaba al garaje ahora deja al robot en el pasillo, con un costo de 1. El modelo de Dyna-Q guarda el último resultado visto, así que el primer choque reescribe <i>Model</i>(pasillo, garaje), y el planning, al repetirlo, pronto valora la puerta por debajo del estudio. R-Max cuenta cada resultado desde el comienzo, viejo y nuevo. Después de cien viajes en que la puerta estaba abierta, cada choque baja el valor de la puerta en apenas 0.01, así que el robot choca 41 veces con la puerta cerrada antes de que el −0.4 del estudio se vea mejor.</p>
     <p>Ahora lo contrario. Supón que el pasillo también tiene una puerta trasera, que el robot probó una vez y encontró cerrada, y que un día la abren, con un cargador justo detrás. Nada en ninguno de los dos modelos apunta ahí. Dyna-Q vuelve a probar la puerta trasera solo con un movimiento al azar: con ε = 0.1 y tres movimientos en el pasillo, en una visita de cada 30. R-Max, que explora solo lo que no ha probado, y nunca al azar, no vuelve a probarla.</p>
+    <p>La figura pone a ambos métodos en el <a href="/es/notes/reinforcement-learning/td-learning/#sarsa">acantilado del apunte de TD</a>, γ = 1: R-Max con <i>k</i> = 1 y <span class="nowrap"><i>R</i><sub>max</sub> = −1</span>, la mayor recompensa ahí, y Dyna-Q con los parámetros de la figura de la sección 3. Su primer paso juega rápido sus primeros 10 episodios, después de los cuales ambos siguen el borde. Antes del episodio 11 se levanta una pared entre A2 y B2, cruzando el borde, y antes del episodio 21 cae. Los botones sobre la grilla cambian de método; sus marcas son las de las secciones 2 y 3, y la pared se dibuja en tinta.</p>
+  </div>
+
+  <div class="fig steps">
+    <div class="modes" id="fig-wall-modes" role="group" aria-label="Método">
+      <button type="button" data-mode="rmax" aria-pressed="true">R-Max</button>
+      <button type="button" data-mode="dyna" aria-pressed="false">Dyna-Q</button>
+    </div>
+    <svg id="fig-wall" role="group" aria-label="El acantilado: una grilla de 6 celdas de ancho y 4 de alto, cada celda dividida en cuatro triángulos con los valores de sus cuatro movimientos. El inicio está abajo a la izquierda, la meta abajo a la derecha, y el acantilado entre ambos, a lo largo de la fila de abajo. Durante un tiempo, hay una pared entre A2 y B2."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-wall-back">Atrás</button><button type="button" class="btn" id="fig-wall-next">Siguiente</button><span class="count" id="fig-wall-count"></span><button type="button" class="btn" id="fig-wall-reset" hidden>Reiniciar</button></div>
+    <div class="ro" id="fig-wall-out"></div>
+    <div class="fig-foot">
+      <p>Siguiente avanza, Atrás retrocede. Teclas: <span class="nowrap">→ y ←</span>.</p>
+    </div>
+    <p class="sr-only" id="fig-wall-live" aria-live="polite"></p>
   </div>
 </section>
 

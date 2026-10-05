@@ -1,5 +1,5 @@
 import { tr } from "../../plane.js";
-import { cookie, NAME, rngFrom, epsGreedy, num, eqv, listAnd, listOr, sym, slideshow } from "./gridworld.js";
+import { cookie, NAME, rngFrom, epsGreedy, num, eqv, listAnd, listOr, sym, slideshow, shake } from "./gridworld.js";
 
 /* ---------- Section 1: first-visit Monte Carlo prediction on the cookie grid ---------- */
 
@@ -197,7 +197,7 @@ import { cookie, NAME, rngFrom, epsGreedy, num, eqv, listAnd, listOr, sym, slide
     slides[i].skip = { from, to, moves: gap, text, note };
   }
 
-  slideshow({ svg: document.getElementById("fig-pred"), slides, frame: after, world: cookie, perCell: true });
+  slideshow({ svg: document.getElementById("fig-pred"), slides, frame: (m) => ({ ...after(m), bumpPose: shake(X(m), m) }), world: cookie, perCell: true });
 }
 
 /* ---------- Section 4: on-policy first-visit Monte Carlo control on the cookie grid ---------- */
@@ -398,4 +398,4 @@ for (let i = 1; i < slides.length; i++) {
   slides[i].skip = { from, to, moves: gap, text, note };
 }
 
-slideshow({ svg: document.getElementById("fig-mc"), slides, frame: after, world: cookie });
+slideshow({ svg: document.getElementById("fig-mc"), slides, frame: (m) => ({ ...after(m), bumpPose: shake(X(m), m) }), world: cookie });

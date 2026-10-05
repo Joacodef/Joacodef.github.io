@@ -1,5 +1,5 @@
 import { tr } from "../../plane.js";
-import { START, GOAL, NAME, moveName, stepEnv, rngFrom, freshQ, epsGreedy, greedyPath, num, par, count, listAnd, sym, reason, takeText, chooseTakeText, slideshow } from "./gridworld.js";
+import { START, GOAL, NAME, moveName, stepEnv, rngFrom, freshQ, epsGreedy, greedyPath, num, par, count, listAnd, sym, reason, takeText, chooseTakeText, slideshow, shake } from "./gridworld.js";
 
 /* ---------- Section 5: Sarsa(λ) on the cliff, one line of the algorithm per press ---------- */
 
@@ -188,6 +188,6 @@ slideshow({
   // yellow.
   frame: (m) => {
     const x = X(m), { marks } = traced(m, true);
-    return { Q: x.post, agent: x.done ? GOAL : x.s2, ring: x.fell, ep: x.ep, move: x.t + 1, time: x.t + 1, marks, pick: x.next ? [x.s2, x.next.a] : undefined };
+    return { Q: x.post, agent: x.done ? GOAL : x.s2, ring: x.fell, ep: x.ep, move: x.t + 1, time: x.t + 1, bumpPose: shake(x, m), marks, pick: x.next ? [x.s2, x.next.a] : undefined };
   },
 });

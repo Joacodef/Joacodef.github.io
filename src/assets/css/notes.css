@@ -304,9 +304,31 @@ ol.steps b { font-weight: 600; }
 .gw-agent { fill: var(--ink); }
 .gw-agent-g { pointer-events: none; transition: transform 0.3s ease; }
 .gw-agent-g.jump { transition: none; }
+/* The faint copy of the agent that plays a step a model simulates. */
+.gw-ghost { fill: color-mix(in srgb, var(--ink) 35%, var(--card)); stroke: var(--ink-3); stroke-width: 1.2; stroke-dasharray: 2.5 2; }
+.gw-ghost-g { pointer-events: none; transition: transform 0.3s ease; }
+.gw-ghost-g.jump { transition: none; }
 .gw-fall { fill: none; stroke: var(--ink); stroke-width: 2; pointer-events: none; }
 .gw-wall { stroke: var(--ink); stroke-width: 4; stroke-linecap: round; pointer-events: none; }
+/* A wall that stands between two cells for a while, along their shared side. */
+.gw-barrier { stroke: var(--ink); stroke-width: 5; stroke-linecap: round; pointer-events: none; }
 @media (max-width: 560px) { .gw-axis, .gw-sg { font-size: 14px; } .gw-lab { font-size: 16px; } .gw-q { font-size: 11px; } .gw-v { font-size: 17px; } }
+/* The heatmap, under the lines: green as a positive value nears 1, coral as a negative one nears −10, nothing at 0
+   (the shares --tp and --tn, from 0 to 1, set by the script). Coral, a cost, mixes in at 0.4 of the green's strength,
+   so that costs recede and the eye goes to the best moves. Each value's halo takes the color under it, by move or by
+   cell, except an untried R-Max move's, which keeps its shade's, and a value on a route's band, which has none. Over the
+   heatmap, the best value of a cell is in bold ink, and the band of a route is a translucent blue. */
+.gw-heat { stroke: none; pointer-events: none; fill: color-mix(in srgb, var(--ok) calc(var(--tp) * var(--heat-max)), color-mix(in srgb, var(--coral) calc(var(--tn) * var(--heat-max) * 0.4), var(--card))); }
+.fig[data-heat="move"] :is(.gw-q, .gw-v):not(.onr):not(.u) { stroke: color-mix(in srgb, var(--ok) calc(var(--tp) * var(--heat-max)), color-mix(in srgb, var(--coral) calc(var(--tn) * var(--heat-max) * 0.4), var(--card))); }
+.fig[data-heat="cell"] :is(.gw-q, .gw-v):not(.onr):not(.u) { stroke: color-mix(in srgb, var(--ok) calc(var(--tpc) * var(--heat-max)), color-mix(in srgb, var(--coral) calc(var(--tnc) * var(--heat-max) * 0.4), var(--card))); }
+.fig:is([data-heat="move"], [data-heat="cell"]) .gw-q.best { fill: var(--ink); font-weight: 700; }
+.fig:is([data-heat="move"], [data-heat="cell"]) .gw-q.u { stroke: color-mix(in srgb, var(--ink) 9%, var(--card)); }
+.fig:is([data-heat="move"], [data-heat="cell"]) :is(.gw-q, .gw-v).onr { stroke: none; }
+.fig:is([data-heat="move"], [data-heat="cell"]) .gw-route { stroke: color-mix(in srgb, var(--blue) 32%, transparent); }
+.fig:is([data-heat="move"], [data-heat="cell"]) .gw-head { fill: color-mix(in srgb, var(--blue) 55%, transparent); }
+/* Over the heatmap, a small blue triangle at the middle of a cell points toward its best move; a thin outline of the same
+   blue rounds its corners. */
+.gw-arrow { fill: var(--blue); stroke: var(--blue); stroke-width: 1; stroke-linejoin: round; pointer-events: none; }
 
 /* Figures stepped through like slides, with Next and Back. The controls sit right under the drawing, so the growing
    text never moves them, and new text appears only at the bottom, with earlier text dimmed above it. */
@@ -316,12 +338,30 @@ ol.steps b { font-weight: 600; }
 .fig.steps > .ro { grid-area: ro; }
 .fig.steps > .fig-foot { grid-area: foot; }
 @media (min-width: 840px) { .fig.steps { grid-template-rows: auto auto 1fr; grid-template-areas: "draw ro" "ctl ro" "foot ro"; } }
-.ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
+/* A figure with two runs picks one with buttons above the drawing, so that they never move either. */
+.fig.steps:has(> .modes) { grid-template-areas: "modes" "draw" "ctl" "ro" "foot"; }
+.fig.steps > .modes { grid-area: modes; margin: 0 0 -8px; }
+@media (min-width: 840px) { .fig.steps:has(> .modes) { grid-template-rows: auto auto auto 1fr; grid-template-areas: "modes ro" "draw ro" "ctl ro" "foot ro"; } }
+.ctl { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
+/* A grid figure's settings: a round button at the end of its controls opens a menu above it. */
+.gw-cog { margin-left: auto; width: 34px; height: 34px; padding: 0; display: grid; place-items: center; border: 1px solid var(--rule); border-radius: 999px; background: transparent; color: var(--ink-2); cursor: pointer; }
+.gw-cog:hover, .gw-cog[aria-expanded="true"] { color: var(--ink); border-color: var(--ink-3); background: var(--card); }
+.fig .gw-cog svg { width: 18px; height: 18px; background: none; border-radius: 0; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; }
+.gw-menu { position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 3; display: grid; gap: 8px; padding: 10px 12px; background: var(--card); border: 1px solid var(--ink-3); border-radius: 12px; font-size: 0.85rem; color: var(--ink-2); }
+.gw-menu[hidden] { display: none; }
+.gw-menu .row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.gw-menu .row > span { min-width: 7em; }
+.gw-menu button { font: inherit; color: var(--ink-2); background: transparent; border: 1px solid var(--rule); border-radius: 999px; padding: 0.2em 0.75em; cursor: pointer; }
+.gw-menu button:hover { background: var(--paper-2); }
+.gw-menu button[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); background: var(--paper-2); }
 .ctl .count { color: var(--ink-3); font-size: 0.88rem; font-variant-numeric: tabular-nums; margin: 0 0.2rem; }
 .fig.steps .btn { white-space: nowrap; }
 .fig.steps .btn[hidden] { display: none; }
 .btn:disabled { opacity: 0.4; cursor: default; }
 .btn:disabled:hover { background: transparent; }
+/* Back and Next while a skip plays: frozen, but still focusable. */
+.btn[aria-disabled="true"] { opacity: 0.4; cursor: default; }
+.btn[aria-disabled="true"]:hover { background: transparent; }
 .ro .slide { font-family: var(--serif); font-size: 1.55rem; font-weight: 500; line-height: 1.25; color: var(--ink); margin: 0.15rem 0 0.5rem; }
 .ro .slide.ff { color: var(--ink-3); }
 .ro .later { font-family: var(--serif); font-style: italic; color: var(--ink-2); margin: 0.1rem 0 0; }
@@ -332,7 +372,7 @@ ol.steps b { font-weight: 600; }
 /* On a new slide, its first text waits for the title to finish fading in. */
 .ro .enter.after-title { animation-delay: 0.4s; }
 @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .gw-agent-g { transition: none; } .ro .enter { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .gw-agent-g, .gw-ghost-g { transition: none; } .ro .enter { animation: none; } }
 /* Text for screen readers only. */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 

@@ -77,6 +77,20 @@ scripts:
       <li>Apply the Q-learning update to them: <span class="nowrap"><i>Q</i>(<i>S</i>, <i>A</i>) ← <i>Q</i>(<i>S</i>, <i>A</i>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i></span></span> <span class="nowrap pt">+ γ max<sub><i>a</i></sub> <i>Q</i>(<i>S</i>′, <i>a</i>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i>, <i>A</i>)]</span>.</li>
     </ol>
     <p>It converges to the optimal policy for the model under the same conditions as Q-learning does for the environment: every pair keeps being picked, and the step size shrinks appropriately. Asked five times about charging in the study, the sample model might answer +1, 0, +1, +1 and 0. With α = 1/<i>n</i> at the <i>n</i>-th answer, Q-planning's estimate is the running average of the answers: 1, 0.5, 0.67, 0.75 and finally 0.6, the value the distribution model gives at once.</p>
+    <p>The figure runs Q-planning on the <a href="/notes/reinforcement-learning/monte-carlo/#prediction">cookie grid of the Monte Carlo note</a>, with a model that knows every move, as if the agent had been told the rules of the grid. A move on the grid always does the same thing, so the model's answer never varies and there is nothing to average: the figure takes α = 1, so that each step sets the value it updates to its target. All 32 values start at 0, and all of them show, since the model holds every move. The agent stands in A1 and never moves. Each press is one line of the steps above, with the marks of the <a href="/notes/reinforcement-learning/q-learning/#update">Q-learning figure</a>: the state and move picked, in yellow, with a faint copy of the agent in that state; the model's answer, which takes the copy where the move leads; and the update, in green, toward a target built from the best values there, in red. After the first step, each press is a whole planning step, which the copy plays in one go.</p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-qplan" role="group" aria-label="A grid 3 cells wide and 3 tall, each cell split into four triangles that hold the values of its four moves. The agent stands at the bottom left, and the cookie is at the top right."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-qplan-back">Back</button><button type="button" class="btn" id="fig-qplan-next">Next</button><span class="count" id="fig-qplan-count"></span><button type="button" class="btn" id="fig-qplan-reset" hidden>Reset</button></div>
+    <div class="ro" id="fig-qplan-out"></div>
+    <div class="fig-foot">
+      <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
+    </div>
+    <p class="sr-only" id="fig-qplan-live" aria-live="polite"></p>
+  </div>
+
+  <div class="prose">
     <p>Value iteration uses every outcome the distribution model lists; Q-planning, like Q-learning, uses one outcome at a time and averages through its step size. And each Q-planning step is small, so planning can be interrupted or redirected at any moment with little computation wasted. That matters when planning is mixed with acting, as in Dyna, in section 3.</p>
   </div>
 </section>
@@ -103,7 +117,7 @@ scripts:
       <li>Count it: <span class="nowrap"><i>N</i>(<i>S</i>, <i>A</i>) ← <i>N</i>(<i>S</i>, <i>A</i>) + 1</span> and <span class="nowrap"><i>N</i>(<i>S</i>, <i>A</i>, <i>S</i>′, <i>R</i>) ← <i>N</i>(<i>S</i>, <i>A</i>, <i>S</i>′, <i>R</i>) + 1</span>.</li>
       <li>Set <i>S</i> ← <i>S</i>′, and go back to step 3 until <i>S</i> is terminal.</li>
     </ol>
-    <p>The figure runs R-Max on the <a href="/notes/reinforcement-learning/monte-carlo/#prediction">cookie grid of the Monte Carlo note</a>, with <i>k</i> = 1, since a move on the grid always does the same thing, <span class="nowrap"><i>R</i><sub>max</sub> = 1</span>, the cookie's reward, and γ = 0.9. Each triangle holds the value of a move, <i>Q</i>(<i>s</i>, <i>a</i>) as step 4 computes it. An untried move is shaded and holds the 1 that R-Max assumes for it; a known move holds its reward plus 0.9 times the value of the cell it leads to. Each press is one line of the algorithm: the agent chooses a move, in yellow, takes it, counts it, in green, and value iteration runs on the new model, which lifts the shade.</p>
+    <p>The figure runs R-Max on the cookie grid, with <i>k</i> = 1, since a move on the grid always does the same thing, <span class="nowrap"><i>R</i><sub>max</sub> = 1</span>, the cookie's reward, and γ = 0.9. Each triangle holds the value of a move, <i>Q</i>(<i>s</i>, <i>a</i>) as step 4 computes it. An untried move is shaded gray and holds the 1 that R-Max assumes for it; a known move holds its reward plus 0.9 times the value of the cell it leads to. Each press is one line of the algorithm: the agent chooses a move, in yellow, takes it, counts it, in green, and value iteration runs on the new model, which lifts the shade.</p>
   </div>
 
   <div class="fig steps">
@@ -112,7 +126,6 @@ scripts:
     <div class="ro" id="fig-rmax-out"></div>
     <div class="fig-foot">
       <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
-      <button type="button" class="btn" id="fig-rmax-sound" aria-pressed="true">Sound on</button>
     </div>
     <p class="sr-only" id="fig-rmax-live" aria-live="polite"></p>
   </div>
@@ -155,7 +168,7 @@ scripts:
       <li>Plan, <i>n</i> times: pick at random a state seen before and an action taken there before, get <i>R</i> and <i>S</i>′ from <i>Model</i>, and apply the update of step 3 to them.</li>
       <li>If <i>S</i>′ is terminal, a new episode starts at its first state. Go back to step 1.</li>
     </ol>
-    <p>The figure runs Dyna-Q on the cookie grid with α = 0.5, ε = 0.1, γ = 0.9 and <i>n</i> = 10. Its marks are those of the <a href="/notes/reinforcement-learning/q-learning/#update">Q-learning figure</a>, and two things are new. A move the agent has tried shows its value even at 0, so the triangles with a number are the moves the model holds; the move it has just remembered is outlined in blue. And during planning the agent stands still: each planning step updates the move it replays, in green, toward a target built from the best values where the model says that move leads, in red.</p>
+    <p>The figure runs Dyna-Q on the cookie grid with α = 0.5, ε = 0.1, γ = 0.9 and <i>n</i> = 10. Its marks are those of the <a href="/notes/reinforcement-learning/q-learning/#update">Q-learning figure</a>, and its planning steps look as in the figure of section 1. As there, the triangles with a number are the moves the model holds, 0 included, but this model starts empty: a move shows its value once the agent has tried it. The move it has just remembered is outlined in blue.</p>
   </div>
 
   <div class="fig steps">
@@ -164,7 +177,6 @@ scripts:
     <div class="ro" id="fig-dyna-out"></div>
     <div class="fig-foot">
       <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
-      <button type="button" class="btn" id="fig-dyna-sound" aria-pressed="true">Sound on</button>
     </div>
     <p class="sr-only" id="fig-dyna-live" aria-live="polite"></p>
   </div>
@@ -193,9 +205,24 @@ scripts:
   <div class="prose">
     <h2><span class="n">4</span>When the model is wrong</h2>
     <p>So far the models have been right: on the grid, a known move does what the model says. A model can be wrong for three reasons: the world is random and has been seen only a few times, like a charger visited once; the model generalizes from some states to others, imperfectly; or the world has changed since the model learned it. Planning with a wrong model computes a policy that is good for the model, and possibly bad for the world.</p>
-    <p>Some errors correct themselves. When a model is optimistic, predicting more reward or better moves than the world allows, the planned policy goes to collect them, finds they are not there, and the experience it gets corrects the model. Errors the other way are harder. When the world becomes better than the model believes, the policy the model recommends may never go where the improvement is, and the error can last a long time, or forever.</p>
+    <p>Some errors correct themselves. When a model is optimistic, predicting more reward or better moves than the world allows, the planned policy goes to collect them, finds they are not there, and the experience it gets corrects the model. R-Max's optimism in section 2 is such an error, made on purpose: its model promises <i>R</i><sub>max</sub> for every move it has not tried, and trying the move corrects it. Errors the other way are harder. When the world becomes better than the model believes, the policy the model recommends may never go where the improvement is, and the error can last a long time, or forever.</p>
     <p>Back in the robot's home, the garage door is locked one night, so the move that always led to the garage now leaves the robot in the hallway, at a cost of 1. Dyna-Q's model holds the outcome last seen, so the first bump rewrites <i>Model</i>(hallway, garage), and planning, replaying it, soon values the door below the study. R-Max counts every outcome since the start, old and new. After a hundred trips that found the door open, each bump lowers the door's value by only 0.01, so the robot bumps into the locked door 41 times before the study's −0.4 looks better.</p>
     <p>Now the opposite. Say the hallway also has a back door, which the robot tried once and found locked, and one day it is opened, with a charger right behind it. Nothing in either model points there. Dyna-Q tries the back door again only through a random move: with ε = 0.1 and three moves in the hallway, on one visit in 30. R-Max, which explores only what it has not tried, and never at random, will not try it again.</p>
+    <p>The figure puts both methods on the <a href="/notes/reinforcement-learning/td-learning/#sarsa">cliff of the TD note</a>, γ = 1: R-Max with <i>k</i> = 1 and <span class="nowrap"><i>R</i><sub>max</sub> = −1</span>, the largest reward there, and Dyna-Q with the settings of section 3's figure. Its first press plays their first 10 episodes quickly, after which both follow the edge. Before episode 11 a wall goes up between A2 and B2, across the edge, and before episode 21 it comes down. The buttons above the grid switch between the two methods; their marks are those of sections 2 and 3, and the wall is drawn in ink.</p>
+  </div>
+
+  <div class="fig steps">
+    <div class="modes" id="fig-wall-modes" role="group" aria-label="Method">
+      <button type="button" data-mode="rmax" aria-pressed="true">R-Max</button>
+      <button type="button" data-mode="dyna" aria-pressed="false">Dyna-Q</button>
+    </div>
+    <svg id="fig-wall" role="group" aria-label="The cliff: a grid 6 cells wide and 4 tall, each cell split into four triangles that hold the values of its four moves. The start is at the bottom left, the goal at the bottom right, and the cliff between them along the bottom row. For a while, a wall stands between A2 and B2."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-wall-back">Back</button><button type="button" class="btn" id="fig-wall-next">Next</button><span class="count" id="fig-wall-count"></span><button type="button" class="btn" id="fig-wall-reset" hidden>Reset</button></div>
+    <div class="ro" id="fig-wall-out"></div>
+    <div class="fig-foot">
+      <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
+    </div>
+    <p class="sr-only" id="fig-wall-live" aria-live="polite"></p>
   </div>
 </section>
 

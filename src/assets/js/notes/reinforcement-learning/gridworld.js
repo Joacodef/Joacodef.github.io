@@ -3,9 +3,10 @@ import { el, tr } from "../../plane.js";
 /* ---------- Grid worlds for the reinforcement learning figures ---------- */
 
 // Shared by the figures that step through a run like slides, one line of their algorithm per press (Monte Carlo
-// prediction and control, TD(0), R-Max and Dyna-Q on the cookie grid; Sarsa, Q-learning, n-step Sarsa and Sarsa(λ) on
-// the cliff): the two worlds, the texts for choosing and taking a move, the grid of values, the sounds and the controls.
-// Each figure computes its own run and its slides, and hands them to slideshow().
+// prediction and control, TD(0), Q-planning, R-Max and Dyna-Q on the cookie grid; Sarsa, Q-learning, n-step Sarsa,
+// Sarsa(λ), and R-Max and Dyna-Q with a wall, on the cliff): the two worlds, the texts for choosing and taking a move, the
+// grid of values with its heatmap, the sounds, the controls and the settings. Each figure computes its own run and its
+// slides, and hands them to slideshow().
 
 export const ACTS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 export const NAME = [tr("up", "arriba"), tr("right", "derecha"), tr("down", "abajo"), tr("left", "izquierda")];
@@ -148,8 +149,20 @@ export const { W, H, START, GOAL, isCliff, cellName, moveName, stepEnv, freshQ, 
 // target uses in red, and the steps of an n-step window, or a move just stored in a model, in blue.
 // A figure that estimates the value of each cell instead (perCell) draws no diagonals and one value per cell, above
 // the agent, and its green and red marks outline the whole cell; the move just chosen is still its triangle, in yellow.
+// Under all of it lies the heatmap, unless the reader turns it off: each value shown fills its triangle (by move) or
+// each cell takes its best value (by cell), green as a positive value nears 1 and coral, more faintly, as a negative one
+// nears −10, with nothing at 0. With the heatmap on, the best value of a cell is in bold ink instead of on its highlight,
+// a small blue triangle at the middle of the cell points toward that move, and the band of a route is a translucent
+// blue, its values without chips.
+// A step simulated by a model is played by a faint copy of the agent, while the agent itself stays where it is, and a
+// wall that stands between two cells for a while is drawn in ink along their shared side.
 const ML = 26, MT = 10, MB = 38;
+// The heatmap's share of green (a positive value) and of coral (a negative one), from 0 to 1: the square of a value
+// up to 1, so that values near 1 stay apart, and a negative value's tenth, the darkest from −10 on.
+const heatShares = (v) => [v > 0 ? Math.min(1, v) ** 2 : 0, v < 0 ? Math.min(1, -v / 10) : 0].map((x) => x.toFixed(3));
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+// How far the triangle that points to a cell's best move reaches along each half-diagonal, as a share of its length.
+const ARROW = 0.2;
 // On a phone, at most the world's decimals (one on the cliff, whose cells are small), and whole numbers from 10 on, so
 // that neighbors do not run together.
 const narrow = matchMedia("(max-width: 560px)");
@@ -171,9 +184,10 @@ function createGrid(svg, world, perCell) {
   const cliffCells = [...Array(W * H).keys()].filter(isCliff);
   svg.setAttribute("viewBox", `0 0 ${ML + W * C + 8} ${MT + H * C + MB}`);
   for (let s = 0; s < W * H; s++) el("rect", { class: isCliff(s) ? "gw-cliff" : "gw-floor", x: x0(s), y: y0(s), width: C, height: C }, svg);
-  // The shade of moves R-Max has not tried enough lies on the floor, under the lines, in a layer made when first needed.
+  // The heatmap, and above it the shade of moves R-Max has not tried enough, lie on the floor, under the lines, each in a
+  // layer made when first needed.
   const floorEnd = svg.lastElementChild;
-  let under = null;
+  let under = null, heatG = null, heat = "off";
   // Lines between cells. On the cliff, the vertical ones stop above the bottom row, where the shading marks its edges.
   const bottom = cliffCells.length ? H - 1 : H;
   for (let i = 1; i < H; i++) el("line", { class: "gw-line", x1: ML, y1: MT + i * C, x2: ML + W * C, y2: MT + i * C }, svg);
@@ -214,6 +228,20 @@ function createGrid(svg, world, perCell) {
   const agentG = el("g", { class: "gw-agent-g" }, svg);
   const agentDot = el("circle", { class: "gw-agent", cx: 0, cy: 0, r: 8 }, agentG);
   let drawnAt = START, eating = null;
+  // The faint copy of the agent, under the agent, made when a figure first plays a simulated step.
+  let ghostG = null, ghostDot = null, ghostAt = null;
+  // The side two neighboring cells share, as a line.
+  const side = (a, b) => {
+    const [xa, ya, xb, yb] = [a % W, Math.floor(a / W), b % W, Math.floor(b / W)];
+    if (ya === yb) { const x = ML + Math.max(xa, xb) * C, y = MT + ya * C; return { x1: x, y1: y, x2: x, y2: y + C }; }
+    const x = ML + xa * C, y = MT + Math.max(ya, yb) * C; return { x1: x, y1: y, x2: x + C, y2: y };
+  };
+  // A nudge toward a wall and back, for the agent or its copy.
+  const nudge = (dot, a) => dot.animate([{ transform: "translate(0px, 0px)" }, { transform: `translate(${ACTS[a][0] * 16}px, ${ACTS[a][1] * 16}px)`, offset: 0.4 }, { transform: "translate(0px, 0px)" }], { duration: 360, easing: "ease-out" });
+  const wallMark = (cell, a) => {
+    const [dx, dy] = ACTS[a], [cx, cy] = mid(cell), h = C / 2, ex = cx + dx * h, ey = cy + dy * h;
+    el("line", { class: "gw-wall", x1: ex - dy * (h - 12), y1: ey - dx * (h - 12), x2: ex + dy * (h - 12), y2: ey + dx * (h - 12) }, dyn);
+  };
   // The cookie is there unless the agent stands on the goal. When the agent has just glided onto it, it shrinks and
   // fades as the agent arrives; with reduced motion, or going back, it simply goes.
   function showCookie(there, animate) {
@@ -232,18 +260,25 @@ function createGrid(svg, world, perCell) {
   // "tg" or "step", w a trace, and no a for a mark on a whole cell), maxOf (a cell whose best moves a target uses, marked
   // in red), ring or rings (cliff cells the agent fell into), bump (the action of a wall hit), route (the cells the
   // best moves lead through, from the start to the goal), unknown ([[cell, action]] shaded: moves R-Max values at what
-  // it assumes) and shown (a Set of cell * 4 + action whose value shows even at 0: the moves in Dyna-Q's model).
+  // it assumes), shown (a Set of cell * 4 + action whose value shows even at 0: the moves a model holds), ghost (the cell
+  // of the faint copy of the agent that plays a simulated step; it glides like the agent, and appears without gliding),
+  // ghostFrom (where a whole simulated step starts: the copy appears there and glides to ghost), ghostBump (the action
+  // of a simulated wall hit), walls ([[cell, cell]] that a wall stands between) and bumpPose (in the frames of a skip,
+  // the action of a wall hit, which shows the agent pressed against the wall).
   function draw(g, animate) {
-    const { Q, V, agent, jump, pick, taken, marks, maxOf, ring, rings, bump, route, unknown, shown } = g;
+    const { Q, V, agent, jump, pick, taken, marks, maxOf, ring, rings, bump, route, unknown, shown, ghost, ghostFrom, ghostBump, walls, bumpPose } = g;
+    const hot = heat !== "off";
     dyn.replaceChildren();
-    if (unknown && !under) { under = el("g", {}); floorEnd.after(under); }
+    for (const [a, b] of walls || []) el("line", { class: "gw-barrier", ...side(a, b) }, dyn);
+    if (unknown && !under) { under = el("g", {}); (heatG ?? floorEnd).after(under); }
     under?.replaceChildren(...(unknown || []).map(([c, a]) => el("polygon", { class: "gw-unknown", points: pts(triPts(c)[a]) })));
     const unk = new Set((unknown || []).map(([c, a]) => c * 4 + a));
     if (taken && animate && !reducedMotion.matches)
       el("polygon", { class: "gw-pick", points: pts(triPts(taken[0])[taken[1]]) }, dyn).animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: "ease-in", fill: "forwards" });
     if (pick) el("polygon", { class: "gw-pick", points: pts(triPts(pick[0])[pick[1]]) }, dyn);
-    // A route: a light blue band through the middles of its cells, under the values, its arrowhead stopping short of
-    // the goal's middle, where the agent may stand; on the cookie grid, just inside the goal, clear of its name and reward.
+    // A route: a light blue band through the middles of its cells, under the values (translucent over the heatmap), its
+    // arrowhead stopping short of the goal's middle, where the agent may stand; on the cookie grid, just inside the goal,
+    // clear of its name and reward.
     if (route) {
       const p = route.map(mid), [ex, ey] = p.at(-1), [px, py] = p.at(-2), d = Math.hypot(ex - px, ey - py), cut = world.goalName ? C / 2 - 6 : C * 0.2;
       p[p.length - 1] = [ex - ((ex - px) / d) * cut, ey - ((ey - py) / d) * cut];
@@ -268,48 +303,101 @@ function createGrid(svg, world, perCell) {
       el("polygon", { class: `gw-mark ${kind}`, points: a === undefined ? square(c, k) : shrink(triPts(c)[a], 0.8 - 0.22 * k), ...style }, dyn);
     }
     for (const { c, a, kind } of all) if (kind === "tg") red.add(c * 4 + a);
+    // The heatmap: a fill for each value shown (by move; a whole cell for one value per cell), or one for each cell by
+    // its best value (by cell), leaving out the moves R-Max has not tried, which keep their shade. Each value's halo takes
+    // the color under it: --tp and --tn for its own fill, --tpc and --tnc for its cell's.
+    const shares = (v, p, n) => { const [a, b] = v === undefined ? ["0", "0"] : heatShares(v); return `${p}: ${a}; ${n}: ${b}`; };
+    const cellV = [];
+    if (hot) {
+      if (!heatG) { heatG = el("g", { class: "gw-heat-g" }); floorEnd.after(heatG); }
+      heatG.replaceChildren();
+      for (let c = 0; c < W * H; c++) {
+        if (isCliff(c) || c === GOAL) continue;
+        if (V) { cellV[c] = V[c]; el("rect", { class: "gw-heat", x: x0(c), y: y0(c), width: C, height: C, style: shares(V[c], "--tp", "--tn") }, heatG); continue; }
+        const vis = [0, 1, 2, 3].filter((a) => !unk.has(c * 4 + a) && !(Q[c][a] === 0 && !red.has(c * 4 + a) && !shown?.has(c * 4 + a)));
+        if (!vis.length) continue;
+        cellV[c] = Math.max(...vis.map((a) => Q[c][a]));
+        if (heat === "cell") el("rect", { class: "gw-heat", x: x0(c), y: y0(c), width: C, height: C, style: shares(cellV[c], "--tp", "--tn") }, heatG);
+        else for (const a of vis) el("polygon", { class: "gw-heat", points: pts(triPts(c)[a]), style: shares(Q[c][a], "--tp", "--tn") }, heatG);
+      }
+    } else heatG?.replaceChildren();
+    const halo = (v, cv) => (hot ? { style: `${shares(v, "--tp", "--tn")}; ${shares(cv, "--tpc", "--tnc")}` } : {});
     for (let c = 0; c < W * H; c++) {
       if (isCliff(c) || c === GOAL) continue;
       // One value per cell, above the agent, with no best value to highlight. A route's band runs over it where it leaves
       // the cell upward or enters it from above (the cell's up entry in onRoute), and there it sits on the band's color.
       if (V) {
-        const on = onRoute.has(c * 4), t = el("text", { class: `gw-v${on ? " on" : ""}`, x: mid(c)[0], y: y0(c) + C * 0.3, "text-anchor": "middle" }, dyn);
+        const on = onRoute.has(c * 4), t = el("text", { class: `gw-v${on ? " on" : ""}${on && hot ? " onr" : ""}`, x: mid(c)[0], y: y0(c) + C * 0.3, "text-anchor": "middle", ...halo(V[c], V[c]) }, dyn);
         t.textContent = qText(V[c], decimals);
-        if (on) { const bb = t.getBBox(); dyn.insertBefore(el("rect", { class: "gw-qback", x: bb.x - 3, y: bb.y - 0.5, width: bb.width + 6, height: bb.height + 1, rx: 3 }), t); }
+        if (on && !hot) { const bb = t.getBBox(); dyn.insertBefore(el("rect", { class: "gw-qback", x: bb.x - 3, y: bb.y - 0.5, width: bb.width + 6, height: bb.height + 1, rx: 3 }), t); }
         continue;
       }
       const q = Q[c], m = Math.max(...q), best = q.filter((v) => v === m).length === 1 ? q.indexOf(m) : -1;
+      // Over the heatmap, a small blue triangle points from the middle of the cell toward its best move, when one move is
+      // best and its value shows (the bold one): it lies along the two half-diagonals of the opposite triangle, out to
+      // ARROW of their length, so that its point sits at the middle. A filled triangle of the heatmap points toward the
+      // middle, against its move, and this one turns it around. None where the agent or its copy stands, whose dot would
+      // cover it.
+      if (hot && best >= 0 && c !== agent && c !== ghost && !(q[best] === 0 && !red.has(c * 4 + best) && !shown?.has(c * 4 + best))) {
+        const [cx, cy] = mid(c), [p0, p1] = triPts(c)[(best + 2) % 4], out = ([x, y]) => [cx + ARROW * (x - cx), cy + ARROW * (y - cy)];
+        el("polygon", { class: "gw-arrow", points: pts([out(p0), [cx, cy], out(p1)]) }, dyn);
+      }
       for (let a = 0; a < 4; a++) {
         const key = c * 4 + a;
         if (q[a] === 0 && !red.has(key) && !shown?.has(key)) continue;
-        const [tx, ty] = triText(c, a), t = el("text", { class: `gw-q${a === best ? " best" : onRoute.has(key) ? " on" : unk.has(key) ? " unk" : ""}`, x: tx, y: ty, "text-anchor": "middle" }, dyn);
+        // Over the heatmap, an untried move's value keeps the halo of its shade (u), and a value on a route has none (onr).
+        const extra = hot ? `${unk.has(key) ? " u" : ""}${onRoute.has(key) ? " onr" : ""}` : "";
+        const [tx, ty] = triText(c, a), t = el("text", { class: `gw-q${a === best ? " best" : onRoute.has(key) ? " on" : unk.has(key) ? " unk" : ""}${extra}`, x: tx, y: ty, "text-anchor": "middle", ...halo(q[a], cellV[c]) }, dyn);
         t.textContent = qText(q[a], decimals);
         // The best value on a blue highlight; any other value on a route on the band's color, so that it sits on the band.
-        if (a === best || onRoute.has(c * 4 + a)) { const bb = t.getBBox(); dyn.insertBefore(el("rect", { class: a === best ? "gw-qbest" : "gw-qback", x: bb.x - 2.5, y: bb.y - 0.5, width: bb.width + 5, height: bb.height + 1, rx: 3 }), t); }
+        // Over the heatmap, neither: the best value is in bold ink, and the band is translucent.
+        if (!hot && (a === best || onRoute.has(c * 4 + a))) { const bb = t.getBBox(); dyn.insertBefore(el("rect", { class: a === best ? "gw-qbest" : "gw-qback", x: bb.x - 2.5, y: bb.y - 0.5, width: bb.width + 5, height: bb.height + 1, rx: 3 }), t); }
       }
     }
     for (const f of [ring, ...(rings || [])]) if (f !== null && f !== undefined) { const [fx, fy] = mid(f); el("circle", { class: "gw-fall", cx: fx, cy: fy, r: 13 }, dyn); }
     const [ax, ay] = mid(agent);
     agentG.classList.toggle("jump", !animate || !!jump || isCliff(drawnAt));
     agentG.style.transform = `translate(${ax}px, ${ay}px)`;
+    // The faint copy: a whole simulated step makes it appear where the step starts and glide to where the model says it
+    // leads; a simulated wall hit marks the wall and nudges it.
+    if (ghost === undefined || ghost === null) { if (ghostG) ghostG.style.visibility = "hidden"; ghostAt = null; }
+    else {
+      if (!ghostG) { ghostG = el("g", { class: "gw-ghost-g" }); ghostDot = el("circle", { class: "gw-ghost", cx: 0, cy: 0, r: 8 }, ghostG); agentG.before(ghostG); }
+      const [gx, gy] = mid(ghost), glide = animate && !reducedMotion.matches;
+      ghostG.style.visibility = "";
+      if (glide && ghostFrom !== undefined && ghostFrom !== ghost) {
+        const [fx, fy] = mid(ghostFrom);
+        ghostG.classList.add("jump");
+        ghostG.style.transform = `translate(${fx}px, ${fy}px)`;
+        ghostG.getBoundingClientRect();
+        ghostG.classList.remove("jump");
+      } else ghostG.classList.toggle("jump", !animate || ghostAt === null);
+      ghostG.style.transform = `translate(${gx}px, ${gy}px)`;
+      ghostAt = ghost;
+      if (ghostBump !== null && ghostBump !== undefined) { wallMark(ghost, ghostBump); if (glide) nudge(ghostDot, ghostBump); }
+    }
     showCookie(agent !== GOAL, animate && !jump && drawnAt !== GOAL);
     drawnAt = agent;
     // A wall hit: mark the stretch of wall, and nudge the agent toward it and back.
     if (bump !== null && bump !== undefined) {
-      const [dx, dy] = ACTS[bump], [cx, cy] = mid(agent), h = C / 2, ex = cx + dx * h, ey = cy + dy * h;
-      el("line", { class: "gw-wall", x1: ex - dy * (h - 12), y1: ey - dx * (h - 12), x2: ex + dy * (h - 12), y2: ey + dx * (h - 12) }, dyn);
-      if (animate && !reducedMotion.matches)
-        agentDot.animate([{ transform: "translate(0px, 0px)" }, { transform: `translate(${dx * 16}px, ${dy * 16}px)`, offset: 0.4 }, { transform: "translate(0px, 0px)" }], { duration: 360, easing: "ease-out" });
+      wallMark(agent, bump);
+      if (animate && !reducedMotion.matches) nudge(agentDot, bump);
     }
+    // In the frames of a skip, a wall hit can show the agent pressed against the wall, so that a run of hits, drawn every
+    // other frame, shakes it there while the move count climbs.
+    if (bumpPose !== null && bumpPose !== undefined) agentDot.style.transform = `translate(${ACTS[bumpPose][0] * 10}px, ${ACTS[bumpPose][1] * 10}px)`;
+    else if (agentDot.hasAttribute("style")) agentDot.removeAttribute("style");
   }
-  return { draw };
+  // The heatmap: "move", "cell" or "off", drawn from the next draw() on.
+  const setHeat = (mode) => { heat = mode; };
+  return { draw, setHeat };
 }
 
 /* ---------- Sound ---------- */
 
 // Made in the browser: a short woody click for a move, a duller one for a wall hit, a falling tone for a fall, a soft
 // crunch for a cookie eaten, and a rising chime when the run ends. They play only after Next or the right arrow key,
-// and a button turns them off.
+// and the figure's settings turn them off.
 let audioCtx = null;
 const ac = () => (audioCtx ??= new (window.AudioContext || window.webkitAudioContext)());
 function click(pitch = 1, level = 1) {
@@ -358,22 +446,46 @@ function chime() {
 
 /* ---------- Slides ---------- */
 
+// A wall hit in the frame of a skip, every other frame: the action that shows the agent pressed against the wall, so
+// that a run of hits shakes it there (bumpPose in a frame). x is a step with s, a, s2 and fell; m its index.
+export const shake = (x, m) => (x.s2 === x.s && (x.fell === null || x.fell === undefined) && x.a !== undefined && m % 2 === 0 ? x.a : undefined);
+
+// A small store for the reader's choices in the figures' settings, kept for the next figures and pages; without
+// storage, every figure starts from the defaults.
+const choice = {
+  get(key, fallback) { try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; } },
+  set(key, value) { try { localStorage.setItem(key, value); } catch { /* the choice lasts for this figure only */ } },
+};
+// A gear for the settings button: eight teeth around a ring, and a hole in the middle.
+const GEAR = (() => {
+  const p = [];
+  for (let i = 0; i < 32; i++) { const a = (i / 32) * 2 * Math.PI - Math.PI / 2, r = i % 4 < 2 ? 10 : 7.4; p.push(`${(12 + r * Math.cos(a)).toFixed(2)} ${(12 + r * Math.sin(a)).toFixed(2)}`); }
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M${p.join(" L")} Z"/><circle cx="12" cy="12" r="3.2"/></svg>`;
+})();
+
 // Runs a figure's slides. Its markup has the svg (id) and, by the same prefix, id-out, id-back, id-next, id-count,
-// id-reset, id-sound and id-live.
+// id-reset and id-live; the settings button is added at the end of the controls (.ctl).
 // Each slide has a title, its builds (one per press) and, when it skips moves, skip = { from, to, moves, text, note },
 // where moves is how many steps it skips and note, when given, replaces the line that counts them while they play.
 // A build has what the grid's draw() takes, plus ep, move, time and stage ("after" in the sweep that follows an episode)
-// for the status line, line and eq for its text (fit sets a long eq smaller on phones), and sound ("fall" or "wall")
-// when its move calls for one.
-// frame(m) gives the state at step m of a skip, from + 1 to to − 1, with Q, agent, ring, ep, move, time and stage, and
-// the marks of that step: pick (the move about to be taken) and marks (what was just updated), and unknown and shown
-// when the figure draws them.
+// for the status line, or label in its place, line and eq for its text (fit sets a long eq smaller on phones), and
+// sound ("fall" or "wall") when its move calls for one.
+// frame(m) gives the state at step m of a skip, from + 1 to to − 1, with Q, agent, ring, ep, move, time and stage (or
+// label), and the marks of that step: pick (the move about to be taken) and marks (what was just updated), unknown,
+// shown, walls and ghost when the figure draws them, and bumpPose (see shake) for a wall hit.
 // world is the cliff unless given; with perCell, builds and frames give V, one value per cell, instead of Q.
+// A figure with two runs, such as two methods in one world, shows the other with show(slides, frame), from its first
+// slide.
 export function slideshow({ svg, slides, frame, world = cliff, perCell = false }) {
   const id = svg.id, $ = (s) => document.getElementById(`${id}-${s}`);
   const out = $("out"), live = $("live"), nextBtn = $("next"), backBtn = $("back"), resetBtn = $("reset"), countEl = $("count");
-  let k = 0, b = 0, ff = null, soundOn = true;
+  const fig = svg.closest(".fig");
+  let k = 0, b = 0, ff = null, soundOn = choice.get("gw-sound", "on") !== "off";
+  let heat = choice.get("gw-heat", "move");
+  if (!["move", "cell", "off"].includes(heat)) heat = "move";
   const grid = createGrid(svg, world, perCell);
+  grid.setHeat(heat);
+  fig.dataset.heat = heat;
 
   function render(animate) {
     const sl = slides[k], bd = sl.builds[b];
@@ -381,7 +493,7 @@ export function slideshow({ svg, slides, frame, world = cliff, perCell = false }
     // Readout: status and title, then one block per press so far, each a sentence with its calculation below it.
     // New blocks only ever appear at the bottom; earlier ones stay above, dimmed.
     const shown = sl.builds.slice(0, b + 1), enter = animate && b === 0 ? " enter" : "";
-    let html = `<p class="lbl">${status(bd.ep, bd.move, bd.time, bd.stage)}</p>${sl.skip ? `<p class="later${enter}">${sl.skip.text}</p>` : ""}<p class="slide${enter}">${sl.title}</p>`;
+    let html = `<p class="lbl">${bd.label ?? status(bd.ep, bd.move, bd.time, bd.stage)}</p>${sl.skip ? `<p class="later${enter}">${sl.skip.text}</p>` : ""}<p class="slide${enter}">${sl.title}</p>`;
     html += `<div class="lines">${shown.map((d, i) => `<div class="${i < shown.length - 1 ? "old" : animate ? (b === 0 ? "enter after-title" : "enter") : ""}"><p>${d.line}</p>${d.eq ? `<div class="eq${d.fit ? " fit" : ""}">${d.eq}</div>` : ""}</div>`).join("")}</div>`;
     out.innerHTML = html;
     if (animate) live.textContent = shown[shown.length - 1].line.replace(/<[^>]+>/g, "");
@@ -398,10 +510,19 @@ export function slideshow({ svg, slides, frame, world = cliff, perCell = false }
     else if (bd.sound === "wall") click(0.55, 0.8);
     else if (bd.agent !== prevAgent && !bd.jump) (world.goalName && bd.agent === world.GOAL ? crunch : click)();
   }
+  // While the grid animates, Back and Next are frozen, so that quick presses cannot pile one animation on another: during
+  // a skip they look disabled (aria-disabled, so that they keep the focus and the arrow keys keep working afterwards),
+  // and after a press they ignore presses until its move has played out (the glide, a nudge at a wall, the cookie
+  // eaten: under half a second). With reduced motion nothing animates, and nothing is frozen.
+  const SETTLE_MS = 480;
+  let settledAt = 0;
+  const busy = () => ff !== null || performance.now() < settledAt;
+  const settle = () => { if (!reducedMotion.matches) settledAt = performance.now() + SETTLE_MS; };
+  const freeze = (on) => { for (const x of [backBtn, nextBtn]) { if (on) x.setAttribute("aria-disabled", "true"); else x.removeAttribute("aria-disabled"); } };
   // Fast-forward: when Next skips moves, the grid plays them quickly while the status line counts up, each frame with
   // the marks of its move: yellow for the move about to be taken, green for what was just updated. A short skip plays
-  // at about 150 ms a move; any skip lasts from 0.9 to 2.4 seconds. Next during it jumps to the end, Back cancels it;
-  // with reduced motion there is none, and the skip note says how far it went.
+  // at about 150 ms a move; any skip lasts from 0.9 to 2.4 seconds, with Back and Next frozen; with reduced motion there
+  // is none, and the skip note says how far it went.
   function fastForward(skip, prevAgent) {
     const dur = Math.min(2400, Math.max(900, skip.moves * 150)), start = performance.now();
     let shown = -1;
@@ -410,31 +531,33 @@ export function slideshow({ svg, slides, frame, world = cliff, perCell = false }
       if (m !== shown) {
         shown = m;
         const f = frame(m);
-        grid.draw({ Q: f.Q, V: f.V, agent: f.agent, ring: f.ring, jump: true, pick: f.pick, marks: f.marks, unknown: f.unknown, shown: f.shown }, false);
-        out.innerHTML = `<p class="lbl">${status(f.ep, f.move, f.time, f.stage)}</p><p class="slide ff">${tr("Skipping ahead", "Adelantando")}</p><p class="muted">${skip.note ?? tr(`${skip.moves} moves go by.`, `Pasan ${skip.moves} movimientos.`)} ${tr("Press Next to jump to the end.", "Presiona Siguiente para saltar al final.")}</p>`;
+        grid.draw({ Q: f.Q, V: f.V, agent: f.agent, ring: f.ring, jump: true, pick: f.pick, marks: f.marks, unknown: f.unknown, shown: f.shown, walls: f.walls, ghost: f.ghost, bumpPose: f.bumpPose }, false);
+        out.innerHTML = `<p class="lbl">${f.label ?? status(f.ep, f.move, f.time, f.stage)}</p><p class="slide ff">${tr("Skipping ahead", "Adelantando")}</p><p class="muted">${skip.note ?? tr(`${skip.moves} moves go by.`, `Pasan ${skip.moves} movimientos.`)}</p>`;
       }
       if (now - start >= dur) finishFF(true, prevAgent);
       else ff.raf = requestAnimationFrame(step);
     };
     ff = { raf: requestAnimationFrame(step), prevAgent };
+    freeze(true);
   }
   function finishFF(show, prevAgent) {
     if (!ff) return;
     cancelAnimationFrame(ff.raf); ff = null;
-    if (show) { render(true); playFor(prevAgent); }
+    freeze(false);
+    if (show) { render(true); playFor(prevAgent); settle(); }
   }
   function next() {
-    if (ff) { finishFF(true, ff.prevAgent); return; }
+    if (busy()) return;
     const prevAgent = slides[k].builds[b].agent;
     if (b < slides[k].builds.length - 1) b++;
     else if (k < slides.length - 1) { k++; b = 0; }
     else return;
     const skip = b === 0 ? slides[k].skip : null;
     if (skip && !reducedMotion.matches) fastForward(skip, prevAgent);
-    else { render(true); playFor(prevAgent); }
+    else { render(true); playFor(prevAgent); settle(); }
   }
   function back() {
-    if (ff) finishFF(false);
+    if (busy()) return;
     if (b > 0) b--;
     else if (k > 0) { k--; b = slides[k].builds.length - 1; }
     else return;
@@ -444,14 +567,42 @@ export function slideshow({ svg, slides, frame, world = cliff, perCell = false }
   backBtn.addEventListener("click", back);
   // Reset: back to the first slide; focus moves to Next, since Reset itself disappears.
   resetBtn.addEventListener("click", () => { finishFF(false); k = 0; b = 0; render(false); nextBtn.focus(); });
-  $("sound").addEventListener("click", (e) => {
-    soundOn = !soundOn;
-    e.currentTarget.setAttribute("aria-pressed", String(soundOn));
-    e.currentTarget.textContent = soundOn ? tr("Sound on", "Con sonido") : tr("Sound off", "Sin sonido");
-  });
-  svg.closest(".fig").addEventListener("keydown", (e) => {
+  fig.addEventListener("keydown", (e) => {
     if (e.key === "ArrowRight") { e.preventDefault(); next(); }
     else if (e.key === "ArrowLeft") { e.preventDefault(); back(); }
   });
+
+  // Settings: a button at the end of the controls opens a menu above it for this figure: the heatmap (by move, by cell
+  // or none) and the sound. Each choice is also kept as the start for the next figures.
+  const cog = document.createElement("button");
+  for (const [a, v] of [["type", "button"], ["class", "gw-cog"], ["aria-label", tr("Figure settings", "Ajustes de la figura")], ["aria-expanded", "false"], ["aria-controls", `${id}-settings`]]) cog.setAttribute(a, v);
+  cog.innerHTML = GEAR;
+  const menu = document.createElement("div");
+  menu.className = "gw-menu"; menu.id = `${id}-settings`; menu.hidden = true;
+  const row = (label, key, opts) => `<div class="row" role="group" aria-label="${label}"><span>${label}</span>${opts.map(([v, n]) => `<button type="button" data-${key}="${v}">${n}</button>`).join("")}</div>`;
+  menu.innerHTML = row(tr("Heatmap", "Mapa de calor"), "heat", [["move", tr("By move", "Por movimiento")], ["cell", tr("By cell", "Por celda")], ["off", tr("Off", "No")]])
+    + row(tr("Sound", "Sonido"), "sound", [["on", tr("On", "Sí")], ["off", tr("Off", "No")]]);
+  nextBtn.parentElement.append(cog, menu);
+  const sync = () => {
+    menu.querySelectorAll("button[data-heat]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.heat === heat)));
+    menu.querySelectorAll("button[data-sound]").forEach((x) => x.setAttribute("aria-pressed", String((x.dataset.sound === "on") === soundOn)));
+  };
+  const close = () => { menu.hidden = true; cog.setAttribute("aria-expanded", "false"); };
+  cog.addEventListener("click", () => { menu.hidden = !menu.hidden; cog.setAttribute("aria-expanded", String(!menu.hidden)); });
+  menu.addEventListener("click", (e) => {
+    const x = e.target.closest("button");
+    if (x?.dataset.heat) { heat = x.dataset.heat; choice.set("gw-heat", heat); grid.setHeat(heat); fig.dataset.heat = heat; if (ff) finishFF(false); render(false); }
+    if (x?.dataset.sound) { soundOn = x.dataset.sound === "on"; choice.set("gw-sound", x.dataset.sound); }
+    sync();
+  });
+  // Inside the menu the arrow keys stay in the menu, and Escape closes it.
+  menu.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") e.stopPropagation();
+    if (e.key === "Escape") { close(); cog.focus(); }
+  });
+  document.addEventListener("click", (e) => { if (!menu.hidden && !menu.contains(e.target) && !cog.contains(e.target)) close(); });
+  sync();
+
   render(false);
+  return { show(s, f) { finishFF(false); slides = s; frame = f; k = 0; b = 0; render(false); } };
 }

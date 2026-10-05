@@ -66,7 +66,6 @@ scripts:
     <div class="ro" id="fig-td0-out"></div>
     <div class="fig-foot">
       <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
-      <button type="button" class="btn" id="fig-td0-sound" aria-pressed="true">Sound on</button>
     </div>
     <p class="sr-only" id="fig-td0-live" aria-live="polite"></p>
   </div>
@@ -162,7 +161,7 @@ scripts:
     </ol>
     <p>Learning within the episode is what lets Sarsa escape a policy that would never finish. Suppose all of the robot's action values start at 0 and, breaking the tie, its policy sends it from the hallway back to the kitchen, from where the only move is back to the hallway. Followed greedily, that policy shuttles forever, and a Monte Carlo method would wait forever for a return. With Sarsa, α = 0.5 and γ = 1, the first time the robot goes back to the kitchen, <i>Q</i>(hallway, kitchen) drops to <span class="nowrap">0.5(−1 + 0 − 0) = −0.5</span>, below the 0 of the untried move to the study, and the next time it is in the hallway it heads for the study.</p>
     <p>To watch Sarsa learn, take a larger grid than the cookie grid: 6 cells wide and 4 tall, from A1 at the bottom left to F4 at the top right. The agent starts in A1, and an episode ends when it reaches the goal, F1, at the bottom right. Every move gives −1, and between start and goal, along the bottom edge, runs a cliff: a step into it gives −100 and sends the agent back to the start. The shortest route runs right along the edge, in 7 moves.</p>
-    <p>The figure runs Sarsa there with α = 0.5, γ = 1 and ε = 0.1, so that in each cell the greedy move has probability 0.925 and each other move 0.025. Each cell holds the values of its four moves again, as in the Monte Carlo control figure. Before each update, the agent chooses its next move, in yellow, and the target uses that move's value, outlined in red.</p>
+    <p>The figure runs Sarsa there with α = 0.5, γ = 1 and ε = 0.1, so that in each cell the greedy move has probability 0.925 and each other move 0.025. Each cell holds the values of its four moves again, as in the Monte Carlo control figure. Here every move costs, so the values are negative, and the heatmap shades them a faint coral, deeper the more negative they are. Before each update, the agent chooses its next move, in yellow, and the target uses that move's value, outlined in red.</p>
   </div>
 
   <div class="fig steps">
@@ -171,7 +170,6 @@ scripts:
     <div class="ro" id="fig-sarsa-out"></div>
     <div class="fig-foot">
       <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
-      <button type="button" class="btn" id="fig-sarsa-sound" aria-pressed="true">Sound on</button>
     </div>
     <p class="sr-only" id="fig-sarsa-live" aria-live="polite"></p>
   </div>
