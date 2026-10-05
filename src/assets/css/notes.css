@@ -2,6 +2,13 @@
    Semantic ink: points in carmine (.pt), lines in blue (.ln). */
 
 .note .prose { margin-left: auto; margin-right: auto; }
+/* The running text is justified, like a book's: the paragraphs and lists of the body (not the header, the figures'
+   readouts, captions or cards). Long words break with a hyphen, in the page's language, so that the spaces between
+   words stay even. On phones, whose lines hold about 40 characters, it stays left-aligned: justified there, one space
+   in ten grew by more than 6 px, and a line before a formula too long for it spread its few words across the width. */
+@media (min-width: 561px) {
+  .note .prose:not(.note-head) > p, .note .prose > ol > li, .note .prose > ul:not(.asks) > li { text-align: justify; hyphens: auto; -webkit-hyphens: auto; hyphenate-limit-chars: 6 3 2; }
+}
 .note-head { padding: clamp(1.5rem, 5vw, 3rem) 0 1rem; }
 .crumbs { color: var(--ink-3); font-size: 0.92rem; margin: 0 0 0.8rem; }
 .crumbs a { color: var(--ink-2); }
