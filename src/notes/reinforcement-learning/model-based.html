@@ -1,0 +1,244 @@
+---
+title: "Model-based RL: R-Max and Dyna"
+module: Planning and learning
+order: 9
+description: "Learning how the world answers each action, and planning with that model: R-Max goes looking for what it has not tried, and Dyna learns from every real step twice, once from the step itself and again from replays of what it remembers."
+scripts:
+  - /assets/js/notes/reinforcement-learning/model-based.js
+---
+<div class="prose">
+  <p>The methods of the earlier notes learn values straight from experience and keep nothing else: once a step has updated a value, the step itself is gone. Yet each step also says something about the world, where an action led and what it gave. An agent that keeps this, a model of its world, can do two new things.</p>
+  <p>Here is what a robot could know about its home from the five recorded episodes of the <a href="/notes/reinforcement-learning/td-learning/#batch">TD note's batch example</a>, counting what followed each of its moves:</p>
+  <figure class="diagram">
+    <svg viewBox="0 0 440 214" role="img" aria-label="The robot's model of its home. From the hallway, the move to the study led to the study with reward −1, once in one try. From the study, charging gave +1 in 3 tries of 5 and 0 in 2. The door from the hallway to the garage has never been tried, so where it leads is unknown.">
+      <defs><marker id="mb-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+      <line class="ln-path" x1="80" y1="98" x2="204" y2="64" marker-end="url(#mb-head)"/>
+      <line class="ln-path" x1="231" y1="54" x2="338" y2="35" marker-end="url(#mb-head)"/>
+      <line class="ln-path" x1="231" y1="66" x2="338" y2="93" marker-end="url(#mb-head)"/>
+      <line class="ln-path dash" x1="80" y1="114" x2="200" y2="150" marker-end="url(#mb-head)"/>
+      <circle class="state" cx="70" cy="106" r="10"/>
+      <circle class="state" cx="220" cy="60" r="10"/>
+      <rect class="state" x="346" y="24" width="16" height="16"/>
+      <rect class="state" x="346" y="88" width="16" height="16"/>
+      <text class="ln-lab" x="220" y="168" text-anchor="middle">?</text>
+      <text class="dg-lab" x="70" y="140" text-anchor="middle">hallway</text>
+      <text class="dg-lab" x="220" y="94" text-anchor="middle">study</text>
+      <text class="dg-lab" x="136" y="68" text-anchor="middle">1 of 1, −1</text>
+      <text class="dg-lab" x="285" y="30" text-anchor="middle">3 of 5, +1</text>
+      <text class="dg-lab" x="302" y="124" text-anchor="middle">2 of 5, 0</text>
+      <text class="dg-lab" x="370" y="37">free</text>
+      <text class="dg-lab" x="370" y="101">taken</text>
+      <text class="dg-lab" x="140" y="200" text-anchor="middle">garage door, never tried</text>
+    </svg>
+    <figcaption>The robot's model of its home: what followed each move it made, and how often. The move to the study, tried once, led there at a cost of 1; charging in the study, tried five times, gave +1 three times, when the charger was free, and 0 twice. The door to the garage has never been tried.</figcaption>
+  </figure>
+  <p>First, the robot can work out how good each room is without moving, by reasoning over its model: that is planning. Second, it knows what it has never tried, like the door to the garage, and can plan a visit to it.</p>
+  <p>This note covers models and planning, then two classic algorithms built on them. R-Max counts what its moves did, assumes the best about every move it has not tried, and plans its way to them. Dyna learns from every real step twice, once from the step itself and again later, by replaying it from its model. The last section asks what happens when the model is wrong.</p>
+  <p class="legend">Throughout this page, <span class="bar" aria-hidden="true"></span>moves, and what a model says they do, are drawn in blue ink, and <span class="dot" aria-hidden="true"></span>the target of an update in red ink.</p>
+</div>
+
+<section id="models">
+  <div class="prose">
+    <h2><span class="n">1</span>Models and planning</h2>
+    <p>A model of the environment is anything the agent can use to predict how the environment will respond to its actions: given a state and an action, it predicts the next state and the reward. Some models give every possible outcome with its probability; these are distribution models, like the dynamics <span class="nowrap"><i>p</i>(<i>s</i>′, <i>r</i> | <i>s</i>, <i>a</i>)</span> that dynamic programming assumes. Others give one outcome, drawn with those probabilities; these are sample models. Asked about charging in the study, a distribution model answers that it gives +1 with probability 0.6 and 0 with probability 0.4, and a sample model answers +1 or 0, at random, +1 three times in five on average.</p>
+    <p>A distribution model can always produce samples, so it is the stronger of the two. But a sample model is often much easier to build: a night of ten trips to the charger has 2<sup>10</sup> = 1,024 sequences of free and taken, and a distribution model must give the probability of each, while a sample model just plays the ten trips. Either way, the model can stand in for the environment and produce simulated experience: one transition or one episode at a time from a sample model, and all of them, each with its probability, from a distribution model.</p>
+    <p>Planning is any computation that takes a model and produces or improves a policy. The planning in these notes goes through values, as learning does:</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 440 244" role="img" aria-label="Two chains that meet. A model produces simulated experience, and the world produces real experience; both go into the same updates, which give the values and the policy.">
+        <line class="ln-path" x1="120" y1="40" x2="120" y2="64" marker-end="url(#mb-head)"/>
+        <line class="ln-path" x1="320" y1="40" x2="320" y2="64" marker-end="url(#mb-head)"/>
+        <line class="ln-path" x1="136" y1="118" x2="196" y2="154" marker-end="url(#mb-head)"/>
+        <line class="ln-path" x1="304" y1="118" x2="244" y2="154" marker-end="url(#mb-head)"/>
+        <line class="ln-path" x1="220" y1="184" x2="220" y2="206" marker-end="url(#mb-head)"/>
+        <text class="dg-lab" x="120" y="30" text-anchor="middle">model</text>
+        <text class="dg-lab" x="320" y="30" text-anchor="middle">world</text>
+        <text class="dg-lab" x="120" y="88" text-anchor="middle">simulated</text>
+        <text class="dg-lab" x="120" y="108" text-anchor="middle">experience</text>
+        <text class="dg-lab" x="320" y="88" text-anchor="middle">real</text>
+        <text class="dg-lab" x="320" y="108" text-anchor="middle">experience</text>
+        <text class="dg-lab" x="220" y="176" text-anchor="middle">updates</text>
+        <text class="dg-lab" x="220" y="230" text-anchor="middle">values and policy</text>
+      </svg>
+      <figcaption>Planning and learning compute values with the same updates. Planning takes its experience from a model, and learning from the world.</figcaption>
+    </figure>
+    <p>Both look ahead at what follows a state or an action, and back the result up into a value. So a learning method can usually plan too: it only needs simulated experience in place of real.</p>
+
+    <h3>Value iteration</h3>
+    <p>With a distribution model, the agent can solve the Bellman optimality equation of the <a href="/notes/reinforcement-learning/q-learning/#values">Q-learning note</a>, which an agent without a model cannot. Written for the values of states, the equation becomes an update:</p>
+    <div class="disp"><i>V</i>(<i>s</i>) <span class="nowrap">← max<sub><i>a</i></sub> Σ<sub><i>s</i>′, <i>r</i></sub> <i>p</i>(<i>s</i>′, <i>r</i> | <i>s</i>, <i>a</i>)</span><span class="nowrap">[<span class="pt"><i>r</i> + γ<i>V</i>(<i>s</i>′)</span>]</span></div>
+    <p>Value iteration applies it to every state, sweep after sweep, until no value changes. Each sweep gives every state the most its best action can be expected to bring, judged by the current values of what follows, so news of a reward travels back one step per sweep. The values converge to <span class="nowrap"><i>v</i><sub>*</sub>(<i>s</i>) = max<sub><i>a</i></sub> <i>q</i><sub>*</sub>(<i>s</i>, <i>a</i>)</span>, the optimal values of the model, and acting greedily with respect to them is the best behavior in the model. Value iteration is a dynamic programming method.</p>
+    <p>On the robot's model, leaving the untried door aside, each room has one move, so each maximum has a single term. The study is worth <span class="nowrap">0.6 · 1 + 0.4 · 0 = 0.6</span>, and the hallway <span class="nowrap">−1 + 0.6 = −0.4</span>. These are the values batch TD(0) converged to in the TD note, the certainty-equivalence estimate, computed here straight from the model.</p>
+
+    <h3>Q-planning</h3>
+    <p>With a sample model, the agent can plan by learning from imagined steps. Random-sample one-step tabular Q-planning repeats three steps:</p>
+    <ol class="steps">
+      <li>Pick a state <i>S</i> and an action <i>A</i> at random.</li>
+      <li>Ask the sample model for a reward <i>R</i> and a next state <i>S</i>′.</li>
+      <li>Apply the Q-learning update to them: <span class="nowrap"><i>Q</i>(<i>S</i>, <i>A</i>) ← <i>Q</i>(<i>S</i>, <i>A</i>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i></span></span> <span class="nowrap pt">+ γ max<sub><i>a</i></sub> <i>Q</i>(<i>S</i>′, <i>a</i>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i>, <i>A</i>)]</span>.</li>
+    </ol>
+    <p>It converges to the optimal policy for the model under the same conditions as Q-learning does for the environment: every pair keeps being picked, and the step size shrinks appropriately. Asked five times about charging in the study, the sample model might answer +1, 0, +1, +1 and 0. With α = 1/<i>n</i> at the <i>n</i>-th answer, Q-planning's estimate is the running average of the answers: 1, 0.5, 0.67, 0.75 and finally 0.6, the value the distribution model gives at once.</p>
+    <p>Value iteration uses every outcome the distribution model lists; Q-planning, like Q-learning, uses one outcome at a time and averages through its step size. And each Q-planning step is small, so planning can be interrupted or redirected at any moment with little computation wasted. That matters when planning is mixed with acting, as in Dyna, in section 3.</p>
+  </div>
+</section>
+
+<section id="r-max">
+  <div class="prose">
+    <h2><span class="n">2</span>R-Max: optimism in the face of the unknown</h2>
+    <p>R-Max learns its model by counting. It keeps <i>N</i>(<i>s</i>, <i>a</i>), the number of times it has taken action <i>a</i> in state <i>s</i>, and <i>N</i>(<i>s</i>, <i>a</i>, <i>s</i>′, <i>r</i>), the number of those times that led to <i>s</i>′ with reward <i>r</i>, and it estimates the dynamics by the fraction of times each outcome happened:</p>
+    <div class="disp hero-f"><i>P</i>(<i>s</i>′, <i>r</i> | <i>s</i>, <i>a</i>) <span class="nowrap">= <span class="frac"><span><i>N</i>(<i>s</i>, <i>a</i>, <i>s</i>′, <i>r</i>)</span><span><i>N</i>(<i>s</i>, <i>a</i>)</span></span></span></div>
+    <p>The robot's model was made this way: the study's charger was free in 3 visits of 5, so <span class="nowrap"><i>P</i>(end, +1 | study, charge) = 3/5</span>. It is the maximum-likelihood model of the TD note. R-Max plans on it with value iteration, at every step, and acts greedily on the values it gets. It uses its experience only to improve the model; its values come from planning.</p>
+    <p>Counting leaves a question: what to do with a pair tried only a few times, or never? The robot has <span class="nowrap"><i>N</i>(hallway, garage) = 0</span>, so no fraction exists, and a planner that left the door out would never go and look. It could never learn what is behind it.</p>
+    <p>R-Max is optimistic in the face of the unknown. A pair is known once <span class="nowrap"><i>N</i>(<i>s</i>, <i>a</i>) ≥ <i>k</i></span>, for a number of visits <i>k</i> the user chooses, and an unknown pair is assumed to give <i>R</i><sub>max</sub>, a reward at least as large as any the world can give, and to end the episode. In the home, <span class="nowrap"><i>R</i><sub>max</sub> = 1</span>, a free charger. Value iteration on this optimistic model values the garage door at 1, against <span class="nowrap">−1 + 0.6 = −0.4</span> through the study, so the robot goes to look. Suppose it finds a second charger there, free every time. Once the door and the charger are known, the garage is worth <span class="nowrap">−1 + 1 = 0</span>, more than the study, and the robot charges there from then on. A planner that left the door out would have kept going to the study.</p>
+    <p>Optimism makes exploring a matter of planning. The values send the agent to the unknown by the shortest way, and only when it might pay: had the untried door been at the end of a corridor two moves long, it would be worth <span class="nowrap">−1 − 1 + 1 = −1</span> from the hallway, less than the study's −0.4, and R-Max would not go and look. Unknown pairs too far away, or behind too many costly moves, are left alone. Eventually every pair worth knowing is known, and R-Max follows the best policy of its model.</p>
+    <p>The number <i>k</i> sets how much each estimate rests on. Where an action always has the same result, as on the grid of the figure below, one visit tells everything, and <i>k</i> = 1 is enough. Where results vary, a few visits can mislead. A charger free 3 times in 5 is taken on a single visit 2 times in 5, and with <i>k</i> = 1 the model then says it is never free; the pair is known, so nothing sends the robot back to check, and it may settle for a worse charger. With <i>k</i> = 5, all five visits must find it taken, which happens about one time in a hundred: <span class="nowrap">(2/5)<sup>5</sup> ≈ 0.01</span>. R-Max, introduced by Brafman and Tennenholtz in 2002, converges to a near-optimal policy, with a gap that depends on <i>k</i>, in a number of steps that grows only polynomially with the size of the problem.</p>
+
+    <h3>The algorithm</h3>
+    <p>For a number of visits <i>k</i> and a reward <i>R</i><sub>max</sub> at least as large as any reward the world can give:</p>
+    <ol class="steps">
+      <li>Set every count to 0: <span class="nowrap"><i>N</i>(<i>s</i>, <i>a</i>) ← 0</span> and <span class="nowrap"><i>N</i>(<i>s</i>, <i>a</i>, <i>s</i>′, <i>r</i>) ← 0</span>.</li>
+      <li>At the start of each episode, observe the first state <i>S</i>.</li>
+      <li>Run value iteration on the model, in which a known pair, with <span class="nowrap"><i>N</i>(<i>s</i>, <i>a</i>) ≥ <i>k</i></span>, leads to <i>s</i>′ with reward <i>r</i> with probability <span class="nowrap"><i>N</i>(<i>s</i>, <i>a</i>, <i>s</i>′, <i>r</i>)/<i>N</i>(<i>s</i>, <i>a</i>)</span>, and an unknown pair gives <i>R</i><sub>max</sub> and ends the episode.</li>
+      <li>Choose <i>A</i> greedily from <i>V</i>: the action with the largest <span class="nowrap"><i>Q</i>(<i>S</i>, <i>a</i>)</span> <span class="nowrap">= Σ<sub><i>s</i>′, <i>r</i></sub> <i>P</i>(<i>s</i>′, <i>r</i> | <i>S</i>, <i>a</i>)[<i>r</i> + γ<i>V</i>(<i>s</i>′)]</span>, which is <i>R</i><sub>max</sub> for an unknown action.</li>
+      <li>Take <i>A</i>, and observe <i>R</i> and <i>S</i>′.</li>
+      <li>Count it: <span class="nowrap"><i>N</i>(<i>S</i>, <i>A</i>) ← <i>N</i>(<i>S</i>, <i>A</i>) + 1</span> and <span class="nowrap"><i>N</i>(<i>S</i>, <i>A</i>, <i>S</i>′, <i>R</i>) ← <i>N</i>(<i>S</i>, <i>A</i>, <i>S</i>′, <i>R</i>) + 1</span>.</li>
+      <li>Set <i>S</i> ← <i>S</i>′, and go back to step 3 until <i>S</i> is terminal.</li>
+    </ol>
+    <p>The figure runs R-Max on the <a href="/notes/reinforcement-learning/monte-carlo/#prediction">cookie grid of the Monte Carlo note</a>, with <i>k</i> = 1, since a move on the grid always does the same thing, <span class="nowrap"><i>R</i><sub>max</sub> = 1</span>, the cookie's reward, and γ = 0.9. Each triangle holds the value of a move, <i>Q</i>(<i>s</i>, <i>a</i>) as step 4 computes it. An untried move is shaded and holds the 1 that R-Max assumes for it; a known move holds its reward plus 0.9 times the value of the cell it leads to. Each press is one line of the algorithm: the agent chooses a move, in yellow, takes it, counts it, in green, and value iteration runs on the new model, which lifts the shade.</p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-rmax" role="group" aria-label="A grid 3 cells wide and 3 tall, each cell split into four triangles that hold the values of its four moves, shaded while untried. The agent starts at the bottom left, and the cookie is at the top right."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-rmax-back">Back</button><button type="button" class="btn" id="fig-rmax-next">Next</button><span class="count" id="fig-rmax-count"></span><button type="button" class="btn" id="fig-rmax-reset" hidden>Reset</button></div>
+    <div class="ro" id="fig-rmax-out"></div>
+    <div class="fig-foot">
+      <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
+      <button type="button" class="btn" id="fig-rmax-sound" aria-pressed="true">Sound on</button>
+    </div>
+    <p class="sr-only" id="fig-rmax-live" aria-live="polite"></p>
+  </div>
+
+  <div class="prose">
+    <p>In the figure, the model changes only when a move becomes known, so at all the other steps value iteration gives back the values it already had. Running it at every step is the simplest way to write R-Max, not the cheapest: an efficient version plans again only when the model changes.</p>
+  </div>
+</section>
+
+<section id="dyna">
+  <div class="prose">
+    <h2><span class="n">3</span>Dyna: learning, planning and acting together</h2>
+    <p>An agent that plans while it acts can use each real step in two ways: to improve its model, so that the model matches the world more closely, and to improve its values and policy directly, with the learning methods of the earlier notes. The first is model learning, and the second direct reinforcement learning, or direct RL. Through the model, experience also improves the values indirectly, by planning.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 440 222" role="img" aria-label="A cycle between the values and policy, experience, and the model. Acting with the policy produces experience. Experience improves the values and policy directly, by direct RL, and improves the model, by model learning. The model improves the values and policy by planning.">
+        <path class="ln-path" d="M 296 38 Q 372 62 368 164" marker-end="url(#mb-head)"/>
+        <path class="ln-path" d="M 338 164 Q 290 116 252 48" marker-end="url(#mb-head)"/>
+        <line class="ln-path" x1="312" y1="186" x2="124" y2="186" marker-end="url(#mb-head)"/>
+        <path class="ln-path" d="M 76 164 Q 70 70 144 38" marker-end="url(#mb-head)"/>
+        <text class="dg-lab" x="220" y="34" text-anchor="middle">values and policy</text>
+        <text class="dg-lab" x="80" y="191" text-anchor="middle">model</text>
+        <text class="dg-lab" x="360" y="191" text-anchor="middle">experience</text>
+        <text class="dg-lab" x="403" y="100" text-anchor="middle">acting</text>
+        <text class="dg-lab" x="262" y="132" text-anchor="middle">direct RL</text>
+        <text class="dg-lab" x="218" y="214" text-anchor="middle">model learning</text>
+        <text class="dg-lab" x="38" y="100" text-anchor="middle">planning</text>
+      </svg>
+      <figcaption>Experience improves the values and the policy in two ways: directly, by learning, and through a model, by planning. Acting with the policy brings new experience.</figcaption>
+    </figure>
+    <p>R-Max uses its experience only for the model, and Q-learning only for the values. Each way has its strengths. Planning gets more out of a limited amount of experience, so it reaches a good policy with fewer real steps. Direct learning is simpler, and a wrong model cannot mislead it.</p>
+    <p>Dyna does all of it at once: acting, model learning, direct RL and planning. Its planning applies the same learning method to simulated steps as to real ones, so learning and planning share almost everything except where their experience comes from. Which simulated steps it takes is decided by what is called search control. Dyna-Q is the simplest Dyna. Its direct RL is one-step tabular Q-learning. Its model is a table that keeps, for each pair the agent has tried, the reward and next state last seen after it, which is all there is to know in a world where an action always has the same result. And its planning is random-sample one-step Q-planning, <i>n</i> steps after every real step, on states the agent has been in and actions it has taken there, so the model is never asked about a pair it knows nothing about. Without the model and the planning, Dyna-Q is Q-learning.</p>
+
+    <h3>The algorithm</h3>
+    <p>Tabular Dyna-Q, for a step size α in (0, 1], a small ε &gt; 0 and a number of planning steps <i>n</i>, with every <i>Q</i>(<i>s</i>, <i>a</i>) at 0 and the model empty:</p>
+    <ol class="steps">
+      <li>Observe the current state <i>S</i>, and choose <i>A</i> ε-greedily with respect to <i>Q</i>.</li>
+      <li>Take <i>A</i>, and observe the reward <i>R</i> and the next state <i>S</i>′.</li>
+      <li>Update <span class="nowrap"><i>Q</i>(<i>S</i>, <i>A</i>) ← <i>Q</i>(<i>S</i>, <i>A</i>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i></span></span> <span class="nowrap pt">+ γ max<sub><i>a</i></sub> <i>Q</i>(<i>S</i>′, <i>a</i>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i>, <i>A</i>)]</span>.</li>
+      <li>Remember the outcome: <span class="nowrap"><i>Model</i>(<i>S</i>, <i>A</i>) ← <i>R</i>, <i>S</i>′</span>.</li>
+      <li>Plan, <i>n</i> times: pick at random a state seen before and an action taken there before, get <i>R</i> and <i>S</i>′ from <i>Model</i>, and apply the update of step 3 to them.</li>
+      <li>If <i>S</i>′ is terminal, a new episode starts at its first state. Go back to step 1.</li>
+    </ol>
+    <p>The figure runs Dyna-Q on the cookie grid with α = 0.5, ε = 0.1, γ = 0.9 and <i>n</i> = 10. Its marks are those of the <a href="/notes/reinforcement-learning/q-learning/#update">Q-learning figure</a>, and two things are new. A move the agent has tried shows its value even at 0, so the triangles with a number are the moves the model holds; the move it has just remembered is outlined in blue. And during planning the agent stands still: each planning step updates the move it replays, in green, toward a target built from the best values where the model says that move leads, in red.</p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-dyna" role="group" aria-label="A grid 3 cells wide and 3 tall, each cell split into four triangles that hold the values of its four moves. The agent starts at the bottom left, and the cookie is at the top right."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-dyna-back">Back</button><button type="button" class="btn" id="fig-dyna-next">Next</button><span class="count" id="fig-dyna-count"></span><button type="button" class="btn" id="fig-dyna-reset" hidden>Reset</button></div>
+    <div class="ro" id="fig-dyna-out"></div>
+    <div class="fig-foot">
+      <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
+      <button type="button" class="btn" id="fig-dyna-sound" aria-pressed="true">Sound on</button>
+    </div>
+    <p class="sr-only" id="fig-dyna-live" aria-live="polite"></p>
+  </div>
+
+  <div class="prose">
+    <p>After the first episode, Q-learning alone would have a value for one move, the last. The <a href="/notes/reinforcement-learning/n-step-bootstrapping/#n-step-sarsa"><i>n</i>-step methods</a> and <a href="/notes/reinforcement-learning/eligibility-traces/#sarsa-lambda">Sarsa(λ)</a> credit more of the episode's moves, the last <i>n</i> or all of them by fading amounts, but only along the path just walked, and only once. Planning replays everything the model holds, for as long as the agent can afford, so the cookie's value travels back through every remembered move, and pieces of different walks join into routes never walked in one go. With more planning steps per move, the values settle in fewer episodes, at the price of more computation per move.</p>
+    <p>The agent is always reactive and always deliberative: it acts at once on its latest values, while planning goes on in the background. When the model learns something new, the planning that follows works it into the values.</p>
+
+    <h3>R-Max and Dyna</h3>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col"></th><th scope="col">R-Max</th><th scope="col">Dyna-Q</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Real experience improves</th><td>the model only</td><td>the model and the values</td></tr>
+          <tr><th scope="row">Planning</th><td>value iteration over the whole model, at every step</td><td><i>n</i> small updates on remembered steps, after every step</td></tr>
+          <tr><th scope="row">Exploring</th><td>on purpose: an untried pair is worth <i>R</i><sub>max</sub></td><td>at random: a random move with probability ε</td></tr>
+          <tr><th scope="row">Converges to</th><td>a near-optimal policy, in polynomial time, with a gap set by <i>k</i></td><td>an optimal policy, in the limit, exploring ε-greedily</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The two figures show the difference in exploring. R-Max tried all 32 moves of the grid in its first three episodes, and then never explored again. Dyna-Q tried 15 of them in 30 episodes, and it keeps making a random move one time in ten.</p>
+  </div>
+</section>
+
+<section id="wrong-model">
+  <div class="prose">
+    <h2><span class="n">4</span>When the model is wrong</h2>
+    <p>So far the models have been right: on the grid, a known move does what the model says. A model can be wrong for three reasons: the world is random and has been seen only a few times, like a charger visited once; the model generalizes from some states to others, imperfectly; or the world has changed since the model learned it. Planning with a wrong model computes a policy that is good for the model, and possibly bad for the world.</p>
+    <p>Some errors correct themselves. When a model is optimistic, predicting more reward or better moves than the world allows, the planned policy goes to collect them, finds they are not there, and the experience it gets corrects the model. Errors the other way are harder. When the world becomes better than the model believes, the policy the model recommends may never go where the improvement is, and the error can last a long time, or forever.</p>
+    <p>Back in the robot's home, the garage door is locked one night, so the move that always led to the garage now leaves the robot in the hallway, at a cost of 1. Dyna-Q's model holds the outcome last seen, so the first bump rewrites <i>Model</i>(hallway, garage), and planning, replaying it, soon values the door below the study. R-Max counts every outcome since the start, old and new. After a hundred trips that found the door open, each bump lowers the door's value by only 0.01, so the robot bumps into the locked door 41 times before the study's −0.4 looks better.</p>
+    <p>Now the opposite. Say the hallway also has a back door, which the robot tried once and found locked, and one day it is opened, with a charger right behind it. Nothing in either model points there. Dyna-Q tries the back door again only through a random move: with ε = 0.1 and three moves in the hallway, on one visit in 30. R-Max, which explores only what it has not tried, and never at random, will not try it again.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">5</span>Summary</h2>
+    <p>The key ideas next to their NumPy equivalents. In R-Max, <code>n_sa[s, a]</code> holds <i>N</i>(<i>s</i>, <i>a</i>), and <code>n_sasr[s, a, s2, i]</code> holds <i>N</i>(<i>s</i>, <i>a</i>, <i>s</i>′, <i>r</i>) for the <i>i</i>-th possible reward, <code>rewards[i]</code>; in Dyna-Q, <code>model</code> maps a pair to what followed it, <code>seen</code> lists the states visited, and <code>taken[s]</code> the actions taken in <code>s</code>.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Model by counting</div>
+      <div class="f"><i>P</i>(<i>s</i>′, <i>r</i> | <i>s</i>, <i>a</i>) = <i>N</i>(<i>s</i>, <i>a</i>, <i>s</i>′, <i>r</i>)/<i>N</i>(<i>s</i>, <i>a</i>)</div>
+      <div class="c"><code>p = n_sasr / n_sa[:, :, None, None]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Known pair</div>
+      <div class="f"><i>N</i>(<i>s</i>, <i>a</i>) ≥ <i>k</i></div>
+      <div class="c"><code>known = n_sa &gt;= k</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Value of a move, in R-Max</div>
+      <div class="f">Σ<sub><i>s</i>′, <i>r</i></sub> <i>P</i>(<i>s</i>′, <i>r</i> | <i>s</i>, <i>a</i>)[<span class="pt"><i>r</i> + γ<i>V</i>(<i>s</i>′)</span>], or <i>R</i><sub>max</sub> if unknown</div>
+      <div class="c"><code>g = rewards + gamma * v[:, None]<br>q = (p * g).sum(axis=(2, 3))<br>q = np.where(known, q, r_max)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Value iteration, one sweep</div>
+      <div class="f"><i>V</i>(<i>s</i>) ← max<sub><i>a</i></sub> <i>Q</i>(<i>s</i>, <i>a</i>)</div>
+      <div class="c"><code>v = q.max(axis=1)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Greedy action</div>
+      <div class="f">argmax<sub><i>a</i></sub> <i>Q</i>(<i>S</i>, <i>a</i>)</div>
+      <div class="c"><code>a = np.argmax(q[s])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Dyna-Q's model</div>
+      <div class="f"><i>Model</i>(<i>S</i>, <i>A</i>) ← <i>R</i>, <i>S</i>′</div>
+      <div class="c"><code>model[s, a] = r, s_next</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">A planning step</div>
+      <div class="f">a pair tried before, its outcome from the model, and the Q-learning update</div>
+      <div class="c"><code>s = seen[rng.integers(len(seen))]<br>a = taken[s][rng.integers(len(taken[s]))]<br>r, s_next = model[s, a]<br>g = r + gamma * np.max(q[s_next])<br>q[s, a] += alpha * (g - q[s, a])</code></div>
+    </div>
+  </div>
+</section>

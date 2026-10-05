@@ -267,9 +267,9 @@ ol.steps b { font-weight: 600; }
 .bar-w { fill: var(--ink-3); fill-opacity: 0.3; stroke: var(--ink-2); stroke-width: 1.2; }
 
 /* Grid worlds: each cell the agent can stand on is split by its diagonals into four triangles, one per move, each
-   showing that move's value, with the best value of the cell on a blue highlight. Marks on the triangles: the move just
-   chosen in yellow, updated moves in green (as strong as their trace), the move a target uses in red, and the steps of
-   an n-step window in blue. */
+   showing that move's value, with the best value of the cell on a blue highlight; R-Max's untried moves are shaded.
+   Marks on the triangles: the move just chosen in yellow, updated moves in green (as strong as their trace), the move a
+   target uses in red, and the steps of an n-step window, or a move just stored in a model, in blue. */
 .gw-floor { fill: var(--card); }
 .gw-cliff { fill: color-mix(in srgb, var(--ink) 16%, var(--card)); }
 .gw-frame { fill: none; stroke: var(--ink-3); stroke-width: 1.2; }
@@ -287,6 +287,9 @@ ol.steps b { font-weight: 600; }
 .gw-q { fill: var(--ink-2); font-family: var(--sans); font-size: 10px; font-variant-numeric: tabular-nums; pointer-events: none; paint-order: stroke; stroke: var(--card); stroke-width: 2.5px; stroke-linejoin: round; }
 .gw-q.best { fill: var(--blue); font-weight: 600; stroke: none; }
 .gw-qbest { fill: color-mix(in srgb, var(--blue) 16%, var(--card)); }
+/* A move R-Max has not tried enough, shaded, with the value it assumes for it; the value's halo takes the shade. */
+.gw-unknown { fill: color-mix(in srgb, var(--ink) 9%, var(--card)); }
+.gw-q.unk { stroke: color-mix(in srgb, var(--ink) 9%, var(--card)); }
 /* One value per cell, in the TD(0) figure. */
 .gw-v { fill: var(--ink); font-family: var(--sans); font-size: 15px; font-variant-numeric: tabular-nums; pointer-events: none; paint-order: stroke; stroke: var(--card); stroke-width: 3px; stroke-linejoin: round; }
 .gw-qback { fill: color-mix(in srgb, var(--blue) 16%, var(--card)); }

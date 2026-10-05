@@ -3,9 +3,9 @@ import { el, tr } from "../../plane.js";
 /* ---------- Grid worlds for the reinforcement learning figures ---------- */
 
 // Shared by the figures that step through a run like slides, one line of their algorithm per press (Monte Carlo
-// prediction and control and TD(0) on the cookie grid; Sarsa, Q-learning, n-step Sarsa and Sarsa(λ) on the cliff): the
-// two worlds, the texts for choosing and taking a move, the grid of values, the sounds and the controls. Each figure
-// computes its own run and its slides, and hands them to slideshow().
+// prediction and control, TD(0), R-Max and Dyna-Q on the cookie grid; Sarsa, Q-learning, n-step Sarsa and Sarsa(λ) on
+// the cliff): the two worlds, the texts for choosing and taking a move, the grid of values, the sounds and the controls.
+// Each figure computes its own run and its slides, and hands them to slideshow().
 
 export const ACTS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 export const NAME = [tr("up", "arriba"), tr("right", "derecha"), tr("down", "abajo"), tr("left", "izquierda")];
@@ -142,9 +142,10 @@ export const { W, H, START, GOAL, isCliff, cellName, moveName, stepEnv, freshQ, 
 
 // Each cell the agent can stand on is split by its diagonals into four triangles, one per move (up, right, down, left,
 // as in ACTS), each showing that move's value. The best value of a cell sits on a blue highlight, and an untried move,
-// still at 0, is left blank unless a target uses it. On top of that a figure marks moves: the one just chosen in yellow
-// (fading as the agent takes it), updated ones in green (as strong as their trace), the one a target uses in red, and the
-// steps of an n-step window in blue.
+// still at 0, is left blank unless a target uses it or the figure shows it (a move held in Dyna-Q's model). R-Max shades
+// the moves it has not tried enough, whose value is the one it assumes for them. On top of that a figure marks moves: the
+// one just chosen in yellow (fading as the agent takes it), updated ones in green (as strong as their trace), the one a
+// target uses in red, and the steps of an n-step window, or a move just stored in a model, in blue.
 // A figure that estimates the value of each cell instead (perCell) draws no diagonals and one value per cell, above
 // the agent, and its green and red marks outline the whole cell; the move just chosen is still its triangle, in yellow.
 const ML = 26, MT = 10, MB = 38;
@@ -170,6 +171,9 @@ function createGrid(svg, world, perCell) {
   const cliffCells = [...Array(W * H).keys()].filter(isCliff);
   svg.setAttribute("viewBox", `0 0 ${ML + W * C + 8} ${MT + H * C + MB}`);
   for (let s = 0; s < W * H; s++) el("rect", { class: isCliff(s) ? "gw-cliff" : "gw-floor", x: x0(s), y: y0(s), width: C, height: C }, svg);
+  // The shade of moves R-Max has not tried enough lies on the floor, under the lines, in a layer made when first needed.
+  const floorEnd = svg.lastElementChild;
+  let under = null;
   // Lines between cells. On the cliff, the vertical ones stop above the bottom row, where the shading marks its edges.
   const bottom = cliffCells.length ? H - 1 : H;
   for (let i = 1; i < H; i++) el("line", { class: "gw-line", x1: ML, y1: MT + i * C, x2: ML + W * C, y2: MT + i * C }, svg);
@@ -226,11 +230,15 @@ function createGrid(svg, world, perCell) {
   // never glides out of the cliff), pick ([cell, action] just chosen), taken ([cell, action] the agent is taking: its
   // yellow fades as the agent glides, and without animation it is gone), marks ([{ c, a, kind, w }] with kind "upd",
   // "tg" or "step", w a trace, and no a for a mark on a whole cell), maxOf (a cell whose best moves a target uses, marked
-  // in red), ring or rings (cliff cells the agent fell into), bump (the action of a wall hit) and route (the cells the
-  // best moves lead through, from the start to the goal).
+  // in red), ring or rings (cliff cells the agent fell into), bump (the action of a wall hit), route (the cells the
+  // best moves lead through, from the start to the goal), unknown ([[cell, action]] shaded: moves R-Max values at what
+  // it assumes) and shown (a Set of cell * 4 + action whose value shows even at 0: the moves in Dyna-Q's model).
   function draw(g, animate) {
-    const { Q, V, agent, jump, pick, taken, marks, maxOf, ring, rings, bump, route } = g;
+    const { Q, V, agent, jump, pick, taken, marks, maxOf, ring, rings, bump, route, unknown, shown } = g;
     dyn.replaceChildren();
+    if (unknown && !under) { under = el("g", {}); floorEnd.after(under); }
+    under?.replaceChildren(...(unknown || []).map(([c, a]) => el("polygon", { class: "gw-unknown", points: pts(triPts(c)[a]) })));
+    const unk = new Set((unknown || []).map(([c, a]) => c * 4 + a));
     if (taken && animate && !reducedMotion.matches)
       el("polygon", { class: "gw-pick", points: pts(triPts(taken[0])[taken[1]]) }, dyn).animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: "ease-in", fill: "forwards" });
     if (pick) el("polygon", { class: "gw-pick", points: pts(triPts(pick[0])[pick[1]]) }, dyn);
@@ -272,8 +280,9 @@ function createGrid(svg, world, perCell) {
       }
       const q = Q[c], m = Math.max(...q), best = q.filter((v) => v === m).length === 1 ? q.indexOf(m) : -1;
       for (let a = 0; a < 4; a++) {
-        if (q[a] === 0 && !red.has(c * 4 + a)) continue;
-        const [tx, ty] = triText(c, a), t = el("text", { class: `gw-q${a === best ? " best" : onRoute.has(c * 4 + a) ? " on" : ""}`, x: tx, y: ty, "text-anchor": "middle" }, dyn);
+        const key = c * 4 + a;
+        if (q[a] === 0 && !red.has(key) && !shown?.has(key)) continue;
+        const [tx, ty] = triText(c, a), t = el("text", { class: `gw-q${a === best ? " best" : onRoute.has(key) ? " on" : unk.has(key) ? " unk" : ""}`, x: tx, y: ty, "text-anchor": "middle" }, dyn);
         t.textContent = qText(q[a], decimals);
         // The best value on a blue highlight; any other value on a route on the band's color, so that it sits on the band.
         if (a === best || onRoute.has(c * 4 + a)) { const bb = t.getBBox(); dyn.insertBefore(el("rect", { class: a === best ? "gw-qbest" : "gw-qback", x: bb.x - 2.5, y: bb.y - 0.5, width: bb.width + 5, height: bb.height + 1, rx: 3 }), t); }
@@ -357,7 +366,8 @@ function chime() {
 // for the status line, line and eq for its text (fit sets a long eq smaller on phones), and sound ("fall" or "wall")
 // when its move calls for one.
 // frame(m) gives the state at step m of a skip, from + 1 to to − 1, with Q, agent, ring, ep, move, time and stage, and
-// the marks of that step: pick (the move about to be taken) and marks (what was just updated).
+// the marks of that step: pick (the move about to be taken) and marks (what was just updated), and unknown and shown
+// when the figure draws them.
 // world is the cliff unless given; with perCell, builds and frames give V, one value per cell, instead of Q.
 export function slideshow({ svg, slides, frame, world = cliff, perCell = false }) {
   const id = svg.id, $ = (s) => document.getElementById(`${id}-${s}`);
@@ -400,7 +410,7 @@ export function slideshow({ svg, slides, frame, world = cliff, perCell = false }
       if (m !== shown) {
         shown = m;
         const f = frame(m);
-        grid.draw({ Q: f.Q, V: f.V, agent: f.agent, ring: f.ring, jump: true, pick: f.pick, marks: f.marks }, false);
+        grid.draw({ Q: f.Q, V: f.V, agent: f.agent, ring: f.ring, jump: true, pick: f.pick, marks: f.marks, unknown: f.unknown, shown: f.shown }, false);
         out.innerHTML = `<p class="lbl">${status(f.ep, f.move, f.time, f.stage)}</p><p class="slide ff">${tr("Skipping ahead", "Adelantando")}</p><p class="muted">${skip.note ?? tr(`${skip.moves} moves go by.`, `Pasan ${skip.moves} movimientos.`)} ${tr("Press Next to jump to the end.", "Presiona Siguiente para saltar al final.")}</p>`;
       }
       if (now - start >= dur) finishFF(true, prevAgent);
