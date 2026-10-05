@@ -76,7 +76,7 @@ scripts:
       <li>Repeat from step 2 for each new episode. Every-visit Monte Carlo is the same without the check of step 3.</li>
     </ol>
     <p>The figure runs it on a grid 3 cells wide and 3 tall, with cells named by column and row, from A1 at the bottom left to C3 at the top right. An agent starts in A1 and moves up, right, down or left, and a move into a wall leaves it where it is. In C3 there is a cookie: reaching it gives +1 and ends the episode, and every other move gives 0. With γ = 0.9, the return from a cell is 1 if the next move reaches the cookie, 0.9 if the cookie comes one move later, 0.81 if two, and so on: the quicker the trip, the larger the return. The policy picks each of the four moves at random, and every estimate starts at 0.</p>
-    <p>Each cell shows its estimate. Each press is one line of the algorithm. During the episode, the move chosen turns yellow, the agent takes it, and the cells it has left are outlined in dashed blue; no estimate changes. Once the agent reaches the cookie, each press is one step of the sweep back, and every estimate it updates is outlined in green. After the first episode, Next skips ahead to the moments where something new is learned.</p>
+    <p>Each cell shows its estimate. Each press is one line of the algorithm. During the episode, the move chosen turns yellow, the agent takes it, and the cells it has left are outlined in dashed blue; no estimate changes. Once the agent reaches the cookie, each press is one step of the sweep back, and every estimate it updates is outlined in green. Later, Next skips ahead to the moments where something new is learned.</p>
   </div>
 
   <div class="fig steps">
