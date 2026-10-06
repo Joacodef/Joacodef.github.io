@@ -43,6 +43,17 @@ export default function (eleventyConfig) {
   eleventyConfig.addFilter("courses", courseNames);
   // The notes of one course, in reading order.
   eleventyConfig.addFilter("byCourse", (notes, course) => notes.filter((n) => n.data.course === course));
+  // The notes of one course in runs that share a module, for the notes index: each run with its module and the number
+  // of its first note in the course.
+  eleventyConfig.addFilter("moduleGroups", (notes) => {
+    const groups = [];
+    notes.forEach((note, i) => {
+      const last = groups.at(-1);
+      if (last && last.module === note.data.module) last.notes.push(note);
+      else groups.push({ module: note.data.module, start: i + 1, notes: [note] });
+    });
+    return groups;
+  });
   // Up to `count` notes for the homepage: the first note of each course, then the second of each, and so on.
   eleventyConfig.addFilter("firstNotes", (notes, count) => {
     const courses = courseNames(notes).map((c) => notes.filter((n) => n.data.course === c));

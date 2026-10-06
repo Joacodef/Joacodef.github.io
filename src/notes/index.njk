@@ -3,6 +3,8 @@ layout: base.njk
 title: Notes
 description: Study notes from my courses, with interactive figures.
 permalink: /notes/
+scripts:
+  - /assets/js/notes-index.js
 ---
 {%- from "macros.njk" import langSwitch -%}
 {%- set other = page.url | otherLanguage(collections.all) -%}
@@ -15,22 +17,35 @@ permalink: /notes/
     {%- endif %}
   </header>
 
-  {#- Courses in the order set by `courseOrder` in each course folder's JSON file. #}
-  {%- for course in collections.notes | courses %}
-  <section class="section" aria-labelledby="c-{{ loop.index }}">
-    <div class="section-head"><h2 id="c-{{ loop.index }}">{{ course }}</h2></div>
-    {#- The notes of a course are read in order, so they are numbered. #}
-    <ol class="cards" role="list">
-      {%- for note in collections.notes | byCourse(course) %}
-      <li class="card">
-        <h3><span class="n">{{ loop.index }}</span><a href="{{ note.url }}">{{ note.data.title }}</a></h3>
-        <p>{{ note.data.description }}</p>
-        <p class="meta">{{ note.data.module }}</p>
-      </li>
+  {#- Courses in the order set by `courseOrder` in each course folder's JSON file, each one opened and closed by the
+      reader, so that a long list of courses stays short until one is opened. #}
+  <div class="courses">
+    {%- for course in collections.notes | courses %}
+    {%- set notes = collections.notes | byCourse(course) %}
+    <details class="course" id="{{ course | slugify }}">
+      <summary>
+        <h2>{{ course }}</h2>
+        <span class="count">{{ notes.length }} {{ "note" if notes.length == 1 else "notes" }}</span>
+        <svg class="toggle" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10"/><path class="v" d="M8 3v10"/></svg>
+      </summary>
+      {#- A table of contents: the notes are read in order, so they are numbered, in runs that share a module, which is
+          named once beside its run. #}
+      {%- for group in notes | moduleGroups %}
+      <div class="toc-group">
+        <h3>{{ group.module }}</h3>
+        <ol class="toc" role="list">
+          {%- for note in group.notes %}
+          <li>
+            <span class="n">{{ group.start + loop.index0 }}</span>
+            <div><a href="{{ note.url }}">{{ note.data.title }}</a><p>{{ note.data.description }}</p></div>
+          </li>
+          {%- endfor %}
+        </ol>
+      </div>
       {%- endfor %}
-    </ol>
-  </section>
-  {%- endfor %}
+    </details>
+    {%- endfor %}
+  </div>
 
   <p class="notice">These are personal study notes, written with AI assistance. They may contain errors.</p>
 </div>

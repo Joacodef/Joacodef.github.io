@@ -20,7 +20,8 @@ These rules hold for the notes of every course. Each course also has a rules fil
 ## Adding a note
 
 - Put it in a course folder, e.g. `src/notes/computer-vision/2d-transformations.html`.
-- Front matter: `title`, `module`, `order`, `description` (one sentence, shown on cards) and `scripts` if it has interactive figures.
+- Front matter: `title`, `module`, `order`, `description` (one sentence, shown on the notes index and on the home page's cards) and `scripts` if it has interactive figures.
+- The notes index lists each course as a table of contents that the reader opens and closes (`src/notes/index.njk` and its Spanish twin, with `src/assets/js/notes-index.js` remembering the open courses): its notes in order, in runs of consecutive notes that share a `module`, each run under its module's name. Give the notes of one part of a course the same `module`, in both languages.
 - The notes of a course form a sequence, and `order` sets a note's place in it. The notes index numbers the notes of each course by it, and each note shows "Note N of M" in its breadcrumbs and links to the previous and next notes of its course at the end (the `noteSequence` filter). Give the Spanish version the same `order`.
 - The homepage shows three cards: the first note of each course, then the second of each, and so on (the `firstNotes` filter).
 - Page-specific scripts go in `src/assets/js/notes/<course>/<note-slug>.js` and import helpers from `../../plane.js`. Add reusable helpers to `plane.js` instead of copying code between notes.
