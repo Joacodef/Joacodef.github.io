@@ -132,6 +132,11 @@ code { font-family: var(--mono); font-size: 0.84em; background: var(--paper-2); 
 .hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2rem; align-items: center; padding: clamp(1.5rem, 5vw, 3.5rem) 0 2rem; }
 @media (min-width: 880px) { .hero { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 3rem; } }
 .hero h1 { font-size: clamp(2.6rem, 6.2vw, 4.1rem); letter-spacing: -0.01em; line-height: 1.04; }
+/* The name stays on one line, as large as its column allows: from phone to desktop sizes it is 7.7 to 8.2 ems wide. */
+@supports (font-size: 1cqi) {
+  .hero-text { container-type: inline-size; }
+  .hero h1 { font-size: min(4.1rem, 12cqi); white-space: nowrap; }
+}
 .hero .lede { font-family: var(--serif); font-weight: 400; font-variation-settings: normal; font-size: clamp(1.25rem, 2.2vw, 1.45rem); line-height: 1.45; margin: 1.1rem 0 0; max-width: 30em; }
 .hero .currently { color: var(--ink-2); font-size: 0.98rem; margin: 1.2rem 0 0; max-width: 34em; }
 .hero .currently strong { color: var(--ink); font-weight: 500; }
