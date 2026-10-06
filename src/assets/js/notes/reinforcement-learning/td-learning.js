@@ -1,5 +1,5 @@
-import { tr } from "../../plane.js";
-import { cookie, START, GOAL, NAME, cellName, moveName, stepEnv, rngFrom, freshQ, epsGreedy, greedyPath, num, par, eqv, count, sym, reason, takeText, chooseTakeText, slideshow, shake } from "./gridworld.js";
+import { tr, modeButtons } from "../../plane.js";
+import { cookie, START, GOAL, NAME, cellName, moveName, stepEnv, rngFrom, freshQ, epsGreedy, greedyPath, num, par, eqv, count, listAnd, sym, reason, takeText, chooseTakeText, slideshow, shake } from "./gridworld.js";
 
 /* ---------- Section 1: TD(0) on the cookie grid, one line of the algorithm per press ---------- */
 
@@ -192,6 +192,177 @@ import { cookie, START, GOAL, NAME, cellName, moveName, stepEnv, rngFrom, freshQ
       return { V: x.post, agent: x.s2, ep: x.ep, move: x.t + 1, time: x.t + 1, bumpPose: shake(x, m), marks: [{ c: x.s, kind: "upd" }], pick: y && y.ep === x.ep ? [y.s, y.a] : undefined };
     },
   });
+}
+
+/* ---------- Section 4: batch updating on the same 30 episodes, one line of the algorithm per press ---------- */
+
+// The 702 moves of the first figure's 30 episodes are a fixed batch, replayed at every pass with the table held fixed.
+// Batch TD(0) adds up the TD errors of each cell's moves, and batch Monte Carlo the errors of their returns, G − V(S),
+// at every visit, as the book's batch updating does; each estimate then changes once, by α times its cell's sum. With
+// α = 0.005 no estimate overshoots (176 of the moves start in A1), and in both runs no estimate ever drops. Batch TD(0)
+// carries the cookie's reward one move further back at each pass and settles on the values of the model the moves
+// suggest; batch Monte Carlo moves every estimate at once and settles on the average return of every visit. The agent
+// stands in A1 throughout: nothing acts, the moves are only replayed. Inside this block the cookie grid's names replace
+// the cliff's.
+{
+  const ALPHA = 0.005, GAMMA = 0.9, SEED = 15395, EPISODES = 30, PASSES = 400;
+  const { START, GOAL, cellName, stepEnv, valuePath } = cookie;
+  const CELLS = [...Array(9).keys()].filter((s) => s !== GOAL), [A3, B3, B2, C2, C1] = [0, 1, 4, 5, 8];
+  // The batch: the moves of the 30 episodes, drawn as the first figure draws them, each with the return that follows it.
+  const moves = [];
+  {
+    const rnd = rngFrom(SEED);
+    for (let ep = 1; ep <= EPISODES; ep++) {
+      const e = []; let s = START;
+      while (true) { const a = Math.floor(rnd() * 4), o = stepEnv(s, a); e.push({ s, a, ...o }); if (o.done) break; s = o.s2; }
+      let G = 0;
+      for (let t = e.length - 1; t >= 0; t--) { G = GAMMA * G + e[t].r; e[t].G = G; }
+      moves.push(...e);
+    }
+  }
+  // A run: the table after each pass, V[p] (V[0] all 0), and each cell's sum of increments in that pass, sum[p].
+  function run(increment) {
+    const V = [Array(9).fill(0)], sum = [null];
+    for (let p = 1; p <= PASSES; p++) {
+      const S = Array(9).fill(0);
+      for (const m of moves) S[m.s] += increment(m, V[p - 1]);
+      sum.push(S); V.push(V[p - 1].map((v, s) => v + ALPHA * S[s]));
+    }
+    return { V, sum };
+  }
+  const td = run((m, V) => m.r + GAMMA * (m.done ? 0 : V[m.s2]) - V[m.s]), mc = run((m, V) => m.G - V[m.s]);
+  // The true values of the random policy, and where the first figure's online TD(0), with α = 0.5, ended.
+  const vpi = Array(9).fill(0);
+  for (let k = 0; k < 300; k++) for (const s of CELLS) vpi[s] = [0, 1, 2, 3].reduce((acc, a) => { const o = stepEnv(s, a); return acc + (o.r + GAMMA * (o.done ? 0 : vpi[o.s2])) / 4; }, 0);
+  const online = Array(9).fill(0);
+  for (const m of moves) online[m.s] += 0.5 * (m.r + GAMMA * (m.done ? 0 : online[m.s2]) - online[m.s]);
+  // The estimates a pass changes at two decimals, as the grid shows them, and the first pass from which no pass changes
+  // any. Every estimate a pass changes at all is outlined in green.
+  const shown = (v) => Math.round(v * 100);
+  const changed = (R, p) => CELLS.filter((s) => shown(R.V[p][s]) !== shown(R.V[p - 1][s]));
+  const settle = (R) => { let p = PASSES; while (p > 1 && !changed(R, p).length) p--; return p + 1; };
+  const tdEnd = settle(td), mcEnd = settle(mc);
+  const from = (s) => moves.filter((m) => m.s === s), sumG = (s) => from(s).reduce((acc, m) => acc + m.G, 0);
+  // The cell where a table misses the true values most.
+  const worst = (V) => CELLS.reduce((w, s) => (Math.abs(V[s] - vpi[s]) > Math.abs(V[w] - vpi[w]) ? s : w));
+  const miss = (V) => Math.abs(V[worst(V)] - vpi[worst(V)]).toFixed(2), n3 = (v) => String(Math.round(v * 1000) / 1000);
+  const nw = (x) => `<span class="nowrap">${x}</span>`, pt = (x) => `<span class="pt">${x}</span>`;
+  const Vof = (c) => `<i>V</i>(${c})`, St = `<i>S</i><sub><i>t</i></sub>`;
+  const label = (p) => (p ? tr(`Pass ${p}`, `Pasada ${p}`) : tr("Before the first pass", "Antes de la primera pasada"));
+  const greens = (R, p) => CELLS.filter((s) => R.V[p][s] !== R.V[p - 1][s]).map((c) => ({ c, kind: "upd" }));
+  // The table after pass p, with the agent in A1; a frame of a skip outlines what its pass changed.
+  const at = (R, p, rest) => ({ V: R.V[p], agent: START, label: label(p), ...rest });
+  const frameOf = (R) => (p) => at(R, p, { marks: greens(R, p) });
+  const skipTo = (p, q) => ({ from: p, to: q, moves: q - p, text: tr(`${q - p} passes later`, `${q - p} pasadas después`),
+    note: tr(`${q - p} passes go by, and the estimates keep rising.`, `Se hacen ${q - p} pasadas más, y las estimaciones siguen subiendo.`) });
+
+  /* Batch TD(0) */
+
+  const tdSlides = [];
+  const toCookie = (s) => from(s).filter((m) => m.done).length, nC2 = from(C2).length;
+  tdSlides.push({ title: tr("Batch TD(0)", "TD(0) por lotes"), builds: [at(td, 0, { line: tr("All estimates start at 0.", "Todas las estimaciones parten en 0.") })] });
+  {
+    // Pass 1: with the table at 0, only the moves into the cookie have a TD error that is not 0, and it is 1.
+    const k = toCookie(C2), k3 = toCookie(B3);
+    tdSlides.push({ title: tr("The first pass", "La primera pasada"), builds: [
+      at(td, 0, { label: label(1), line: tr(
+        `With the table held at 0, each TD error is just the move's reward: 0, except for the ${k + k3} moves into the cookie, ${k3} from B3 and ${k} from C2. The TD errors of the ${nC2} moves from C2 add up to ${k}.`,
+        `Con la tabla fija en 0, cada TD error es solo la recompensa del movimiento: 0, salvo en los ${k + k3} movimientos que llegan a la galleta, ${k3} desde B3 y ${k} desde C2. Los TD errors de los ${nC2} movimientos desde C2 suman ${k}.`),
+        eq: `Σ δ<sub><i>t</i></sub> ${nw(`= ${k} · (${pt("1 + 0.9 · 0")} − 0)`)} ${nw(`= ${pt(num(td.sum[1][C2]))}`)}` }),
+      at(td, 1, { marks: greens(td, 1), line: tr(
+        "Each estimate changes once, by α times the sum of its TD errors: those of B3 and C2 rise, and every other one stays at 0.",
+        "Cada estimación cambia una sola vez, α veces la suma de sus TD errors: suben las de B3 y C2, y las demás siguen en 0."),
+        eq: `<span class="upd">${Vof("C2")}</span> ${nw(`← 0 + ${ALPHA} · ${pt(num(td.sum[1][C2]))}`)} ${nw(`= ${n3(td.V[1][C2])}`)}` }),
+    ] });
+  }
+  {
+    // Pass 2: the targets of the moves into B3 and C2 borrow their estimates, and the cells one move from them rise.
+    const n = from(B2).filter((m) => m.s2 === B3 || m.s2 === C2).length, red = [{ c: B3, kind: "tg" }, { c: C2, kind: "tg" }];
+    tdSlides.push({ title: tr("One move further back", "Un movimiento más atrás"), builds: [
+      at(td, 1, { label: label(2), marks: red, line: tr(
+        `The batch is replayed with the new table. The targets of the moves into B3 and C2 now borrow their estimates, outlined in red: ${n} of the ${from(B2).length} moves from B2 go there, and the others still have a TD error of 0.`,
+        `El lote se repasa con la tabla nueva. Los objetivos de los movimientos hacia B3 y C2 ahora toman prestadas sus estimaciones, con borde rojo: ${n} de los ${from(B2).length} movimientos desde B2 van ahí, y los demás siguen con un TD error de 0.`),
+        eq: `Σ δ<sub><i>t</i></sub> ${nw(`= ${n} · (${pt(`0 + 0.9 · ${n3(td.V[1][C2])}`)} − 0)`)} ${nw(`= ${pt(num(td.sum[2][B2]))}`)}` }),
+      at(td, 2, { marks: [...red, ...greens(td, 2)], line: tr(
+        "B2 rises above 0, and so do A3 and C1, the other cells one move from B3 or C2: the cookie's reward has moved back one more move, and each pass carries it one move further. B3 and C2 rise again.",
+        "B2 sube de 0, y también A3 y C1, las otras celdas a un movimiento de B3 o C2: la recompensa de la galleta retrocedió un movimiento más, y cada pasada la lleva un movimiento más allá. B3 y C2 vuelven a subir."),
+        eq: `<span class="upd">${Vof("B2")}</span> ${nw(`← 0 + ${ALPHA} · ${pt(num(td.sum[2][B2]))}`)} ${nw(eqv(td.V[2][B2]))}` }),
+    ] });
+  }
+  {
+    // Settled: from tdEnd on, no pass changes an estimate at two decimals. Each estimate is then the average target of
+    // its cell's moves; C2's is written out with the values shown, by where its moves led, in the order of the moves.
+    const V = td.V[tdEnd], r2 = (v) => Math.round(v * 100) / 100;
+    const dest = [0, 1, 2, 3].map((a) => ({ a, n: from(C2).filter((m) => m.a === a).length, o: stepEnv(C2, a) })).filter((x) => x.n);
+    const ends = dest.filter((x) => !x.o.done);
+    const where = dest.map((x) => (x.o.done ? tr(`${x.n} into the cookie`, `${x.n} a la galleta`) : x.o.s2 === C2 ? tr(`${x.n} into the wall`, `${x.n} contra la pared`)
+      : tr(`${x.n} to ${cellName(x.o.s2)}`, `${x.n} a ${cellName(x.o.s2)}`)));
+    const avg = dest.reduce((acc, x) => acc + x.n * (x.o.done ? 1 : GAMMA * r2(V[x.o.s2])), 0) / nC2;
+    if (shown(avg) !== shown(V[C2])) console.warn("Batch figure: C2's average target, from the values shown, does not round to its estimate");
+    // The average written out, in pieces that break before a plus sign: the moves into the cookie, then the others.
+    const terms = ends.map((x) => `${x.n} · ${num(V[x.o.s2])}`);
+    const sum = `${nw(`= (${pt(`${dest.find((x) => x.o.done).n} · 1`)}`)} ${nw(pt(`+ 0.9 · (${terms[0]}`))} ${terms.slice(1, -1).map((x) => nw(pt(`+ ${x}`))).join(" ")} ${nw(`${pt(`+ ${terms.at(-1)})`)})/${nC2}`)}`;
+    tdSlides.push({ title: tr(`After ${tdEnd} passes`, `Después de ${tdEnd} pasadas`), skip: skipTo(2, tdEnd), builds: [at(td, tdEnd, { marks: ends.map((x) => ({ c: x.o.s2, kind: "tg" })), fit: true, line: tr(
+      `From this pass on, replaying the batch changes no estimate at two decimals. Each one has settled where the TD errors of its cell's moves add up to about 0, which makes it the average target of those moves: from C2, ${listAnd(where)}.`,
+      `Desde esta pasada, repasar el lote ya no cambia ninguna estimación en dos decimales. Cada una se asentó donde los TD errors de los movimientos de su celda suman cerca de 0, así que es el promedio de los objetivos de esos movimientos: desde C2, ${listAnd(where)}.`),
+      eq: `${Vof("C2")} ${sum} ${nw(eqv(avg))}` })] });
+  }
+  {
+    const V = td.V[tdEnd], route = valuePath(V, GAMMA), w = worst(V), k = toCookie(C2);
+    if (w !== C2) console.warn("Batch figure: batch TD(0) should miss the true values most in C2");
+    tdSlides.push({ title: tr("What batch TD(0) converges to", "A qué converge TD(0) por lotes"), builds: [at(td, tdEnd, { route, line: tr(
+      `These are the values of the model the moves suggest, the certainty-equivalence estimate, and followed from A1 they lead to the cookie in ${route.length - 1} moves. They miss the random policy's true values by up to ${miss(V)}, in C2: ${num(V[C2])} against ${num(vpi[C2])}, because C2's own moves were lucky: ${k} of its ${nC2} moves reached the cookie, where a random move does so one time in four. Online, with ${nw("α = 0.5")}, the first figure ended at ${num(online[C2])} there.`,
+      `Son los valores del modelo que sugieren los movimientos, la estimación de equivalencia de certeza, y seguidas desde A1 llevan a la galleta en ${route.length - 1} movimientos. Se alejan de los valores verdaderos de la política al azar hasta en ${miss(V)}, en C2: ${num(V[C2])} contra ${num(vpi[C2])}, porque los movimientos desde C2 tuvieron suerte: ${k} de sus ${nC2} movimientos llegaron a la galleta, cuando un movimiento al azar lo hace una vez de cada cuatro. En línea, con ${nw("α = 0.5")}, la primera figura terminó en ${num(online[C2])} ahí.`) })] });
+  }
+
+  /* Batch Monte Carlo */
+
+  const mcSlides = [];
+  mcSlides.push({ title: tr("Batch Monte Carlo", "Monte Carlo por lotes"), builds: [at(mc, 0, { line: tr(
+    "All estimates start at 0 again. The increment of each visit is now its return minus the estimate, and the returns are the same at every pass.",
+    "Todas las estimaciones vuelven a partir en 0. El incremento de cada visita es ahora su retorno menos la estimación, y los retornos son los mismos en cada pasada.") })] });
+  {
+    const n = from(START).length;
+    if (CELLS.some((s) => from(s).length > n)) console.warn("Batch figure: A1 should be the cell visited most");
+    mcSlides.push({ title: tr("The first pass", "La primera pasada"), builds: [
+      at(mc, 0, { label: label(1), line: tr(
+        `With the table at 0, each increment is just a return. A1, the cell visited most, has ${n} returns, which add up to ${num(sumG(START))}.`,
+        `Con la tabla en 0, cada incremento es solo un retorno. A1, la celda más visitada, tiene ${n} retornos, que suman ${num(sumG(START))}.`),
+        eq: `Σ (${pt(`<i>G</i><sub><i>t</i></sub>`)} − <i>V</i>(${St})) ${nw(`= ${pt(num(sumG(START)))} − ${n} · 0`)} ${nw(`= ${pt(num(mc.sum[1][START]))}`)}` }),
+      at(mc, 1, { marks: greens(mc, 1), line: tr(
+        "Every estimate changes at once, none waiting for another: a return does not depend on any estimate.",
+        "Todas las estimaciones cambian a la vez, sin esperar a ninguna otra: un retorno no depende de ninguna estimación."),
+        eq: `<span class="upd">${Vof("A1")}</span> ${nw(`← 0 + ${ALPHA} · ${pt(num(mc.sum[1][START]))}`)} ${nw(eqv(mc.V[1][START]))}` }),
+    ] });
+  }
+  {
+    const g = sumG(C2);
+    mcSlides.push({ title: tr(`After ${mcEnd} passes`, `Después de ${mcEnd} pasadas`), skip: skipTo(1, mcEnd), builds: [at(mc, mcEnd, { line: tr(
+      `From this pass on, nothing changes at two decimals: each estimate has settled on the average return of all the visits to its cell, ${nC2} for C2. The Monte Carlo note's figure averaged only the first visit in each episode.`,
+      `Desde esta pasada, nada cambia en dos decimales: cada estimación se asentó en el retorno promedio de todas las visitas a su celda, ${nC2} en C2. La figura del apunte de Monte Carlo promediaba solo la primera visita de cada episodio.`),
+      eq: `${Vof("C2")} ${nw(`≈ ${pt(num(g))}/${nC2}`)} ${nw(eqv(g / nC2))}` })] });
+  }
+  {
+    // Compared where both runs end up, the last pass computed: at two decimals, the same as the tables shown.
+    const V = mc.V[PASSES], T = td.V[PASSES], route = valuePath(mc.V[mcEnd], GAMMA), w = worst(V);
+    const far = CELLS.reduce((x, s) => (Math.abs(T[s] - V[s]) > Math.abs(T[x] - V[x]) ? s : x));
+    if (!(Math.abs(V[w] - vpi[w]) < Math.abs(T[worst(T)] - vpi[worst(T)]))) console.warn("Batch figure: batch Monte Carlo should miss the true values by less than batch TD(0) on this batch");
+    // Over 10,000 other batches of 30 episodes (seeds 1 to 10,000), batch TD(0)'s largest miss was the smaller one in
+    // 7,908: computed offline, since it would be too heavy to compute here.
+    mcSlides.push({ title: tr("What batch Monte Carlo converges to", "A qué converge Monte Carlo por lotes"), builds: [at(mc, mcEnd, { route, line: tr(
+      `On the same batch, batch TD(0) ends farthest from these averages in ${cellName(far)}: ${num(T[far])} against ${num(V[far])}. Here the averages miss the true values by a little less than batch TD(0) does: up to ${miss(V)}, in ${cellName(w)}, against ${miss(T)}. But over 10,000 other batches of 30 episodes, batch TD(0)'s largest miss was the smaller one about 4 times in 5.`,
+      `En el mismo lote, TD(0) por lotes termina más lejos de estos promedios en ${cellName(far)}: ${num(T[far])} contra ${num(V[far])}. Aquí los promedios se alejan de los valores verdaderos un poco menos que TD(0) por lotes: hasta ${miss(V)}, en ${cellName(w)}, contra ${miss(T)}. Pero en otros 10 000 lotes de 30 episodios, la mayor distancia de TD(0) por lotes fue menor que la de los promedios cerca de 4 de cada 5 veces.`) })] });
+  }
+
+  // The claims of the slides, checked: pass 1 changes only B3 and C2, pass 2 also the cells one move from them, each
+  // cell leaves 0 at the pass of its distance from the cookie, and in both runs no estimate drops or overshoots.
+  const dist = (s) => Math.abs((s % 3) - 2) + Math.floor(s / 3);
+  if (changed(td, 1).join() !== [B3, C2].join() || changed(td, 2).join() !== [A3, B3, B2, C2, C1].join()) console.warn("Batch figure: passes 1 and 2 should change B3 and C2, then also A3, B2 and C1");
+  if (!CELLS.every((s) => td.V.findIndex((V) => V[s] > 0) === dist(s))) console.warn("Batch figure: a cell should leave 0 at the pass of its distance from the cookie");
+  for (const R of [td, mc]) if (!R.V.every((V, p) => !p || CELLS.every((s) => V[s] >= R.V[p - 1][s] - 1e-12 && V[s] <= R.V[PASSES][s] + 1e-9))) console.warn("Batch figure: an estimate drops or overshoots");
+
+  const fig = slideshow({ svg: document.getElementById("fig-batch"), slides: tdSlides, frame: frameOf(td), world: cookie, perCell: true });
+  modeButtons(document.getElementById("fig-batch-modes"), (mode) => (mode === "mc" ? fig.show(mcSlides, frameOf(mc)) : fig.show(tdSlides, frameOf(td))));
 }
 
 /* ---------- Section 5: Sarsa on the cliff, one line of the algorithm per press ---------- */

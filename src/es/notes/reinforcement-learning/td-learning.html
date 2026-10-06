@@ -140,6 +140,30 @@ scripts:
     </figure>
     <p>Monte Carlo por lotes encuentra las estimaciones con el menor error cuadrático sobre los datos vistos: −1 calza perfecto con el único retorno del pasillo. TD(0) por lotes encuentra las estimaciones que son exactamente correctas para el modelo de máxima verosimilitud del proceso, construido con los datos: la probabilidad de cada transición es la fracción de veces que se observó, y su recompensa es el promedio de las recompensas observadas. Es la estimación de equivalencia de certeza (certainty equivalence), la respuesta que se obtiene al tratar el modelo estimado como si fuera seguro. Si el proceso es de Markov, la respuesta de TD debería predecir mejor los retornos futuros: el único mal resultado después del pasillo fue culpa del cargador, y cinco visitas al estudio dicen más sobre el cargador que una.</p>
     <p>Esto ayuda a explicar por qué TD tiende a aprender más rápido. Calcular directamente la estimación de equivalencia de certeza rara vez es práctico: con <i>n</i> estados, el modelo solo puede necesitar memoria del orden de <i>n</i><sup>2</sup>, y resolverlo, unos <i>n</i><sup>3</sup> pasos. TD se acerca a la misma respuesta con memoria del orden de <i>n</i>, y TD en línea, que no repasa, igual avanza más o menos hacia ella.</p>
+    <h3>El algoritmo</h3>
+    <p>TD(0) por lotes, para un lote de episodios y un tamaño de paso α pequeño:</p>
+    <ol class="steps">
+      <li>Parte con cualquier <i>V</i>(<i>s</i>), salvo <span class="nowrap"><i>V</i>(terminal) = 0</span>.</li>
+      <li>Con <i>V</i> fija, recorre cada paso de cada episodio del lote y calcula su TD error, <span class="nowrap">δ<sub><i>t</i></sub> = <span class="pt"><i>R</i><sub><i>t</i>+1</sub> + γ<i>V</i>(<i>S</i><sub><i>t</i>+1</sub>)</span></span> <span class="nowrap">− <i>V</i>(<i>S</i><sub><i>t</i></sub>)</span>.</li>
+      <li>Cambia cada estimación una sola vez, α veces la suma de los TD errors de los pasos que parten en su estado: <span class="nowrap"><i>V</i>(<i>s</i>) ← <i>V</i>(<i>s</i>) + α Σ δ<sub><i>t</i></sub></span>, sobre los pasos con <span class="nowrap"><i>S</i><sub><i>t</i></sub> = <i>s</i></span>.</li>
+      <li>Vuelve al paso 2 hasta que <i>V</i> deje de cambiar.</li>
+    </ol>
+    <p>Monte Carlo por lotes es lo mismo con <span class="nowrap"><span class="pt"><i>G</i><sub><i>t</i></sub></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)</span> en lugar de δ<sub><i>t</i></sub>, en cada paso, como en Monte Carlo con α constante.</p>
+    <p>La figura ejecuta ambos sobre los 702 movimientos de los 30 episodios de la <a href="#td0">primera figura</a>, con todas las estimaciones en 0 y α = 0.005, pequeño porque cada estimación se mueve α veces una suma: 176 de los movimientos parten en A1. El agente no se mueve de A1, porque el lote solo se repasa. Cada vez que presionas Siguiente se ejecuta una línea de los pasos de arriba; las estimaciones que cambia una pasada tienen borde verde, y las que toman prestadas los objetivos, borde rojo, como en la primera figura. Los botones sobre la grilla cambian entre TD(0) por lotes y Monte Carlo por lotes.</p>
+  </div>
+
+  <div class="fig steps">
+    <div class="modes" id="fig-batch-modes" role="group" aria-label="Método">
+      <button type="button" data-mode="td" aria-pressed="true">TD(0) por lotes</button>
+      <button type="button" data-mode="mc" aria-pressed="false">Monte Carlo por lotes</button>
+    </div>
+    <svg id="fig-batch" role="group" aria-label="Una grilla de 3 celdas de ancho y 3 de alto, cada celda con una estimación, y la galleta arriba a la derecha. El agente está abajo a la izquierda y no se mueve: el lote de movimientos solo se repasa."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-batch-back">Atrás</button><button type="button" class="btn" id="fig-batch-next">Siguiente</button><span class="count" id="fig-batch-count"></span><button type="button" class="btn" id="fig-batch-reset" hidden>Reiniciar</button></div>
+    <div class="ro" id="fig-batch-out"></div>
+    <div class="fig-foot">
+      <p>Siguiente avanza, Atrás retrocede. Teclas: <span class="nowrap">→ y ←</span>.</p>
+    </div>
+    <p class="sr-only" id="fig-batch-live" aria-live="polite"></p>
   </div>
 </section>
 
@@ -204,6 +228,11 @@ scripts:
       <div class="k">Error de Monte Carlo como TD errors</div>
       <div class="f"><i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>) = <span class="nowrap">Σ<sub><i>k</i></sub> γ<sup><i>k</i>−<i>t</i></sup>δ<sub><i>k</i></sub></span>, con <i>V</i> fija</div>
       <div class="c"><code>k = np.arange(len(deltas))<br>err = gamma**k @ deltas</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Una pasada de TD(0) por lotes</div>
+      <div class="f"><span class="nowrap"><i>V</i>(<i>s</i>) ← <i>V</i>(<i>s</i>) + α Σ δ<sub><i>t</i></sub></span>, sobre los pasos del lote con <span class="nowrap"><i>S</i><sub><i>t</i></sub> = <i>s</i></span></div>
+      <div class="c"><code>delta = r + gamma * v[s_next]<br>delta -= v[s]<br>np.add.at(v, s, alpha * delta)</code></div>
     </div>
     <div class="sum-row">
       <div class="k">TD(0) por lotes converge a</div>

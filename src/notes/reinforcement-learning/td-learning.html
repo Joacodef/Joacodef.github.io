@@ -140,6 +140,30 @@ scripts:
     </figure>
     <p>Batch Monte Carlo finds the estimates with the smallest squared error on the data seen: −1 fits the hallway's only return perfectly. Batch TD(0) finds the estimates that are exactly right for the maximum-likelihood model of the process, built from the data: each transition's probability is the fraction of times it was observed, and its reward is the average reward observed. This is the certainty-equivalence estimate, the answer one would get by treating the estimated model as certain. If the process is Markov, the TD answer should predict future returns better: the one bad outcome after the hallway was the charger's doing, and five visits to the study say more about the charger than one.</p>
     <p>This helps explain why TD tends to learn faster. Computing the certainty-equivalence estimate directly is rarely practical: with <i>n</i> states, the model alone can need memory of order <i>n</i><sup>2</sup>, and solving it about <i>n</i><sup>3</sup> steps. TD approaches the same answer with memory of order <i>n</i>, and online TD, which does not replay, still moves roughly toward it.</p>
+    <h3>The algorithm</h3>
+    <p>Batch TD(0), for a batch of episodes and a small step size α:</p>
+    <ol class="steps">
+      <li>Start with any <i>V</i>(<i>s</i>), except <span class="nowrap"><i>V</i>(terminal) = 0</span>.</li>
+      <li>With <i>V</i> held fixed, go through every step of every episode in the batch and compute its TD error, <span class="nowrap">δ<sub><i>t</i></sub> = <span class="pt"><i>R</i><sub><i>t</i>+1</sub> + γ<i>V</i>(<i>S</i><sub><i>t</i>+1</sub>)</span></span> <span class="nowrap">− <i>V</i>(<i>S</i><sub><i>t</i></sub>)</span>.</li>
+      <li>Change each estimate once, by α times the sum of the TD errors of the steps that start in its state: <span class="nowrap"><i>V</i>(<i>s</i>) ← <i>V</i>(<i>s</i>) + α Σ δ<sub><i>t</i></sub></span>, over the steps with <span class="nowrap"><i>S</i><sub><i>t</i></sub> = <i>s</i></span>.</li>
+      <li>Go back to step 2 until <i>V</i> stops changing.</li>
+    </ol>
+    <p>Batch Monte Carlo is the same with <span class="nowrap"><span class="pt"><i>G</i><sub><i>t</i></sub></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)</span> in place of δ<sub><i>t</i></sub>, at every step, as in constant-α Monte Carlo.</p>
+    <p>The figure runs both on the 702 moves of the <a href="#td0">first figure</a>'s 30 episodes, with every estimate at 0 and α = 0.005, small because each estimate moves by α times a sum: 176 of the moves start in A1. The agent stays in A1, since the batch is only replayed. Each press is one line of the steps above; the estimates a pass changes are outlined in green, and those that targets borrow in red, as in the first figure. The buttons above the grid switch between batch TD(0) and batch Monte Carlo.</p>
+  </div>
+
+  <div class="fig steps">
+    <div class="modes" id="fig-batch-modes" role="group" aria-label="Method">
+      <button type="button" data-mode="td" aria-pressed="true">Batch TD(0)</button>
+      <button type="button" data-mode="mc" aria-pressed="false">Batch Monte Carlo</button>
+    </div>
+    <svg id="fig-batch" role="group" aria-label="A grid 3 cells wide and 3 tall, each cell holding one estimate, with the cookie at the top right. The agent stands at the bottom left and does not move: the batch of moves is only replayed."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-batch-back">Back</button><button type="button" class="btn" id="fig-batch-next">Next</button><span class="count" id="fig-batch-count"></span><button type="button" class="btn" id="fig-batch-reset" hidden>Reset</button></div>
+    <div class="ro" id="fig-batch-out"></div>
+    <div class="fig-foot">
+      <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
+    </div>
+    <p class="sr-only" id="fig-batch-live" aria-live="polite"></p>
   </div>
 </section>
 
@@ -204,6 +228,11 @@ scripts:
       <div class="k">Monte Carlo error as TD errors</div>
       <div class="f"><i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>) = <span class="nowrap">Σ<sub><i>k</i></sub> γ<sup><i>k</i>−<i>t</i></sup>δ<sub><i>k</i></sub></span>, with <i>V</i> fixed</div>
       <div class="c"><code>k = np.arange(len(deltas))<br>err = gamma**k @ deltas</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">One pass of batch TD(0)</div>
+      <div class="f"><span class="nowrap"><i>V</i>(<i>s</i>) ← <i>V</i>(<i>s</i>) + α Σ δ<sub><i>t</i></sub></span>, over the batch's steps with <span class="nowrap"><i>S</i><sub><i>t</i></sub> = <i>s</i></span></div>
+      <div class="c"><code>delta = r + gamma * v[s_next]<br>delta -= v[s]<br>np.add.at(v, s, alpha * delta)</code></div>
     </div>
     <div class="sum-row">
       <div class="k">Batch TD(0) converges to</div>
