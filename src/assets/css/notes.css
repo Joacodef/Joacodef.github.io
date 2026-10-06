@@ -10,14 +10,14 @@
   .note .prose:not(.note-head) > p, .note .prose > ol > li, .note .prose > ul:not(.asks) > li { text-align: justify; hyphens: auto; -webkit-hyphens: auto; hyphenate-limit-chars: 6 3 2; }
 }
 .note-head { padding: clamp(1.5rem, 5vw, 3rem) 0 1rem; }
-.crumbs { color: var(--ink-3); font-size: 0.92rem; margin: 0 0 0.8rem; }
+.crumbs { font-family: var(--sans); font-weight: 400; font-variation-settings: normal; color: var(--ink-3); font-size: 0.92rem; margin: 0 0 0.8rem; }
 .crumbs a { color: var(--ink-2); }
 /* The breadcrumbs and the link to the other language share one row, which wraps on narrow screens. */
 .note-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem 1rem; margin: 0 0 0.8rem; }
 .note-top .crumbs { margin: 0; }
 /* Long words, such as "Transformaciones", must fit a 320px screen: the size floor is set by them, and they may break as a last resort. */
 .note-head h1 { font-size: clamp(2.05rem, 6vw, 3.5rem); line-height: 1.05; overflow-wrap: break-word; hyphens: auto; }
-.note-lede { font-family: var(--serif); font-size: 1.25rem; line-height: 1.5; color: var(--ink-2); margin: 0.9rem 0 0; }
+.note-lede { font-family: var(--serif); font-weight: 400; font-variation-settings: normal; font-size: 1.25rem; line-height: 1.5; color: var(--ink-2); margin: 0.9rem 0 0; }
 .legend { color: var(--ink-2); font-size: 0.95rem; margin: 1.2rem 0 0; }
 .dot { display: inline-block; width: 0.62em; height: 0.62em; border-radius: 50%; background: var(--red); margin: 0 0.35em 0 0.1em; vertical-align: 0.02em; }
 .bar { display: inline-block; width: 1.3em; height: 2.5px; background: var(--blue); margin: 0 0.35em 0 0.1em; vertical-align: 0.3em; }
@@ -44,7 +44,8 @@
 .note section { border-top: 1px solid var(--rule); padding: 3rem 0 1.2rem; margin-top: 2rem; }
 .note section h2 { font-size: clamp(1.5rem, 3.6vw, 1.95rem); display: flex; gap: 0.55em; align-items: baseline; margin: 0 0 0.8em; }
 .note section h2 .n { color: var(--ink-3); font-weight: 400; }
-.note section h3 { font-family: var(--sans); font-size: 1.05rem; font-weight: 600; margin: 2em 0 0.4em; }
+/* Subheadings are the running text in bold, at its optical size. */
+.note section h3 { font-family: var(--serif); font-size: 1.05rem; font-weight: 600; font-variation-settings: var(--text-optical); margin: 2em 0 0.4em; }
 
 /* Math */
 .m, .note .prose i { font-family: var(--serif); }
@@ -103,6 +104,9 @@ sup.t { font-style: normal; font-size: 0.62em; margin-left: 0.06em; line-height:
 .fig svg { width: 100%; height: auto; display: block; background: var(--card); border-radius: 12px; user-select: none; -webkit-user-select: none; overflow-anchor: none; }
 .ro { font-size: 1rem; line-height: 1.6; min-width: 0; }
 .ro .eq { font-family: var(--serif); font-size: 1.18rem; line-height: 2.3; margin: 0.1rem 0 0.9rem; overflow-x: auto; }
+/* On the narrowest phones, display formulas and readout equations take the optical size of their own size, narrower
+   than the text's, so that they fit as they did before the text took optical size 8. */
+@media (max-width: 340px) { .disp, .ro .eq { font-variation-settings: normal; } }
 .ro p { margin: 0.45rem 0; }
 .ro .lbl { display: block; color: var(--ink-3); font-size: 0.86rem; line-height: 1.4; margin-top: 1rem; }
 .ro .lbl:first-child { margin-top: 0; }
@@ -112,13 +116,13 @@ sup.t { font-style: normal; font-size: 0.62em; margin-left: 0.06em; line-height:
 .muted { color: var(--ink-2); font-size: 0.95rem; }
 .fig-foot { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 0.8rem 1.2rem; flex-wrap: wrap; align-items: center; color: var(--ink-2); font-size: 0.92rem; line-height: 1.45; }
 .fig-foot p { margin: 0; max-width: 36em; }
-.btn { font: inherit; font-size: 0.9rem; color: var(--ink); background: transparent; border: 1px solid var(--ink-3); border-radius: 999px; padding: 0.35em 1.05em; cursor: pointer; }
+.btn { font: inherit; font-family: var(--sans); font-weight: 400; font-variation-settings: normal; font-size: 0.9rem; color: var(--ink); background: transparent; border: 1px solid var(--ink-3); border-radius: 999px; padding: 0.35em 1.05em; cursor: pointer; }
 .btn:hover { background: var(--card); }
 .fig-foot i { font-family: var(--serif); }
 
 /* Buttons that pick one mode of a figure; the pressed one is outlined in ink. */
 .modes { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0 0 1.1rem; }
-.modes button { font: inherit; font-size: 0.9rem; color: var(--ink-2); background: transparent; border: 1px solid var(--rule); border-radius: 999px; padding: 0.3em 0.95em; cursor: pointer; }
+.modes button { font: inherit; font-family: var(--sans); font-weight: 400; font-variation-settings: normal; font-size: 0.9rem; color: var(--ink-2); background: transparent; border: 1px solid var(--rule); border-radius: 999px; padding: 0.3em 0.95em; cursor: pointer; }
 .modes button:hover { background: var(--card); }
 .modes button[aria-pressed="true"] { color: var(--ink); background: var(--card); border-color: var(--ink); }
 
@@ -365,14 +369,14 @@ ol.steps b { font-weight: 600; }
 .gw-cog { margin-left: auto; width: 34px; height: 34px; padding: 0; display: grid; place-items: center; border: 1px solid var(--rule); border-radius: 999px; background: transparent; color: var(--ink-2); cursor: pointer; }
 .gw-cog:hover, .gw-cog[aria-expanded="true"] { color: var(--ink); border-color: var(--ink-3); background: var(--card); }
 .fig .gw-cog svg { width: 18px; height: 18px; background: none; border-radius: 0; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; }
-.gw-menu { position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 3; display: grid; gap: 8px; padding: 10px 12px; background: var(--card); border: 1px solid var(--ink-3); border-radius: 12px; font-size: 0.85rem; color: var(--ink-2); }
+.gw-menu { position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 3; display: grid; gap: 8px; font-family: var(--sans); font-weight: 400; font-variation-settings: normal; padding: 10px 12px; background: var(--card); border: 1px solid var(--ink-3); border-radius: 12px; font-size: 0.85rem; color: var(--ink-2); }
 .gw-menu[hidden] { display: none; }
 .gw-menu .row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .gw-menu .row > span { min-width: 7em; }
 .gw-menu button { font: inherit; color: var(--ink-2); background: transparent; border: 1px solid var(--rule); border-radius: 999px; padding: 0.2em 0.75em; cursor: pointer; }
 .gw-menu button:hover { background: var(--paper-2); }
 .gw-menu button[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); background: var(--paper-2); }
-.ctl .count { color: var(--ink-3); font-size: 0.88rem; font-variant-numeric: tabular-nums; margin: 0 0.2rem; }
+.ctl .count { font-family: var(--sans); font-weight: 400; font-variation-settings: normal; color: var(--ink-3); font-size: 0.88rem; font-variant-numeric: tabular-nums; margin: 0 0.2rem; }
 .fig.steps .btn { white-space: nowrap; }
 .fig.steps .btn[hidden] { display: none; }
 .btn:disabled { opacity: 0.4; cursor: default; }
@@ -380,9 +384,9 @@ ol.steps b { font-weight: 600; }
 /* Back and Next while a skip plays: frozen, but still focusable. */
 .btn[aria-disabled="true"] { opacity: 0.4; cursor: default; }
 .btn[aria-disabled="true"]:hover { background: transparent; }
-.ro .slide { font-family: var(--serif); font-size: 1.55rem; font-weight: 500; line-height: 1.25; color: var(--ink); margin: 0.15rem 0 0.5rem; }
+.ro .slide { font-family: var(--serif); font-size: 1.55rem; font-weight: 500; font-variation-settings: normal; line-height: 1.25; color: var(--ink); margin: 0.15rem 0 0.5rem; }
 .ro .slide.ff { color: var(--ink-3); }
-.ro .later { font-family: var(--serif); font-style: italic; color: var(--ink-2); margin: 0.1rem 0 0; }
+.ro .later { font-family: var(--serif); font-style: italic; font-variation-settings: normal; color: var(--ink-2); margin: 0.1rem 0 0; }
 .ro .lines p { margin: 0.4rem 0; }
 .ro .lines .eq { margin: 0 0 0.6rem; }
 .ro .lines .old { opacity: 0.55; }
@@ -399,7 +403,8 @@ ol.steps b { font-weight: 600; }
 .tbl table { border-collapse: collapse; font-variant-numeric: lining-nums tabular-nums; }
 .tbl th, .tbl td { padding: 0.4rem 0.9rem; border-bottom: 1px solid var(--rule); text-align: right; }
 @media (max-width: 560px) { .tbl th, .tbl td { padding: 0.4rem 0.5rem; } }
-.tbl th { color: var(--ink-2); font-weight: 600; font-size: 0.92rem; }
+/* Headers are labels, in Public Sans like the figures' labels. */
+.tbl th { font-family: var(--sans); font-variation-settings: normal; color: var(--ink-2); font-weight: 600; font-size: 0.92rem; }
 .tbl th:first-child, .tbl td:first-child { text-align: left; padding-left: 0; }
 .tbl tbody th { font-weight: 400; color: var(--ink); }
 .tbl.left td { text-align: left; }
@@ -424,7 +429,7 @@ ol.steps b { font-weight: 600; }
 .note-seq a { flex: 1 1 15rem; background: var(--card); border: 1px solid var(--rule); border-radius: var(--radius); padding: 0.85rem 1.1rem; color: var(--ink); text-decoration: none; font-family: var(--serif); font-size: 1.12rem; line-height: 1.35; }
 .note-seq a:hover { border-color: var(--blue); }
 .note-seq .next { text-align: right; }
-.note-seq .dir { font-family: var(--sans); font-size: 0.9rem; color: var(--ink-3); }
+.note-seq .dir { font-family: var(--sans); font-weight: 400; font-variation-settings: normal; font-size: 0.9rem; color: var(--ink-3); }
 .note-seq + .note-foot { margin-top: 1.6rem; }
 .note-foot { max-width: var(--prose); margin: 3rem auto 0; padding-top: 1.4rem; border-top: 1px solid var(--rule); color: var(--ink-3); font-size: 0.92rem; }
 .note-foot p { margin: 0 0 0.5rem; }

@@ -64,7 +64,7 @@ scripts:
         </tbody>
       </table>
     </div>
-    <p>Dos viajes cortos son una mala muestra: los valores reales son mucho más bajos, porque muchos viajes van y vuelven un buen rato. Salen de las relaciones entre piezas vecinas: el valor del estudio es el promedio de sus dos movimientos, <span class="nowrap"><i>v</i>(estudio) = ½(−1) + ½(−1 + <i>v</i>(pasillo))</span>, y lo mismo para las otras piezas, lo que da −9, −8 y −5. Promediar más viajes llega ahí: después de 10&nbsp;000 viajes, ambos métodos están a menos de 0.1 de estos valores.</p>
+    <p>Dos viajes cortos son una mala muestra: los valores reales son mucho más bajos, porque muchos viajes van y vuelven un buen rato. Salen de las relaciones entre piezas vecinas: el valor del estudio es el promedio de sus dos movimientos, <span class="nowrap"><i>v</i>(estudio)</span> <span class="nowrap">= ½(−1) + ½(−1 + <i>v</i>(pasillo))</span>, y lo mismo para las otras piezas, lo que da −9, −8 y −5. Promediar más viajes llega ahí: después de 10&nbsp;000 viajes, ambos métodos están a menos de 0.1 de estos valores.</p>
     <p>Ambos métodos convergen a <i>v</i><sub>π</sub>(<i>s</i>) a medida que crece el número de visitas. Para Monte Carlo first-visit es la ley de los grandes números: cada retorno es una muestra independiente cuya esperanza es <i>v</i><sub>π</sub>(<i>s</i>), así que el promedio es insesgado, y su error se achica como 1/√<i>n</i> después de <i>n</i> retornos. Monte Carlo every-visit también converge, aunque sus muestras de un mismo episodio no son independientes.</p>
 
     <h3>El algoritmo</h3>

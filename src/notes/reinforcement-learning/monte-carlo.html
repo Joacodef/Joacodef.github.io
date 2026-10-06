@@ -64,7 +64,7 @@ scripts:
         </tbody>
       </table>
     </div>
-    <p>Two short trips are a poor sample: the true values are much lower, since many trips go back and forth for a while. They follow from the relations between neighboring rooms: the study's value is the average of its two moves, <span class="nowrap"><i>v</i>(study) = ½(−1) + ½(−1 + <i>v</i>(hallway))</span>, and likewise for the other rooms, which gives −9, −8 and −5. Averaging more trips gets there: after 10,000 trips, both methods are within 0.1 of these values.</p>
+    <p>Two short trips are a poor sample: the true values are much lower, since many trips go back and forth for a while. They follow from the relations between neighboring rooms: the study's value is the average of its two moves, <span class="nowrap"><i>v</i>(study)</span> <span class="nowrap">= ½(−1) + ½(−1 + <i>v</i>(hallway))</span>, and likewise for the other rooms, which gives −9, −8 and −5. Averaging more trips gets there: after 10,000 trips, both methods are within 0.1 of these values.</p>
     <p>Both methods converge to <i>v</i><sub>π</sub>(<i>s</i>) as the number of visits grows. For first-visit Monte Carlo this is the law of large numbers: each return is an independent sample whose expectation is <i>v</i><sub>π</sub>(<i>s</i>), so the average is unbiased, and its error shrinks like 1/√<i>n</i> after <i>n</i> returns. Every-visit Monte Carlo converges too, though its samples from the same episode are not independent.</p>
 
     <h3>The algorithm</h3>
