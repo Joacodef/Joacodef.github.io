@@ -67,7 +67,19 @@ scripts:
     <p>With a distribution model, the agent can solve the Bellman optimality equation of the <a href="/notes/reinforcement-learning/q-learning/#values">Q-learning note</a>, which an agent without a model cannot. Written for the values of states, the equation becomes an update:</p>
     <div class="disp"><i>V</i>(<i>s</i>) <span class="nowrap">← max<sub><i>a</i></sub> Σ<sub><i>s</i>′, <i>r</i></sub> <i>p</i>(<i>s</i>′, <i>r</i> | <i>s</i>, <i>a</i>)</span><span class="nowrap">[<span class="pt"><i>r</i> + γ<i>V</i>(<i>s</i>′)</span>]</span></div>
     <p>Value iteration applies it to every state, sweep after sweep, until no value changes. Each sweep gives every state the most its best action can be expected to bring, judged by the current values of what follows, so news of a reward travels back one step per sweep. The values converge to <span class="nowrap"><i>v</i><sub>*</sub>(<i>s</i>) = max<sub><i>a</i></sub> <i>q</i><sub>*</sub>(<i>s</i>, <i>a</i>)</span>, the optimal values of the model, and acting greedily with respect to them is the best behavior in the model. Value iteration is a dynamic programming method.</p>
-    <p>On the robot's model, leaving the untried door aside, each room has one move, so each maximum has a single term. The study is worth <span class="nowrap">0.6 · 1 + 0.4 · 0 = 0.6</span>, and the hallway <span class="nowrap">−1 + 0.6 = −0.4</span>. These are the values batch TD(0) converged to in the TD note, the certainty-equivalence estimate, computed here straight from the model.</p>
+    <p>On the robot's model, leaving the untried door aside, each room has one move, so each maximum has a single term. Here is value iteration on it, starting from 0, each sweep using the values of the sweep before:</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th scope="col">Sweep</th><th scope="col"><i>V</i>(study)</th><th scope="col"><i>V</i>(hallway)</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>0</td><td>0</td></tr>
+          <tr><td>1</td><td>0.6</td><td>−1</td></tr>
+          <tr><td>2</td><td>0.6</td><td>−0.4</td></tr>
+          <tr><td>3</td><td>0.6</td><td>−0.4</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The study is worth <span class="nowrap">0.6 · 1 + 0.4 · 0 = 0.6</span> from the first sweep, and the news reaches the hallway one sweep later, <span class="nowrap">−1 + 0.6 = −0.4</span>; the third sweep changes nothing. These are the values batch TD(0) converged to in the TD note, the certainty-equivalence estimate, computed here straight from the model.</p>
 
     <h3>Q-planning</h3>
     <p>With a sample model, the agent can plan by learning from imagined steps. Random-sample one-step tabular Q-planning repeats three steps:</p>
@@ -76,8 +88,20 @@ scripts:
       <li>Ask the sample model for a reward <i>R</i> and a next state <i>S</i>′.</li>
       <li>Apply the Q-learning update to them: <span class="nowrap"><i>Q</i>(<i>S</i>, <i>A</i>) ← <i>Q</i>(<i>S</i>, <i>A</i>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i></span></span> <span class="nowrap pt">+ γ max<sub><i>a</i></sub> <i>Q</i>(<i>S</i>′, <i>a</i>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i>, <i>A</i>)]</span>.</li>
     </ol>
-    <p>It converges to the optimal policy for the model under the same conditions as Q-learning does for the environment: every pair keeps being picked, and the step size shrinks appropriately. Asked five times about charging in the study, the sample model might answer +1, 0, +1, +1 and 0. With α = 1/<i>n</i> at the <i>n</i>-th answer, Q-planning's estimate is the running average of the answers: 1, 0.5, 0.67, 0.75 and finally 0.6, the value the distribution model gives at once.</p>
-    <p>The figure runs Q-planning on the <a href="/notes/reinforcement-learning/monte-carlo/#prediction">cookie grid of the Monte Carlo note</a>, with a model that knows every move, as if the agent had been told the rules of the grid. A move on the grid always does the same thing, so the model's answer never varies and there is nothing to average: the figure takes α = 1, so that each step sets the value it updates to its target. All 32 values start at 0, and all of them show, since the model holds every move. The agent stands in A1 and never moves. Each press is one line of the steps above, with the marks of the <a href="/notes/reinforcement-learning/q-learning/#update">Q-learning figure</a>: the state and move picked, in yellow, with a faint copy of the agent in that state; the model's answer, which takes the copy where the move leads; and the update, in green, toward a target built from the best values there, in red. After the first step, each press is a whole planning step, which the copy plays in one go.</p>
+    <p>It converges to the optimal policy for the model under the same conditions as Q-learning does for the environment: every pair keeps being picked, and the step size shrinks appropriately. Asked five times about charging in the study, the sample model might answer +1, 0, +1, +1 and 0. With α = 1/<i>n</i> at the <i>n</i>-th answer, Q-planning's estimate is the running average of the answers, and it ends at 0.6, the value the distribution model gives at once:</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th scope="col"><i>n</i></th><th scope="col"><i>R</i></th><th scope="col"><i>Q</i>(study, charge)</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>+1</td><td>1</td></tr>
+          <tr><td>2</td><td>0</td><td>0.5</td></tr>
+          <tr><td>3</td><td>+1</td><td>0.67</td></tr>
+          <tr><td>4</td><td>+1</td><td>0.75</td></tr>
+          <tr><td>5</td><td>0</td><td>0.6</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The figure runs Q-planning on the <a href="/notes/reinforcement-learning/monte-carlo/#prediction">cookie grid of the Monte Carlo note</a>, with a model that knows every move, as if the agent had been told the rules of the grid. A move there always does the same thing, so there is nothing to average: the figure takes α = 1, and each step sets the value it updates to its target. All 32 values start at 0 and show, since the model holds every move. The agent stays in A1, and a faint copy of it plays each imagined step: it appears in the state picked, with the move in yellow, and goes where the model says the move leads. The update is outlined in green, toward its target in red, as in the <a href="/notes/reinforcement-learning/q-learning/#update">Q-learning figure</a>. After the first step, each press is a whole planning step.</p>
   </div>
 
   <div class="fig steps">
@@ -101,10 +125,34 @@ scripts:
     <p>R-Max learns its model by counting. It keeps <i>N</i>(<i>s</i>, <i>a</i>), the number of times it has taken action <i>a</i> in state <i>s</i>, and <i>N</i>(<i>s</i>, <i>a</i>, <i>s</i>′, <i>r</i>), the number of those times that led to <i>s</i>′ with reward <i>r</i>, and it estimates the dynamics by the fraction of times each outcome happened:</p>
     <div class="disp hero-f"><i>P</i>(<i>s</i>′, <i>r</i> | <i>s</i>, <i>a</i>) <span class="nowrap">= <span class="frac"><span><i>N</i>(<i>s</i>, <i>a</i>, <i>s</i>′, <i>r</i>)</span><span><i>N</i>(<i>s</i>, <i>a</i>)</span></span></span></div>
     <p>The robot's model was made this way: the study's charger was free in 3 visits of 5, so <span class="nowrap"><i>P</i>(end, +1 | study, charge) = 3/5</span>. It is the maximum-likelihood model of the TD note. R-Max plans on it with value iteration, at every step, and acts greedily on the values it gets. It uses its experience only to improve the model; its values come from planning.</p>
-    <p>Counting leaves a question: what to do with a pair tried only a few times, or never? The robot has <span class="nowrap"><i>N</i>(hallway, garage) = 0</span>, so no fraction exists, and a planner that left the door out would never go and look. It could never learn what is behind it.</p>
-    <p>R-Max is optimistic in the face of the unknown. A pair is known once <span class="nowrap"><i>N</i>(<i>s</i>, <i>a</i>) ≥ <i>k</i></span>, for a number of visits <i>k</i> the user chooses, and an unknown pair is assumed to give <i>R</i><sub>max</sub>, a reward at least as large as any the world can give, and to end the episode. In the home, <span class="nowrap"><i>R</i><sub>max</sub> = 1</span>, a free charger. Value iteration on this optimistic model values the garage door at 1, against <span class="nowrap">−1 + 0.6 = −0.4</span> through the study, so the robot goes to look. Suppose it finds a second charger there, free every time. Once the door and the charger are known, the garage is worth <span class="nowrap">−1 + 1 = 0</span>, more than the study, and the robot charges there from then on. A planner that left the door out would have kept going to the study.</p>
-    <p>Optimism makes exploring a matter of planning. The values send the agent to the unknown by the shortest way, and only when it might pay: had the untried door been at the end of a corridor two moves long, it would be worth <span class="nowrap">−1 − 1 + 1 = −1</span> from the hallway, less than the study's −0.4, and R-Max would not go and look. Unknown pairs too far away, or behind too many costly moves, are left alone. Eventually every pair worth knowing is known, and R-Max follows the best policy of its model.</p>
-    <p>The number <i>k</i> sets how much each estimate rests on. Where an action always has the same result, as on the grid of the figure below, one visit tells everything, and <i>k</i> = 1 is enough. Where results vary, a few visits can mislead. A charger free 3 times in 5 is taken on a single visit 2 times in 5, and with <i>k</i> = 1 the model then says it is never free; the pair is known, so nothing sends the robot back to check, and it may settle for a worse charger. With <i>k</i> = 5, all five visits must find it taken, which happens about one time in a hundred: <span class="nowrap">(2/5)<sup>5</sup> ≈ 0.01</span>. R-Max, introduced by Brafman and Tennenholtz in 2002, converges to a near-optimal policy, with a gap that depends on <i>k</i>, in a number of steps that grows only polynomially with the size of the problem.</p>
+    <p>Counting leaves a question: what to do with a pair tried only a few times, or never? The robot has <span class="nowrap"><i>N</i>(hallway, garage) = 0</span>, so no fraction exists, and a planner that left the door out would never go and look.</p>
+    <p>R-Max is optimistic in the face of the unknown. A pair is known once <span class="nowrap"><i>N</i>(<i>s</i>, <i>a</i>) ≥ <i>k</i></span>, for a number of visits <i>k</i> the user chooses, and an unknown pair is assumed to give <i>R</i><sub>max</sub>, a reward at least as large as any the world can give, and to end the episode. In the home, <span class="nowrap"><i>R</i><sub>max</sub> = 1</span>, a free charger, so value iteration values the garage door at 1, against <span class="nowrap">−1 + 0.6 = −0.4</span> through the study, and the robot goes to look. Optimism makes exploring a matter of planning: the values send the agent to the unknown by the shortest way, and only when it might pay. In the figure, the door is at the end of a corridor whose moves are known, each costing 1; drag it farther away.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-look" role="group" aria-label="The robot's home. From the hallway, a move leads to the study, where charging gives +1 three times in five and 0 twice. A corridor, known move by move, leads from the hallway to the garage door, never tried, which you can drag farther down the corridor."></svg>
+    <div class="ro" id="fig-look-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Drag the door along the corridor. With a keyboard, select it with Tab and use the arrow keys.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Unknown pairs too far away, or behind too many costly moves, are left alone. Suppose the robot, looking, finds a second charger in the garage, free every time. Once the door and the charger are known, the garage is worth <span class="nowrap">−1 + 1 = 0</span> from the hallway, more than the study, and the robot charges there from then on, where a planner that left the door out would have kept going to the study. Eventually every pair worth knowing is known, and R-Max follows the best policy of its model.</p>
+    <p>The number <i>k</i> sets how much each estimate rests on. Where an action always has the same result, as on the grid of the figure below, one visit tells everything, and <i>k</i> = 1 is enough. Where results vary, a few visits can mislead. A charger free 3 times in 5 is taken on a single visit 2 times in 5, and with <i>k</i> = 1 the model then says it is never free; the pair is known, so nothing sends the robot back to check, and it may settle for a worse charger. The more visits <i>k</i> asks for, the less likely they all find it taken:</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th scope="col"><i>k</i></th><th scope="col">All <i>k</i> visits find it taken, (2/5)<sup><i>k</i></sup></th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>0.4</td></tr>
+          <tr><td>2</td><td>0.16</td></tr>
+          <tr><td>3</td><td>0.064</td></tr>
+          <tr><td>4</td><td>0.0256</td></tr>
+          <tr><td>5</td><td>0.01024</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>R-Max, introduced by Brafman and Tennenholtz in 2002, converges to a near-optimal policy, with a gap that depends on <i>k</i>, in a number of steps that grows only polynomially with the size of the problem.</p>
 
     <h3>The algorithm</h3>
     <p>For a number of visits <i>k</i> and a reward <i>R</i><sub>max</sub> at least as large as any reward the world can give:</p>
@@ -156,7 +204,11 @@ scripts:
       <figcaption>Experience improves the values and the policy in two ways: directly, by learning, and through a model, by planning. Acting with the policy brings new experience.</figcaption>
     </figure>
     <p>R-Max uses its experience only for the model, and Q-learning only for the values. Each way has its strengths. Planning gets more out of a limited amount of experience, so it reaches a good policy with fewer real steps. Direct learning is simpler, and a wrong model cannot mislead it.</p>
-    <p>Dyna does all of it at once: acting, model learning, direct RL and planning. Its planning applies the same learning method to simulated steps as to real ones, so learning and planning share almost everything except where their experience comes from. Which simulated steps it takes is decided by what is called search control. Dyna-Q is the simplest Dyna. Its direct RL is one-step tabular Q-learning. Its model is a table that keeps, for each pair the agent has tried, the reward and next state last seen after it, which is all there is to know in a world where an action always has the same result. And its planning is random-sample one-step Q-planning, <i>n</i> steps after every real step, on states the agent has been in and actions it has taken there, so the model is never asked about a pair it knows nothing about. Without the model and the planning, Dyna-Q is Q-learning.</p>
+    <p>Dyna does all of it at once: acting, model learning, direct RL and planning. Its planning applies the same learning method to simulated steps as to real ones, so learning and planning share almost everything except where their experience comes from. Which simulated steps it takes is decided by what is called search control. Dyna-Q, the simplest Dyna, is one-step tabular Q-learning, its direct RL, with two parts added:</p>
+    <ul>
+      <li>a model, a table that keeps, for each pair the agent has tried, the reward and next state last seen after it, which is all there is to know in a world where an action always has the same result;</li>
+      <li>and planning, random-sample one-step Q-planning, <i>n</i> steps after every real step, on states the agent has been in and actions it has taken there, so the model is never asked about a pair it knows nothing about.</li>
+    </ul>
 
     <h3>The algorithm</h3>
     <p>Tabular Dyna-Q, for a step size α in (0, 1], a small ε &gt; 0 and a number of planning steps <i>n</i>, with every <i>Q</i>(<i>s</i>, <i>a</i>) at 0 and the model empty:</p>
@@ -204,9 +256,37 @@ scripts:
 <section id="wrong-model">
   <div class="prose">
     <h2><span class="n">4</span>When the model is wrong</h2>
-    <p>So far the models have been right: on the grid, a known move does what the model says. A model can be wrong for three reasons: the world is random and has been seen only a few times, like a charger visited once; the model generalizes from some states to others, imperfectly; or the world has changed since the model learned it. Planning with a wrong model computes a policy that is good for the model, and possibly bad for the world.</p>
-    <p>Some errors correct themselves. When a model is optimistic, predicting more reward or better moves than the world allows, the planned policy goes to collect them, finds they are not there, and the experience it gets corrects the model. R-Max's optimism in section 2 is such an error, made on purpose: its model promises <i>R</i><sub>max</sub> for every move it has not tried, and trying the move corrects it. Errors the other way are harder. When the world becomes better than the model believes, the policy the model recommends may never go where the improvement is, and the error can last a long time, or forever.</p>
+    <p>So far the models have been right: on the grid, a known move does what the model says. A model can be wrong for three reasons:</p>
+    <ul>
+      <li>the world is random and has been seen only a few times, like a charger visited once;</li>
+      <li>the model generalizes from some states to others, imperfectly;</li>
+      <li>or the world has changed since the model learned it.</li>
+    </ul>
+    <p>Planning with a wrong model computes a policy that is good for the model, and possibly bad for the world. Some errors correct themselves. When a model is optimistic, predicting more reward or better moves than the world allows, the planned policy goes to collect them, finds they are not there, and the experience it gets corrects the model. R-Max's optimism in section 2 is such an error, made on purpose: its model promises <i>R</i><sub>max</sub> for every move it has not tried, and trying the move corrects it. Errors the other way are harder. When the world becomes better than the model believes, the policy the model recommends may never go where the improvement is, and the error can last a long time, or forever.</p>
     <p>Back in the robot's home, the garage door is locked one night, so the move that always led to the garage now leaves the robot in the hallway, at a cost of 1. Dyna-Q's model holds the outcome last seen, so the first bump rewrites <i>Model</i>(hallway, garage), and planning, replaying it, soon values the door below the study. R-Max counts every outcome since the start, old and new. After a hundred trips that found the door open, each bump lowers the door's value by only 0.01, so the robot bumps into the locked door 41 times before the study's −0.4 looks better.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 440 172" role="img" aria-label="Two pictures of the robot's home. Left, worse than the model: the model's move from the hallway to the garage is blocked in the world by a locked door. Right, better than the model: the model says a back door is locked, but in the world it is open, with a charger behind it.">
+        <line class="rule-line" x1="220" y1="14" x2="220" y2="156"/>
+        <line class="ln-path" x1="44" y1="96" x2="154" y2="96" marker-end="url(#mb-head)"/>
+        <line class="wall-line" x1="102" y1="74" x2="102" y2="118"/>
+        <circle class="state" cx="32" cy="96" r="10"/>
+        <circle class="state" cx="168" cy="96" r="10"/>
+        <text class="dg-lab" x="104" y="28" text-anchor="middle">Worse than the model</text>
+        <text class="dg-lab" x="102" y="64" text-anchor="middle">locked</text>
+        <text class="dg-lab" x="32" y="130" text-anchor="middle">hallway</text>
+        <text class="dg-lab" x="168" y="130" text-anchor="middle">garage</text>
+        <line class="ln-path" x1="284" y1="96" x2="334" y2="96"/>
+        <line class="wall-line model" x1="342" y1="74" x2="342" y2="118"/>
+        <line class="ink-dash" x1="350" y1="96" x2="392" y2="96"/>
+        <circle class="state" cx="272" cy="96" r="10"/>
+        <rect class="state" x="392" y="88" width="16" height="16"/>
+        <text class="dg-lab" x="336" y="28" text-anchor="middle">Better than the model</text>
+        <text class="dg-lab" x="342" y="64" text-anchor="middle">locked when tried</text>
+        <text class="dg-lab" x="272" y="130" text-anchor="middle">hallway</text>
+        <text class="dg-lab" x="400" y="130" text-anchor="middle">charger</text>
+      </svg>
+      <figcaption>Blue is what the model says, and ink the world. Left, the garage door is now locked: the model still sends the robot there, and the bump corrects it. Right, a back door the robot found locked once is now open, with a charger behind it: the model still expects a bump, so the robot never goes back to see.</figcaption>
+    </figure>
     <p>Now the opposite. Say the hallway also has a back door, which the robot tried once and found locked, and one day it is opened, with a charger right behind it. Nothing in either model points there. Dyna-Q tries the back door again only through a random move: with ε = 0.1 and three moves in the hallway, on one visit in 30. R-Max, which explores only what it has not tried, and never at random, will not try it again.</p>
     <p>The figure puts both methods on the <a href="/notes/reinforcement-learning/td-learning/#sarsa">cliff of the TD note</a>, γ = 1: R-Max with <i>k</i> = 1 and <span class="nowrap"><i>R</i><sub>max</sub> = −1</span>, the largest reward there, and Dyna-Q with the settings of section 3's figure. Its first press plays their first 10 episodes quickly, after which both follow the edge. Before episode 11 a wall goes up between A2 and B2, across the edge, and before episode 21 it comes down. The buttons above the grid switch between the two methods; their marks are those of sections 2 and 3, and the wall is drawn in ink.</p>
   </div>

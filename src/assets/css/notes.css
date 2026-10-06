@@ -258,6 +258,17 @@ ol.steps b { font-weight: 600; }
 .bk.dash { stroke-dasharray: 3 4; }
 /* A state whose estimate the target uses. */
 .state.tg { stroke: var(--red); }
+/* Where a move never tried leads, which a model does not know: a dashed outline in the blue of moves. */
+.state.unk { stroke: var(--blue); stroke-dasharray: 3 3; }
+/* The way an agent does not take, in a figure that compares two. */
+.look-branch.off { opacity: 0.3; }
+/* A door that blocks a move: in ink where the world blocks it, in blue where only a model says it does; a way the
+   world has open, which the model does not know, in dashed ink. */
+.wall-line { stroke: var(--ink); stroke-width: 5; stroke-linecap: round; }
+.wall-line.model { stroke: var(--blue); }
+.ink-dash { stroke: var(--ink-3); stroke-width: 1.8; stroke-dasharray: 5 4; fill: none; }
+/* A faint line between the two halves of a diagram. */
+.rule-line { stroke: var(--rule); stroke-width: 1.2; }
 .tg-ring { fill: none; stroke: var(--red); stroke-width: 2; }
 .pond { fill: var(--paper-2); stroke: var(--ink-3); stroke-width: 1.2; }
 .rail { stroke: var(--ink-3); stroke-width: 1.4; }

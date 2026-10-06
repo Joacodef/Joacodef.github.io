@@ -1,4 +1,4 @@
-import { tr, modeButtons } from "../../plane.js";
+import { el, tr, modeButtons, makeHandle, makeDraggable } from "../../plane.js";
 import { cookie, cliff, NAME, rngFrom, epsGreedy, num, par, eqv, listAnd, sym, slideshow, shake } from "./gridworld.js";
 
 const { START, GOAL, W, H, cellName, moveName, stepEnv, freshQ, reason, takeText, chooseTakeText } = cookie;
@@ -153,6 +153,80 @@ function route(Q) {
     // The values after step m, for the frames of a skip: the move just updated in green, the next one picked in yellow.
     frame: (m) => ({ label: label(m), Q: X(m).Q, agent: START, ghost: X(m).s2, shown: ALL, marks: [{ c: X(m).s, a: X(m).a, kind: "upd" }], pick: m < n ? [X(m + 1).s, X(m + 1).a] : undefined }),
   });
+}
+
+/* ---------- Section 2: is the untried door worth a look? ---------- */
+
+// The robot's home, γ = 1: from the hallway, the move to the study (−1), where charging gives +1 three times in five,
+// so the study route is worth −1 + 0.6 = −0.4; and a corridor of d known moves (−1 each, d from 0 to 3, set by
+// dragging the door) that ends at the garage door, never tried. R-Max assumes that an untried move gives Rmax = 1 and
+// ends the episode, so the door is worth −d + 1 from the hallway: worth a look up to one move away.
+{
+  const svg = document.getElementById("fig-look"), out = document.getElementById("fig-look-out");
+  const STUDY_V = -1 + 0.6, R_MAX = 1, MAX_D = 3;
+  // Laid out so that the labels, larger on phones, fit in Spanish too ("ocupado", "nunca probada").
+  const HALL = [84, 100], STUDY = [212, 54], FREE = [348, 24], TAKEN = [348, 88], STEP = 68, P = (i) => [160 + STEP * i, 182];
+  const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  svg.setAttribute("viewBox", "0 0 440 232");
+  el("path", { class: "head", d: "M0 0 L10 5 L0 10 z" }, el("marker", { id: "look-head", viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: "auto" }, el("defs", {}, svg)));
+  // An arrow from a to b, stopping short of both by the given gaps.
+  const arrow = (a, b, g0, g1, cls, parent) => {
+    const d = Math.hypot(b[0] - a[0], b[1] - a[1]), u = [(b[0] - a[0]) / d, (b[1] - a[1]) / d];
+    return el("line", { class: cls, x1: a[0] + u[0] * g0, y1: a[1] + u[1] * g0, x2: b[0] - u[0] * g1, y2: b[1] - u[1] * g1, "marker-end": "url(#look-head)" }, parent);
+  };
+  const label = (x, y, text, parent, anchor = "middle") => { el("text", { class: "dg-lab", x, y, "text-anchor": anchor }, parent).textContent = text; };
+  // The study's branch, as in the robot's model at the top of the page.
+  const studyG = el("g", { class: "look-branch" }, svg);
+  arrow(HALL, STUDY, 12, 13, "ln-path", studyG);
+  arrow(STUDY, FREE, 12, 13, "ln-path", studyG);
+  arrow(STUDY, TAKEN, 12, 13, "ln-path", studyG);
+  el("circle", { class: "state", cx: STUDY[0], cy: STUDY[1], r: 10 }, studyG);
+  for (const [x, y] of [FREE, TAKEN]) el("rect", { class: "state", x: x - 8, y: y - 8, width: 16, height: 16 }, studyG);
+  const [m1, m2, m3] = [mid(HALL, STUDY), mid(STUDY, FREE), mid(STUDY, TAKEN)];
+  label(m1[0] - 12, m1[1] - 13, tr("1 of 1, −1", "1 de 1, −1"), studyG);
+  label(m2[0], m2[1] - 17, tr("3 of 5, +1", "3 de 5, +1"), studyG);
+  label(m3[0] + 12, m3[1] + 35, tr("2 of 5, 0", "2 de 5, 0"), studyG);
+  label(FREE[0] + 16, FREE[1] + 5, tr("free", "libre"), studyG, "start");
+  label(TAKEN[0] + 16, TAKEN[1] + 5, tr("taken", "ocupado"), studyG, "start");
+  label(STUDY[0], STUDY[1] + 32, tr("study", "estudio"), studyG);
+  // The corridor's branch: its known moves and rooms, redrawn for each length, and the door, which the reader drags.
+  const corridorG = el("g", { class: "look-branch" }, svg);
+  el("circle", { class: "state", cx: HALL[0], cy: HALL[1], r: 10 }, svg);
+  // The hallway's name to its left, clear of both branches.
+  label(HALL[0] - 16, HALL[1] + 5, tr("hallway", "pasillo"), svg, "end");
+  const door = makeHandle(svg, "none", 17);
+  el("rect", { class: "state unk", x: -8, y: -8, width: 16, height: 16 }, door);
+  el("text", { class: "ln-lab", x: 0, y: -16, "text-anchor": "middle" }, door).textContent = "?";
+  let d = 0;
+  function render() {
+    corridorG.replaceChildren();
+    const at = (i) => (i < 0 ? HALL : P(i));
+    for (let i = 0; i <= d; i++) {
+      const known = i < d;
+      arrow(at(i - 1), at(i), 12, known ? 13 : 14, known ? "ln-path" : "ln-path dash", corridorG);
+      if (known) {
+        el("circle", { class: "state", cx: P(i)[0], cy: P(i)[1], r: 10 }, corridorG);
+        const [ax, ay] = at(i - 1), [bx, by] = P(i);
+        label((ax + bx) / 2 + (i === 0 ? 14 : 0), (ay + by) / 2 - (i === 0 ? 2 : 9), "−1", corridorG, i === 0 ? "start" : "middle");
+      }
+    }
+    label(P(d)[0], P(d)[1] + 32, tr("never tried", "nunca probada"), corridorG);
+    door.setAttribute("transform", `translate(${P(d)[0]} ${P(d)[1]})`);
+    door.setAttribute("aria-label", d === 0 ? tr("The garage door, in the hallway", "La puerta del garaje, en el pasillo")
+      : tr(`The garage door, at the end of a corridor of ${d} ${d === 1 ? "move" : "moves"}`, `La puerta del garaje, al final de un corredor de ${d} ${d === 1 ? "movimiento" : "movimientos"}`));
+    // The door's value from the hallway: −1 for each move of the corridor, then the Rmax that R-Max assumes behind it.
+    const value = -d + R_MAX, look = value > STUDY_V;
+    studyG.classList.toggle("off", look);
+    corridorG.classList.toggle("off", !look);
+    const terms = [...Array(d).fill("−1"), "<i>R</i><sub>max</sub>"].join(" + ").replaceAll("+ −", "− ");
+    out.innerHTML = `<p class="eq">${terms} <span class="nowrap">= ${num(value)} ${look ? "&gt;" : "&lt;"} −0.4</span></p><p>${
+      look ? (d === 0 ? tr("More than the study's −0.4: <span class=\"nowrap\">R-Max</span> goes to look behind the door.", "Más que el −0.4 del estudio: <span class=\"nowrap\">R-Max</span> va a mirar detrás de la puerta.")
+        : tr("Still more than the study's −0.4: <span class=\"nowrap\">R-Max</span> walks down the corridor to look.", "Todavía más que el −0.4 del estudio: <span class=\"nowrap\">R-Max</span> recorre el corredor para mirar."))
+        : tr("Less than the study's −0.4: <span class=\"nowrap\">R-Max</span> goes to the study and never looks behind the door.", "Menos que el −0.4 del estudio: <span class=\"nowrap\">R-Max</span> va al estudio y nunca mira detrás de la puerta.")}</p>`;
+  }
+  const setD = (v) => { const n = Math.max(0, Math.min(MAX_D, v)); if (n !== d) { d = n; render(); } };
+  makeDraggable(door, { move: ({ x }) => setD(Math.round((x - P(0)[0]) / STEP)), step: ([dx, dy]) => setD(d + dx + dy) });
+  render();
 }
 
 /* ---------- Section 2: R-Max on the cookie grid ---------- */
