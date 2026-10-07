@@ -1,0 +1,261 @@
+---
+title: On-policy prediction with approximation
+module: Approximate solution methods
+order: 10
+description: "Estimating values when there are too many states for a table: a few weights give every state its value, learned from returns or from the next estimate, and the two kinds of learning settle on different weights."
+scripts:
+  - /assets/js/notes/reinforcement-learning/prediction-with-approximation.js
+---
+<div class="prose">
+  <p>Every method in the earlier notes keeps a table, with one estimate for each state, or for each state and action, and learns each entry only from visits to its own state. That works in small worlds such as the nine cells of the cookie grid. It fails when an agent cannot hope to visit every state, let alone visit each one often.</p>
+  <p>Take a cart that rolls along a track, carrying a pole on a hinge. At every step the agent pushes the cart left or right, and it earns +1 for each step the pole stays up; an episode ends when the pole leans past 12° or the cart leaves the track. The state is four numbers: where the cart is and how fast it moves, the pole's angle and how fast it turns. Measured finely, they almost never repeat, so a table would hold one entry for each state ever visited, each updated once, and nothing for the next state, which is new.</p>
+    <figure class="diagram">
+    <svg viewBox="0 0 440 200" role="img" aria-label="A cart on a track carrying a pole on a hinge, the pole leaning about 10° to the right. Marked on the drawing: the cart's position from the middle of the track, its velocity, the pole's angle from upright, and its angular velocity.">
+      <defs><marker id="cp-intro-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head-ink" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+      <line class="cp-track" x1="24" y1="150" x2="416" y2="150"/>
+      <line class="cp-track" x1="30" y1="143" x2="30" y2="157"/>
+      <line class="cp-track" x1="410" y1="143" x2="410" y2="157"/>
+      <line class="cp-dim" x1="220" y1="150" x2="220" y2="178"/>
+      <line class="cp-dim" x1="220" y1="172" x2="262" y2="172" marker-end="url(#cp-intro-head)"/>
+      <text class="dg-lab" x="214" y="177" text-anchor="end">position</text>
+      <line class="guide" x1="262" y1="124" x2="262" y2="22"/>
+      <path class="cp-dim" d="M262 78 A46 46 0 0 1 270 78.7"/>
+      <text class="dg-lab" x="254" y="72" text-anchor="end">angle</text>
+      <path class="cp-dim" d="M281.1 34 A92 92 0 0 1 302.3 41.3" marker-end="url(#cp-intro-head)"/>
+      <text class="dg-lab" x="310" y="38">angular</text>
+      <text class="dg-lab" x="310" y="56">velocity</text>
+      <rect class="cp-cart" x="232" y="124" width="60" height="26" rx="3"/>
+      <line class="cp-pole" x1="262" y1="124" x2="280.1" y2="21.6"/>
+      <circle class="cp-hinge" cx="262" cy="124" r="3.6"/>
+      <line class="cp-dim" x1="300" y1="137" x2="334" y2="137" marker-end="url(#cp-intro-head)"/>
+      <text class="dg-lab" x="340" y="142">velocity</text>
+    </svg>
+    <figcaption>The cart-pole. Its state is four numbers: the cart's position and velocity, and the pole's angle and angular velocity. The agent pushes the cart left or right.</figcaption>
+  </figure>
+  <p>The way out is to stop learning each state on its own. A few numbers describe each state, such as the pole's angle, and a few weights, shared by all the states, turn those numbers into a value. Learning adjusts the weights, so whatever one state teaches carries over to every state described by similar numbers, including states never visited.</p>
+  <p>The price is that no set of weights can fit every state, so the agent has to decide which errors to accept. Monte Carlo and TD both carry over, but they no longer settle on the same answer, even with endless experience. This note is about prediction, estimating the values of a fixed policy: here, how long the pole stays up while the cart is pushed at random, before any agent learns to keep it up.</p>
+  <p class="legend">Throughout this page, <span class="bar" aria-hidden="true"></span>the estimates, the bars the weights set, are drawn in blue ink, and <span class="dot" aria-hidden="true"></span>what they aim for, the true values or the target of an update, in red ink.</p>
+</div>
+
+<section id="weights">
+  <div class="prose">
+    <h2><span class="n">1</span>Values from weights</h2>
+    <p>The <a href="/notes/reinforcement-learning/eligibility-traces/">eligibility traces note</a> wrote its updates for any estimate <span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>), the value of state <i>s</i> given a vector of weights <b class="vec">w</b>, with a table as the simplest case, one weight per state. From here on, the weights are far fewer than the states. Each state is described by a feature vector, <i>d</i> numbers computed from the state:</p>
+    <div class="disp"><b class="vec">x</b>(<i>s</i>) <span class="nowrap">≐ (<i>x</i><sub>1</sub>(<i>s</i>), <i>x</i><sub>2</sub>(<i>s</i>), …, <i>x</i><sub><i>d</i></sub>(<i>s</i>))<sup class="t">T</sup></span></div>
+    <p>and the simplest estimate, the one this note uses, is linear in the weights: each feature times its weight, added up.</p>
+    <div class="disp hero-f"><span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>) <span class="nowrap">≐ <b class="vec">w</b><sup class="t">T</sup><b class="vec">x</b>(<i>s</i>)</span> <span class="nowrap">≐ Σ<span class="lims"><span><i>d</i></span><span><i>i</i>=1</span></span><i>w</i><sub><i>i</i></sub><i>x</i><sub><i>i</i></sub>(<i>s</i>)</span></div>
+    <p>For the cart-pole, the features could be the four numbers of the state, or anything computed from them. This note's agent keeps just one thing: the pole's angle, cut into six ranges of 4° from −12° to 12°. Each range is a feature, 1 when the pole leans within it and 0 otherwise, so <span class="nowrap"><i>d</i> = 6</span>, and <span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>) is simply the weight of the range the pole is in. This is state aggregation: the states of a range share one weight, and so one value.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 440 158" role="img" aria-label="Six ranges of the pole's angle, from −12° to 12° in steps of 4°, each drawn with a small cart and pole leaning at its middle angle and labeled with its own weight, w1 to w6.">
+        <g class="axes"><line x1="40" y1="128" x2="400" y2="128"/><line x1="40" y1="128" x2="40" y2="133"/><line x1="100" y1="128" x2="100" y2="133"/><line x1="160" y1="128" x2="160" y2="133"/><line x1="220" y1="128" x2="220" y2="133"/><line x1="280" y1="128" x2="280" y2="133"/><line x1="340" y1="128" x2="340" y2="133"/><line x1="400" y1="128" x2="400" y2="133"/></g>
+        <text class="tick" x="40" y="149" text-anchor="middle">−12°</text>
+        <text class="tick" x="100" y="149" text-anchor="middle">−8°</text>
+        <text class="tick" x="160" y="149" text-anchor="middle">−4°</text>
+        <text class="tick" x="220" y="149" text-anchor="middle">0°</text>
+        <text class="tick" x="280" y="149" text-anchor="middle">4°</text>
+        <text class="tick" x="340" y="149" text-anchor="middle">8°</text>
+        <text class="tick" x="400" y="149" text-anchor="middle">12°</text>
+        <rect class="cp-range" x="43" y="22" width="54" height="102" rx="4"/>
+        <line class="cp-track" x1="54" y1="112" x2="86" y2="112"/>
+        <rect class="cp-cart sm" x="61" y="104" width="18" height="8" rx="1.5"/>
+        <line class="cp-pole sm" x1="70" y1="104" x2="62.36" y2="60.67"/>
+        <text class="dg-lab m" x="70" y="44" text-anchor="middle">w<tspan class="sub up" dy="4">1</tspan></text>
+        <rect class="cp-range" x="103" y="22" width="54" height="102" rx="4"/>
+        <line class="cp-track" x1="114" y1="112" x2="146" y2="112"/>
+        <rect class="cp-cart sm" x="121" y="104" width="18" height="8" rx="1.5"/>
+        <line class="cp-pole sm" x1="130" y1="104" x2="125.40" y2="60.24"/>
+        <text class="dg-lab m" x="130" y="44" text-anchor="middle">w<tspan class="sub up" dy="4">2</tspan></text>
+        <rect class="cp-range" x="163" y="22" width="54" height="102" rx="4"/>
+        <line class="cp-track" x1="174" y1="112" x2="206" y2="112"/>
+        <rect class="cp-cart sm" x="181" y="104" width="18" height="8" rx="1.5"/>
+        <line class="cp-pole sm" x1="190" y1="104" x2="188.46" y2="60.03"/>
+        <text class="dg-lab m" x="190" y="44" text-anchor="middle">w<tspan class="sub up" dy="4">3</tspan></text>
+        <rect class="cp-range" x="223" y="22" width="54" height="102" rx="4"/>
+        <line class="cp-track" x1="234" y1="112" x2="266" y2="112"/>
+        <rect class="cp-cart sm" x="241" y="104" width="18" height="8" rx="1.5"/>
+        <line class="cp-pole sm" x1="250" y1="104" x2="251.54" y2="60.03"/>
+        <text class="dg-lab m" x="250" y="44" text-anchor="middle">w<tspan class="sub up" dy="4">4</tspan></text>
+        <rect class="cp-range" x="283" y="22" width="54" height="102" rx="4"/>
+        <line class="cp-track" x1="294" y1="112" x2="326" y2="112"/>
+        <rect class="cp-cart sm" x="301" y="104" width="18" height="8" rx="1.5"/>
+        <line class="cp-pole sm" x1="310" y1="104" x2="314.60" y2="60.24"/>
+        <text class="dg-lab m" x="310" y="44" text-anchor="middle">w<tspan class="sub up" dy="4">5</tspan></text>
+        <rect class="cp-range" x="343" y="22" width="54" height="102" rx="4"/>
+        <line class="cp-track" x1="354" y1="112" x2="386" y2="112"/>
+        <rect class="cp-cart sm" x="361" y="104" width="18" height="8" rx="1.5"/>
+        <line class="cp-pole sm" x1="370" y1="104" x2="377.64" y2="60.67"/>
+        <text class="dg-lab m" x="370" y="44" text-anchor="middle">w<tspan class="sub up" dy="4">6</tspan></text>
+      </svg>
+      <figcaption>The pole's angle cut into six ranges of 4°, each with its own weight. A state's feature vector has a 1 for the range its pole leans in and 0 for the others, so its estimate is that range's weight, whatever the cart is doing and however fast the pole turns.</figcaption>
+    </figure>
+    <p>A table is linear too, with one feature per state, 1 in its own state and 0 in every other. Choosing features is choosing what the agent can tell apart: this agent cannot tell a pole swinging back toward upright from one falling over, if they lean the same. The gain is that every state gets a value, even one never seen, as long as its features can be computed. The price is that an update no longer stays where it is made: changing a weight to correct one state's estimate changes the estimate of every state with that feature, here every state in its range.</p>
+    <p>Each update of the earlier notes moved the estimate of a state <i>S</i><sub><i>t</i></sub> toward a target: the return <i>G</i><sub><i>t</i></sub> in Monte Carlo, <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub> + γ<span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i>+1</sub>, <b class="vec">w</b>)</span> in TD(0), the <i>n</i>-step return <i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub> in <i>n</i>-step TD. Each such pair, the state's features and its target, is now an example for supervised learning, which fits a function to examples of inputs and the outputs wanted for them. Any supervised method could adjust the weights, as long as it learns from examples that arrive one at a time, as the agent moves, and copes with targets that change as the estimates improve. This note uses the simplest, gradient descent.</p>
+  </div>
+</section>
+
+<section id="objective">
+  <div class="prose">
+    <h2><span class="n">2</span>Which errors matter</h2>
+    <p>With fewer weights than states, the estimates cannot all be right, and making one better can make others worse. To choose among them, weigh each state's squared error by how much that state matters, with a distribution <span class="nowrap">μ(<i>s</i>) ≥ 0</span>, <span class="nowrap">Σ<sub><i>s</i></sub> μ(<i>s</i>) = 1</span>. The result is the mean squared value error:</p>
+    <div class="disp hero-f"><span class="ovl">VE</span>(<b class="vec">w</b>) <span class="nowrap">≐ Σ<sub><i>s</i>∈𝒮</sub> μ(<i>s</i>)</span><span class="nowrap">[<span class="pt"><i>v</i><sub>π</sub>(<i>s</i>)</span> − <span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>)]<sup>2</sup></span></div>
+    <p>Its square root gives a rough idea of how far the estimates are from the true values. The usual μ is the fraction of time the policy spends in each state, called the on-policy distribution: the states the agent visits most are the ones whose estimates it uses most. In an episodic task it follows from two quantities: <i>h</i>(<i>s</i>), the probability that an episode starts in <i>s</i>, and η(<i>s</i>), the number of steps an episode spends in <i>s</i> on average. Time is spent in <i>s</i> when an episode starts there, or when a step leads there from a state where time is spent:</p>
+    <div class="disp">η(<i>s</i>) <span class="nowrap">= <i>h</i>(<i>s</i>)</span> <span class="nowrap">+ Σ<sub><i>s̄</i></sub> η(<i>s̄</i>) Σ<sub><i>a</i></sub> π(<i>a</i>|<i>s̄</i>)<i>p</i>(<i>s</i>|<i>s̄</i>, <i>a</i>),</span>&ensp;<span class="nowrap">μ(<i>s</i>) = <span class="frac"><span>η(<i>s</i>)</span><span>Σ<sub><i>s</i>′</sub> η(<i>s</i>′)</span></span></span></div>
+    <p>With discounting, a factor γ in the second term treats it as a chance that the episode ends. Pushed at random, the pole spends 29% of its time in each of the two middle ranges, 12% in each range from 4° to 8°, and 8% in each outer one. Inside a range the true values differ: a pole between 4° and 8° that is swinging back toward upright can stay up 20 more steps or more, and one falling away only 2 or 3. One weight cannot match them all, and <span class="ovl">VE</span> weighs each miss by how often its state comes. In the figure, each dot is a state the policy visited, at its angle and its true value, the steps it had left on average; there are more dots where the pole spends more time. Drag the six bars.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-ve" role="group" aria-label="Six bars, one per range of the pole's angle, each the weight of its range, which you can drag up or down, over red dots for the true values of states visited by the random policy."></svg>
+    <div class="ro" id="fig-ve-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Drag a bar up or down. With a keyboard, select one with Tab and use the arrow keys.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p><span class="ovl">VE</span> is least with each bar at the average of its range's states, weighed by how often they come: about 19 steps in the middle ranges, 12 from 4° to 8°, and 5 past 8°. What remains, 22.8, a typical miss of 4.8 steps, is the spread inside the ranges, which only better features could reduce. In practice nobody computes μ: following π brings each state at these rates, so learning from the states as they come weighs their errors by μ. A linear estimate has a single minimum of <span class="ovl">VE</span>; an estimate that is not linear in its weights, such as a neural network, can have many, and the methods below may then find only one near where they start. Nor is <span class="ovl">VE</span> certain to be the right goal: values are wanted for choosing actions, and the values with the least <span class="ovl">VE</span> are not necessarily the best for that. It is the goal this note uses.</p>
+  </div>
+</section>
+
+<section id="gradient-mc">
+  <div class="prose">
+    <h2><span class="n">3</span>Learning from returns</h2>
+    <p>Suppose for a moment that each visit to a state <i>S</i><sub><i>t</i></sub> came with its true value. The weights could then take a small step in the direction that reduces that state's squared error fastest, against its gradient:</p>
+    <div class="disp"><b class="vec">w</b><sub><i>t</i>+1</sub> <span class="nowrap">≐ <b class="vec">w</b><sub><i>t</i></sub> − ½α∇[<span class="pt"><i>v</i><sub>π</sub>(<i>S</i><sub><i>t</i></sub>)</span> − <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)]<sup>2</sup></span><br><span class="nowrap">= <b class="vec">w</b><sub><i>t</i></sub> + α[<span class="pt"><i>v</i><sub>π</sub>(<i>S</i><sub><i>t</i></sub>)</span> − <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)]</span> <span class="nowrap">∇<span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)</span></div>
+    <p>The gradient ∇<span class="hat lo"><i>v</i></span> is the vector of the estimate's partial derivatives with respect to the weights. It says which weights produced the estimate of <i>S</i><sub><i>t</i></sub>, and how much, and for a linear estimate it is simply the feature vector, <span class="nowrap">∇<span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>) = <b class="vec">x</b>(<i>s</i>)</span>. The method is stochastic gradient descent: each step looks at one state, the one just visited, and may make other states' errors worse. States come at the rates μ sets, so over many small steps the weights go down <span class="ovl">VE</span>. The steps must stay small, since steps that removed each state's error completely would just chase the last state visited. With a step size that shrinks over time at the right rate, the weights converge to a minimum of <span class="ovl">VE</span>, or to one of its minima if it has several.</p>
+    <p>The true value is unknown, so the update uses a target <i>U</i><sub><i>t</i></sub> in its place:</p>
+    <div class="disp hero-f"><b class="vec">w</b><sub><i>t</i>+1</sub> <span class="nowrap">≐ <b class="vec">w</b><sub><i>t</i></sub> + α[<span class="pt"><i>U</i><sub><i>t</i></sub></span> − <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)]</span> <span class="nowrap">∇<span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)</span></div>
+    <p>If the target is right on average, <span class="nowrap">E[<i>U</i><sub><i>t</i></sub> | <i>S</i><sub><i>t</i></sub> = <i>s</i>] = <i>v</i><sub>π</sub>(<i>s</i>)</span>, the guarantee stays the same. The return is right on average by definition, since <i>v</i><sub>π</sub>(<i>s</i>) is the return to expect from <i>s</i>. With <span class="nowrap"><i>U</i><sub><i>t</i></sub> = <i>G</i><sub><i>t</i></sub></span>, the update is gradient Monte Carlo.</p>
+
+    <h3>The algorithm</h3>
+    <p>Gradient Monte Carlo, for a policy π, an estimate <span class="hat lo"><i>v</i></span> differentiable in its weights, and a step size <span class="nowrap">α &gt; 0</span>:</p>
+    <ol class="steps">
+      <li>Start with any weights <b class="vec">w</b>, for example all 0.</li>
+      <li>Generate an episode <span class="nowrap"><i>S</i><sub>0</sub>, <i>A</i><sub>0</sub>, <i>R</i><sub>1</sub>, …, <i>S</i><sub><i>T</i>−1</sub>, <i>A</i><sub><i>T</i>−1</sub>, <i>R</i><sub><i>T</i></sub></span> following π.</li>
+      <li>For each step, <span class="nowrap"><i>t</i> = 0, 1, …, <i>T</i> − 1</span>, update <span class="nowrap"><b class="vec">w</b> ← <b class="vec">w</b> + α[<span class="pt"><i>G</i><sub><i>t</i></sub></span></span> <span class="nowrap">− <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b>)]</span> <span class="nowrap">∇<span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b>)</span>.</li>
+      <li>Go back to step 2 for the next episode.</li>
+    </ol>
+    <p>With state aggregation, ∇<span class="hat lo"><i>v</i></span> is 1 for the weight of <i>S</i><sub><i>t</i></sub>'s range and 0 for the others, so each update moves one weight, the shared estimate of a whole range, toward the return of one of its states.</p>
+    <p>The figure runs gradient Monte Carlo on the cart-pole for 2,000 episodes. Above, the cart and pole show the current state, and a yellow arrow the push just chosen; below, each range's weight is a bar, the steps the pole is expected to stay up, and a dot on the axis marks the pole's current angle. α starts at 0.1 and shrinks after every episode, <span class="nowrap">α = 0.1 · 20/(<i>k</i> + 19)</span> in episode <i>k</i>, so that the weights settle: these methods converge when α shrinks, and with α constant a single long episode would keep moving the bars by several steps.</p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-gmc" role="group" aria-label="A cart and pole on a track, and below them the plane of the pole's angle and angular velocity cut into 6 by 6 cells, each holding a weight, with a dot for the current state."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-gmc-back">Back</button><button type="button" class="btn" id="fig-gmc-next">Next</button><span class="count" id="fig-gmc-count"></span><button type="button" class="btn" id="fig-gmc-reset" hidden>Reset</button></div>
+    <div class="ro" id="fig-gmc-out"></div>
+    <div class="fig-foot">
+      <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
+    </div>
+    <p class="sr-only" id="fig-gmc-live" aria-live="polite"></p>
+  </div>
+</section>
+
+<section id="semi-gradient">
+  <div class="prose">
+    <h2><span class="n">4</span>Learning from the next estimate</h2>
+    <p>TD(0) uses the target <span class="nowrap"><i>U</i><sub><i>t</i></sub> = <i>R</i><sub><i>t</i>+1</sub> + γ<span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i>+1</sub>, <b class="vec">w</b><sub><i>t</i></sub>)</span>, built from the weights themselves, and that has two consequences. First, the target is right on average only if the next state's estimate is, so it is biased, and the guarantee of the last section no longer applies. Second, the step of the last section is the gradient of the squared error only for a target that does not depend on the weights. This one does: changing the weights changes the next state's estimate, and with it the target. The update takes into account how the weights move the estimate of <i>S</i><sub><i>t</i></sub>, and ignores how they move the target. It follows only part of the gradient, so it is called a semi-gradient method:</p>
+    <div class="disp"><b class="vec">w</b><sub><i>t</i>+1</sub> <span class="nowrap">≐ <b class="vec">w</b><sub><i>t</i></sub> + α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub> + γ<span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i>+1</sub>, <b class="vec">w</b><sub><i>t</i></sub>)</span></span> <span class="nowrap">− <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)]</span> <span class="nowrap">∇<span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)</span></div>
+    <p>In the cart-pole, 85% of the steps leave the pole in the range it was in. The target of such a step is the reward, 1, plus the very weight being updated, so the TD error is 1 whatever that weight is, and the update raises the estimate and the target together: it chases a target that moves with it.</p>
+    <p>Why use it, then? For the reasons of the <a href="/notes/reinforcement-learning/td-learning/">TD note</a>: it learns from every step without waiting for the end of an episode, it works in tasks that never end, and its targets vary less than returns, so it usually learns faster. And with a linear estimate it converges reliably, to a point that the next section finds.</p>
+
+    <h3>The algorithm</h3>
+    <p>Semi-gradient TD(0), for a policy π, an estimate <span class="hat lo"><i>v</i></span> differentiable in its weights with <span class="nowrap"><span class="hat lo"><i>v</i></span>(terminal, ·) = 0</span>, and a step size <span class="nowrap">α &gt; 0</span>:</p>
+    <ol class="steps">
+      <li>Start with any weights <b class="vec">w</b>, for example all 0.</li>
+      <li>At the start of each episode, observe the first state <i>S</i>.</li>
+      <li>Take the action π gives for <i>S</i>, and observe the reward <i>R</i> and the next state <i>S</i>′.</li>
+      <li>Update <span class="nowrap"><b class="vec">w</b> ← <b class="vec">w</b> + α[<span class="pt"><i>R</i> + γ<span class="hat lo"><i>v</i></span>(<i>S</i>′, <b class="vec">w</b>)</span></span> <span class="nowrap">− <span class="hat lo"><i>v</i></span>(<i>S</i>, <b class="vec">w</b>)]</span> <span class="nowrap">∇<span class="hat lo"><i>v</i></span>(<i>S</i>, <b class="vec">w</b>)</span>.</li>
+      <li>Set <i>S</i> ← <i>S</i>′, and go back to step 3 until <i>S</i> is terminal.</li>
+    </ol>
+    <p>The figure runs semi-gradient TD(0) on the same episodes, with the same ranges and the same α. Each step's target borrows the weight of the next state's range, outlined in red, which is usually the range being updated.</p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-sgtd" role="group" aria-label="The cart and pole on their track, and below them the plane of the pole's angle and angular velocity cut into 6 by 6 cells, each holding a weight, with a dot for the current state."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-sgtd-back">Back</button><button type="button" class="btn" id="fig-sgtd-next">Next</button><span class="count" id="fig-sgtd-count"></span><button type="button" class="btn" id="fig-sgtd-reset" hidden>Reset</button></div>
+    <div class="ro" id="fig-sgtd-out"></div>
+    <div class="fig-foot">
+      <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
+    </div>
+    <p class="sr-only" id="fig-sgtd-live" aria-live="polite"></p>
+  </div>
+</section>
+
+<section id="linear">
+  <div class="prose">
+    <h2><span class="n">5</span>Where each method settles</h2>
+    <p>With a linear estimate the gradient is the feature vector, so the general update becomes</p>
+    <div class="disp"><b class="vec">w</b><sub><i>t</i>+1</sub> <span class="nowrap">≐ <b class="vec">w</b><sub><i>t</i></sub> + α[<span class="pt"><i>U</i><sub><i>t</i></sub></span> − <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)]</span> <span class="nowrap"><b class="vec">x</b>(<i>S</i><sub><i>t</i></sub>)</span></div>
+    <p>and each weight moves in proportion to its own feature. A linear <span class="ovl">VE</span> has a single minimum, or, when some features merely repeat others, a set of equally good ones. So gradient Monte Carlo, with a step size that shrinks appropriately, converges to the weights with the least <span class="ovl">VE</span>: in the cart-pole, each range's average, 18.9 steps in the middle ranges, 11.8 from 4° to 8°, and 4.8 past 8°.</p>
+    <p>Semi-gradient TD(0) converges too, though not by the same argument, and not to the same weights. Writing <b class="vec">x</b><sub><i>t</i></sub> for <b class="vec">x</b>(<i>S</i><sub><i>t</i></sub>), its update is</p>
+    <div class="disp"><b class="vec">w</b><sub><i>t</i>+1</sub> <span class="nowrap">≐ <b class="vec">w</b><sub><i>t</i></sub> + α(<span class="pt"><i>R</i><sub><i>t</i>+1</sub> + γ<b class="vec">w</b><span class="ss"><span>T</span><span><i>t</i></span></span><b class="vec">x</b><sub><i>t</i>+1</sub></span></span> <span class="nowrap">− <b class="vec">w</b><span class="ss"><span>T</span><span><i>t</i></span></span><b class="vec">x</b><sub><i>t</i></sub>)<b class="vec">x</b><sub><i>t</i></sub></span><br><span class="nowrap">= <b class="vec">w</b><sub><i>t</i></sub> + α(<i>R</i><sub><i>t</i>+1</sub><b class="vec">x</b><sub><i>t</i></sub></span> <span class="nowrap">− <b class="vec">x</b><sub><i>t</i></sub>(<b class="vec">x</b><sub><i>t</i></sub> − γ<b class="vec">x</b><sub><i>t</i>+1</sub>)<sup class="t">T</sup><b class="vec">w</b><sub><i>t</i></sub>)</span></div>
+    <p>Averaged over the states the policy visits and the steps it takes from them, the next weights are</p>
+    <div class="disp">E[<b class="vec">w</b><sub><i>t</i>+1</sub> | <b class="vec">w</b><sub><i>t</i></sub>] <span class="nowrap">= <b class="vec">w</b><sub><i>t</i></sub> + α(<b class="vec">b</b> − <b class="vec">A</b><b class="vec">w</b><sub><i>t</i></sub>),</span><br><span class="nowrap"><b class="vec">b</b> ≐ E[<i>R</i><sub><i>t</i>+1</sub><b class="vec">x</b><sub><i>t</i></sub>],</span>&ensp;<span class="nowrap"><b class="vec">A</b> ≐ E[<b class="vec">x</b><sub><i>t</i></sub>(<b class="vec">x</b><sub><i>t</i></sub> − γ<b class="vec">x</b><sub><i>t</i>+1</sub>)<sup class="t">T</sup>]</span></div>
+    <p>so on average the weights stop moving where <span class="nowrap"><b class="vec">b</b> − <b class="vec">A</b><b class="vec">w</b> = 0</span>:</p>
+    <div class="disp hero-f"><b class="vec">w</b><sub>TD</sub> <span class="nowrap">≐ <b class="vec">A</b><sup>−1</sup><b class="vec">b</b></span></div>
+    <p>This is the TD fixed point, and linear semi-gradient TD(0) converges to it. With state aggregation it has a plain meaning: each range's weight equals the average, over the steps taken from that range, of the reward plus the weight of the range the step lands in (0 after a fall). TD treats the ranges as if they were the states. They are not: between 4° and 8°, some poles are swinging back toward upright and some are falling, and the range of the next step depends on which. TD borrows the same average for both, and settles at 22.3 steps in the middle ranges, 3.4 above their averages, and at 10.7 and 3.9 farther out, about 1 below. Its <span class="ovl">VE</span> is 29.9, against the least, 22.8.</p>
+    <p>How far off can TD's fixed point be? For continuing tasks with <span class="nowrap">γ &lt; 1</span>, it has been proved that</p>
+    <div class="disp"><span class="ovl">VE</span>(<b class="vec">w</b><sub>TD</sub>) <span class="nowrap">≤ <span class="frac"><span>1</span><span>1 − γ</span></span> min<sub><b class="vec">w</b></sub> <span class="ovl">VE</span>(<b class="vec">w</b>)</span></div>
+    <p>With <span class="nowrap">γ = 0.9</span>, TD's error is at most ten times the least, and the bound loosens as γ nears 1; for episodic tasks, such as the cart-pole, a different but related bound holds. What TD gives up in the limit, it often makes up in speed, since its targets vary less than returns. Which method is better depends on the problem, the features, and how long learning runs.</p>
+    <p>Between the two lies <i>n</i>-step TD, whose semi-gradient form updates the estimate of the state <i>n</i> steps back:</p>
+    <div class="disp"><b class="vec">w</b><sub><i>t</i>+<i>n</i></sub> <span class="nowrap">≐ <b class="vec">w</b><sub><i>t</i>+<i>n</i>−1</sub></span> <span class="nowrap">+ α[<span class="pt"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub></span> − <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i>+<i>n</i>−1</sub>)]</span> <span class="nowrap">∇<span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i>+<i>n</i>−1</sub>),</span> <span class="nowrap">0 ≤ <i>t</i> &lt; <i>T</i></span></div>
+    <p>with the <i>n</i>-step return as the <a href="/notes/reinforcement-learning/eligibility-traces/">eligibility traces note</a> wrote it with weights: <i>n</i> rewards, then <span class="nowrap">γ<sup><i>n</i></sup><span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i>+<i>n</i></sub>, <b class="vec">w</b><sub><i>t</i>+<i>n</i>−1</sub>)</span>. The more real rewards a target holds, the less it leans on the estimates, and the closer its fixed point comes to the averages: in the cart-pole, 19.6 steps in the middle ranges for <span class="nowrap"><i>n</i> = 8</span>. Pick a method in the figure to see where it settles.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-settle" role="img" aria-label="Six bars, one per range of the pole's angle, where the chosen method settles, over red dots for the true values of states visited by the random policy, with each range's average marked."></svg>
+    <div class="ro">
+      <div class="modes" id="fig-settle-modes" role="group" aria-label="Method">
+        <button type="button" data-mode="1" aria-pressed="true">TD(0)</button>
+        <button type="button" data-mode="2" aria-pressed="false"><i>n</i> = 2</button>
+        <button type="button" data-mode="4" aria-pressed="false"><i>n</i> = 4</button>
+        <button type="button" data-mode="8" aria-pressed="false"><i>n</i> = 8</button>
+        <button type="button" data-mode="mc" aria-pressed="false">Monte Carlo</button>
+      </div>
+      <div id="fig-settle-out" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">6</span>Summary</h2>
+    <p>The key ideas next to their NumPy equivalents, for a linear estimate. <code>x</code> and <code>x_next</code> are the feature vectors of <i>S</i><sub><i>t</i></sub> and <i>S</i><sub><i>t</i>+1</sub> (all 0 for a terminal state), <code>xs</code> holds the feature vectors of all the states as rows, <code>p_pi[s, s2]</code> is the probability of a step from <code>s</code> to <code>s2</code> under π, and <code>v_pi</code>, <code>h</code> and <code>mu</code> are indexed by state. In <i>n</i>-step TD, <code>rs</code> holds the <i>n</i> rewards after <i>S</i><sub><i>t</i></sub>, and <code>x_n</code> the feature vector of <i>S</i><sub><i>t</i>+<i>n</i></sub>.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Linear estimate</div>
+      <div class="f"><span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>) = <b class="vec">w</b><sup class="t">T</sup><b class="vec">x</b>(<i>s</i>)</div>
+      <div class="c"><code>v_hat = w @ x</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">On-policy distribution</div>
+      <div class="f"><span class="nowrap">η(<i>s</i>) = <i>h</i>(<i>s</i>)</span> <span class="nowrap">+ Σ<sub><i>s̄</i></sub> η(<i>s̄</i>) Σ<sub><i>a</i></sub> π(<i>a</i>|<i>s̄</i>)<i>p</i>(<i>s</i>|<i>s̄</i>, <i>a</i>),</span> <span class="nowrap">μ = η/Ση</span></div>
+      <div class="c"><code>eye = np.eye(len(h))<br>eta = h @ np.linalg.inv(eye - p_pi)<br>mu = eta / eta.sum()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Mean squared value error</div>
+      <div class="f"><span class="ovl">VE</span>(<b class="vec">w</b>) <span class="nowrap">= Σ<sub><i>s</i></sub> μ(<i>s</i>)[<span class="pt"><i>v</i><sub>π</sub>(<i>s</i>)</span> − <span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>)]<sup>2</sup></span></div>
+      <div class="c"><code>ve = mu @ (v_pi - xs @ w) ** 2</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Gradient Monte Carlo</div>
+      <div class="f"><span class="nowrap"><b class="vec">w</b> ← <b class="vec">w</b></span> <span class="nowrap">+ α[<span class="pt"><i>G</i><sub><i>t</i></sub></span> − <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b>)]<b class="vec">x</b>(<i>S</i><sub><i>t</i></sub>)</span></div>
+      <div class="c"><code>w += alpha * (g - w @ x) * x</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Semi-gradient TD(0)</div>
+      <div class="f"><span class="nowrap"><b class="vec">w</b> ← <b class="vec">w</b></span> <span class="nowrap">+ α[<span class="pt"><i>R</i> + γ<span class="hat lo"><i>v</i></span>(<i>S</i>′, <b class="vec">w</b>)</span></span> <span class="nowrap">− <span class="hat lo"><i>v</i></span>(<i>S</i>, <b class="vec">w</b>)]<b class="vec">x</b>(<i>S</i>)</span></div>
+      <div class="c"><code>g = r + gamma * w @ x_next<br>w += alpha * (g - w @ x) * x</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">TD fixed point</div>
+      <div class="f"><span class="nowrap"><b class="vec">w</b><sub>TD</sub> = <b class="vec">A</b><sup>−1</sup><b class="vec">b</b>,</span> <span class="nowrap">with <b class="vec">b</b> = E[<i>R</i><sub><i>t</i>+1</sub><b class="vec">x</b><sub><i>t</i></sub>]</span> <span class="nowrap">and <b class="vec">A</b> = E[<b class="vec">x</b><sub><i>t</i></sub>(<b class="vec">x</b><sub><i>t</i></sub> − γ<b class="vec">x</b><sub><i>t</i>+1</sub>)<sup class="t">T</sup>]</span></div>
+      <div class="c"><code>w_td = np.linalg.solve(mat_a, b)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k"><i>n</i>-step semi-gradient TD</div>
+      <div class="f"><span class="nowrap"><b class="vec">w</b> ← <b class="vec">w</b></span> <span class="nowrap">+ α[<span class="pt"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub></span> − <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b>)]<b class="vec">x</b>(<i>S</i><sub><i>t</i></sub>)</span></div>
+      <div class="c"><code>g = rs @ gamma ** np.arange(n)<br>g += gamma ** n * w @ x_n<br>w += alpha * (g - w @ x) * x</code></div>
+    </div>
+  </div>
+</section>

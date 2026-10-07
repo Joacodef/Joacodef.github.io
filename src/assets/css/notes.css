@@ -252,6 +252,7 @@ ol.steps b { font-weight: 600; }
 .dg-lab .up { font-style: normal; }
 .dg-lab .sub { font-size: 0.7em; }
 .dg-lab.tg { fill: var(--red); }
+.dg-lab.ln { fill: var(--blue); }
 @media (max-width: 560px) { .dg-lab { font-size: 17px; } .dg-lab.m { font-size: 19px; } }
 /* Reinforcement learning: states are open circles and actions small dots, as in backup diagrams. Carmine marks
    what the target of an update is built from. */
@@ -334,6 +335,27 @@ ol.steps b { font-weight: 600; }
 .gw-wall { stroke: var(--ink); stroke-width: 4; stroke-linecap: round; pointer-events: none; }
 /* A wall that stands between two cells for a while, along their shared side. */
 .gw-barrier { stroke: var(--ink); stroke-width: 5; stroke-linecap: round; pointer-events: none; }
+/* The cart-pole (cartpole.js): the cart and pole in ink on their track, with the push just chosen in yellow, and the
+   dimension lines of the drawing that names its four numbers. */
+.cp-track { stroke: var(--ink-3); stroke-width: 1.6; stroke-linecap: round; }
+.cp-cart { fill: var(--card); stroke: var(--ink); stroke-width: 1.8; }
+.cp-pole { stroke: var(--ink); stroke-width: 4; stroke-linecap: round; }
+.cp-hinge { fill: var(--card); stroke: var(--ink); stroke-width: 1.6; }
+.cp-push { fill: var(--pick); stroke: color-mix(in srgb, var(--pick) 50%, var(--ink)); stroke-width: 1; stroke-linejoin: round; }
+.cp-dim { fill: none; stroke: var(--ink-2); stroke-width: 1.2; }
+/* The estimate over the pole's angle: a blue bar per range, the long-run averages as short red lines, the true values of
+   visited states as red dots (fainter where the bars are the subject), and a small cart and pole under each range. */
+.cp-grid { stroke: color-mix(in srgb, var(--rule) 70%, transparent); stroke-width: 1; }
+.cp-bar { fill: color-mix(in srgb, var(--blue) 16%, transparent); }
+.cp-bar-top { stroke: var(--blue); stroke-width: 2.6; stroke-linecap: round; }
+.cp-ref { stroke: var(--red); stroke-width: 2.4; stroke-linecap: round; }
+.cp-dot { fill: var(--red); fill-opacity: 0.45; }
+.cp-dots.faint .cp-dot { fill-opacity: 0.22; }
+.cp-cart.sm { stroke-width: 1.3; }
+.cp-pole.sm { stroke-width: 2.4; }
+.cp-range { fill: none; stroke: var(--rule); stroke-width: 1.2; }
+/* A bar's value keeps a halo of the card's color, so that a red average line under it does not cross it. */
+.cp-val { paint-order: stroke; stroke: var(--card); stroke-width: 4px; stroke-linejoin: round; }
 @media (max-width: 560px) { .gw-axis, .gw-sg { font-size: 14px; } .gw-lab { font-size: 16px; } .gw-q { font-size: 11px; } .gw-v { font-size: 17px; } }
 /* The heatmap, under the lines: green as a positive value nears 1, coral as a negative one nears −10, nothing at 0
    (the shares --tp and --tn, from 0 to 1, set by the script). Coral, a cost, mixes in at 0.4 of the green's strength,

@@ -1,0 +1,261 @@
+---
+title: Predicción on-policy con aproximación
+module: Métodos aproximados
+order: 10
+description: "Estimar valores cuando hay demasiados estados para una tabla: unos pocos pesos le dan su valor a cada estado, aprendidos de retornos o de la estimación siguiente, y los dos tipos de aprendizaje terminan en pesos distintos."
+scripts:
+  - /assets/js/notes/reinforcement-learning/prediction-with-approximation.js
+---
+<div class="prose">
+  <p>Todos los métodos de los apuntes anteriores guardan una tabla, con una estimación para cada estado, o para cada estado y acción, y aprenden cada entrada solo de las visitas a su propio estado. Eso funciona en mundos pequeños como las nueve celdas de la grilla de la galleta. Falla cuando un agente no puede aspirar a visitar cada estado, y menos a visitar cada uno muchas veces.</p>
+  <p>Piensa en un carro que rueda por un riel, con un péndulo sobre una bisagra. En cada paso el agente empuja el carro a la izquierda o a la derecha, y gana +1 por cada paso en que el péndulo sigue arriba; el episodio termina cuando el péndulo se inclina más de 12° o el carro sale del riel. El estado son cuatro números: dónde está el carro y qué tan rápido se mueve, el ángulo del péndulo y qué tan rápido gira. Medidos con precisión, casi nunca se repiten, así que una tabla tendría una entrada por cada estado visitado alguna vez, actualizada una sola vez, y nada para el estado siguiente, que es nuevo.</p>
+    <figure class="diagram">
+    <svg viewBox="0 0 440 200" role="img" aria-label="Un carro sobre un riel con un péndulo en una bisagra, el péndulo inclinado unos 10° a la derecha. Marcados en el dibujo: la posición del carro desde el centro del riel, su velocidad, el ángulo del péndulo respecto de la vertical y su velocidad angular.">
+      <defs><marker id="cp-intro-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head-ink" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+      <line class="cp-track" x1="24" y1="150" x2="416" y2="150"/>
+      <line class="cp-track" x1="30" y1="143" x2="30" y2="157"/>
+      <line class="cp-track" x1="410" y1="143" x2="410" y2="157"/>
+      <line class="cp-dim" x1="220" y1="150" x2="220" y2="178"/>
+      <line class="cp-dim" x1="220" y1="172" x2="262" y2="172" marker-end="url(#cp-intro-head)"/>
+      <text class="dg-lab" x="214" y="177" text-anchor="end">posición</text>
+      <line class="guide" x1="262" y1="124" x2="262" y2="22"/>
+      <path class="cp-dim" d="M262 78 A46 46 0 0 1 270 78.7"/>
+      <text class="dg-lab" x="254" y="72" text-anchor="end">ángulo</text>
+      <path class="cp-dim" d="M281.1 34 A92 92 0 0 1 302.3 41.3" marker-end="url(#cp-intro-head)"/>
+      <text class="dg-lab" x="310" y="38">velocidad</text>
+      <text class="dg-lab" x="310" y="56">angular</text>
+      <rect class="cp-cart" x="232" y="124" width="60" height="26" rx="3"/>
+      <line class="cp-pole" x1="262" y1="124" x2="280.1" y2="21.6"/>
+      <circle class="cp-hinge" cx="262" cy="124" r="3.6"/>
+      <line class="cp-dim" x1="300" y1="137" x2="334" y2="137" marker-end="url(#cp-intro-head)"/>
+      <text class="dg-lab" x="340" y="142">velocidad</text>
+    </svg>
+    <figcaption>El cart-pole. Su estado son cuatro números: la posición y la velocidad del carro, y el ángulo y la velocidad angular del péndulo. El agente empuja el carro a la izquierda o a la derecha.</figcaption>
+  </figure>
+  <p>La salida es dejar de aprender cada estado por separado. Unos pocos números describen cada estado, como el ángulo del péndulo, y unos pocos pesos, compartidos por todos los estados, convierten esos números en un valor. Aprender ajusta los pesos, así que lo que enseña un estado se traslada a todos los estados descritos por números parecidos, incluidos estados nunca visitados.</p>
+  <p>El precio es que ningún conjunto de pesos puede acertar en todos los estados, así que el agente tiene que decidir qué errores aceptar. Monte Carlo y TD se trasladan los dos, pero ya no terminan en la misma respuesta, ni siquiera con experiencia infinita. Este apunte trata de predicción, estimar los valores de una política fija: aquí, cuánto dura arriba el péndulo mientras el carro se empuja al azar, antes de que algún agente aprenda a mantenerlo arriba.</p>
+  <p class="legend">En toda esta página, <span class="bar" aria-hidden="true"></span>las estimaciones, las barras que fijan los pesos, se dibujan en tinta azul, y <span class="dot" aria-hidden="true"></span>aquello a lo que apuntan, los valores verdaderos o el objetivo de una actualización, en tinta roja.</p>
+</div>
+
+<section id="weights">
+  <div class="prose">
+    <h2><span class="n">1</span>Valores a partir de pesos</h2>
+    <p>El <a href="/es/notes/reinforcement-learning/eligibility-traces/">apunte de eligibility traces</a> escribió sus actualizaciones para cualquier estimación <span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>), el valor del estado <i>s</i> dado un vector de pesos <b class="vec">w</b>, con una tabla como el caso más simple, un peso por estado. De aquí en adelante, los pesos son muchos menos que los estados. Cada estado se describe con un vector de features, <i>d</i> números calculados a partir del estado:</p>
+    <div class="disp"><b class="vec">x</b>(<i>s</i>) <span class="nowrap">≐ (<i>x</i><sub>1</sub>(<i>s</i>), <i>x</i><sub>2</sub>(<i>s</i>), …, <i>x</i><sub><i>d</i></sub>(<i>s</i>))<sup class="t">T</sup></span></div>
+    <p>y la estimación más simple, la que usa este apunte, es lineal en los pesos: cada feature por su peso, sumadas.</p>
+    <div class="disp hero-f"><span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>) <span class="nowrap">≐ <b class="vec">w</b><sup class="t">T</sup><b class="vec">x</b>(<i>s</i>)</span> <span class="nowrap">≐ Σ<span class="lims"><span><i>d</i></span><span><i>i</i>=1</span></span><i>w</i><sub><i>i</i></sub><i>x</i><sub><i>i</i></sub>(<i>s</i>)</span></div>
+    <p>Para el cart-pole, las features podrían ser los cuatro números del estado, o cualquier cosa calculada a partir de ellos. El agente de este apunte se queda con una sola: el ángulo del péndulo, cortado en seis rangos de 4° de −12° a 12°. Cada rango es una feature, 1 cuando el péndulo se inclina dentro de él y 0 si no, así que <span class="nowrap"><i>d</i> = 6</span>, y <span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>) es simplemente el peso del rango en que está el péndulo. Esto es agregación de estados: los estados de un rango comparten un peso, y por lo tanto un valor.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 440 158" role="img" aria-label="Seis rangos del ángulo del péndulo, de −12° a 12° en pasos de 4°, cada uno dibujado con un pequeño carro y péndulo inclinado en su ángulo medio y rotulado con su propio peso, w1 a w6.">
+        <g class="axes"><line x1="40" y1="128" x2="400" y2="128"/><line x1="40" y1="128" x2="40" y2="133"/><line x1="100" y1="128" x2="100" y2="133"/><line x1="160" y1="128" x2="160" y2="133"/><line x1="220" y1="128" x2="220" y2="133"/><line x1="280" y1="128" x2="280" y2="133"/><line x1="340" y1="128" x2="340" y2="133"/><line x1="400" y1="128" x2="400" y2="133"/></g>
+        <text class="tick" x="40" y="149" text-anchor="middle">−12°</text>
+        <text class="tick" x="100" y="149" text-anchor="middle">−8°</text>
+        <text class="tick" x="160" y="149" text-anchor="middle">−4°</text>
+        <text class="tick" x="220" y="149" text-anchor="middle">0°</text>
+        <text class="tick" x="280" y="149" text-anchor="middle">4°</text>
+        <text class="tick" x="340" y="149" text-anchor="middle">8°</text>
+        <text class="tick" x="400" y="149" text-anchor="middle">12°</text>
+        <rect class="cp-range" x="43" y="22" width="54" height="102" rx="4"/>
+        <line class="cp-track" x1="54" y1="112" x2="86" y2="112"/>
+        <rect class="cp-cart sm" x="61" y="104" width="18" height="8" rx="1.5"/>
+        <line class="cp-pole sm" x1="70" y1="104" x2="62.36" y2="60.67"/>
+        <text class="dg-lab m" x="70" y="44" text-anchor="middle">w<tspan class="sub up" dy="4">1</tspan></text>
+        <rect class="cp-range" x="103" y="22" width="54" height="102" rx="4"/>
+        <line class="cp-track" x1="114" y1="112" x2="146" y2="112"/>
+        <rect class="cp-cart sm" x="121" y="104" width="18" height="8" rx="1.5"/>
+        <line class="cp-pole sm" x1="130" y1="104" x2="125.40" y2="60.24"/>
+        <text class="dg-lab m" x="130" y="44" text-anchor="middle">w<tspan class="sub up" dy="4">2</tspan></text>
+        <rect class="cp-range" x="163" y="22" width="54" height="102" rx="4"/>
+        <line class="cp-track" x1="174" y1="112" x2="206" y2="112"/>
+        <rect class="cp-cart sm" x="181" y="104" width="18" height="8" rx="1.5"/>
+        <line class="cp-pole sm" x1="190" y1="104" x2="188.46" y2="60.03"/>
+        <text class="dg-lab m" x="190" y="44" text-anchor="middle">w<tspan class="sub up" dy="4">3</tspan></text>
+        <rect class="cp-range" x="223" y="22" width="54" height="102" rx="4"/>
+        <line class="cp-track" x1="234" y1="112" x2="266" y2="112"/>
+        <rect class="cp-cart sm" x="241" y="104" width="18" height="8" rx="1.5"/>
+        <line class="cp-pole sm" x1="250" y1="104" x2="251.54" y2="60.03"/>
+        <text class="dg-lab m" x="250" y="44" text-anchor="middle">w<tspan class="sub up" dy="4">4</tspan></text>
+        <rect class="cp-range" x="283" y="22" width="54" height="102" rx="4"/>
+        <line class="cp-track" x1="294" y1="112" x2="326" y2="112"/>
+        <rect class="cp-cart sm" x="301" y="104" width="18" height="8" rx="1.5"/>
+        <line class="cp-pole sm" x1="310" y1="104" x2="314.60" y2="60.24"/>
+        <text class="dg-lab m" x="310" y="44" text-anchor="middle">w<tspan class="sub up" dy="4">5</tspan></text>
+        <rect class="cp-range" x="343" y="22" width="54" height="102" rx="4"/>
+        <line class="cp-track" x1="354" y1="112" x2="386" y2="112"/>
+        <rect class="cp-cart sm" x="361" y="104" width="18" height="8" rx="1.5"/>
+        <line class="cp-pole sm" x1="370" y1="104" x2="377.64" y2="60.67"/>
+        <text class="dg-lab m" x="370" y="44" text-anchor="middle">w<tspan class="sub up" dy="4">6</tspan></text>
+      </svg>
+      <figcaption>El ángulo del péndulo cortado en seis rangos de 4°, cada uno con su propio peso. El vector de features de un estado tiene un 1 en el rango en que se inclina su péndulo y 0 en los demás, así que su estimación es el peso de ese rango, haga lo que haga el carro y gire lo rápido que gire el péndulo.</figcaption>
+    </figure>
+    <p>Una tabla también es lineal, con una feature por estado, 1 en su propio estado y 0 en todos los demás. Elegir las features es elegir qué puede distinguir el agente: este agente no puede distinguir un péndulo que vuelve hacia la vertical de uno que se cae, si se inclinan lo mismo. La ganancia es que cada estado recibe un valor, incluso uno nunca visto, siempre que se puedan calcular sus features. El precio es que una actualización ya no se queda donde se hace: cambiar un peso para corregir la estimación de un estado cambia la estimación de todos los estados con esa feature, aquí todos los estados de su rango.</p>
+    <p>Cada actualización de los apuntes anteriores movía la estimación de un estado <i>S</i><sub><i>t</i></sub> hacia un objetivo: el retorno <i>G</i><sub><i>t</i></sub> en Monte Carlo, <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub> + γ<span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i>+1</sub>, <b class="vec">w</b>)</span> en TD(0), el retorno de <i>n</i> pasos <i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub> en <i>n</i>-step TD. Cada par así, las features del estado y su objetivo, es ahora un ejemplo para aprendizaje supervisado, que ajusta una función a ejemplos de entradas y de las salidas deseadas para ellas. Cualquier método supervisado podría ajustar los pesos, siempre que aprenda de ejemplos que llegan de a uno, a medida que el agente se mueve, y que tolere objetivos que cambian a medida que las estimaciones mejoran. Este apunte usa el más simple, el descenso de gradiente.</p>
+  </div>
+</section>
+
+<section id="objective">
+  <div class="prose">
+    <h2><span class="n">2</span>Qué errores importan</h2>
+    <p>Con menos pesos que estados, las estimaciones no pueden estar todas bien, y mejorar una puede empeorar otras. Para elegir entre ellas, se pondera el error al cuadrado de cada estado según cuánto importa ese estado, con una distribución <span class="nowrap">μ(<i>s</i>) ≥ 0</span>, <span class="nowrap">Σ<sub><i>s</i></sub> μ(<i>s</i>) = 1</span>. El resultado es el error cuadrático medio de valor (mean squared value error):</p>
+    <div class="disp hero-f"><span class="ovl">VE</span>(<b class="vec">w</b>) <span class="nowrap">≐ Σ<sub><i>s</i>∈𝒮</sub> μ(<i>s</i>)</span><span class="nowrap">[<span class="pt"><i>v</i><sub>π</sub>(<i>s</i>)</span> − <span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>)]<sup>2</sup></span></div>
+    <p>Su raíz cuadrada da una idea aproximada de cuán lejos están las estimaciones de los valores verdaderos. El μ habitual es la fracción del tiempo que la política pasa en cada estado, llamada la distribución on-policy: los estados que el agente más visita son aquellos cuyas estimaciones más usa. En una tarea episódica se obtiene de dos cantidades: <i>h</i>(<i>s</i>), la probabilidad de que un episodio empiece en <i>s</i>, y η(<i>s</i>), el número de pasos que un episodio pasa en <i>s</i> en promedio. Se pasa tiempo en <i>s</i> cuando un episodio empieza ahí, o cuando un paso lleva ahí desde un estado donde se pasa tiempo:</p>
+    <div class="disp">η(<i>s</i>) <span class="nowrap">= <i>h</i>(<i>s</i>)</span> <span class="nowrap">+ Σ<sub><i>s̄</i></sub> η(<i>s̄</i>) Σ<sub><i>a</i></sub> π(<i>a</i>|<i>s̄</i>)<i>p</i>(<i>s</i>|<i>s̄</i>, <i>a</i>),</span>&ensp;<span class="nowrap">μ(<i>s</i>) = <span class="frac"><span>η(<i>s</i>)</span><span>Σ<sub><i>s</i>′</sub> η(<i>s</i>′)</span></span></span></div>
+    <p>Con descuento, un factor γ en el segundo término lo trata como una probabilidad de que el episodio termine. Empujado al azar, el péndulo pasa el 29% de su tiempo en cada uno de los dos rangos del centro, el 12% en cada rango de 4° a 8°, y el 8% en cada uno de los de afuera. Dentro de un rango los valores verdaderos difieren: un péndulo entre 4° y 8° que vuelve hacia la vertical puede seguir arriba 20 pasos más o más, y uno que se aleja, solo 2 o 3. Un peso no puede acertar en todos, y el <span class="ovl">VE</span> pondera cada error según cuán seguido aparece su estado. En la figura, cada punto es un estado que visitó la política, en su ángulo y su valor verdadero, los pasos que le quedaban en promedio; hay más puntos donde el péndulo pasa más tiempo. Arrastra las seis barras.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-ve" role="group" aria-label="Seis barras, una por rango del ángulo del péndulo, cada una el peso de su rango, que puedes arrastrar hacia arriba o hacia abajo, sobre puntos rojos para los valores verdaderos de estados que visita la política al azar."></svg>
+    <div class="ro" id="fig-ve-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Arrastra una barra hacia arriba o hacia abajo. Con el teclado, selecciona una con Tab y usa las flechas.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>El <span class="ovl">VE</span> es mínimo con cada barra en el promedio de los estados de su rango, ponderados por cuán seguido aparecen: unos 19 pasos en los rangos del centro, 12 de 4° a 8°, y 5 pasado 8°. Lo que queda, 22.8, un error típico de 4.8 pasos, es la dispersión dentro de los rangos, que solo mejores features podrían reducir. En la práctica nadie calcula μ: seguir π trae cada estado a estas tasas, así que aprender de los estados a medida que llegan pondera sus errores por μ. Una estimación lineal tiene un solo mínimo del <span class="ovl">VE</span>; una estimación que no es lineal en sus pesos, como una red neuronal, puede tener muchos, y los métodos que siguen pueden entonces encontrar solo uno cercano a donde empiezan. Tampoco es seguro que el <span class="ovl">VE</span> sea la meta correcta: los valores se quieren para elegir acciones, y los valores con el menor <span class="ovl">VE</span> no son necesariamente los mejores para eso. Es la meta que usa este apunte.</p>
+  </div>
+</section>
+
+<section id="gradient-mc">
+  <div class="prose">
+    <h2><span class="n">3</span>Aprender de retornos</h2>
+    <p>Supón por un momento que cada visita a un estado <i>S</i><sub><i>t</i></sub> viniera con su valor verdadero. Los pesos podrían entonces dar un paso pequeño en la dirección que más rápido reduce el error al cuadrado de ese estado, contra su gradiente:</p>
+    <div class="disp"><b class="vec">w</b><sub><i>t</i>+1</sub> <span class="nowrap">≐ <b class="vec">w</b><sub><i>t</i></sub> − ½α∇[<span class="pt"><i>v</i><sub>π</sub>(<i>S</i><sub><i>t</i></sub>)</span> − <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)]<sup>2</sup></span><br><span class="nowrap">= <b class="vec">w</b><sub><i>t</i></sub> + α[<span class="pt"><i>v</i><sub>π</sub>(<i>S</i><sub><i>t</i></sub>)</span> − <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)]</span> <span class="nowrap">∇<span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)</span></div>
+    <p>El gradiente ∇<span class="hat lo"><i>v</i></span> es el vector de las derivadas parciales de la estimación con respecto a los pesos. Dice qué pesos produjeron la estimación de <i>S</i><sub><i>t</i></sub>, y cuánto, y para una estimación lineal es simplemente el vector de features, <span class="nowrap">∇<span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>) = <b class="vec">x</b>(<i>s</i>)</span>. El método es descenso de gradiente estocástico: cada paso mira un estado, el recién visitado, y puede empeorar los errores de otros estados. Los estados llegan a las tasas que fija μ, así que en muchos pasos pequeños los pesos bajan por el <span class="ovl">VE</span>. Los pasos tienen que ser pequeños, ya que pasos que eliminaran por completo el error de cada estado solo perseguirían al último estado visitado. Con un tamaño de paso que se achica con el tiempo al ritmo adecuado, los pesos convergen a un mínimo del <span class="ovl">VE</span>, o a uno de sus mínimos si tiene varios.</p>
+    <p>El valor verdadero es desconocido, así que la actualización usa un objetivo <i>U</i><sub><i>t</i></sub> en su lugar:</p>
+    <div class="disp hero-f"><b class="vec">w</b><sub><i>t</i>+1</sub> <span class="nowrap">≐ <b class="vec">w</b><sub><i>t</i></sub> + α[<span class="pt"><i>U</i><sub><i>t</i></sub></span> − <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)]</span> <span class="nowrap">∇<span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)</span></div>
+    <p>Si el objetivo acierta en promedio, <span class="nowrap">E[<i>U</i><sub><i>t</i></sub> | <i>S</i><sub><i>t</i></sub> = <i>s</i>] = <i>v</i><sub>π</sub>(<i>s</i>)</span>, la garantía se mantiene. El retorno acierta en promedio por definición, ya que <i>v</i><sub>π</sub>(<i>s</i>) es el retorno que se espera desde <i>s</i>. Con <span class="nowrap"><i>U</i><sub><i>t</i></sub> = <i>G</i><sub><i>t</i></sub></span>, la actualización es gradient Monte Carlo.</p>
+
+    <h3>El algoritmo</h3>
+    <p>Gradient Monte Carlo, para una política π, una estimación <span class="hat lo"><i>v</i></span> diferenciable en sus pesos y un tamaño de paso <span class="nowrap">α &gt; 0</span>:</p>
+    <ol class="steps">
+      <li>Parte con cualquier vector de pesos <b class="vec">w</b>, por ejemplo con todos en 0.</li>
+      <li>Genera un episodio <span class="nowrap"><i>S</i><sub>0</sub>, <i>A</i><sub>0</sub>, <i>R</i><sub>1</sub>, …, <i>S</i><sub><i>T</i>−1</sub>, <i>A</i><sub><i>T</i>−1</sub>, <i>R</i><sub><i>T</i></sub></span> siguiendo π.</li>
+      <li>Para cada paso, <span class="nowrap"><i>t</i> = 0, 1, …, <i>T</i> − 1</span>, actualiza <span class="nowrap"><b class="vec">w</b> ← <b class="vec">w</b> + α[<span class="pt"><i>G</i><sub><i>t</i></sub></span></span> <span class="nowrap">− <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b>)]</span> <span class="nowrap">∇<span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b>)</span>.</li>
+      <li>Vuelve al paso 2 para el siguiente episodio.</li>
+    </ol>
+    <p>Con agregación de estados, ∇<span class="hat lo"><i>v</i></span> es 1 para el peso del rango de <i>S</i><sub><i>t</i></sub> y 0 para los demás, así que cada actualización mueve un peso, la estimación compartida de todo un rango, hacia el retorno de uno de sus estados.</p>
+    <p>La figura ejecuta gradient Monte Carlo en el cart-pole durante 2000 episodios. Arriba, el carro y el péndulo muestran el estado actual, y una flecha amarilla el empujón recién elegido; abajo, el peso de cada rango es una barra, los pasos que se espera que el péndulo siga arriba, y un punto en el eje marca el ángulo actual del péndulo. α parte en 0.1 y se achica tras cada episodio, <span class="nowrap">α = 0.1 · 20/(<i>k</i> + 19)</span> en el episodio <i>k</i>, para que los pesos se asienten: estos métodos convergen cuando α se achica, y con α constante un solo episodio largo seguiría moviendo las barras varios pasos.</p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-gmc" role="group" aria-label="Un carro con su péndulo sobre un riel, y debajo el plano del ángulo y la velocidad angular del péndulo cortado en 6 por 6 celdas, cada una con un peso, con un punto para el estado actual."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-gmc-back">Atrás</button><button type="button" class="btn" id="fig-gmc-next">Siguiente</button><span class="count" id="fig-gmc-count"></span><button type="button" class="btn" id="fig-gmc-reset" hidden>Reiniciar</button></div>
+    <div class="ro" id="fig-gmc-out"></div>
+    <div class="fig-foot">
+      <p>Siguiente avanza, Atrás retrocede. Teclas: <span class="nowrap">→ y ←</span>.</p>
+    </div>
+    <p class="sr-only" id="fig-gmc-live" aria-live="polite"></p>
+  </div>
+</section>
+
+<section id="semi-gradient">
+  <div class="prose">
+    <h2><span class="n">4</span>Aprender de la estimación siguiente</h2>
+    <p>TD(0) usa el objetivo <span class="nowrap"><i>U</i><sub><i>t</i></sub> = <i>R</i><sub><i>t</i>+1</sub> + γ<span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i>+1</sub>, <b class="vec">w</b><sub><i>t</i></sub>)</span>, construido con los mismos pesos, y eso tiene dos consecuencias. Primero, el objetivo acierta en promedio solo si la estimación del estado siguiente acierta, así que es sesgado, y la garantía de la sección anterior ya no se aplica. Segundo, el paso de la sección anterior es el gradiente del error al cuadrado solo para un objetivo que no depende de los pesos. Este sí depende: cambiar los pesos cambia la estimación del estado siguiente, y con ella el objetivo. La actualización toma en cuenta cómo los pesos mueven la estimación de <i>S</i><sub><i>t</i></sub>, e ignora cómo mueven el objetivo. Sigue solo una parte del gradiente, por eso se le llama un método semi-gradient:</p>
+    <div class="disp"><b class="vec">w</b><sub><i>t</i>+1</sub> <span class="nowrap">≐ <b class="vec">w</b><sub><i>t</i></sub> + α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub> + γ<span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i>+1</sub>, <b class="vec">w</b><sub><i>t</i></sub>)</span></span> <span class="nowrap">− <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)]</span> <span class="nowrap">∇<span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)</span></div>
+    <p>En el cart-pole, el 85% de los pasos deja al péndulo en el rango en que estaba. El objetivo de un paso así es la recompensa, 1, más justo el peso que se actualiza, así que el TD error es 1 valga lo que valga ese peso, y la actualización sube juntos la estimación y el objetivo: persigue un objetivo que se mueve con ella.</p>
+    <p>¿Por qué usarlo, entonces? Por las razones del <a href="/es/notes/reinforcement-learning/td-learning/">apunte de TD</a>: aprende de cada paso sin esperar el final de un episodio, funciona en tareas que nunca terminan, y sus objetivos varían menos que los retornos, así que suele aprender más rápido. Y con una estimación lineal converge de forma confiable, a un punto que encuentra la próxima sección.</p>
+
+    <h3>El algoritmo</h3>
+    <p>Semi-gradient TD(0), para una política π, una estimación <span class="hat lo"><i>v</i></span> diferenciable en sus pesos con <span class="nowrap"><span class="hat lo"><i>v</i></span>(terminal, ·) = 0</span>, y un tamaño de paso <span class="nowrap">α &gt; 0</span>:</p>
+    <ol class="steps">
+      <li>Parte con cualquier vector de pesos <b class="vec">w</b>, por ejemplo con todos en 0.</li>
+      <li>Al comienzo de cada episodio, observa el primer estado <i>S</i>.</li>
+      <li>Toma la acción que π da para <i>S</i>, y observa la recompensa <i>R</i> y el estado siguiente <i>S</i>′.</li>
+      <li>Actualiza <span class="nowrap"><b class="vec">w</b> ← <b class="vec">w</b> + α[<span class="pt"><i>R</i> + γ<span class="hat lo"><i>v</i></span>(<i>S</i>′, <b class="vec">w</b>)</span></span> <span class="nowrap">− <span class="hat lo"><i>v</i></span>(<i>S</i>, <b class="vec">w</b>)]</span> <span class="nowrap">∇<span class="hat lo"><i>v</i></span>(<i>S</i>, <b class="vec">w</b>)</span>.</li>
+      <li>Haz <i>S</i> ← <i>S</i>′, y vuelve al paso 3 hasta que <i>S</i> sea terminal.</li>
+    </ol>
+    <p>La figura ejecuta semi-gradient TD(0) en los mismos episodios, con los mismos rangos y el mismo α. El objetivo de cada paso toma prestado el peso del rango del estado siguiente, con borde rojo, que suele ser el rango que se actualiza.</p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-sgtd" role="group" aria-label="El carro con su péndulo sobre el riel, y debajo el plano del ángulo y la velocidad angular del péndulo cortado en 6 por 6 celdas, cada una con un peso, con un punto para el estado actual."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-sgtd-back">Atrás</button><button type="button" class="btn" id="fig-sgtd-next">Siguiente</button><span class="count" id="fig-sgtd-count"></span><button type="button" class="btn" id="fig-sgtd-reset" hidden>Reiniciar</button></div>
+    <div class="ro" id="fig-sgtd-out"></div>
+    <div class="fig-foot">
+      <p>Siguiente avanza, Atrás retrocede. Teclas: <span class="nowrap">→ y ←</span>.</p>
+    </div>
+    <p class="sr-only" id="fig-sgtd-live" aria-live="polite"></p>
+  </div>
+</section>
+
+<section id="linear">
+  <div class="prose">
+    <h2><span class="n">5</span>Dónde termina cada método</h2>
+    <p>Con una estimación lineal el gradiente es el vector de features, así que la actualización general queda</p>
+    <div class="disp"><b class="vec">w</b><sub><i>t</i>+1</sub> <span class="nowrap">≐ <b class="vec">w</b><sub><i>t</i></sub> + α[<span class="pt"><i>U</i><sub><i>t</i></sub></span> − <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)]</span> <span class="nowrap"><b class="vec">x</b>(<i>S</i><sub><i>t</i></sub>)</span></div>
+    <p>y cada peso se mueve en proporción a su propia feature. Un <span class="ovl">VE</span> lineal tiene un solo mínimo, o, cuando algunas features solo repiten a otras, un conjunto de mínimos igual de buenos. Así, gradient Monte Carlo, con un tamaño de paso que se achica adecuadamente, converge a los pesos con el menor <span class="ovl">VE</span>: en el cart-pole, el promedio de cada rango, 18.9 pasos en los rangos del centro, 11.8 de 4° a 8°, y 4.8 pasado 8°.</p>
+    <p>Semi-gradient TD(0) también converge, aunque no por el mismo argumento, ni a los mismos pesos. Escribiendo <b class="vec">x</b><sub><i>t</i></sub> por <b class="vec">x</b>(<i>S</i><sub><i>t</i></sub>), su actualización es</p>
+    <div class="disp"><b class="vec">w</b><sub><i>t</i>+1</sub> <span class="nowrap">≐ <b class="vec">w</b><sub><i>t</i></sub> + α(<span class="pt"><i>R</i><sub><i>t</i>+1</sub> + γ<b class="vec">w</b><span class="ss"><span>T</span><span><i>t</i></span></span><b class="vec">x</b><sub><i>t</i>+1</sub></span></span> <span class="nowrap">− <b class="vec">w</b><span class="ss"><span>T</span><span><i>t</i></span></span><b class="vec">x</b><sub><i>t</i></sub>)<b class="vec">x</b><sub><i>t</i></sub></span><br><span class="nowrap">= <b class="vec">w</b><sub><i>t</i></sub> + α(<i>R</i><sub><i>t</i>+1</sub><b class="vec">x</b><sub><i>t</i></sub></span> <span class="nowrap">− <b class="vec">x</b><sub><i>t</i></sub>(<b class="vec">x</b><sub><i>t</i></sub> − γ<b class="vec">x</b><sub><i>t</i>+1</sub>)<sup class="t">T</sup><b class="vec">w</b><sub><i>t</i></sub>)</span></div>
+    <p>Promediando sobre los estados que visita la política y los pasos que da desde ellos, los pesos siguientes son</p>
+    <div class="disp">E[<b class="vec">w</b><sub><i>t</i>+1</sub> | <b class="vec">w</b><sub><i>t</i></sub>] <span class="nowrap">= <b class="vec">w</b><sub><i>t</i></sub> + α(<b class="vec">b</b> − <b class="vec">A</b><b class="vec">w</b><sub><i>t</i></sub>),</span><br><span class="nowrap"><b class="vec">b</b> ≐ E[<i>R</i><sub><i>t</i>+1</sub><b class="vec">x</b><sub><i>t</i></sub>],</span>&ensp;<span class="nowrap"><b class="vec">A</b> ≐ E[<b class="vec">x</b><sub><i>t</i></sub>(<b class="vec">x</b><sub><i>t</i></sub> − γ<b class="vec">x</b><sub><i>t</i>+1</sub>)<sup class="t">T</sup>]</span></div>
+    <p>así que en promedio los pesos dejan de moverse donde <span class="nowrap"><b class="vec">b</b> − <b class="vec">A</b><b class="vec">w</b> = 0</span>:</p>
+    <div class="disp hero-f"><b class="vec">w</b><sub>TD</sub> <span class="nowrap">≐ <b class="vec">A</b><sup>−1</sup><b class="vec">b</b></span></div>
+    <p>Este es el fixed point de TD, y semi-gradient TD(0) lineal converge a él. Con agregación de estados tiene un sentido simple: el peso de cada rango es igual al promedio, sobre los pasos dados desde ese rango, de la recompensa más el peso del rango donde cae el paso (0 tras una caída). TD trata los rangos como si fueran los estados. No lo son: entre 4° y 8°, algunos péndulos vuelven hacia la vertical y otros se caen, y el rango del paso siguiente depende de cuál. TD toma prestado el mismo promedio para ambos, y termina en 22.3 pasos en los rangos del centro, 3.4 sobre sus promedios, y en 10.7 y 3.9 más afuera, cerca de 1 bajo ellos. Su <span class="ovl">VE</span> es 29.9, frente al mínimo, 22.8.</p>
+    <p>¿Qué tan lejos puede quedar el fixed point de TD? Para tareas continuas con <span class="nowrap">γ &lt; 1</span>, se ha demostrado que</p>
+    <div class="disp"><span class="ovl">VE</span>(<b class="vec">w</b><sub>TD</sub>) <span class="nowrap">≤ <span class="frac"><span>1</span><span>1 − γ</span></span> min<sub><b class="vec">w</b></sub> <span class="ovl">VE</span>(<b class="vec">w</b>)</span></div>
+    <p>Con <span class="nowrap">γ = 0.9</span>, el error de TD es a lo más diez veces el mínimo, y la cota se afloja a medida que γ se acerca a 1; para tareas episódicas, como el cart-pole, vale una cota distinta pero relacionada. Lo que TD pierde en el límite, a menudo lo recupera en rapidez, ya que sus objetivos varían menos que los retornos. Cuál método es mejor depende del problema, de las features y de cuánto dura el aprendizaje.</p>
+    <p>Entre los dos está <i>n</i>-step TD, cuya forma semi-gradient actualiza la estimación del estado <i>n</i> pasos atrás:</p>
+    <div class="disp"><b class="vec">w</b><sub><i>t</i>+<i>n</i></sub> <span class="nowrap">≐ <b class="vec">w</b><sub><i>t</i>+<i>n</i>−1</sub></span> <span class="nowrap">+ α[<span class="pt"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub></span> − <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i>+<i>n</i>−1</sub>)]</span> <span class="nowrap">∇<span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i>+<i>n</i>−1</sub>),</span> <span class="nowrap">0 ≤ <i>t</i> &lt; <i>T</i></span></div>
+    <p>con el retorno de <i>n</i> pasos como lo escribió con pesos el <a href="/es/notes/reinforcement-learning/eligibility-traces/">apunte de eligibility traces</a>: <i>n</i> recompensas, y luego <span class="nowrap">γ<sup><i>n</i></sup><span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i>+<i>n</i></sub>, <b class="vec">w</b><sub><i>t</i>+<i>n</i>−1</sub>)</span>. Mientras más recompensas reales tiene un objetivo, menos se apoya en las estimaciones, y más se acerca su fixed point a los promedios: en el cart-pole, 19.6 pasos en los rangos del centro con <span class="nowrap"><i>n</i> = 8</span>. Elige un método en la figura para ver dónde termina.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-settle" role="img" aria-label="Seis barras, una por rango del ángulo del péndulo, donde termina el método elegido, sobre puntos rojos para los valores verdaderos de estados que visita la política al azar, con el promedio de cada rango marcado."></svg>
+    <div class="ro">
+      <div class="modes" id="fig-settle-modes" role="group" aria-label="Método">
+        <button type="button" data-mode="1" aria-pressed="true">TD(0)</button>
+        <button type="button" data-mode="2" aria-pressed="false"><i>n</i> = 2</button>
+        <button type="button" data-mode="4" aria-pressed="false"><i>n</i> = 4</button>
+        <button type="button" data-mode="8" aria-pressed="false"><i>n</i> = 8</button>
+        <button type="button" data-mode="mc" aria-pressed="false">Monte Carlo</button>
+      </div>
+      <div id="fig-settle-out" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">6</span>Resumen</h2>
+    <p>Las ideas clave junto a sus equivalentes en NumPy, para una estimación lineal. <code>x</code> y <code>x_next</code> son los vectores de features de <i>S</i><sub><i>t</i></sub> y <i>S</i><sub><i>t</i>+1</sub> (todos 0 para un estado terminal), <code>xs</code> tiene los vectores de features de todos los estados como filas, <code>p_pi[s, s2]</code> es la probabilidad de un paso de <code>s</code> a <code>s2</code> bajo π, y <code>v_pi</code>, <code>h</code> y <code>mu</code> se indexan por estado. En <i>n</i>-step TD, <code>rs</code> tiene las <i>n</i> recompensas que siguen a <i>S</i><sub><i>t</i></sub>, y <code>x_n</code> el vector de features de <i>S</i><sub><i>t</i>+<i>n</i></sub>.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Estimación lineal</div>
+      <div class="f"><span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>) = <b class="vec">w</b><sup class="t">T</sup><b class="vec">x</b>(<i>s</i>)</div>
+      <div class="c"><code>v_hat = w @ x</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Distribución on-policy</div>
+      <div class="f"><span class="nowrap">η(<i>s</i>) = <i>h</i>(<i>s</i>)</span> <span class="nowrap">+ Σ<sub><i>s̄</i></sub> η(<i>s̄</i>) Σ<sub><i>a</i></sub> π(<i>a</i>|<i>s̄</i>)<i>p</i>(<i>s</i>|<i>s̄</i>, <i>a</i>),</span> <span class="nowrap">μ = η/Ση</span></div>
+      <div class="c"><code>eye = np.eye(len(h))<br>eta = h @ np.linalg.inv(eye - p_pi)<br>mu = eta / eta.sum()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Error cuadrático medio de valor</div>
+      <div class="f"><span class="ovl">VE</span>(<b class="vec">w</b>) <span class="nowrap">= Σ<sub><i>s</i></sub> μ(<i>s</i>)[<span class="pt"><i>v</i><sub>π</sub>(<i>s</i>)</span> − <span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>)]<sup>2</sup></span></div>
+      <div class="c"><code>ve = mu @ (v_pi - xs @ w) ** 2</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Gradient Monte Carlo</div>
+      <div class="f"><span class="nowrap"><b class="vec">w</b> ← <b class="vec">w</b></span> <span class="nowrap">+ α[<span class="pt"><i>G</i><sub><i>t</i></sub></span> − <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b>)]<b class="vec">x</b>(<i>S</i><sub><i>t</i></sub>)</span></div>
+      <div class="c"><code>w += alpha * (g - w @ x) * x</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Semi-gradient TD(0)</div>
+      <div class="f"><span class="nowrap"><b class="vec">w</b> ← <b class="vec">w</b></span> <span class="nowrap">+ α[<span class="pt"><i>R</i> + γ<span class="hat lo"><i>v</i></span>(<i>S</i>′, <b class="vec">w</b>)</span></span> <span class="nowrap">− <span class="hat lo"><i>v</i></span>(<i>S</i>, <b class="vec">w</b>)]<b class="vec">x</b>(<i>S</i>)</span></div>
+      <div class="c"><code>g = r + gamma * w @ x_next<br>w += alpha * (g - w @ x) * x</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Fixed point de TD</div>
+      <div class="f"><span class="nowrap"><b class="vec">w</b><sub>TD</sub> = <b class="vec">A</b><sup>−1</sup><b class="vec">b</b>,</span> <span class="nowrap">con <b class="vec">b</b> = E[<i>R</i><sub><i>t</i>+1</sub><b class="vec">x</b><sub><i>t</i></sub>]</span> <span class="nowrap">y <b class="vec">A</b> = E[<b class="vec">x</b><sub><i>t</i></sub>(<b class="vec">x</b><sub><i>t</i></sub> − γ<b class="vec">x</b><sub><i>t</i>+1</sub>)<sup class="t">T</sup>]</span></div>
+      <div class="c"><code>w_td = np.linalg.solve(mat_a, b)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k"><i>n</i>-step TD semi-gradient</div>
+      <div class="f"><span class="nowrap"><b class="vec">w</b> ← <b class="vec">w</b></span> <span class="nowrap">+ α[<span class="pt"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub></span> − <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b>)]<b class="vec">x</b>(<i>S</i><sub><i>t</i></sub>)</span></div>
+      <div class="c"><code>g = rs @ gamma ** np.arange(n)<br>g += gamma ** n * w @ x_n<br>w += alpha * (g - w @ x) * x</code></div>
+    </div>
+  </div>
+</section>

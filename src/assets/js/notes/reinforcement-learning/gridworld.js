@@ -476,14 +476,17 @@ const GEAR = (() => {
 // world is the cliff unless given; with perCell, builds and frames give V, one value per cell, instead of Q.
 // A figure with two runs, such as two methods in one world, shows the other with show(slides, frame), from its first
 // slide.
-export function slideshow({ svg, slides, frame, world = cliff, perCell = false }) {
+// A figure that is not a grid world, such as the cart-pole, passes its own view, an object with draw(build, animate)
+// and setHeat(mode) that takes the grid's place: its builds and frames carry whatever that view draws, and its settings
+// turn the heatmap on or off.
+export function slideshow({ svg, slides, frame, world = cliff, perCell = false, view = null }) {
   const id = svg.id, $ = (s) => document.getElementById(`${id}-${s}`);
   const out = $("out"), live = $("live"), nextBtn = $("next"), backBtn = $("back"), resetBtn = $("reset"), countEl = $("count");
   const fig = svg.closest(".fig");
   let k = 0, b = 0, ff = null, soundOn = choice.get("gw-sound", "on") !== "off";
   let heat = choice.get("gw-heat", "move");
   if (!["move", "cell", "off"].includes(heat)) heat = "move";
-  const grid = createGrid(svg, world, perCell);
+  const grid = view ?? createGrid(svg, world, perCell);
   grid.setHeat(heat);
   fig.dataset.heat = heat;
 
@@ -531,7 +534,7 @@ export function slideshow({ svg, slides, frame, world = cliff, perCell = false }
       if (m !== shown) {
         shown = m;
         const f = frame(m);
-        grid.draw({ Q: f.Q, V: f.V, agent: f.agent, ring: f.ring, jump: true, pick: f.pick, marks: f.marks, unknown: f.unknown, shown: f.shown, walls: f.walls, ghost: f.ghost, bumpPose: f.bumpPose }, false);
+        grid.draw(view ? { ...f, jump: true } : { Q: f.Q, V: f.V, agent: f.agent, ring: f.ring, jump: true, pick: f.pick, marks: f.marks, unknown: f.unknown, shown: f.shown, walls: f.walls, ghost: f.ghost, bumpPose: f.bumpPose }, false);
         out.innerHTML = `<p class="lbl">${f.label ?? status(f.ep, f.move, f.time, f.stage)}</p><p class="slide ff">${tr("Skipping ahead", "Adelantando")}</p><p class="muted">${skip.note ?? tr(`${skip.moves} moves go by.`, `Pasan ${skip.moves} movimientos.`)}</p>`;
       }
       if (now - start >= dur) finishFF(true, prevAgent);
@@ -580,18 +583,22 @@ export function slideshow({ svg, slides, frame, world = cliff, perCell = false }
   const menu = document.createElement("div");
   menu.className = "gw-menu"; menu.id = `${id}-settings`; menu.hidden = true;
   const row = (label, key, opts) => `<div class="row" role="group" aria-label="${label}"><span>${label}</span>${opts.map(([v, n]) => `<button type="button" data-${key}="${v}">${n}</button>`).join("")}</div>`;
-  menu.innerHTML = row(tr("Heatmap", "Mapa de calor"), "heat", [["move", tr("By move", "Por movimiento")], ["cell", tr("By cell", "Por celda")], ["off", tr("Off", "No")]])
+  // A view other than the grid has one value per region, so its heatmap is only on or off; "On" leaves a reader's choice
+  // of by move or by cell, kept for the grid figures, as it was.
+  const heatOpts = view ? [["move", tr("On", "Sí")], ["off", tr("Off", "No")]] : [["move", tr("By move", "Por movimiento")], ["cell", tr("By cell", "Por celda")], ["off", tr("Off", "No")]];
+  // A view without a heatmap (noHeat), such as the cart-pole's bars, offers the sound alone.
+  menu.innerHTML = (view?.noHeat ? "" : row(tr("Heatmap", "Mapa de calor"), "heat", heatOpts))
     + row(tr("Sound", "Sonido"), "sound", [["on", tr("On", "Sí")], ["off", tr("Off", "No")]]);
   nextBtn.parentElement.append(cog, menu);
   const sync = () => {
-    menu.querySelectorAll("button[data-heat]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.heat === heat)));
+    menu.querySelectorAll("button[data-heat]").forEach((x) => x.setAttribute("aria-pressed", String(view ? (x.dataset.heat === "off") === (heat === "off") : x.dataset.heat === heat)));
     menu.querySelectorAll("button[data-sound]").forEach((x) => x.setAttribute("aria-pressed", String((x.dataset.sound === "on") === soundOn)));
   };
   const close = () => { menu.hidden = true; cog.setAttribute("aria-expanded", "false"); };
   cog.addEventListener("click", () => { menu.hidden = !menu.hidden; cog.setAttribute("aria-expanded", String(!menu.hidden)); });
   menu.addEventListener("click", (e) => {
     const x = e.target.closest("button");
-    if (x?.dataset.heat) { heat = x.dataset.heat; choice.set("gw-heat", heat); grid.setHeat(heat); fig.dataset.heat = heat; if (ff) finishFF(false); render(false); }
+    if (x?.dataset.heat && !(view && x.dataset.heat !== "off" && heat !== "off")) { heat = x.dataset.heat; choice.set("gw-heat", heat); grid.setHeat(heat); fig.dataset.heat = heat; if (ff) finishFF(false); render(false); }
     if (x?.dataset.sound) { soundOn = x.dataset.sound === "on"; choice.set("gw-sound", x.dataset.sound); }
     sync();
   });
