@@ -356,6 +356,22 @@ ol.steps b { font-weight: 600; }
 .cp-range { fill: none; stroke: var(--rule); stroke-width: 1.2; }
 /* A bar's value keeps a halo of the card's color, so that a red average line under it does not cross it. */
 .cp-val { paint-order: stroke; stroke: var(--card); stroke-width: 4px; stroke-linejoin: round; }
+/* The values of pushes (the control note): a small arrow under each bar for its push, a curved arrow for the way a pole
+   swings, the push the estimates prefer in blue beside a cart, the frame of the situation the reader picked, the line
+   at 0 when values can be negative, and a bar's value, with a halo of the card's color. */
+.cp-tick-push { fill: none; stroke: var(--ink-3); stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
+.cp-swing { fill: none; stroke: var(--ink-2); stroke-width: 1.3; }
+.cp-swing-head { fill: var(--ink-2); }
+.cp-push.best { fill: var(--blue); stroke: var(--blue); }
+.cp-sel { fill: none; stroke: var(--ink-3); stroke-width: 1.2; }
+.cp-zero { stroke: var(--ink-3); stroke-width: 1.2; }
+.cp-sum { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
+.cp-dim.dash { stroke-dasharray: 5 4; }
+.ovl-t { text-decoration: overline; }
+.cp-curve { fill: none; stroke: var(--ink-3); stroke-width: 1.3; stroke-linejoin: round; opacity: 0.7; }
+.cp-fail { stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round; }
+.cp-q { fill: var(--blue); font-family: var(--sans); font-size: 11px; font-variant-numeric: tabular-nums; paint-order: stroke; stroke: var(--card); stroke-width: 3px; stroke-linejoin: round; }
+@media (max-width: 560px) { .cp-q { font-size: 13px; } }
 @media (max-width: 560px) { .gw-axis, .gw-sg { font-size: 14px; } .gw-lab { font-size: 16px; } .gw-q { font-size: 11px; } .gw-v { font-size: 17px; } }
 /* The heatmap, under the lines: green as a positive value nears 1, coral as a negative one nears −10, nothing at 0
    (the shares --tp and --tn, from 0 to 1, set by the script). Coral, a cost, mixes in at 0.4 of the green's strength,

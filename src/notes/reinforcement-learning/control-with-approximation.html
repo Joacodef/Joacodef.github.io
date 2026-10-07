@@ -1,0 +1,224 @@
+---
+title: On-policy control with approximation
+module: Approximate solution methods
+order: 11
+description: "Learning to act when there are too many states for a table: values of actions from a few weights, Sarsa that learns them while acting on them, and, for a task that never ends, values measured against the average reward."
+scripts:
+  - /assets/js/notes/reinforcement-learning/control-with-approximation.js
+---
+<div class="prose">
+  <p>The agent of the <a href="/notes/reinforcement-learning/prediction-with-approximation/">prediction note</a> only watched: the cart was pushed at random, and it learned how long the pole would stay up. This note's agent chooses its pushes, to keep the pole up as long as it can. To choose, it needs to know what each push is worth: in a given situation, how long the pole will stay up after a push to the left, and after a push to the right. Those are values of actions, which Sarsa learned on the cliff, one per move in each cell; here, as in the prediction note, they come from a few weights shared by all the states.</p>
+  <figure class="diagram">
+    <svg viewBox="0 0 440 172" role="img" aria-label="A cart on a track carrying a pole that leans about 7° to the right and is still swinging right, with a dashed arrow on each side of the cart for the two pushes it can choose between.">
+      <defs><marker id="ctl-intro-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head-ink" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+      <line class="cp-track" x1="40" y1="138" x2="400" y2="138"/>
+      <rect class="cp-cart" x="195" y="118" width="50" height="20" rx="3"/>
+      <line class="cp-pole" x1="220" y1="116" x2="231.0" y2="26.7"/>
+      <circle class="cp-hinge" cx="220" cy="116" r="3.4"/>
+      <path class="cp-swing" d="M239.1,17.8 A100,100 0 0 1 265.4,26.9"/>
+      <polygon class="cp-swing-head" points="275.2,31.9 262.7,32.2 268.1,21.6"/>
+      <line class="cp-dim dash" x1="146" y1="128" x2="187" y2="128" marker-end="url(#ctl-intro-head)"/>
+      <line class="cp-dim dash" x1="294" y1="128" x2="253" y2="128" marker-end="url(#ctl-intro-head)"/>
+      <text class="dg-lab" x="166" y="160" text-anchor="middle">push right?</text>
+      <text class="dg-lab" x="274" y="160" text-anchor="middle">push left?</text>
+    </svg>
+    <figcaption>The pole leans right and is still swinging right. Which push keeps it up longer? The agent learns an answer for each situation it can tell apart.</figcaption>
+  </figure>
+  <p>Learning those values while acting on them works as Sarsa did on the cliff. The new questions are what the agent must see to choose well, and what to do when the task never ends: the last part of the note sets the pole back up after every fall, so that there are no episodes, and judges the agent by how often the pole falls, an average per step, since a total would grow without limit.</p>
+  <p class="legend">As in the prediction note, <span class="bar" aria-hidden="true"></span>the estimates, the bars the weights set, are drawn in blue ink, and <span class="dot" aria-hidden="true"></span>what they aim for, the target of an update, in red ink. The push just chosen is yellow.</p>
+</div>
+
+<section id="pushes">
+  <div class="prose">
+    <h2><span class="n">1</span>Values of pushes</h2>
+    <p>To choose a push, the agent compares the values of its two pushes in the state it is in. With too many states for a table, it estimates them from weights, <span class="nowrap"><span class="hat lo"><i>q</i></span>(<i>s</i>, <i>a</i>, <b class="vec">w</b>) ≈ <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>)</span>, the value of taking action <i>a</i> in state <i>s</i> and following π afterwards. The features now describe a state and an action together, <b class="vec">x</b>(<i>s</i>, <i>a</i>), and the linear estimate weighs them as before:</p>
+    <div class="disp hero-f"><span class="hat lo"><i>q</i></span>(<i>s</i>, <i>a</i>, <b class="vec">w</b>) <span class="nowrap">≐ <b class="vec">w</b><sup class="t">T</sup><b class="vec">x</b>(<i>s</i>, <i>a</i>)</span> <span class="nowrap">= Σ<span class="lims"><span><i>d</i></span><span><i>i</i>=1</span></span><i>w</i><sub><i>i</i></sub><i>x</i><sub><i>i</i></sub>(<i>s</i>, <i>a</i>)</span></div>
+    <p>Which features? The six ranges of the pole's angle that the prediction note used are not enough to choose by, for a reason in the physics of the cart. A push changes how fast the cart moves, and with it how fast the pole turns, at once; the pole's angle changes only on the steps after. An agent that sees only the angle would see the same next state whichever way it pushed, and an update that looks one step ahead could never tell its two pushes apart.</p>
+    <p>So this note's agent also sees which way the pole swings. That makes twelve situations, six ranges of the angle times two directions of swing, and for each situation one feature per push, <span class="nowrap"><i>d</i> = 24</span>: <i>x</i><sub><i>i</i></sub>(<i>s</i>, <i>a</i>) is 1 for the situation of <i>s</i> and the push <i>a</i>, and 0 for the other 23, so <span class="hat lo"><i>q</i></span>(<i>s</i>, <i>a</i>, <b class="vec">w</b>) is the weight of that pair. It is state aggregation again, now over pairs of a state and an action.</p>
+    <p>The weights learn as in the prediction note, from examples that now pair a state and an action with a target, <span class="nowrap"><i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub> ↦ <i>U</i><sub><i>t</i></sub></span>:</p>
+    <div class="disp"><b class="vec">w</b><sub><i>t</i>+1</sub> <span class="nowrap">≐ <b class="vec">w</b><sub><i>t</i></sub> + α[<span class="pt"><i>U</i><sub><i>t</i></sub></span> − <span class="hat lo"><i>q</i></span>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)]</span> <span class="nowrap">∇<span class="hat lo"><i>q</i></span>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)</span></div>
+    <p>The target can be the return <i>G</i><sub><i>t</i></sub>, or one of the <i>n</i>-step returns of the <a href="/notes/reinforcement-learning/n-step-bootstrapping/"><i>n</i>-step note</a>. Sarsa's target, the reward plus the value of the next state and of the action chosen in it, gives episodic semi-gradient one-step Sarsa:</p>
+    <div class="disp hero-f long"><b class="vec">w</b><sub><i>t</i>+1</sub> <span class="nowrap">≐ <b class="vec">w</b><sub><i>t</i></sub> + α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub></span></span> <span class="nowrap"><span class="pt">+ γ<span class="hat lo"><i>q</i></span>(<i>S</i><sub><i>t</i>+1</sub>, <i>A</i><sub><i>t</i>+1</sub>, <b class="vec">w</b><sub><i>t</i></sub>)</span></span> <span class="nowrap">− <span class="hat lo"><i>q</i></span>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)]</span> <span class="nowrap">∇<span class="hat lo"><i>q</i></span>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)</span></div>
+    <p>It is a semi-gradient method for the reason semi-gradient TD(0) was: its target depends on the weights, and the update ignores that. For a fixed policy it converges as semi-gradient TD(0) does, to a fixed point of its own, with the same kind of bound on its error.</p>
+    <p>The figure shows the 24 weights for the random policy of the prediction note, at the average return after each push when the pushes after it are random, which is where gradient Monte Carlo settles. Each pair of bars stands over its situation, drawn as a small cart and pole with a curved arrow for the way it swings: the left bar is a push to the left, the right bar a push to the right, and a small blue arrow beside the cart points to the push worth more. Drag the pole at the top: its lean picks the range, and the way you move it, the swing.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-q" role="group" aria-label="A cart and pole you can drag to lean between 12° to the left and 12° to the right, and below, two rows of bars, swinging left above and swinging right below: for each range of the pole's angle, the value of a push to the left and of a push to the right under the random policy."></svg>
+    <div class="ro" id="fig-q-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Drag the tip of the pole left or right. With a keyboard, select it with Tab and use the arrow keys.</p>
+    </div>
+  </div>
+</section>
+
+<section id="control">
+  <div class="prose">
+    <h2><span class="n">2</span>Learning to keep the pole up</h2>
+    <p>The values of the last section belong to the random policy. To do better, the agent acts on its own estimates, as the control methods of the earlier notes did: in the next state it computes the value of each action and takes the greedy one,</p>
+    <div class="disp"><i>A</i><span class="ss"><span>*</span><span><i>t</i>+1</span></span> <span class="nowrap">= argmax<sub><i>a</i></sub> <span class="hat lo"><i>q</i></span>(<i>S</i><sub><i>t</i>+1</sub>, <i>a</i>, <b class="vec">w</b><sub><i>t</i></sub>),</span></div>
+    <p>or, some of the time, a random one: ε-greedy. With two pushes this takes two lookups. With many actions, or a continuous range of them, finding the best one is a problem of its own, with no settled answer. The policy that acts is the one being learned, on-policy, so every update changes the policy a little.</p>
+
+    <h3>The algorithm</h3>
+    <p>Episodic semi-gradient Sarsa, for an estimate <span class="hat lo"><i>q</i></span> differentiable in its weights, a step size <span class="nowrap">α &gt; 0</span> and a small <span class="nowrap">ε &gt; 0</span>:</p>
+    <ol class="steps">
+      <li>Start with any weights <b class="vec">w</b>, for example all 0.</li>
+      <li>At the start of each episode, observe the first state <i>S</i>, and choose <i>A</i> from <span class="hat lo"><i>q</i></span>(<i>S</i>, ·, <b class="vec">w</b>), ε-greedy.</li>
+      <li>Take <i>A</i>, and observe the reward <i>R</i> and the next state <i>S</i>′.</li>
+      <li>If <i>S</i>′ is terminal, update <span class="nowrap"><b class="vec">w</b> ← <b class="vec">w</b> + α[<span class="pt"><i>R</i></span></span> <span class="nowrap">− <span class="hat lo"><i>q</i></span>(<i>S</i>, <i>A</i>, <b class="vec">w</b>)]</span> <span class="nowrap">∇<span class="hat lo"><i>q</i></span>(<i>S</i>, <i>A</i>, <b class="vec">w</b>)</span>, and go back to step 2 for the next episode.</li>
+      <li>Otherwise choose <i>A</i>′ from <span class="hat lo"><i>q</i></span>(<i>S</i>′, ·, <b class="vec">w</b>), ε-greedy, and update <span class="nowrap"><b class="vec">w</b> ← <b class="vec">w</b> + α[<span class="pt"><i>R</i> + γ<span class="hat lo"><i>q</i></span>(<i>S</i>′, <i>A</i>′, <b class="vec">w</b>)</span></span> <span class="nowrap">− <span class="hat lo"><i>q</i></span>(<i>S</i>, <i>A</i>, <b class="vec">w</b>)]</span> <span class="nowrap">∇<span class="hat lo"><i>q</i></span>(<i>S</i>, <i>A</i>, <b class="vec">w</b>)</span>.</li>
+      <li>Set <i>S</i> ← <i>S</i>′ and <i>A</i> ← <i>A</i>′, and go back to step 3.</li>
+    </ol>
+    <p>The figure's agent explores without random pushes, with <span class="nowrap">ε = 0</span>. Instead it starts every weight at 300 steps, more than any of its episodes will last. Whatever push it tries falls short of 300 sooner or later, so the push it has not tried looks better, and it tries that one: optimism, as R-Max used it in the <a href="/notes/reinforcement-learning/model-based/">model-based note</a>.</p>
+    <p>α stays at 0.1 throughout. The prediction note shrank α from one episode to the next so that its weights would settle; here they must first come down from 300, and their targets keep changing as the policy improves. With α shrunk the same way, 100 runs of 500 episodes kept the pole up 68 steps per episode over their last 100 episodes, against 182 with α fixed.</p>
+    <p>The figure draws the cart and pole at the top, with the push just chosen as a yellow arrow, and below them the bars of the last section, with a dot on the angle axis of the row of the pole's swing. Each press is one line of the steps above, as in the Sarsa figure of the <a href="/notes/reinforcement-learning/td-learning/">TD note</a>: choose <i>A</i>, take it, choose <i>A</i>′, the target, outlined in red, and the update, outlined in green.</p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-sarsa-cp" role="group" aria-label="A cart and pole on a track, and below, two rows of bars, swinging left above and swinging right below: for each range of the pole's angle, the agent's values of a push to the left and of a push to the right, with a dot for the current situation."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-sarsa-cp-back">Back</button><button type="button" class="btn" id="fig-sarsa-cp-next">Next</button><span class="count" id="fig-sarsa-cp-count"></span><button type="button" class="btn" id="fig-sarsa-cp-reset" hidden>Reset</button></div>
+    <div class="ro" id="fig-sarsa-cp-out"></div>
+    <div class="fig-foot">
+      <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
+    </div>
+    <p class="sr-only" id="fig-sarsa-cp-live" aria-live="polite"></p>
+  </div>
+</section>
+
+<section id="n-step">
+  <div class="prose">
+    <h2><span class="n">3</span><span>Looking <i>n</i> steps ahead</span></h2>
+    <p>The <i>n</i>-step return of the <a href="/notes/reinforcement-learning/n-step-bootstrapping/"><i>n</i>-step note</a> works with weights too, the estimate at its end taken from the weights as they stand:</p>
+    <div class="disp"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub> <span class="nowrap">≐ <i>R</i><sub><i>t</i>+1</sub> + γ<i>R</i><sub><i>t</i>+2</sub> + ⋯ + γ<sup><i>n</i>−1</sup><i>R</i><sub><i>t</i>+<i>n</i></sub></span> <span class="nowrap">+ γ<sup><i>n</i></sup><span class="hat lo"><i>q</i></span>(<i>S</i><sub><i>t</i>+<i>n</i></sub>, <i>A</i><sub><i>t</i>+<i>n</i></sub>, <b class="vec">w</b><sub><i>t</i>+<i>n</i>−1</sub>),</span>&ensp;<span class="nowrap"><i>t</i> + <i>n</i> &lt; <i>T</i></span></div>
+    <p>with <span class="nowrap"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub> = <i>G</i><sub><i>t</i></sub></span> when <span class="nowrap"><i>t</i> + <i>n</i> ≥ <i>T</i></span>. It takes the place of Sarsa's target in the general update, which, as in the <i>n</i>-step note, updates the pair of <i>n</i> steps back:</p>
+    <div class="disp hero-f long"><b class="vec">w</b><sub><i>t</i>+<i>n</i></sub> <span class="nowrap">≐ <b class="vec">w</b><sub><i>t</i>+<i>n</i>−1</sub> + α[<span class="pt"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub></span></span> <span class="nowrap">− <span class="hat lo"><i>q</i></span>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i>+<i>n</i>−1</sub>)]</span> <span class="nowrap">∇<span class="hat lo"><i>q</i></span>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i>+<i>n</i>−1</sub>),</span>&ensp;<span class="nowrap">0 ≤ <i>t</i> &lt; <i>T</i></span></div>
+
+    <h3>The algorithm</h3>
+    <p>Episodic semi-gradient <i>n</i>-step Sarsa, with <span class="nowrap">α &gt; 0</span>, a small <span class="nowrap">ε &gt; 0</span> and <span class="nowrap"><i>n</i> ≥ 1</span>. It keeps the last <span class="nowrap"><i>n</i> + 1</span> states, actions and rewards:</p>
+    <ol class="steps">
+      <li>Start with any weights <b class="vec">w</b>, for example all 0.</li>
+      <li>At the start of each episode, observe <i>S</i><sub>0</sub>, choose <i>A</i><sub>0</sub> from <span class="hat lo"><i>q</i></span>(<i>S</i><sub>0</sub>, ·, <b class="vec">w</b>), ε-greedy, and set <span class="nowrap"><i>T</i> ← ∞</span>.</li>
+      <li>For <span class="nowrap"><i>t</i> = 0, 1, 2, …</span>: if <span class="nowrap"><i>t</i> &lt; <i>T</i></span>, take <i>A</i><sub><i>t</i></sub> and observe <i>R</i><sub><i>t</i>+1</sub> and <i>S</i><sub><i>t</i>+1</sub>; if <i>S</i><sub><i>t</i>+1</sub> is terminal, set <span class="nowrap"><i>T</i> ← <i>t</i> + 1</span>, and otherwise choose <i>A</i><sub><i>t</i>+1</sub> from <span class="hat lo"><i>q</i></span>(<i>S</i><sub><i>t</i>+1</sub>, ·, <b class="vec">w</b>), ε-greedy.</li>
+      <li>Set <span class="nowrap">τ ← <i>t</i> − <i>n</i> + 1</span>, the time whose estimate is updated. If <span class="nowrap">τ ≥ 0</span>: <span class="nowrap"><i>G</i> ← Σ<span class="lims"><span>min(τ+<i>n</i>, <i>T</i>)</span><span><i>i</i>=τ+1</span></span>γ<sup><i>i</i>−τ−1</sup><i>R</i><sub><i>i</i></sub></span>; if <span class="nowrap">τ + <i>n</i> &lt; <i>T</i></span>, <span class="nowrap"><i>G</i> ← <i>G</i> + γ<sup><i>n</i></sup><span class="hat lo"><i>q</i></span>(<i>S</i><sub>τ+<i>n</i></sub>, <i>A</i><sub>τ+<i>n</i></sub>, <b class="vec">w</b>)</span>; and <span class="nowrap"><b class="vec">w</b> ← <b class="vec">w</b> + α[<span class="pt"><i>G</i></span></span> <span class="nowrap">− <span class="hat lo"><i>q</i></span>(<i>S</i><sub>τ</sub>, <i>A</i><sub>τ</sub>, <b class="vec">w</b>)]</span> <span class="nowrap">∇<span class="hat lo"><i>q</i></span>(<i>S</i><sub>τ</sub>, <i>A</i><sub>τ</sub>, <b class="vec">w</b>)</span>.</li>
+      <li>Repeat steps 3 and 4 until <span class="nowrap">τ = <i>T</i> − 1</span>, then start the next episode.</li>
+    </ol>
+    <p>On the cart-pole, a target that looks one step ahead learns little from most steps. The pole usually stays in the same situation, so the target borrows the very weight being updated, and the TD error is 1 whatever that weight is, as in the prediction note. A target with <i>n</i> real rewards sees more of what a push did. With too many, though, the target is a whole return, which varies more from one episode to the next. The figure runs the agent of the last section with four values of <i>n</i>, 200 times each, and shows how long the pole stays up, episode by episode.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-nstep-cp" role="img" aria-label="Four curves of the steps per episode over 300 episodes, averaged over 200 agents, for n-step semi-gradient Sarsa with n = 1, 4, 16 and 64."></svg>
+    <div class="ro">
+      <div class="modes" id="fig-nstep-cp-modes" role="group" aria-label="Steps in the target">
+        <button type="button" data-mode="1" aria-pressed="true"><i>n</i> = 1</button>
+        <button type="button" data-mode="4" aria-pressed="false"><i>n</i> = 4</button>
+        <button type="button" data-mode="16" aria-pressed="false"><i>n</i> = 16</button>
+        <button type="button" data-mode="64" aria-pressed="false"><i>n</i> = 64</button>
+      </div>
+      <div id="fig-nstep-cp-out" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>As the <i>n</i>-step note said, an intermediate <i>n</i> often does best. Here it is a large one, 16 steps, about a third of a second of the cart's motion: the twelve situations are too coarse for the estimate of the next one to stand in well for what follows it.</p>
+  </div>
+</section>
+
+<section id="average-reward">
+  <div class="prose">
+    <h2><span class="n">4</span>A task that never ends</h2>
+    <p>The cart-pole can also be posed without episodes. After every failure, the pole falling or the cart leaving the track, the cart and pole start afresh and the task goes on, with a reward of −1 at each failure and 0 at every other step. A return that adds up rewards forever would then be −∞ for every policy that ever fails. Instead of a total, a policy is judged by its average reward per step:</p>
+    <div class="disp hero-f"><i>r</i>(π) <span class="nowrap">≐ lim<sub><i>h</i>→∞</sub> <span class="frac"><span>1</span><span><i>h</i></span></span> Σ<span class="lims"><span><i>h</i></span><span><i>t</i>=1</span></span></span> <span class="nowrap">E[<i>R</i><sub><i>t</i></sub> | <i>S</i><sub>0</sub>, <i>A</i><sub>0:<i>t</i>−1</sub> ∼ π]</span></div>
+    <p>Here it is minus the rate of failures: a policy that loses the cart every 183 steps on average has <span class="nowrap"><i>r</i>(π) = −1/183 ≈ −0.0055</span>. The definition assumes that this long-run average does not depend on where the agent starts. The values then measure each step against it. The differential return adds up how much each reward beats the average,</p>
+    <div class="disp"><i>G</i><sub><i>t</i></sub> <span class="nowrap">≐ <i>R</i><sub><i>t</i>+1</sub> − <i>r</i>(π)</span> <span class="nowrap">+ <i>R</i><sub><i>t</i>+2</sub> − <i>r</i>(π)</span> <span class="nowrap">+ <i>R</i><sub><i>t</i>+3</sub> − <i>r</i>(π) + ⋯</span></div>
+    <p>and the differential values are its expectations, <span class="nowrap"><i>v</i><sub>π</sub>(<i>s</i>) = E<sub>π</sub>[<i>G</i><sub><i>t</i></sub> | <i>S</i><sub><i>t</i></sub> = <i>s</i>]</span> and <span class="nowrap"><i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>) = E<sub>π</sub>[<i>G</i><sub><i>t</i></sub> | <i>S</i><sub><i>t</i></sub> = <i>s</i>, <i>A</i><sub><i>t</i></sub> = <i>a</i>]</span>. On the cart-pole, the differential value of a push is how many failures fewer than average follow it, in the long run.</p>
+    <p>The figure shows why the average must come out first. It adds up <span class="nowrap"><i>R</i><sub><i>t</i></sub> − <span class="ovl"><i>R</i></span></span> over 1,100 steps of an agent that has learned to keep the pole up, the one of the next section, for an estimate <span class="ovl"><i>R</i></span> of <i>r</i>(π) that you set by dragging the end of the sum.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-avg" role="group" aria-label="The running sum of the reward minus R-bar over 1,100 steps of the continuing cart-pole, with the 6 failures marked; you drag the end of the sum, which sets R-bar."></svg>
+    <div class="ro" id="fig-avg-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Drag the end of the sum up or down. With a keyboard, select it with Tab and use the arrow keys.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Learning needs no new machinery. The TD error measures the reward against the estimate <span class="ovl"><i>R</i></span><sub><i>t</i></sub>, and adds the values of the next pair and of this one, with no discount:</p>
+    <div class="disp hero-f long">δ<sub><i>t</i></sub> <span class="nowrap">≐ <span class="pt"><i>R</i><sub><i>t</i>+1</sub> − <span class="ovl"><i>R</i></span><sub><i>t</i></sub> + <span class="hat lo"><i>q</i></span>(<i>S</i><sub><i>t</i>+1</sub>, <i>A</i><sub><i>t</i>+1</sub>, <b class="vec">w</b><sub><i>t</i></sub>)</span></span> <span class="nowrap">− <span class="hat lo"><i>q</i></span>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)</span></div>
+    <p>The weights follow <span class="nowrap"><b class="vec">w</b><sub><i>t</i>+1</sub> ≐ <b class="vec">w</b><sub><i>t</i></sub> + αδ<sub><i>t</i></sub>∇<span class="hat lo"><i>q</i></span>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)</span>, and <span class="ovl"><i>R</i></span> learns from the same error with a step size of its own, <span class="nowrap"><span class="ovl"><i>R</i></span> ← <span class="ovl"><i>R</i></span> + βδ<sub><i>t</i></sub></span>: when rewards keep beating <span class="ovl"><i>R</i></span>, the TD errors are mostly positive and <span class="ovl"><i>R</i></span> rises, and the other way round.</p>
+  </div>
+</section>
+
+<section id="differential">
+  <div class="prose">
+    <h2><span class="n">5</span><span>Differential semi-gradient <i>n</i>-step Sarsa</span></h2>
+    <p>With <i>n</i> steps, the differential return subtracts the estimate of the average from each of its <i>n</i> rewards, and then borrows the estimate at its end:</p>
+    <div class="disp"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub> <span class="nowrap">≐ <i>R</i><sub><i>t</i>+1</sub> − <span class="ovl"><i>R</i></span><sub><i>t</i>+<i>n</i>−1</sub> + ⋯ + <i>R</i><sub><i>t</i>+<i>n</i></sub> − <span class="ovl"><i>R</i></span><sub><i>t</i>+<i>n</i>−1</sub></span> <span class="nowrap">+ <span class="hat lo"><i>q</i></span>(<i>S</i><sub><i>t</i>+<i>n</i></sub>, <i>A</i><sub><i>t</i>+<i>n</i></sub>, <b class="vec">w</b><sub><i>t</i>+<i>n</i>−1</sub>)</span></div>
+    <p>and the <i>n</i>-step TD error, <span class="nowrap">δ<sub><i>t</i></sub> ≐ <span class="pt"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub></span> − <span class="hat lo"><i>q</i></span>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>, <b class="vec">w</b>)</span>, updates the weights and <span class="ovl"><i>R</i></span> as in the last section.</p>
+
+    <h3>The algorithm</h3>
+    <p>Differential semi-gradient <i>n</i>-step Sarsa, with step sizes <span class="nowrap">α, β &gt; 0</span>, a small <span class="nowrap">ε &gt; 0</span> and <span class="nowrap"><i>n</i> ≥ 1</span>. It keeps the last <span class="nowrap"><i>n</i> + 1</span> states, actions and rewards:</p>
+    <ol class="steps">
+      <li>Start with any weights <b class="vec">w</b> and any <span class="ovl"><i>R</i></span>, for example all 0.</li>
+      <li>Observe <i>S</i><sub>0</sub> and choose <i>A</i><sub>0</sub> from <span class="hat lo"><i>q</i></span>(<i>S</i><sub>0</sub>, ·, <b class="vec">w</b>), ε-greedy.</li>
+      <li>For <span class="nowrap"><i>t</i> = 0, 1, 2, …</span>: take <i>A</i><sub><i>t</i></sub>, observe <i>R</i><sub><i>t</i>+1</sub> and <i>S</i><sub><i>t</i>+1</sub>, and choose <i>A</i><sub><i>t</i>+1</sub> from <span class="hat lo"><i>q</i></span>(<i>S</i><sub><i>t</i>+1</sub>, ·, <b class="vec">w</b>), ε-greedy.</li>
+      <li>Set <span class="nowrap">τ ← <i>t</i> − <i>n</i> + 1</span>. If <span class="nowrap">τ ≥ 0</span>: <span class="nowrap">δ ← <span class="pt">Σ<span class="lims"><span>τ+<i>n</i></span><span><i>i</i>=τ+1</span></span>(<i>R</i><sub><i>i</i></sub> − <span class="ovl"><i>R</i></span>)</span></span> <span class="nowrap"><span class="pt">+ <span class="hat lo"><i>q</i></span>(<i>S</i><sub>τ+<i>n</i></sub>, <i>A</i><sub>τ+<i>n</i></sub>, <b class="vec">w</b>)</span></span> <span class="nowrap">− <span class="hat lo"><i>q</i></span>(<i>S</i><sub>τ</sub>, <i>A</i><sub>τ</sub>, <b class="vec">w</b>)</span>, then <span class="nowrap"><span class="ovl"><i>R</i></span> ← <span class="ovl"><i>R</i></span> + βδ</span> and <span class="nowrap"><b class="vec">w</b> ← <b class="vec">w</b> + αδ∇<span class="hat lo"><i>q</i></span>(<i>S</i><sub>τ</sub>, <i>A</i><sub>τ</sub>, <b class="vec">w</b>)</span>.</li>
+    </ol>
+    <p>There is no episode to end: the loop runs as long as the agent does. β must be small, so that <span class="ovl"><i>R</i></span> follows the long-run average rather than the last few rewards. The figure's agent uses <span class="nowrap"><i>n</i> = 4</span>, <span class="nowrap">α = 0.1</span>, <span class="nowrap">β = 0.0001</span> and <span class="nowrap">ε = 0</span>, and starts with every weight and <span class="ovl"><i>R</i></span> at 0, which is optimistic too: <span class="nowrap"><span class="ovl"><i>R</i></span> = 0</span> expects no failures at all. A failure puts −1 in the windows of four updates; between failures, rewards of 0 beat a negative <span class="ovl"><i>R</i></span>, which adds a little to every TD error.</p>
+    <p>The figure is drawn like the one of section 2, but its bars are differential values, which can be negative, and the dashed blue outlines mark the four pushes in the window of the update.</p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-diff" role="group" aria-label="A cart and pole on a track, and below, two rows of bars, swinging left above and swinging right below: for each range of the pole's angle, the agent's differential values of a push to the left and of a push to the right, with a dot for the current situation."></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-diff-back">Back</button><button type="button" class="btn" id="fig-diff-next">Next</button><span class="count" id="fig-diff-count"></span><button type="button" class="btn" id="fig-diff-reset" hidden>Reset</button></div>
+    <div class="ro" id="fig-diff-out"></div>
+    <div class="fig-foot">
+      <p>Next goes forward, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
+    </div>
+    <p class="sr-only" id="fig-diff-live" aria-live="polite"></p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">6</span>Summary</h2>
+    <p>The key ideas next to their NumPy equivalents, for a linear estimate. <code>x</code> is the feature vector of <i>S</i><sub><i>t</i></sub> and <i>A</i><sub><i>t</i></sub>, <code>x_next</code> that of <i>S</i><sub><i>t</i>+1</sub> and <i>A</i><sub><i>t</i>+1</sub>, and <code>xs_next</code> holds the feature vectors of <i>S</i><sub><i>t</i>+1</sub> with each action, as rows. In the <i>n</i>-step rows, <code>rs</code> holds the <i>n</i> rewards after <i>A</i><sub><i>t</i></sub>, and <code>x_n</code> the feature vector of <i>S</i><sub><i>t</i>+<i>n</i></sub> and <i>A</i><sub><i>t</i>+<i>n</i></sub>; <code>rewards</code> holds the rewards of a long run.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Linear action values</div>
+      <div class="f"><span class="hat lo"><i>q</i></span>(<i>s</i>, <i>a</i>, <b class="vec">w</b>) = <b class="vec">w</b><sup class="t">T</sup><b class="vec">x</b>(<i>s</i>, <i>a</i>)</div>
+      <div class="c"><code>q_hat = w @ x</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Greedy action</div>
+      <div class="f"><i>A</i><span class="ss"><span>*</span><span><i>t</i>+1</span></span> = argmax<sub><i>a</i></sub> <span class="hat lo"><i>q</i></span>(<i>S</i><sub><i>t</i>+1</sub>, <i>a</i>, <b class="vec">w</b>)</div>
+      <div class="c"><code>a_star = np.argmax(xs_next @ w)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Semi-gradient Sarsa</div>
+      <div class="f"><span class="nowrap"><b class="vec">w</b> ← <b class="vec">w</b></span> <span class="nowrap">+ α[<span class="pt"><i>R</i> + γ<span class="hat lo"><i>q</i></span>(<i>S</i>′, <i>A</i>′, <b class="vec">w</b>)</span></span> <span class="nowrap">− <span class="hat lo"><i>q</i></span>(<i>S</i>, <i>A</i>, <b class="vec">w</b>)]<b class="vec">x</b>(<i>S</i>, <i>A</i>)</span></div>
+      <div class="c"><code>g = r + gamma * w @ x_next<br>w += alpha * (g - w @ x) * x</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k"><i>n</i>-step semi-gradient Sarsa</div>
+      <div class="f"><span class="nowrap"><b class="vec">w</b> ← <b class="vec">w</b></span> <span class="nowrap">+ α[<span class="pt"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub></span> − <span class="hat lo"><i>q</i></span>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>, <b class="vec">w</b>)]<b class="vec">x</b>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span></div>
+      <div class="c"><code>g = rs @ gamma ** np.arange(n)<br>g += gamma ** n * w @ x_n<br>w += alpha * (g - w @ x) * x</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Average reward</div>
+      <div class="f"><i>r</i>(π) <span class="nowrap">= lim<sub><i>h</i>→∞</sub> <span class="frac"><span>1</span><span><i>h</i></span></span> Σ<span class="lims"><span><i>h</i></span><span><i>t</i>=1</span></span></span> <span class="nowrap">E[<i>R</i><sub><i>t</i></sub>]</span></div>
+      <div class="c"><code>r_pi = rewards.mean()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Differential semi-gradient Sarsa</div>
+      <div class="f"><span class="nowrap">δ = <span class="pt"><i>R</i> − <span class="ovl"><i>R</i></span> + <span class="hat lo"><i>q</i></span>(<i>S</i>′, <i>A</i>′, <b class="vec">w</b>)</span></span> <span class="nowrap">− <span class="hat lo"><i>q</i></span>(<i>S</i>, <i>A</i>, <b class="vec">w</b>),</span> <span class="nowrap"><span class="ovl"><i>R</i></span> ← <span class="ovl"><i>R</i></span> + βδ,</span> <span class="nowrap"><b class="vec">w</b> ← <b class="vec">w</b> + αδ<b class="vec">x</b>(<i>S</i>, <i>A</i>)</span></div>
+      <div class="c"><code>delta = r - r_bar + w @ x_next - w @ x<br>r_bar += beta * delta<br>w += alpha * delta * x</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Differential <i>n</i>-step Sarsa</div>
+      <div class="f"><span class="nowrap">δ = <span class="pt">Σ<span class="lims"><span>τ+<i>n</i></span><span><i>i</i>=τ+1</span></span>(<i>R</i><sub><i>i</i></sub> − <span class="ovl"><i>R</i></span>) + <span class="hat lo"><i>q</i></span>(<i>S</i><sub>τ+<i>n</i></sub>, <i>A</i><sub>τ+<i>n</i></sub>, <b class="vec">w</b>)</span></span> <span class="nowrap">− <span class="hat lo"><i>q</i></span>(<i>S</i><sub>τ</sub>, <i>A</i><sub>τ</sub>, <b class="vec">w</b>)</span></div>
+      <div class="c"><code>delta = (rs - r_bar).sum() + w @ x_n - w @ x<br>r_bar += beta * delta<br>w += alpha * delta * x</code></div>
+    </div>
+  </div>
+</section>
