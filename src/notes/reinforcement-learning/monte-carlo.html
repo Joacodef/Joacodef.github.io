@@ -28,12 +28,12 @@ scripts:
       <text class="dg-lab" x="60" y="124" text-anchor="middle">kitchen</text>
       <text class="dg-lab" x="190" y="124" text-anchor="middle">hallway</text>
       <text class="dg-lab" x="320" y="124" text-anchor="middle">study</text>
-      <text class="dg-lab" x="407" y="124" text-anchor="middle">charger</text>
+      <text class="dg-lab" x="436" y="124" text-anchor="end">charger</text>
     </svg>
     <figcaption>The robot's way of moving, with the probability of each move. Every move gives a reward of −1, so the return from a room is minus the number of moves still to come.</figcaption>
   </figure>
-  <p>How good is each room, that is, how many moves will the trip take from there? The robot cannot work it out, since it does not know the layout. But it can find out from experience. Each time it reaches the charger, it knows how many moves the trip actually took from every room it passed through, and averaging those numbers over many trips gives the answer.</p>
-  <p>That is a Monte Carlo method: estimate values by averaging what actually happened in complete episodes. This note does it first for a fixed way of behaving, then for the value of each action, and then uses those values to behave better. Along the way it runs into the one thing Monte Carlo methods cannot do without: continuing to try every action.</p>
+  <p>How good is each room, that is, how many moves will the trip take from there? The robot does not know the layout, but it can find out from experience. Each time it reaches the charger, it knows how many moves the trip took from every room it passed through, and averaging those numbers over many trips gives the answer.</p>
+  <p>That is a Monte Carlo method: estimate values by averaging what actually happened in complete episodes. This note does it first for a fixed way of behaving, then for the value of each action, and then uses those values to behave better, which needs the one thing Monte Carlo methods cannot do without: continuing to try every action.</p>
   <p class="legend">Throughout this page, <span class="bar" aria-hidden="true"></span>the robot's moves are drawn in blue ink, and <span class="dot" aria-hidden="true"></span>the return an estimate moves toward, the target of its update, in red ink.</p>
 </div>
 
@@ -64,7 +64,9 @@ scripts:
         </tbody>
       </table>
     </div>
-    <p>Two short trips are a poor sample: the true values are much lower, since many trips go back and forth for a while. They follow from the relations between neighboring rooms: the study's value is the average of its two moves, <span class="nowrap"><i>v</i>(study)</span> <span class="nowrap">= ½(−1) + ½(−1 + <i>v</i>(hallway))</span>, and likewise for the other rooms, which gives −9, −8 and −5. Averaging more trips gets there: after 10,000 trips, both methods are within 0.1 of these values.</p>
+    <p>Two short trips are a poor sample: the true values are much lower, since many trips go back and forth for a while. They follow from the relations between neighboring rooms, each worth the average over its moves of −1 plus the value of the room the move leads to, 0 at the charger:</p>
+    <div class="disp"><i>v</i>(kitchen) <span class="nowrap">= −1 + <i>v</i>(hallway)</span><br><i>v</i>(hallway) <span class="nowrap">= ½(−1 + <i>v</i>(kitchen))</span> <span class="nowrap">+ ½(−1 + <i>v</i>(study))</span><br><i>v</i>(study) <span class="nowrap">= ½(−1) + ½(−1 + <i>v</i>(hallway))</span></div>
+    <p>which together give −9, −8 and −5. Averaging more trips gets there: after 10,000 trips, both methods are within 0.1 of these values.</p>
     <p>Both methods converge to <i>v</i><sub>π</sub>(<i>s</i>) as the number of visits grows. For first-visit Monte Carlo this is the law of large numbers: each return is an independent sample whose expectation is <i>v</i><sub>π</sub>(<i>s</i>), so the average is unbiased, and its error shrinks like 1/√<i>n</i> after <i>n</i> returns. Every-visit Monte Carlo converges too, though its samples from the same episode are not independent.</p>
 
     <h3>The algorithm</h3>
@@ -75,8 +77,13 @@ scripts:
       <li>For <i>t</i> = <i>T</i> − 1, <i>T</i> − 2, …, 0: set <span class="nowrap"><i>G</i> ← γ<i>G</i> + <i>R</i><sub><i>t</i>+1</sub></span>. If <i>S</i><sub><i>t</i></sub> does not appear earlier in the episode, add <i>G</i> to the returns of <i>S</i><sub><i>t</i></sub> and set <i>V</i>(<i>S</i><sub><i>t</i></sub>) to their average.</li>
       <li>Repeat from step 2 for each new episode. Every-visit Monte Carlo is the same without the check of step 3.</li>
     </ol>
-    <p>The figure runs it on a grid 3 cells wide and 3 tall, with cells named by column and row, from A1 at the bottom left to C3 at the top right. An agent starts in A1 and moves up, right, down or left, and a move into a wall leaves it where it is. In C3 there is a cookie: reaching it gives +1 and ends the episode, and every other move gives 0. With γ = 0.9, the return from a cell is 1 if the next move reaches the cookie, 0.9 if the cookie comes one move later, 0.81 if two, and so on: the quicker the trip, the larger the return. The policy picks each of the four moves at random, and every estimate starts at 0.</p>
-    <p>Each cell shows its estimate, and a heatmap shades it green, the more the closer the estimate is to 1; 0 is not shaded. Each press is one line of the algorithm. During the episode, the move chosen turns yellow, the agent takes it, and the cells it has left are outlined in dashed blue; no estimate changes. Once the agent reaches the cookie, each press is one step of the sweep back, and every estimate it updates is outlined in green. Later, Next skips ahead to the moments where something new is learned. The gear button after Next opens the figure's settings: the heatmap and the sound.</p>
+    <p>The figure runs it on a grid 3 cells wide and 3 tall, with cells named by column and row, from A1 at the bottom left to C3 at the top right. An agent starts in A1 and moves up, right, down or left; a move into a wall leaves it where it is. Reaching the cookie in C3 gives +1 and ends the episode, and every other move gives 0, so with γ = 0.9 the return from a cell is 1 if the next move reaches the cookie, 0.9 if it comes one move later, 0.81 if two, and so on. The policy picks each of the four moves at random, and every estimate starts at 0.</p>
+    <p>Each cell shows its estimate, shaded green the closer it is to 1, and not at all at 0. At first, each press is one line of the algorithm:</p>
+    <ul>
+      <li>during the episode, the move chosen turns yellow and the agent takes it, the cells it has left are outlined in dashed blue, and no estimate changes;</li>
+      <li>once the agent reaches the cookie, each press is one step of the sweep back, and every estimate it updates is outlined in green.</li>
+    </ul>
+    <p>Later, Next skips ahead to the moments where something new is learned, and the gear button after Next opens the figure's settings: the heatmap and the sound.</p>
   </div>
 
   <div class="fig steps">
@@ -105,8 +112,32 @@ scripts:
     <h2><span class="n">2</span>Values of actions</h2>
     <p>State values are enough to choose actions only with a model of the world: knowing that a move from the hallway leads to the study, the robot could compare the rooms each move leads to. Without a model it needs the value of each action directly:</p>
     <div class="disp"><i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>) = <span class="nowrap">E<sub>π</sub>[<i>G</i><sub><i>t</i></sub> | <i>S</i><sub><i>t</i></sub> = <i>s</i>, <i>A</i><sub><i>t</i></sub> = <i>a</i>]</span></div>
-    <p>the return to expect after taking action <i>a</i> in state <i>s</i> and following π afterward. Monte Carlo estimates it the same way, by averaging the returns after visits to the pair (<i>s</i>, <i>a</i>), first visits or all visits. For the wandering robot, going from the study to the charger is worth −1, and going back to the hallway −1 + (−8) = −9; going from the hallway to the study is worth −6, and back to the kitchen −10.</p>
-    <p>The complication is that many pairs may never be visited. If the robot always went from the study straight to the charger, it would never see a return for going back to the hallway, and could never learn whether that move is better or worse. To compare actions, every pair has to keep being tried. One way to guarantee it is exploring starts: each episode starts from a state–action pair chosen at random, with every pair having some chance. That is easy in a simulation and usually impossible in the real world, where episodes start wherever they start.</p>
+    <p>the return to expect after taking action <i>a</i> in state <i>s</i> and following π afterward. Monte Carlo estimates it the same way, by averaging the returns after visits to the pair (<i>s</i>, <i>a</i>), first visits or all visits. For the wandering robot, each move is worth its −1 plus the value of the room it leads to:</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 440 136" role="img" aria-label="The value of each move of the wandering robot: from the kitchen to the hallway −9; from the hallway to the study −6, and back to the kitchen −10; from the study to the charger −1, and back to the hallway −9.">
+        <defs><marker id="mc-q-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+        <line class="ln-path" x1="74" y1="58" x2="174" y2="58" marker-end="url(#mc-q-head)"/>
+        <line class="ln-path" x1="176" y1="78" x2="76" y2="78" marker-end="url(#mc-q-head)"/>
+        <line class="ln-path" x1="204" y1="58" x2="304" y2="58" marker-end="url(#mc-q-head)"/>
+        <line class="ln-path" x1="306" y1="78" x2="206" y2="78" marker-end="url(#mc-q-head)"/>
+        <line class="ln-path" x1="334" y1="68" x2="394" y2="68" marker-end="url(#mc-q-head)"/>
+        <circle class="state" cx="60" cy="68" r="9"/>
+        <circle class="state" cx="190" cy="68" r="9"/>
+        <circle class="state" cx="320" cy="68" r="9"/>
+        <rect class="state" x="400" y="61" width="14" height="14"/>
+        <text class="dg-lab" x="124" y="48" text-anchor="middle">−9</text>
+        <text class="dg-lab" x="124" y="98" text-anchor="middle">−10</text>
+        <text class="dg-lab" x="254" y="48" text-anchor="middle">−6</text>
+        <text class="dg-lab" x="254" y="98" text-anchor="middle">−9</text>
+        <text class="dg-lab" x="364" y="58" text-anchor="middle">−1</text>
+        <text class="dg-lab" x="60" y="124" text-anchor="middle">kitchen</text>
+        <text class="dg-lab" x="190" y="124" text-anchor="middle">hallway</text>
+        <text class="dg-lab" x="320" y="124" text-anchor="middle">study</text>
+        <text class="dg-lab" x="436" y="124" text-anchor="end">charger</text>
+      </svg>
+      <figcaption>The value of each of the wandering robot's moves, <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>). In the hallway, going on to the study is worth 4 more than going back to the kitchen; in the study, the charger is worth 8 more than the hallway.</figcaption>
+    </figure>
+    <p>The complication is that many pairs may never be visited. A robot that always went from the study straight to the charger would never see a return for going back to the hallway, and could never learn whether that move is better or worse: to compare actions, every pair has to keep being tried. One way to guarantee it is exploring starts: each episode starts from a state–action pair chosen at random, every pair with some chance. That is easy in a simulation and usually impossible in the real world, where episodes start wherever they start.</p>
   </div>
 </section>
 
@@ -115,9 +146,41 @@ scripts:
     <h2><span class="n">3</span>Improving the policy</h2>
     <p>With action values, a better policy is easy to find: in each state, take the action with the largest value. A policy that does that with respect to <i>q</i> is greedy:</p>
     <div class="disp">π(<i>s</i>) ≐ <span class="nowrap">argmax<sub><i>a</i></sub> <i>q</i>(<i>s</i>, <i>a</i>)</span></div>
-    <p>The greedy policy is at least as good as π everywhere. Following it for one step and π afterward is worth <span class="nowrap">max<sub><i>a</i></sub> <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>)</span>, which is at least <i>v</i><sub>π</sub>(<i>s</i>), the value of following π all along; by the policy improvement theorem, following it every step is at least as good too. In the home, the greedy policy with respect to the values above goes from the hallway to the study (−6 beats −10) and from the study to the charger (−1 beats −9). That is the best policy, with values −3, −2 and −1.</p>
-    <p>Control alternates the two steps: evaluate the current policy, make the policy greedy with respect to the evaluation, and repeat. Each step moves toward what the other needs, and when neither changes anything, both the policy and its values are optimal. This pattern is called generalized policy iteration (GPI). Evaluation need not be complete: Monte Carlo methods alternate after every episode, updating the values of the pairs visited and then the policy at those states.</p>
-    <p>Monte Carlo with Exploring Starts, Monte Carlo ES, does exactly that. It starts each episode from a random pair and then follows the current greedy policy; after the episode, it averages each visited pair's first-visit return into <i>Q</i> and makes the policy greedy in the states visited. It cannot settle on a policy that is not optimal: the values would converge to that policy's values, and the greedy step would then change it. That it always converges to the optimum is widely believed but has not been formally proved.</p>
+    <p>The greedy policy is at least as good as π everywhere. Following it for one step and π afterward is worth <span class="nowrap">max<sub><i>a</i></sub> <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>)</span>, which is at least <i>v</i><sub>π</sub>(<i>s</i>), the value of following π all along; by the policy improvement theorem, following it every step is at least as good too. In the home, the greedy policy takes the better move of the diagram above in each room, to the study from the hallway (−6 beats −10) and to the charger from the study (−1 beats −9), and that is the best policy:</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th scope="col">Room</th><th scope="col">Wandering robot</th><th scope="col">Greedy policy</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">kitchen</th><td>−9</td><td>−3</td></tr>
+          <tr><th scope="row">hallway</th><td>−8</td><td>−2</td></tr>
+          <tr><th scope="row">study</th><td>−5</td><td>−1</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Control repeats two steps, evaluation and improvement, a pattern called generalized policy iteration (GPI):</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 440 150" role="img" aria-label="Generalized policy iteration: evaluation leads from the policy to its values, and improvement from the values back to the policy, in a loop.">
+        <defs><marker id="mc-gpi-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head-ink" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+        <path class="bk" d="M150 64 C 190 26, 250 26, 290 64" marker-end="url(#mc-gpi-head)"/>
+        <path class="bk" d="M290 90 C 250 128, 190 128, 150 90" marker-end="url(#mc-gpi-head)"/>
+        <text class="dg-lab" x="112" y="82" text-anchor="middle">policy</text>
+        <text class="dg-lab" x="328" y="82" text-anchor="middle">values</text>
+        <text class="dg-lab" x="220" y="22" text-anchor="middle">evaluation</text>
+        <text class="dg-lab" x="220" y="143" text-anchor="middle">improvement</text>
+      </svg>
+      <figcaption>Each step changes what the other starts from: evaluation brings the values <i>q</i> toward those of the policy π, and improvement makes π greedy with respect to <i>q</i>. When neither changes anything, both the policy and its values are optimal.</figcaption>
+    </figure>
+    <p>Evaluation need not be complete: Monte Carlo methods alternate after every episode, updating the values of the pairs visited and then the policy at those states.</p>
+
+    <h3>The algorithm</h3>
+    <p>Monte Carlo with Exploring Starts, Monte Carlo ES:</p>
+    <ol class="steps">
+      <li>Start with any <i>Q</i>(<i>s</i>, <i>a</i>), an empty list of returns for each pair, and any policy π.</li>
+      <li>Choose <i>S</i><sub>0</sub> and <i>A</i><sub>0</sub> at random, every pair with some chance, and generate an episode from them by following π: <i>S</i><sub>0</sub>, <i>A</i><sub>0</sub>, <i>R</i><sub>1</sub>, …, <i>S</i><sub><i>T</i>−1</sub>, <i>A</i><sub><i>T</i>−1</sub>, <i>R</i><sub><i>T</i></sub>. Set <i>G</i> ← 0.</li>
+      <li>For <i>t</i> = <i>T</i> − 1, <i>T</i> − 2, …, 0: set <span class="nowrap"><i>G</i> ← γ<i>G</i> + <i>R</i><sub><i>t</i>+1</sub></span>. If the pair <i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub> does not appear earlier in the episode, add <i>G</i> to its returns, set <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) to their average, and make π greedy in <i>S</i><sub><i>t</i></sub>: <span class="nowrap">π(<i>S</i><sub><i>t</i></sub>) ← argmax<sub><i>a</i></sub> <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>a</i>)</span>.</li>
+      <li>Repeat from step 2 for each new episode.</li>
+    </ol>
+    <p>It cannot settle on a policy that is not optimal: the values would converge to that policy's values, and the greedy step would then change it. That it always converges to the optimum is widely believed but has not been formally proved.</p>
   </div>
 </section>
 
@@ -125,7 +188,9 @@ scripts:
   <div class="prose">
     <h2><span class="n">4</span>Control without exploring starts</h2>
     <p>Without exploring starts, the only way to keep trying every action is for the policy itself to keep choosing them. There are two ways to do that. On-policy methods evaluate and improve the same policy that makes the decisions. Off-policy methods evaluate or improve a policy different from the one that generates the experience. This section is about an on-policy method.</p>
-    <p>The policy is kept soft, with <span class="nowrap">π(<i>a</i>|<i>s</i>) &gt; 0</span> for every action. An ε-soft policy gives every action at least <span class="nowrap">ε/|𝒜(<i>s</i>)|</span>, where |𝒜(<i>s</i>)| is the number of actions in <i>s</i>. The closest of them to greedy is ε-greedy: it gives each non-greedy action exactly ε/|𝒜(<i>s</i>)| and the greedy action the rest, <span class="nowrap">1 − ε + ε/|𝒜(<i>s</i>)|</span>. On-policy first-visit Monte Carlo control is Monte Carlo ES with one change: episodes start however they start, and the improvement step makes the policy ε-greedy with respect to <i>Q</i> instead of greedy.</p>
+    <p>The policy is kept soft, with <span class="nowrap">π(<i>a</i>|<i>s</i>) &gt; 0</span> for every action. An ε-soft policy gives every action at least <span class="nowrap">ε/|𝒜(<i>s</i>)|</span>, where |𝒜(<i>s</i>)| is the number of actions in <i>s</i>, and the closest of them to greedy is ε-greedy:</p>
+    <div class="disp">π(<i>a</i>|<i>s</i>) <span class="nowrap">= 1 − ε + ε/|𝒜(<i>s</i>)|</span> <span class="nowrap">for the greedy action,</span><br>π(<i>a</i>|<i>s</i>) <span class="nowrap">= ε/|𝒜(<i>s</i>)|</span> <span class="nowrap">for each of the others.</span></div>
+    <p>On-policy first-visit Monte Carlo control is Monte Carlo ES with one change: episodes start however they start, and the improvement step makes the policy ε-greedy with respect to <i>Q</i> instead of greedy.</p>
 
     <h3>The algorithm</h3>
     <p>On-policy first-visit Monte Carlo control, for a small ε &gt; 0:</p>
@@ -135,7 +200,13 @@ scripts:
       <li>For <i>t</i> = <i>T</i> − 1, <i>T</i> − 2, …, 0: set <span class="nowrap"><i>G</i> ← γ<i>G</i> + <i>R</i><sub><i>t</i>+1</sub></span>. If the pair <i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub> does not appear earlier in the episode, add <i>G</i> to its returns, set <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) to their average, and make π ε-greedy in <i>S</i><sub><i>t</i></sub> with respect to <i>Q</i>.</li>
       <li>Repeat from step 2 for each new episode.</li>
     </ol>
-    <p>The figure runs it on the <a href="#prediction">cookie grid of section 1</a>, with ε = 0.1 and every value starting at 0. Each cell is now split into four triangles, one per move, each with that move's value (blank while it is untried). When one move is worth more than the others, its value is in bold, and a small blue triangle at the middle of the cell points toward it. The heatmap now shades each move's triangle; in the settings, it can shade each cell by its best value instead. The presses work as in section 1: the episode plays with the table unchanged, its moves outlined in dashed blue, then the sweep goes back one step per press, outlining each updated value in green.</p>
+    <p>The figure runs it on the <a href="#prediction">cookie grid of section 1</a>, with ε = 0.1 and every value starting at 0, and its presses work as there, with moves in place of cells:</p>
+    <ul>
+      <li>each cell is split into four triangles, one per move, each with that move's value, blank while the move is untried;</li>
+      <li>when one move is worth more than the others, its value is in bold, and a small blue triangle at the middle of the cell points toward it;</li>
+      <li>the moves of an episode are outlined in dashed blue, and the values its sweep updates in green;</li>
+      <li>and the heatmap shades each move's triangle, or, if chosen in the settings, each cell by its best value.</li>
+    </ul>
   </div>
 
   <div class="fig steps">
@@ -152,7 +223,18 @@ scripts:
     <p>The ε-greedy step still improves the policy. For any ε-soft π, the ε-greedy policy π′ with respect to <i>q</i><sub>π</sub> satisfies, in every state,</p>
     <div class="disp">Σ<sub><i>a</i></sub> π′(<i>a</i>|<i>s</i>) <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>) <span class="nowrap">≥ <i>v</i><sub>π</sub>(<i>s</i>)</span></div>
     <p>because π′ puts its extra weight on the largest <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>), and a weighted average never exceeds its largest term. By the policy improvement theorem, π′ is at least as good as π. In the study, with ε = 0.2 and two actions, π′ goes to the charger with probability 0.9: <span class="nowrap">0.9(−1) + 0.1(−9) = −1.8</span>, well above the wandering robot's −5.</p>
-    <p>Where does it end? The process stops improving only at the best ε-soft policy, which is not the best policy: it keeps exploring forever, and exploring costs something. In the home, the ε-greedy policy with ε = 0.2 around the best moves has values −3.47, −2.47 and −1.25, against −3, −2 and −1 without exploration. Letting ε shrink over time closes that gap.</p>
+    <p>Where does it end? The process stops improving only at the best ε-soft policy, which is not the best policy: it keeps exploring forever, and exploring costs something. In the home, around the best moves:</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th scope="col">Room</th><th scope="col">Best policy</th><th scope="col">ε-greedy, ε = 0.2</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">kitchen</th><td>−3</td><td>−3.47</td></tr>
+          <tr><th scope="row">hallway</th><td>−2</td><td>−2.47</td></tr>
+          <tr><th scope="row">study</th><td>−1</td><td>−1.25</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Letting ε shrink over time closes that gap.</p>
   </div>
 </section>
 

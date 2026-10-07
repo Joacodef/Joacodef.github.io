@@ -28,12 +28,12 @@ scripts:
       <text class="dg-lab" x="60" y="124" text-anchor="middle">cocina</text>
       <text class="dg-lab" x="190" y="124" text-anchor="middle">pasillo</text>
       <text class="dg-lab" x="320" y="124" text-anchor="middle">estudio</text>
-      <text class="dg-lab" x="407" y="124" text-anchor="middle">cargador</text>
+      <text class="dg-lab" x="436" y="124" text-anchor="end">cargador</text>
     </svg>
     <figcaption>La forma de moverse del robot, con la probabilidad de cada movimiento. Cada movimiento da una recompensa de −1, así que el retorno desde una pieza es menos el número de movimientos que aún faltan.</figcaption>
   </figure>
-  <p>¿Cuán buena es cada pieza, es decir, cuántos movimientos tomará el viaje desde ahí? El robot no puede calcularlo, porque no conoce la distribución de la casa. Pero puede averiguarlo con la experiencia. Cada vez que llega al cargador, sabe cuántos movimientos tomó de verdad el viaje desde cada pieza por la que pasó, y promediar esos números sobre muchos viajes da la respuesta.</p>
-  <p>Eso es un método Monte Carlo: estimar valores promediando lo que de verdad ocurrió en episodios completos. Este apunte lo hace primero para una forma fija de comportarse, luego para el valor de cada acción, y después usa esos valores para comportarse mejor. En el camino se topa con lo único de lo que los métodos Monte Carlo no pueden prescindir: seguir probando todas las acciones.</p>
+  <p>¿Cuán buena es cada pieza, es decir, cuántos movimientos tomará el viaje desde ahí? El robot no conoce la distribución de la casa, pero puede averiguarlo con la experiencia. Cada vez que llega al cargador, sabe cuántos movimientos tomó el viaje desde cada pieza por la que pasó, y promediar esos números sobre muchos viajes da la respuesta.</p>
+  <p>Eso es un método Monte Carlo: estimar valores promediando lo que de verdad ocurrió en episodios completos. Este apunte lo hace primero para una forma fija de comportarse, luego para el valor de cada acción, y después usa esos valores para comportarse mejor, para lo cual necesita lo único de lo que los métodos Monte Carlo no pueden prescindir: seguir probando todas las acciones.</p>
   <p class="legend">En esta página, <span class="bar" aria-hidden="true"></span>los movimientos del robot se dibujan con tinta azul, y <span class="dot" aria-hidden="true"></span>el retorno hacia el que se mueve una estimación, el objetivo de su actualización, con tinta roja.</p>
 </div>
 
@@ -64,7 +64,9 @@ scripts:
         </tbody>
       </table>
     </div>
-    <p>Dos viajes cortos son una mala muestra: los valores reales son mucho más bajos, porque muchos viajes van y vuelven un buen rato. Salen de las relaciones entre piezas vecinas: el valor del estudio es el promedio de sus dos movimientos, <span class="nowrap"><i>v</i>(estudio)</span> <span class="nowrap">= ½(−1) + ½(−1 + <i>v</i>(pasillo))</span>, y lo mismo para las otras piezas, lo que da −9, −8 y −5. Promediar más viajes llega ahí: después de 10&nbsp;000 viajes, ambos métodos están a menos de 0.1 de estos valores.</p>
+    <p>Dos viajes cortos son una mala muestra: los valores reales son mucho más bajos, porque muchos viajes van y vuelven un buen rato. Salen de las relaciones entre piezas vecinas: cada pieza vale el promedio, sobre sus movimientos, de −1 más el valor de la pieza a la que lleva el movimiento, 0 en el cargador:</p>
+    <div class="disp"><i>v</i>(cocina) <span class="nowrap">= −1 + <i>v</i>(pasillo)</span><br><i>v</i>(pasillo) <span class="nowrap">= ½(−1 + <i>v</i>(cocina))</span> <span class="nowrap">+ ½(−1 + <i>v</i>(estudio))</span><br><i>v</i>(estudio) <span class="nowrap">= ½(−1) + ½(−1 + <i>v</i>(pasillo))</span></div>
+    <p>que juntas dan −9, −8 y −5. Promediar más viajes llega ahí: después de 10&nbsp;000 viajes, ambos métodos están a menos de 0.1 de estos valores.</p>
     <p>Ambos métodos convergen a <i>v</i><sub>π</sub>(<i>s</i>) a medida que crece el número de visitas. Para Monte Carlo first-visit es la ley de los grandes números: cada retorno es una muestra independiente cuya esperanza es <i>v</i><sub>π</sub>(<i>s</i>), así que el promedio es insesgado, y su error se achica como 1/√<i>n</i> después de <i>n</i> retornos. Monte Carlo every-visit también converge, aunque sus muestras de un mismo episodio no son independientes.</p>
 
     <h3>El algoritmo</h3>
@@ -75,8 +77,13 @@ scripts:
       <li>Para <i>t</i> = <i>T</i> − 1, <i>T</i> − 2, …, 0: haz <span class="nowrap"><i>G</i> ← γ<i>G</i> + <i>R</i><sub><i>t</i>+1</sub></span>. Si <i>S</i><sub><i>t</i></sub> no aparece antes en el episodio, agrega <i>G</i> a los retornos de <i>S</i><sub><i>t</i></sub> y deja <i>V</i>(<i>S</i><sub><i>t</i></sub>) en su promedio.</li>
       <li>Repite desde el paso 2 con cada nuevo episodio. Monte Carlo every-visit es igual, sin la revisión del paso 3.</li>
     </ol>
-    <p>La figura lo ejecuta en una grilla de 3 celdas de ancho y 3 de alto, con las celdas nombradas por columna y fila, desde A1 abajo a la izquierda hasta C3 arriba a la derecha. Un agente parte en A1 y se mueve arriba, a la derecha, abajo o a la izquierda, y un movimiento contra una pared lo deja donde está. En C3 hay una galleta: llegar a ella da +1 y termina el episodio, y cualquier otro movimiento da 0. Con γ = 0.9, el retorno desde una celda es 1 si el siguiente movimiento llega a la galleta, 0.9 si la galleta viene un movimiento después, 0.81 si vienen dos, y así: mientras más corto el viaje, mayor el retorno. La política elige cada uno de los cuatro movimientos al azar, y todas las estimaciones parten en 0.</p>
-    <p>Cada celda muestra su estimación, y un mapa de calor la sombrea de verde, más cuanto más cerca de 1 está la estimación; el 0 no se sombrea. Cada vez que presionas Siguiente se ejecuta una línea del algoritmo. Durante el episodio, el movimiento elegido se pone amarillo, el agente lo toma, y las celdas que va dejando tienen un borde azul punteado; ninguna estimación cambia. Cuando el agente llega a la galleta, cada vez que presionas Siguiente se da un paso del recorrido hacia atrás, y cada estimación que actualiza tiene un borde verde. Más adelante, Siguiente salta a los momentos en que se aprende algo nuevo. El botón del engranaje, después de Siguiente, abre los ajustes de la figura: el mapa de calor y el sonido.</p>
+    <p>La figura lo ejecuta en una grilla de 3 celdas de ancho y 3 de alto, con las celdas nombradas por columna y fila, desde A1 abajo a la izquierda hasta C3 arriba a la derecha. Un agente parte en A1 y se mueve arriba, a la derecha, abajo o a la izquierda; un movimiento contra una pared lo deja donde está. Llegar a la galleta en C3 da +1 y termina el episodio, y cualquier otro movimiento da 0, así que con γ = 0.9 el retorno desde una celda es 1 si el siguiente movimiento llega a la galleta, 0.9 si llega un movimiento después, 0.81 si dos, y así. La política elige cada uno de los cuatro movimientos al azar, y todas las estimaciones parten en 0.</p>
+    <p>Cada celda muestra su estimación, sombreada de verde cuanto más cerca de 1 está, y nada en 0. Al principio, cada vez que presionas Siguiente se ejecuta una línea del algoritmo:</p>
+    <ul>
+      <li>durante el episodio, el movimiento elegido se pone amarillo y el agente lo toma, las celdas que va dejando tienen un borde azul punteado, y ninguna estimación cambia;</li>
+      <li>cuando el agente llega a la galleta, cada vez se da un paso del recorrido hacia atrás, y cada estimación que actualiza tiene un borde verde.</li>
+    </ul>
+    <p>Más adelante, Siguiente salta a los momentos en que se aprende algo nuevo, y el botón del engranaje, después de Siguiente, abre los ajustes de la figura: el mapa de calor y el sonido.</p>
   </div>
 
   <div class="fig steps">
@@ -105,8 +112,32 @@ scripts:
     <h2><span class="n">2</span>Valores de acciones</h2>
     <p>Los valores de estado bastan para elegir acciones solo con un modelo del mundo: sabiendo que un movimiento desde el pasillo lleva al estudio, el robot podría comparar las piezas a las que lleva cada movimiento. Sin modelo necesita directamente el valor de cada acción:</p>
     <div class="disp"><i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>) = <span class="nowrap">E<sub>π</sub>[<i>G</i><sub><i>t</i></sub> | <i>S</i><sub><i>t</i></sub> = <i>s</i>, <i>A</i><sub><i>t</i></sub> = <i>a</i>]</span></div>
-    <p>el retorno que cabe esperar después de tomar la acción <i>a</i> en el estado <i>s</i> y seguir π desde ahí. Monte Carlo lo estima igual que antes, promediando los retornos después de las visitas al par (<i>s</i>, <i>a</i>), first-visit o every-visit. Para el robot que anda al azar, ir del estudio al cargador vale −1, y volver al pasillo −1 + (−8) = −9; ir del pasillo al estudio vale −6, y volver a la cocina −10.</p>
-    <p>La complicación es que puede haber muchos pares que nunca se visiten. Si el robot siempre fuera del estudio directo al cargador, nunca vería un retorno por volver al pasillo, y nunca podría saber si ese movimiento es mejor o peor. Para comparar acciones, hay que seguir probando todos los pares. Una forma de garantizarlo son los exploring starts (inicios exploratorios): cada episodio parte en un par estado–acción elegido al azar, con alguna probabilidad para cada par. Eso es fácil en una simulación y casi siempre imposible en el mundo real, donde los episodios parten donde parten.</p>
+    <p>el retorno que cabe esperar después de tomar la acción <i>a</i> en el estado <i>s</i> y seguir π desde ahí. Monte Carlo lo estima igual que antes, promediando los retornos después de las visitas al par (<i>s</i>, <i>a</i>), first-visit o every-visit. Para el robot que anda al azar, cada movimiento vale su −1 más el valor de la pieza a la que lleva:</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 440 136" role="img" aria-label="El valor de cada movimiento del robot que anda al azar: de la cocina al pasillo −9; del pasillo al estudio −6, y de vuelta a la cocina −10; del estudio al cargador −1, y de vuelta al pasillo −9.">
+        <defs><marker id="mc-q-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+        <line class="ln-path" x1="74" y1="58" x2="174" y2="58" marker-end="url(#mc-q-head)"/>
+        <line class="ln-path" x1="176" y1="78" x2="76" y2="78" marker-end="url(#mc-q-head)"/>
+        <line class="ln-path" x1="204" y1="58" x2="304" y2="58" marker-end="url(#mc-q-head)"/>
+        <line class="ln-path" x1="306" y1="78" x2="206" y2="78" marker-end="url(#mc-q-head)"/>
+        <line class="ln-path" x1="334" y1="68" x2="394" y2="68" marker-end="url(#mc-q-head)"/>
+        <circle class="state" cx="60" cy="68" r="9"/>
+        <circle class="state" cx="190" cy="68" r="9"/>
+        <circle class="state" cx="320" cy="68" r="9"/>
+        <rect class="state" x="400" y="61" width="14" height="14"/>
+        <text class="dg-lab" x="124" y="48" text-anchor="middle">−9</text>
+        <text class="dg-lab" x="124" y="98" text-anchor="middle">−10</text>
+        <text class="dg-lab" x="254" y="48" text-anchor="middle">−6</text>
+        <text class="dg-lab" x="254" y="98" text-anchor="middle">−9</text>
+        <text class="dg-lab" x="364" y="58" text-anchor="middle">−1</text>
+        <text class="dg-lab" x="60" y="124" text-anchor="middle">cocina</text>
+        <text class="dg-lab" x="190" y="124" text-anchor="middle">pasillo</text>
+        <text class="dg-lab" x="320" y="124" text-anchor="middle">estudio</text>
+        <text class="dg-lab" x="436" y="124" text-anchor="end">cargador</text>
+      </svg>
+      <figcaption>El valor de cada movimiento del robot que anda al azar, <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>). En el pasillo, seguir al estudio vale 4 más que volver a la cocina; en el estudio, el cargador vale 8 más que el pasillo.</figcaption>
+    </figure>
+    <p>La complicación es que puede haber muchos pares que nunca se visiten. Un robot que siempre fuera del estudio directo al cargador nunca vería un retorno por volver al pasillo, y nunca podría saber si ese movimiento es mejor o peor: para comparar acciones, hay que seguir probando todos los pares. Una forma de garantizarlo son los exploring starts (inicios exploratorios): cada episodio parte en un par estado–acción elegido al azar, con alguna probabilidad para cada par. Eso es fácil en una simulación y casi siempre imposible en el mundo real, donde los episodios parten donde parten.</p>
   </div>
 </section>
 
@@ -115,9 +146,41 @@ scripts:
     <h2><span class="n">3</span>Mejorar la política</h2>
     <p>Con valores de acción, una política mejor es fácil de encontrar: en cada estado, toma la acción de mayor valor. Una política que hace eso con respecto a <i>q</i> es greedy:</p>
     <div class="disp">π(<i>s</i>) ≐ <span class="nowrap">argmax<sub><i>a</i></sub> <i>q</i>(<i>s</i>, <i>a</i>)</span></div>
-    <p>La política greedy es al menos tan buena como π en todas partes. Seguirla un paso y luego seguir π vale <span class="nowrap">max<sub><i>a</i></sub> <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>)</span>, que es al menos <i>v</i><sub>π</sub>(<i>s</i>), el valor de seguir π todo el tiempo; por el teorema de mejora de políticas, seguirla en todos los pasos también es al menos igual de bueno. En la casa, la política greedy con respecto a los valores de arriba va del pasillo al estudio (−6 le gana a −10) y del estudio al cargador (−1 le gana a −9). Esa es la mejor política, con valores −3, −2 y −1.</p>
-    <p>El control alterna los dos pasos: evaluar la política actual, volver greedy la política con respecto a esa evaluación, y repetir. Cada paso avanza hacia lo que el otro necesita, y cuando ninguno cambia nada, tanto la política como sus valores son óptimos. Este patrón se llama iteración de políticas generalizada (GPI). La evaluación no tiene que ser completa: los métodos Monte Carlo alternan después de cada episodio, actualizando los valores de los pares visitados y luego la política en esos estados.</p>
-    <p>Monte Carlo con Exploring Starts, Monte Carlo ES, hace exactamente eso. Parte cada episodio en un par al azar y luego sigue la política greedy actual; después del episodio, promedia en <i>Q</i> el retorno first-visit de cada par visitado y vuelve greedy la política en los estados visitados. No puede quedarse en una política que no sea óptima: los valores convergerían a los de esa política, y el paso greedy la cambiaría. Que siempre converja al óptimo es algo que se cree ampliamente, pero no se ha demostrado formalmente.</p>
+    <p>La política greedy es al menos tan buena como π en todas partes. Seguirla un paso y luego seguir π vale <span class="nowrap">max<sub><i>a</i></sub> <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>)</span>, que es al menos <i>v</i><sub>π</sub>(<i>s</i>), el valor de seguir π todo el tiempo; por el teorema de mejora de políticas, seguirla en todos los pasos también es al menos igual de bueno. En la casa, la política greedy toma en cada pieza el mejor movimiento del diagrama de arriba, al estudio desde el pasillo (−6 le gana a −10) y al cargador desde el estudio (−1 le gana a −9), y esa es la mejor política:</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th scope="col">Pieza</th><th scope="col">Robot que anda al azar</th><th scope="col">Política greedy</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">cocina</th><td>−9</td><td>−3</td></tr>
+          <tr><th scope="row">pasillo</th><td>−8</td><td>−2</td></tr>
+          <tr><th scope="row">estudio</th><td>−5</td><td>−1</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>El control repite dos pasos, evaluación y mejora, un patrón que se llama iteración de políticas generalizada (GPI):</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 440 150" role="img" aria-label="Iteración de políticas generalizada: la evaluación lleva de la política a sus valores, y la mejora de los valores de vuelta a la política, en un ciclo.">
+        <defs><marker id="mc-gpi-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head-ink" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+        <path class="bk" d="M150 64 C 190 26, 250 26, 290 64" marker-end="url(#mc-gpi-head)"/>
+        <path class="bk" d="M290 90 C 250 128, 190 128, 150 90" marker-end="url(#mc-gpi-head)"/>
+        <text class="dg-lab" x="112" y="82" text-anchor="middle">política</text>
+        <text class="dg-lab" x="328" y="82" text-anchor="middle">valores</text>
+        <text class="dg-lab" x="220" y="22" text-anchor="middle">evaluación</text>
+        <text class="dg-lab" x="220" y="143" text-anchor="middle">mejora</text>
+      </svg>
+      <figcaption>Cada paso cambia aquello de lo que parte el otro: la evaluación acerca los valores <i>q</i> a los de la política π, y la mejora vuelve π greedy con respecto a <i>q</i>. Cuando ninguno cambia nada, tanto la política como sus valores son óptimos.</figcaption>
+    </figure>
+    <p>La evaluación no tiene que ser completa: los métodos Monte Carlo alternan después de cada episodio, actualizando los valores de los pares visitados y luego la política en esos estados.</p>
+
+    <h3>El algoritmo</h3>
+    <p>Monte Carlo con Exploring Starts, Monte Carlo ES:</p>
+    <ol class="steps">
+      <li>Parte con cualquier <i>Q</i>(<i>s</i>, <i>a</i>), una lista vacía de retornos para cada par y cualquier política π.</li>
+      <li>Elige <i>S</i><sub>0</sub> y <i>A</i><sub>0</sub> al azar, con alguna probabilidad para cada par, y genera un episodio desde ellos siguiendo π: <i>S</i><sub>0</sub>, <i>A</i><sub>0</sub>, <i>R</i><sub>1</sub>, …, <i>S</i><sub><i>T</i>−1</sub>, <i>A</i><sub><i>T</i>−1</sub>, <i>R</i><sub><i>T</i></sub>. Haz <i>G</i> ← 0.</li>
+      <li>Para <i>t</i> = <i>T</i> − 1, <i>T</i> − 2, …, 0: haz <span class="nowrap"><i>G</i> ← γ<i>G</i> + <i>R</i><sub><i>t</i>+1</sub></span>. Si el par <i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub> no aparece antes en el episodio, agrega <i>G</i> a sus retornos, deja <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) en su promedio y vuelve π greedy en <i>S</i><sub><i>t</i></sub>: <span class="nowrap">π(<i>S</i><sub><i>t</i></sub>) ← argmax<sub><i>a</i></sub> <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>a</i>)</span>.</li>
+      <li>Repite desde el paso 2 con cada nuevo episodio.</li>
+    </ol>
+    <p>No puede quedarse en una política que no sea óptima: los valores convergerían a los de esa política, y el paso greedy la cambiaría. Que siempre converja al óptimo es algo que se cree ampliamente, pero no se ha demostrado formalmente.</p>
   </div>
 </section>
 
@@ -125,7 +188,9 @@ scripts:
   <div class="prose">
     <h2><span class="n">4</span>Control sin exploring starts</h2>
     <p>Sin exploring starts, la única forma de seguir probando todas las acciones es que la propia política las siga eligiendo. Hay dos maneras de hacerlo. Los métodos on-policy evalúan y mejoran la misma política que toma las decisiones. Los métodos off-policy evalúan o mejoran una política distinta de la que genera la experiencia. Esta sección trata de un método on-policy.</p>
-    <p>La política se mantiene blanda (soft), con <span class="nowrap">π(<i>a</i>|<i>s</i>) &gt; 0</span> para toda acción. Una política ε-soft le da a cada acción al menos <span class="nowrap">ε/|𝒜(<i>s</i>)|</span>, donde |𝒜(<i>s</i>)| es el número de acciones en <i>s</i>. La más cercana a greedy entre ellas es ε-greedy: le da a cada acción no greedy exactamente ε/|𝒜(<i>s</i>)| y a la acción greedy el resto, <span class="nowrap">1 − ε + ε/|𝒜(<i>s</i>)|</span>. El control Monte Carlo first-visit on-policy es Monte Carlo ES con un cambio: los episodios parten donde parten, y el paso de mejora vuelve la política ε-greedy con respecto a <i>Q</i> en vez de greedy.</p>
+    <p>La política se mantiene blanda (soft), con <span class="nowrap">π(<i>a</i>|<i>s</i>) &gt; 0</span> para toda acción. Una política ε-soft le da a cada acción al menos <span class="nowrap">ε/|𝒜(<i>s</i>)|</span>, donde |𝒜(<i>s</i>)| es el número de acciones en <i>s</i>, y la más cercana a greedy entre ellas es ε-greedy:</p>
+    <div class="disp">π(<i>a</i>|<i>s</i>) <span class="nowrap">= 1 − ε + ε/|𝒜(<i>s</i>)|</span> <span class="nowrap">para la acción greedy,</span><br>π(<i>a</i>|<i>s</i>) <span class="nowrap">= ε/|𝒜(<i>s</i>)|</span> <span class="nowrap">para cada una de las demás.</span></div>
+    <p>El control Monte Carlo first-visit on-policy es Monte Carlo ES con un cambio: los episodios parten donde parten, y el paso de mejora vuelve la política ε-greedy con respecto a <i>Q</i> en vez de greedy.</p>
 
     <h3>El algoritmo</h3>
     <p>Control Monte Carlo first-visit on-policy, para un ε &gt; 0 pequeño:</p>
@@ -135,7 +200,13 @@ scripts:
       <li>Para <i>t</i> = <i>T</i> − 1, <i>T</i> − 2, …, 0: haz <span class="nowrap"><i>G</i> ← γ<i>G</i> + <i>R</i><sub><i>t</i>+1</sub></span>. Si el par <i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub> no aparece antes en el episodio, agrega <i>G</i> a sus retornos, deja <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) en su promedio y vuelve π ε-greedy en <i>S</i><sub><i>t</i></sub> con respecto a <i>Q</i>.</li>
       <li>Repite desde el paso 2 con cada nuevo episodio.</li>
     </ol>
-    <p>La figura lo ejecuta en la <a href="#prediction">grilla de la galleta de la sección 1</a>, con ε = 0.1 y todos los valores partiendo en 0. Ahora cada celda se divide en cuatro triángulos, uno por movimiento, cada uno con el valor de ese movimiento (en blanco mientras no se ha probado). Cuando un movimiento vale más que los demás, su valor va en negrita, y un pequeño triángulo azul en el centro de la celda apunta hacia él. Ahora el mapa de calor sombrea el triángulo de cada movimiento; en los ajustes, puede sombrear en cambio cada celda según su mejor valor. Los pasos funcionan como en la sección 1: el episodio se juega con la tabla sin cambios, con sus movimientos con borde azul punteado, y luego el recorrido retrocede un paso cada vez que presionas Siguiente, con un borde verde en cada valor actualizado.</p>
+    <p>La figura lo ejecuta en la <a href="#prediction">grilla de la galleta de la sección 1</a>, con ε = 0.1 y todos los valores partiendo en 0, y sus pasos funcionan como ahí, con movimientos en lugar de celdas:</p>
+    <ul>
+      <li>cada celda se divide en cuatro triángulos, uno por movimiento, cada uno con el valor de ese movimiento, en blanco mientras no se ha probado;</li>
+      <li>cuando un movimiento vale más que los demás, su valor va en negrita, y un pequeño triángulo azul en el centro de la celda apunta hacia él;</li>
+      <li>los movimientos de un episodio tienen un borde azul punteado, y los valores que actualiza su recorrido, uno verde;</li>
+      <li>y el mapa de calor sombrea el triángulo de cada movimiento o, si se elige en los ajustes, cada celda según su mejor valor.</li>
+    </ul>
   </div>
 
   <div class="fig steps">
@@ -152,7 +223,18 @@ scripts:
     <p>El paso ε-greedy igual mejora la política. Para cualquier π ε-soft, la política ε-greedy π′ con respecto a <i>q</i><sub>π</sub> cumple, en todo estado,</p>
     <div class="disp">Σ<sub><i>a</i></sub> π′(<i>a</i>|<i>s</i>) <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>) <span class="nowrap">≥ <i>v</i><sub>π</sub>(<i>s</i>)</span></div>
     <p>porque π′ pone su peso extra en el mayor <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>), y un promedio ponderado nunca supera a su mayor término. Por el teorema de mejora de políticas, π′ es al menos tan buena como π. En el estudio, con ε = 0.2 y dos acciones, π′ va al cargador con probabilidad 0.9: <span class="nowrap">0.9(−1) + 0.1(−9) = −1.8</span>, muy por encima del −5 del robot que anda al azar.</p>
-    <p>¿Dónde termina? El proceso deja de mejorar solo en la mejor política ε-soft, que no es la mejor política: sigue explorando para siempre, y explorar cuesta. En la casa, la política ε-greedy con ε = 0.2 en torno a los mejores movimientos tiene valores −3.47, −2.47 y −1.25, contra −3, −2 y −1 sin exploración. Dejar que ε se achique con el tiempo cierra esa brecha.</p>
+    <p>¿Dónde termina? El proceso deja de mejorar solo en la mejor política ε-soft, que no es la mejor política: sigue explorando para siempre, y explorar cuesta. En la casa, en torno a los mejores movimientos:</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th scope="col">Pieza</th><th scope="col">Mejor política</th><th scope="col">ε-greedy, ε = 0.2</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">cocina</th><td>−3</td><td>−3.47</td></tr>
+          <tr><th scope="row">pasillo</th><td>−2</td><td>−2.47</td></tr>
+          <tr><th scope="row">estudio</th><td>−1</td><td>−1.25</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Dejar que ε se achique con el tiempo cierra esa brecha.</p>
   </div>
 </section>
 
