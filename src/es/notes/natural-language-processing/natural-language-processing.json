@@ -1,0 +1,6 @@
+{
+  "layout": "note.njk",
+  "course": "Procesamiento de Lenguaje Natural",
+  "courseOrder": 3,
+  "source": "Basado en el curso Procesamiento de Lenguaje Natural (IIC3670) del profesor Marcelo Mendoza en la UC Chile. Materiales del curso: <a href=\"https://github.com/marcelomendoza/IIC3670\">github.com/marcelomendoza/IIC3670</a>."
+}

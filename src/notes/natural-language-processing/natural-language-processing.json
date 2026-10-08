@@ -1,0 +1,6 @@
+{
+  "layout": "note.njk",
+  "course": "Natural Language Processing",
+  "courseOrder": 3,
+  "source": "Based on Prof. Marcelo Mendoza's Natural Language Processing course (IIC3670) at UC Chile. Course materials: <a href=\"https://github.com/marcelomendoza/IIC3670\">github.com/marcelomendoza/IIC3670</a>."
+}
