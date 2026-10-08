@@ -29,7 +29,7 @@ scripts:
 <section id="zipf">
   <div class="prose">
     <h2><span class="n">1</span>Unas pocas palabras hacen casi todo el trabajo</h2>
-    <p>Ordena las palabras del libro de la más frecuente a la menos frecuente. El lugar de una palabra en esa lista es su <em>rango</em>, <i>r</i>, y la cantidad de veces que aparece es su <em>frecuencia</em>, <i>f</i><sub><i>r</i></sub>. Cada aparición es un <em>token</em>: el libro tiene 376&nbsp;601 tokens de 22&nbsp;606 palabras distintas. «Que», de rango 1, pone 20&nbsp;416 de ellos; «y», de rango 2, 17&nbsp;987, y «hasta», de rango 100, 383. En 1949, George Kingsley Zipf observó que en los textos largos la frecuencia cae con el rango siempre de la misma forma, como una potencia de él:</p>
+    <p>Ordena las palabras del libro de la más frecuente a la menos frecuente. El lugar de una palabra en esa lista es su <em>rango</em>, <i>r</i>, y la cantidad de veces que aparece es su <em>frecuencia</em>, <i>f</i><sub><i>r</i></sub>. Cada aparición es un <em>token</em>: el libro tiene 376&nbsp;597 tokens de 22&nbsp;605 palabras distintas. «Que», de rango 1, pone 20&nbsp;416 de ellos; «y», de rango 2, 17&nbsp;987, y «hasta», de rango 100, 383. En 1949, George Kingsley Zipf observó que en los textos largos la frecuencia cae con el rango siempre de la misma forma, como una potencia de él:</p>
     <div class="disp hero-f"><i>f</i><sub><i>r</i></sub> = <span class="frac"><span><i>C</i></span><span><i>r</i><sup>α</sup></span></span></div>
     <p>La constante <i>C</i> fija la escala y el exponente α, cuán rápido caen las frecuencias; en los textos largos α suele estar cerca de 1. Con α = 1, el rango por la frecuencia es el mismo para todas las palabras: una palabra de rango diez veces mayor aparece la décima parte de las veces. Zipf lo explicó con lo que llamó el principio del mínimo esfuerzo. Hablar cuesta menos cuando las mismas palabras a mano sirven una y otra vez, en lugar de la palabra exacta para cada cosa, así que unas pocas palabras terminan en todas partes y las muchas palabras para cosas particulares aparecen, cada una, pocas veces.</p>
     <p>Para que una palabra usada veinte mil veces y otra usada una sola vez quepan en un mismo dibujo, los ejes de la figura se multiplican por diez en cada paso. Arrastra el punto rojo por las palabras del libro y mira cuánto da el rango por la frecuencia.</p>
@@ -45,7 +45,7 @@ scripts:
   </div>
 
   <div class="prose">
-    <p>Del rango 3 al 1000 la frecuencia cae de 17&nbsp;953 a 35, pero el producto se mantiene entre la mitad y el doble de 40&nbsp;000 (su mediana es 38&nbsp;423): en ese tramo α está cerca de 1. La ley describe la lista completa, no cada palabra. La primera palabra aparece cerca de la mitad de las veces que sugiere el resto de la lista, y pasados unos miles de rangos hay tramos enteros de palabras con una misma frecuencia pequeña, hasta las 11&nbsp;004 que aparecen una sola vez. La sección 2 mide α.</p>
+    <p>Del rango 3 al 1000 la frecuencia cae de 17&nbsp;953 a 35, pero el producto se mantiene entre la mitad y el doble de 40&nbsp;000 (su mediana es 38&nbsp;423): en ese tramo α está cerca de 1. La ley describe la lista completa, no cada palabra. La primera palabra aparece cerca de la mitad de las veces que sugiere el resto de la lista, y pasados unos miles de rangos hay tramos enteros de palabras con una misma frecuencia pequeña, hasta las 11&nbsp;003 que aparecen una sola vez. La sección 2 mide α.</p>
   </div>
 </section>
 
@@ -70,11 +70,11 @@ scripts:
   </div>
 
   <div class="prose">
-    <p>Para este libro, mínimos cuadrados da <span class="nowrap"><span class="hat lo"><i>α</i></span> = 1.05</span> y <span class="nowrap"><span class="hat"><i>C</i></span> = 50&nbsp;974</span>. En el medio de la lista la recta queda cerca: en el rango 1000 da 37, donde «ausencia» aparece 35 veces. Pero pasa muy por encima de la primera palabra, 50&nbsp;974 contra los 20&nbsp;416 de «que», la disparidad que la sección 1 encontró al comienzo de la lista.</p>
+    <p>Para este libro, mínimos cuadrados da <span class="nowrap"><span class="hat lo"><i>α</i></span> = 1.05</span> y <span class="nowrap"><span class="hat"><i>C</i></span> = 50&nbsp;973</span>. En el medio de la lista la recta queda cerca: en el rango 1000 da 37, donde «ausencia» aparece 35 veces. Pero pasa muy por encima de la primera palabra, 50&nbsp;973 contra los 20&nbsp;416 de «que», la disparidad que la sección 1 encontró al comienzo de la lista.</p>
     <h3>C y el largo del libro</h3>
     <p>Si la ley tiene que dar cuenta de todos los tokens del libro, <i>C</i> no queda libre: las frecuencias de las <i>V</i> palabras distintas deben sumar <i>n</i>, la cantidad de tokens. Eso la fija:</p>
     <div class="disp"><span class="nowrap"><i>f</i><sub><i>r</i></sub> = <span class="frac"><span><i>n</i></span><span><i>r</i><sup>α</sup> <i>H</i><sub><i>V</i></sub>(α)</span></span>,</span>&emsp;<span class="nowrap"><i>H</i><sub><i>V</i></sub>(α) = Σ<span class="lims"><span><i>V</i></span><span><i>j</i>=1</span></span> <span class="frac"><span>1</span><span><i>j</i><sup>α</sup></span></span></span></div>
-    <p>Con α = 1 la suma queda cerca de <span class="nowrap">ln <i>V</i> + γ</span>, donde <span class="nowrap">γ ≈ 0.577</span> es una constante. Para este libro, <span class="nowrap">ln 22&nbsp;606 + 0.577 ≈ 10.60</span>, así que <span class="nowrap"><i>C</i> = 376&nbsp;601 / 10.60 ≈ 35&nbsp;500</span>, cerca de los 40&nbsp;000 en torno a los que se movía el rango por la frecuencia en la sección 1.</p>
+    <p>Con α = 1 la suma queda cerca de <span class="nowrap">ln <i>V</i> + γ</span>, donde <span class="nowrap">γ ≈ 0.577</span> es una constante. Para este libro, <span class="nowrap">ln 22&nbsp;605 + 0.577 ≈ 10.60</span>, así que <span class="nowrap"><i>C</i> = 376&nbsp;597 / 10.60 ≈ 35&nbsp;500</span>, cerca de los 40&nbsp;000 en torno a los que se movía el rango por la frecuencia en la sección 1.</p>
   </div>
 </section>
 
@@ -98,7 +98,7 @@ scripts:
   </div>
 
   <div class="prose">
-    <p>Para el original, mínimos cuadrados da <span class="nowrap">β = 0.62</span>, algo por encima de lo habitual, y <span class="nowrap"><i>k</i> = 8.1</span>, así que duplicar el texto multiplica el vocabulario por cerca de <span class="nowrap">2<sup>0.62</sup> ≈ 1.54</span>; las razones contadas, desde los 10&nbsp;000 tokens, van de 1.44 a 1.65. Los dos números van atados: un β algo menor con un <i>k</i> mayor dibuja casi la misma curva sobre el libro, y con β fijo en 0.5 el mejor <i>k</i> es 33.4. La traducción inglesa usa 14&nbsp;927 palabras distintas en más tokens, con <span class="nowrap">β = 0.52</span>, porque el castellano flexiona: un verbo toma decenas de formas, y cada una cuenta como una palabra distinta. El próximo apunte trata de esas formas.</p>
+    <p>Para el original, mínimos cuadrados da <span class="nowrap">β = 0.62</span>, algo por encima de lo habitual, y <span class="nowrap"><i>k</i> = 8.1</span>, así que duplicar el texto multiplica el vocabulario por cerca de <span class="nowrap">2<sup>0.62</sup> ≈ 1.54</span>; las razones contadas, desde los 10&nbsp;000 tokens, van de 1.44 a 1.65. Los dos números van atados: un β algo menor con un <i>k</i> mayor dibuja casi la misma curva sobre el libro, y con β fijo en 0.5 el mejor <i>k</i> es 33.4. La traducción inglesa usa 14&nbsp;921 palabras distintas en más tokens, con <span class="nowrap">β = 0.52</span>, porque el castellano flexiona: un verbo toma decenas de formas, y cada una cuenta como una palabra distinta. El próximo apunte trata de esas formas.</p>
   </div>
 </section>
 
