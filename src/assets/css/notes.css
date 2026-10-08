@@ -119,6 +119,8 @@ sup.t { font-style: normal; font-size: 0.62em; margin-left: 0.06em; line-height:
 .btn { font: inherit; font-family: var(--sans); font-weight: 400; font-variation-settings: normal; font-size: 0.9rem; color: var(--ink); background: transparent; border: 1px solid var(--ink-3); border-radius: 999px; padding: 0.35em 1.05em; cursor: pointer; }
 .btn:hover { background: var(--card); }
 .fig-foot i { font-family: var(--serif); }
+/* Two buttons side by side at the end of a figure's footer, such as Least squares and Reset. */
+.fig-foot .btns { display: inline-flex; flex-wrap: wrap; gap: 0.5rem; }
 
 /* Buttons that pick one mode of a figure; the pressed one is outlined in ink. */
 .modes { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0 0 1.1rem; }
@@ -148,6 +150,7 @@ sup.t { font-style: normal; font-size: 0.62em; margin-left: 0.06em; line-height:
 }
 .ln-path { stroke: var(--blue); stroke-width: 2.6; fill: none; stroke-linecap: round; }
 .ln-path.dash { stroke-dasharray: 9 7; stroke-linecap: butt; }
+.ln-path.thin { stroke-width: 2; }
 .ln-lab { fill: var(--blue); font-family: var(--serif); font-size: 22px; }
 .pt-dot { fill: var(--red); }
 .pt-lab { fill: var(--red); font-family: var(--serif); font-size: 22px; }
@@ -389,6 +392,44 @@ ol.steps b { font-weight: 600; }
 /* Over the heatmap, a small blue triangle at the middle of a cell points toward its best move; a thin outline of the same
    blue rounds its corners. */
 .gw-arrow { fill: var(--blue); stroke: var(--blue); stroke-width: 1; stroke-linejoin: round; pointer-events: none; }
+
+/* The laws of text (natural language processing): what is counted in a book is carmine, the laws fitted to it blue.
+   On log–log axes the counts by rank are one carmine line, a flat stretch for each run of words with the same
+   frequency, and a dashed guide drops from the point the reader holds to each axis. */
+.lt-data { fill: none; stroke: var(--red); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+.lt-data.faint { stroke-opacity: 0.3; }
+.lt-guide { fill: none; stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 3 4; }
+/* The misses of a fitted line: a thin translucent carmine stroke from each point to the line. */
+.lt-res { fill: none; stroke: var(--red); stroke-width: 1; stroke-opacity: 0.35; }
+/* The other language's book, in faint ink, and the point twice as far, a hollow carmine ring. */
+.lt-faint { fill: none; stroke: var(--ink-3); stroke-width: 2; stroke-opacity: 0.55; stroke-linejoin: round; }
+.lt-ring { fill: var(--card); stroke: var(--red); stroke-width: 2.4; }
+.lt-lab { fill: var(--ink); font-family: var(--sans); font-size: 15px; paint-order: stroke; stroke: var(--card); stroke-width: 4px; stroke-linejoin: round; }
+.lt-lab.faint { fill: var(--ink-3); }
+.lt-axname { fill: var(--ink-2); font-family: var(--sans); font-size: 14px; }
+.lt-axname .m { font-family: var(--serif); font-style: italic; font-size: 18px; }
+.lt-axname .sub { font-size: 13px; }
+/* The vocabulary met so far as one bar: words seen once in carmine, twice in a paler carmine, three or more times faint,
+   over a track for the book with the part read in carmine. */
+.lt-slot { fill: none; stroke: var(--rule); stroke-width: 1.2; }
+.lt-once { fill: var(--red); }
+.lt-twice { fill: color-mix(in srgb, var(--red) 45%, var(--card)); }
+.lt-more { fill: color-mix(in srgb, var(--ink-3) 28%, var(--card)); }
+.lt-key { fill: var(--ink-2); font-family: var(--sans); font-size: 14px; }
+.lt-track { stroke: var(--ink-3); stroke-width: 2; stroke-linecap: round; }
+.lt-track.thin { stroke-width: 1; }
+.lt-read { stroke: var(--red); stroke-width: 3; stroke-linecap: round; }
+/* The opening's small pictures: bars of counts, sixty words as dots, a curve still rising. */
+.lt-bar { fill: var(--red); }
+.lt-base { fill: none; stroke: var(--ink-3); stroke-width: 1.4; }
+.lt-word { fill: none; stroke: var(--ink-3); stroke-width: 1.4; }
+.lt-curve { fill: none; stroke: var(--red); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 560px) {
+  .lt-lab { font-size: 19px; }
+  .lt-axname, .lt-key { font-size: 17px; }
+  .lt-axname .m { font-size: 21px; }
+  .lt-axname .sub { font-size: 15px; }
+}
 
 /* Figures stepped through like slides, with Next and Back. The controls sit right under the drawing, so the growing
    text never moves them, and new text appears only at the bottom, with earlier text dimmed above it. */

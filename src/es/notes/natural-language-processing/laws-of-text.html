@@ -1,0 +1,163 @@
+---
+title: "Las leyes del texto: Zipf y Heaps"
+module: Leyes del texto, recursos y tareas de NLP
+order: 1
+description: Cuán seguido aparecen las palabras y cuán rápido crece un vocabulario, y por qué unas pocas palabras llenan cerca de un cuarto de un texto largo mientras siguen llegando palabras nuevas.
+scripts:
+  - /assets/js/notes/natural-language-processing/laws-of-text.js
+---
+<div class="prose">
+  <p>Los buscadores, el análisis de sentimiento, la extracción de información, la traducción automática y las preguntas y respuestas son problemas distintos con la misma materia prima: texto, cuya única estructura son sus palabras. Antes de construir cualquiera de ellos conviene mirar cómo se usan las palabras. Cuenta todas las palabras de un libro largo, aquí el <i>Quijote</i> de Cervantes, desde su primer capítulo hasta su última línea, y saltan a la vista tres hechos:</p>
+  <ul class="asks">
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Barras de las diez palabras más frecuentes del libro, de la más a la menos frecuente"><line class="lt-base" x1="16.4" y1="112" x2="183.6" y2="112"/><rect class="lt-bar" x="20.4" y="20" width="11.6" height="92"/><rect class="lt-bar" x="36.8" y="30.9" width="11.6" height="81.1"/><rect class="lt-bar" x="53.2" y="31.1" width="11.6" height="80.9"/><rect class="lt-bar" x="69.6" y="65.9" width="11.6" height="46.1"/><rect class="lt-bar" x="86" y="68.2" width="11.6" height="43.8"/><rect class="lt-bar" x="102.4" y="75.4" width="11.6" height="36.6"/><rect class="lt-bar" x="118.8" y="75.6" width="11.6" height="36.4"/><rect class="lt-bar" x="135.2" y="83.7" width="11.6" height="28.3"/><rect class="lt-bar" x="151.6" y="90.8" width="11.6" height="21.2"/><rect class="lt-bar" x="168" y="91.1" width="11.6" height="20.9"/></svg>
+      <p>Diez palabras son más de un cuarto del libro</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Sesenta puntos, uno por palabra distinta; 29 en rojo, las que aparecen una sola vez"><circle class="lt-word" cx="20.3" cy="29" r="4"/><circle class="pt-dot" cx="34.8" cy="29" r="4.6"/><circle class="lt-word" cx="49.3" cy="29" r="4"/><circle class="pt-dot" cx="63.8" cy="29" r="4.6"/><circle class="lt-word" cx="78.3" cy="29" r="4"/><circle class="pt-dot" cx="92.8" cy="29" r="4.6"/><circle class="pt-dot" cx="107.3" cy="29" r="4.6"/><circle class="pt-dot" cx="121.8" cy="29" r="4.6"/><circle class="pt-dot" cx="136.3" cy="29" r="4.6"/><circle class="pt-dot" cx="150.8" cy="29" r="4.6"/><circle class="pt-dot" cx="165.3" cy="29" r="4.6"/><circle class="lt-word" cx="179.8" cy="29" r="4"/><circle class="lt-word" cx="20.3" cy="47" r="4"/><circle class="pt-dot" cx="34.8" cy="47" r="4.6"/><circle class="pt-dot" cx="49.3" cy="47" r="4.6"/><circle class="pt-dot" cx="63.8" cy="47" r="4.6"/><circle class="lt-word" cx="78.3" cy="47" r="4"/><circle class="lt-word" cx="92.8" cy="47" r="4"/><circle class="lt-word" cx="107.3" cy="47" r="4"/><circle class="lt-word" cx="121.8" cy="47" r="4"/><circle class="pt-dot" cx="136.3" cy="47" r="4.6"/><circle class="lt-word" cx="150.8" cy="47" r="4"/><circle class="pt-dot" cx="165.3" cy="47" r="4.6"/><circle class="pt-dot" cx="179.8" cy="47" r="4.6"/><circle class="lt-word" cx="20.3" cy="65" r="4"/><circle class="pt-dot" cx="34.8" cy="65" r="4.6"/><circle class="pt-dot" cx="49.3" cy="65" r="4.6"/><circle class="lt-word" cx="63.8" cy="65" r="4"/><circle class="lt-word" cx="78.3" cy="65" r="4"/><circle class="lt-word" cx="92.8" cy="65" r="4"/><circle class="lt-word" cx="107.3" cy="65" r="4"/><circle class="lt-word" cx="121.8" cy="65" r="4"/><circle class="pt-dot" cx="136.3" cy="65" r="4.6"/><circle class="lt-word" cx="150.8" cy="65" r="4"/><circle class="lt-word" cx="165.3" cy="65" r="4"/><circle class="pt-dot" cx="179.8" cy="65" r="4.6"/><circle class="lt-word" cx="20.3" cy="83" r="4"/><circle class="pt-dot" cx="34.8" cy="83" r="4.6"/><circle class="pt-dot" cx="49.3" cy="83" r="4.6"/><circle class="lt-word" cx="63.8" cy="83" r="4"/><circle class="lt-word" cx="78.3" cy="83" r="4"/><circle class="lt-word" cx="92.8" cy="83" r="4"/><circle class="pt-dot" cx="107.3" cy="83" r="4.6"/><circle class="pt-dot" cx="121.8" cy="83" r="4.6"/><circle class="lt-word" cx="136.3" cy="83" r="4"/><circle class="pt-dot" cx="150.8" cy="83" r="4.6"/><circle class="lt-word" cx="165.3" cy="83" r="4"/><circle class="pt-dot" cx="179.8" cy="83" r="4.6"/><circle class="lt-word" cx="20.3" cy="101" r="4"/><circle class="pt-dot" cx="34.8" cy="101" r="4.6"/><circle class="pt-dot" cx="49.3" cy="101" r="4.6"/><circle class="lt-word" cx="63.8" cy="101" r="4"/><circle class="lt-word" cx="78.3" cy="101" r="4"/><circle class="lt-word" cx="92.8" cy="101" r="4"/><circle class="lt-word" cx="107.3" cy="101" r="4"/><circle class="lt-word" cx="121.8" cy="101" r="4"/><circle class="pt-dot" cx="136.3" cy="101" r="4.6"/><circle class="pt-dot" cx="150.8" cy="101" r="4.6"/><circle class="lt-word" cx="165.3" cy="101" r="4"/><circle class="pt-dot" cx="179.8" cy="101" r="4.6"/></svg>
+      <p>Casi la mitad de sus palabras distintas aparece una sola vez</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Curva de las palabras distintas contra las palabras leídas, que sigue subiendo al final del libro"><path class="lt-base" d="M22,18 V112 H186" fill="none"/><path class="lt-curve" d="M22,112 L22.4,110.2 L25.8,103.3 L29.2,99.1 L32.6,95 L36,91.1 L39.4,88.2 L42.8,85.2 L46.2,82.8 L49.6,80.3 L53,78.1 L56.4,76.1 L59.8,74.2 L63.2,72.6 L66.6,70.9 L70,69.2 L73.4,67.7 L76.8,66.3 L80.2,64.4 L83.6,63 L87,61.5 L90.4,60.4 L93.8,58.5 L97.2,56.8 L100.6,54.7 L104,53.1 L107.4,51.5 L110.8,50 L114.2,48.5 L117.6,47 L121,45.7 L124.4,43.9 L127.8,42.5 L131.2,41.2 L134.6,40 L138,38.8 L141.4,37.4 L144.8,36 L148.2,34.6 L151.6,33.4 L155,32.2 L158.4,31.2 L161.8,30.1 L165.2,28.9 L168.6,27.9 L172,26.9 L175.4,26.1 L178.8,24.9 L182,24"/></svg>
+      <p>Su vocabulario sigue creciendo en la última página</p>
+    </li>
+  </ul>
+  <p>Los dos primeros tratan de cuán seguido se usa cada palabra, lo que describe la ley de Zipf; el tercero, de cuántas palabras distintas usa un texto, lo que describe la ley de Heaps. Las dos condicionan lo que viene después: qué palabras puede dejar de lado un sistema, cuán grande debe ser su vocabulario y por qué siempre encontrará palabras que nunca ha visto.</p>
+  <p class="legend">En esta página, los <span class="dot" aria-hidden="true"></span>conteos del libro se dibujan con tinta roja y <span class="bar" aria-hidden="true"></span>las leyes ajustadas a ellos con tinta azul.</p>
+</div>
+
+<section id="zipf">
+  <div class="prose">
+    <h2><span class="n">1</span>Unas pocas palabras hacen casi todo el trabajo</h2>
+    <p>Ordena las palabras del libro de la más frecuente a la menos frecuente. El lugar de una palabra en esa lista es su <em>rango</em>, <i>r</i>, y la cantidad de veces que aparece es su <em>frecuencia</em>, <i>f</i><sub><i>r</i></sub>. Cada aparición es un <em>token</em>: el libro tiene 376&nbsp;601 tokens de 22&nbsp;606 palabras distintas. «Que», de rango 1, pone 20&nbsp;416 de ellos; «y», de rango 2, 17&nbsp;987, y «hasta», de rango 100, 383. En 1949, George Kingsley Zipf observó que en los textos largos la frecuencia cae con el rango siempre de la misma forma, como una potencia de él:</p>
+    <div class="disp hero-f"><i>f</i><sub><i>r</i></sub> = <span class="frac"><span><i>C</i></span><span><i>r</i><sup>α</sup></span></span></div>
+    <p>La constante <i>C</i> fija la escala y el exponente α, cuán rápido caen las frecuencias; en los textos largos α suele estar cerca de 1. Con α = 1, el rango por la frecuencia es el mismo para todas las palabras: una palabra de rango diez veces mayor aparece la décima parte de las veces. Zipf lo explicó con lo que llamó el principio del mínimo esfuerzo. Hablar cuesta menos cuando las mismas palabras a mano sirven una y otra vez, en lugar de la palabra exacta para cada cosa, así que unas pocas palabras terminan en todas partes y las muchas palabras para cosas particulares aparecen, cada una, pocas veces.</p>
+    <p>Para que una palabra usada veinte mil veces y otra usada una sola vez quepan en un mismo dibujo, los ejes de la figura se multiplican por diez en cada paso. Arrastra el punto rojo por las palabras del libro y mira cuánto da el rango por la frecuencia.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-zipf" role="group" aria-label="Las palabras del libro por rango, a lo ancho, y por frecuencia, hacia arriba, en ejes que se multiplican por diez en cada paso, con un punto rojo sobre una palabra."></svg>
+    <div class="ro" id="fig-zipf-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Arrastra el punto rojo por las palabras. Con el teclado, selecciónalo con Tab y usa las flechas.</p>
+      <button type="button" class="btn" id="fig-zipf-reset">Reiniciar</button>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Del rango 3 al 1000 la frecuencia cae de 17&nbsp;953 a 35, pero el producto se mantiene entre la mitad y el doble de 40&nbsp;000 (su mediana es 38&nbsp;423): en ese tramo α está cerca de 1. La ley describe la lista completa, no cada palabra. La primera palabra aparece cerca de la mitad de las veces que sugiere el resto de la lista, y pasados unos miles de rangos hay tramos enteros de palabras con una misma frecuencia pequeña, hasta las 11&nbsp;004 que aparecen una sola vez. La sección 2 mide α.</p>
+  </div>
+</section>
+
+<section id="fit">
+  <div class="prose">
+    <h2><span class="n">2</span>Una recta en escala logarítmica</h2>
+    <p>En los ejes de la figura las palabras caían cerca de una recta, y la ley dice por qué. Toma logaritmos a ambos lados, en base 10 como los ejes:</p>
+    <div class="disp">log <i>f</i><sub><i>r</i></sub> = <span class="nowrap">log <i>C</i> − α log <i>r</i></span></div>
+    <p>Con <i>x</i><sub><i>r</i></sub> = log <i>r</i> e <i>y</i><sub><i>r</i></sub> = log <i>f</i><sub><i>r</i></sub>, esto es una recta: su pendiente es −α, y su altura en <span class="nowrap"><i>r</i> = 1</span>, donde <i>x</i><sub><i>r</i></sub> = 0, es log <i>C</i>. Estimar α y <i>C</i> es encontrar la recta que mejor sigue a los puntos. Mínimos cuadrados toma la recta que hace lo más pequeñas posible las distancias verticales de los puntos a ella, elevadas al cuadrado y sumadas, y para una recta la respuesta tiene una fórmula cerrada:</p>
+    <div class="disp"><span class="nowrap"><span class="hat lo"><i>α</i></span> = −<span class="frac"><span>Σ<sub><i>r</i></sub> (<i>x</i><sub><i>r</i></sub> − <span class="ovl"><i>x</i></span>)(<i>y</i><sub><i>r</i></sub> − <span class="ovl"><i>y</i></span>)</span><span>Σ<sub><i>r</i></sub> (<i>x</i><sub><i>r</i></sub> − <span class="ovl"><i>x</i></span>)<sup>2</sup></span></span>,</span>&emsp;<span class="nowrap">log <span class="hat"><i>C</i></span> = <span class="ovl"><i>y</i></span> + <span class="hat lo"><i>α</i></span><span class="ovl"><i>x</i></span></span></div>
+    <p>Aquí <span class="ovl"><i>x</i></span> e <span class="ovl"><i>y</i></span> son los promedios de los <i>x</i><sub><i>r</i></sub> y de los <i>y</i><sub><i>r</i></sub>. Elevar al cuadrado hace que un error grande pese más que dos pequeños, y trata igual los errores por encima y por debajo de la recta.</p>
+    <p>La figura ajusta las 1000 palabras más frecuentes; el resto de la lista va tenue. Parte de la suposición de la sección 1, α = 1 y <span class="nowrap"><i>C</i> = 40&nbsp;000</span>. Arrastra las asas azules para acercar la recta a los puntos rojos: los trazos rojos finos son las distancias que se elevan al cuadrado. Mínimos cuadrados salta a la mejor recta.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-fit" role="group" aria-label="Las palabras del libro por rango y frecuencia en ejes que se multiplican por diez en cada paso, las 1000 más frecuentes en rojo, con una recta azul sostenida por dos asas y trazos rojos finos de cada punto a la recta."></svg>
+    <div class="ro" id="fig-fit-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Arrastra las dos asas azules hacia arriba y hacia abajo. Con el teclado, selecciona un asa con Tab y usa las flechas.</p>
+      <span class="btns"><button type="button" class="btn" id="fig-fit-lsq">Mínimos cuadrados</button> <button type="button" class="btn" id="fig-fit-reset">Reiniciar</button></span>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Para este libro, mínimos cuadrados da <span class="nowrap"><span class="hat lo"><i>α</i></span> = 1.05</span> y <span class="nowrap"><span class="hat"><i>C</i></span> = 50&nbsp;974</span>. En el medio de la lista la recta queda cerca: en el rango 1000 da 37, donde «ausencia» aparece 35 veces. Pero pasa muy por encima de la primera palabra, 50&nbsp;974 contra los 20&nbsp;416 de «que», la disparidad que la sección 1 encontró al comienzo de la lista.</p>
+    <h3>C y el largo del libro</h3>
+    <p>Si la ley tiene que dar cuenta de todos los tokens del libro, <i>C</i> no queda libre: las frecuencias de las <i>V</i> palabras distintas deben sumar <i>n</i>, la cantidad de tokens. Eso la fija:</p>
+    <div class="disp"><span class="nowrap"><i>f</i><sub><i>r</i></sub> = <span class="frac"><span><i>n</i></span><span><i>r</i><sup>α</sup> <i>H</i><sub><i>V</i></sub>(α)</span></span>,</span>&emsp;<span class="nowrap"><i>H</i><sub><i>V</i></sub>(α) = Σ<span class="lims"><span><i>V</i></span><span><i>j</i>=1</span></span> <span class="frac"><span>1</span><span><i>j</i><sup>α</sup></span></span></span></div>
+    <p>Con α = 1 la suma queda cerca de <span class="nowrap">ln <i>V</i> + γ</span>, donde <span class="nowrap">γ ≈ 0.577</span> es una constante. Para este libro, <span class="nowrap">ln 22&nbsp;606 + 0.577 ≈ 10.60</span>, así que <span class="nowrap"><i>C</i> = 376&nbsp;601 / 10.60 ≈ 35&nbsp;500</span>, cerca de los 40&nbsp;000 en torno a los que se movía el rango por la frecuencia en la sección 1.</p>
+  </div>
+</section>
+
+<section id="heaps">
+  <div class="prose">
+    <h2><span class="n">3</span>El vocabulario sigue creciendo</h2>
+    <p>Ahora lee el libro desde el comienzo y cuenta las palabras distintas encontradas hasta ahí. Tras <i>n</i> tokens el vocabulario tiene <i>V</i> palabras, y <i>V</i> crece mientras haya texto: siguen apareciendo nombres, palabras raras y formas nuevas de palabras conocidas. Pero crece cada vez más lento, como una potencia de <i>n</i> menor que 1. Es la ley de Heaps:</p>
+    <div class="disp hero-f"><i>V</i> = <i>k</i> <i>n</i><sup>β</sup></div>
+    <p>La constante <i>k</i> y el exponente β dependen del texto y de su idioma; β suele estar entre 0.4 y 0.6. En escala logarítmica esta ley también es una recta, <span class="nowrap">log <i>V</i> = log <i>k</i> + β log <i>n</i></span>, así que mínimos cuadrados encuentra β y <i>k</i> como encontró α y <i>C</i>. Lo que significa β se ve al duplicar el texto:</p>
+    <div class="disp"><span class="frac"><span><i>V</i>(2<i>n</i>)</span><span><i>V</i>(<i>n</i>)</span></span> = <span class="frac"><span><i>k</i>(2<i>n</i>)<sup>β</sup></span><span><i>k</i><i>n</i><sup>β</sup></span></span> = 2<sup>β</sup></div>
+    <p>El doble de texto trae 2<sup>β</sup> veces las palabras, no el doble. La figura muestra el vocabulario del libro a medida que se lee, con la ley de Heaps ajustada en azul y, tenue, el de la traducción inglesa. Arrastra el punto rojo por el libro; el anillo marca el doble de lejos.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-heaps" role="group" aria-label="Palabras distintas contra tokens leídos en todo el libro, en rojo, con la ley de Heaps ajustada en azul y la curva de la traducción inglesa tenue; un punto rojo marca un lugar del libro y un anillo el lugar al doble de distancia."></svg>
+    <div class="ro" id="fig-heaps-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Arrastra el punto rojo por la curva. Con el teclado, selecciónalo con Tab y usa las flechas.</p>
+      <button type="button" class="btn" id="fig-heaps-reset">Reiniciar</button>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Para el original, mínimos cuadrados da <span class="nowrap">β = 0.62</span>, algo por encima de lo habitual, y <span class="nowrap"><i>k</i> = 8.1</span>, así que duplicar el texto multiplica el vocabulario por cerca de <span class="nowrap">2<sup>0.62</sup> ≈ 1.54</span>; las razones contadas, desde los 10&nbsp;000 tokens, van de 1.44 a 1.65. Los dos números van atados: un β algo menor con un <i>k</i> mayor dibuja casi la misma curva sobre el libro, y con β fijo en 0.5 el mejor <i>k</i> es 33.4. La traducción inglesa usa 14&nbsp;927 palabras distintas en más tokens, con <span class="nowrap">β = 0.52</span>, porque el castellano flexiona: un verbo toma decenas de formas, y cada una cuenta como una palabra distinta. El próximo apunte trata de esas formas.</p>
+  </div>
+</section>
+
+<section id="tail">
+  <div class="prose">
+    <h2><span class="n">4</span>La cola nunca se acaba</h2>
+    <p>La ley de Zipf y la ley de Heaps miran lo mismo desde dos lados. La de Zipf ordena las palabras por frecuencia y encuentra una cola larga de palabras raras; la de Heaps sigue el texto y encuentra palabras nuevas llegando todo el tiempo. Las palabras nuevas salen de esa cola: cada tramo de texto saca unas pocas palabras de una lista demasiado larga para agotarse. Si se divide el vocabulario encontrado hasta ahí según cuántas veces se ha visto cada palabra, las vistas una sola vez siguen siendo una parte grande de él por mucho que se lea.</p>
+    <p>Arrastra el punto rojo por el libro y mira la parte roja de la barra.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-tail" role="group" aria-label="Una barra de las palabras distintas encontradas hasta ahí, dividida en las vistas una vez, dos veces y tres o más, sobre una pista del libro con un punto rojo en el lugar leído."></svg>
+    <div class="ro" id="fig-tail-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Arrastra el punto rojo por el libro. Con el teclado, selecciónalo con Tab y usa las flechas.</p>
+      <button type="button" class="btn" id="fig-tail-reset">Reiniciar</button>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Tras los primeros 1000 tokens, el 75% de las palabras encontradas se ha visto una vez; tras 100&nbsp;000, el 55%; al final, el 49%. La proporción baja, pero despacio, y siguen llegando palabras nuevas: 552 en los 10&nbsp;000 tokens anteriores al token 100&nbsp;000, y todavía 296 en los últimos 10&nbsp;000 del libro. Un sistema que aprende su vocabulario de un texto encontrará en el siguiente palabras que nunca ha visto, un problema al que vuelven apuntes posteriores.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">5</span>Resumen</h2>
+    <p>Las fórmulas del apunte junto a su equivalente en NumPy. <code>tokens</code> tiene las palabras del libro en orden; <code>n</code> y <code>v</code> tienen, en una serie de puntos del libro, los tokens leídos y las palabras distintas encontradas.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Frecuencias por rango</div>
+      <div class="f"><i>f</i><sub>1</sub> ≥ <i>f</i><sub>2</sub> ≥ … ≥ <i>f</i><sub><i>V</i></sub></div>
+      <div class="c"><code>counts = np.unique(tokens,<br>&nbsp;&nbsp;&nbsp;&nbsp;return_counts=True)[1]<br>f = np.sort(counts)[::-1]<br>r = np.arange(1, len(f) + 1)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Ley de Zipf</div>
+      <div class="f"><i>f</i><sub><i>r</i></sub> = <span class="frac"><span><i>C</i></span><span><i>r</i><sup>α</sup></span></span></div>
+      <div class="c"><code>f_law = c / r ** alpha</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Su recta, por mínimos cuadrados</div>
+      <div class="f">log <i>f</i><sub><i>r</i></sub> = <span class="nowrap">log <i>C</i> − α log <i>r</i></span></div>
+      <div class="c"><code>x, y = np.log10(r), np.log10(f)<br>slope, log_c = np.polyfit(x, y, 1)<br>alpha, c = -slope, 10 ** log_c</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k"><i>C</i> a partir de la cantidad de tokens</div>
+      <div class="f"><i>f</i><sub><i>r</i></sub> = <span class="frac"><span><i>n</i></span><span><i>r</i><sup>α</sup> <i>H</i><sub><i>V</i></sub>(α)</span></span></div>
+      <div class="c"><code>h_v = np.sum(1 / r ** alpha)<br>c = len(tokens) / h_v</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Ley de Heaps, por mínimos cuadrados</div>
+      <div class="f"><i>V</i> = <i>k</i> <i>n</i><sup>β</sup></div>
+      <div class="c"><code>beta, log_k = np.polyfit(<br>&nbsp;&nbsp;&nbsp;&nbsp;np.log10(n), np.log10(v), 1)<br>k = 10 ** log_k</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Duplicar el texto</div>
+      <div class="f"><span class="nowrap"><i>V</i>(2<i>n</i>) / <i>V</i>(<i>n</i>) = 2<sup>β</sup></span></div>
+      <div class="c"><code>2 ** beta</code></div>
+    </div>
+  </div>
+</section>
