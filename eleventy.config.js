@@ -1,10 +1,21 @@
 import * as esbuild from "esbuild";
+import crypto from "node:crypto";
+import fs from "node:fs";
 
 export default function (eleventyConfig) {
   // Static assets (CSS, JS, images, CV) are copied as-is.
   eleventyConfig.addPassthroughCopy({ "src/assets": "assets" });
   eleventyConfig.addPassthroughCopy({ "src/favicon.svg": "favicon.svg" });
   eleventyConfig.addPassthroughCopy({ "src/apple-touch-icon.png": "apple-touch-icon.png" });
+
+  // The layouts link stylesheets and scripts with a short hash of their contents (`/assets/css/notes.css?v=1a2b3c4d`).
+  // GitHub Pages lets browsers keep a file for 10 minutes, so without it a deploy could pair a new page with an old
+  // stylesheet still in the cache. Modules that a script imports keep their plain URLs.
+  eleventyConfig.addFilter("versioned", (url) => {
+    const file = String(url).startsWith("/assets/") ? `src${url}` : null;
+    if (!file || !fs.existsSync(file)) return url;
+    return `${url}?v=${crypto.createHash("sha1").update(fs.readFileSync(file)).digest("hex").slice(0, 8)}`;
+  });
 
   // The 3D lung volume imports three.js from npm. esbuild bundles only the
   // parts of three.js it actually uses, so the homepage stays light.
