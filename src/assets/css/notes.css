@@ -431,6 +431,104 @@ ol.steps b { font-weight: 600; }
   .lt-axname .sub { font-size: 15px; }
 }
 
+/* Words, lemmas and WordNet (natural language processing): figures made of words, so they are HTML, in panels on the
+   card color like other figures' drawings. The words themselves are serif, labels and counts sans. Carmine marks what
+   is counted or looked for (an ending, a word in only one of two groups, a named entity), blue the relations between
+   synsets and the origins of a word's senses. */
+.wd-col { display: grid; gap: 12px; min-width: 0; }
+.wd-panel { background: var(--card); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+:is(.wd-head, .wd-n, .wd-more, .wd-box-head, .wd-bar-row, .wd-pos, .wd-ent-lab, .wd-origin-head, .wd-other) { font-family: var(--sans); font-weight: 400; font-variation-settings: normal; }
+.wd-head { font-size: 0.86rem; line-height: 1.4; color: var(--ink-2); margin: 0 0 0.5rem; }
+.wd-head.faint { color: var(--ink-3); }
+/* A word's forms as chips: the lexeme in ink, the ending in carmine, the count small beside them. The other book's
+   forms are faint, and a word in only one of the two groups, stem or lemma, is outlined in carmine. */
+.wd-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 1rem; }
+.wd-chips:last-child { margin-bottom: 0; }
+.wd-chips.faint { opacity: 0.6; }
+.wd-chip { display: inline-flex; align-items: baseline; gap: 0.45em; padding: 0.1em 0.55em 0.16em; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); }
+.wd-chip.odd { border-color: var(--red); }
+.wd-w { font-family: var(--serif); font-size: 1.05rem; line-height: 1.35; }
+.wd-lex { color: var(--ink); }
+.wd-end { color: var(--red); }
+.wd-n { font-size: 0.75rem; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.wd-more { font-size: 0.8rem; color: var(--ink-3); align-self: center; padding: 0 0.3em; }
+.wd-boxes { display: grid; gap: 14px; }
+.wd-box-head { font-size: 0.86rem; line-height: 1.4; color: var(--ink-2); margin: 0 0 0.45rem; }
+/* Counts as carmine bars on a track: the vocabularies, and the uses of each sense. */
+.wd-bars + .wd-bars { margin-top: 0.9rem; }
+.wd-bars.faint { opacity: 0.6; }
+.wd-bar-row { display: grid; grid-template-columns: 8.4em minmax(0, 1fr) 4.2em; align-items: center; gap: 0.7em; font-size: 0.85rem; line-height: 1.5; margin: 0.15rem 0; }
+.wd-bar-name { color: var(--ink-2); }
+.wd-bar-track { display: block; height: 10px; background: var(--paper-2); border-radius: 3px; overflow: hidden; }
+.wd-bar { display: block; height: 100%; min-width: 2px; background: var(--red); }
+.wd-bar-n { text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; }
+/* A tagged sentence: each word a button with its part of speech small above it; a named entity underlined in carmine
+   across its words, with its kind after them. */
+.wd-tokens { display: flex; flex-wrap: wrap; align-items: flex-end; row-gap: 0.55rem; margin: 0 0 1.1rem; }
+.wd-tokens:last-child { margin-bottom: 0; }
+.wd-tok { font: inherit; color: var(--ink); background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 0.15rem 0.28rem 0.22rem; margin: 0; display: inline-flex; flex-direction: column; align-items: center; gap: 0.05rem; cursor: pointer; position: relative; }
+.wd-tok:hover { background: var(--paper); }
+.wd-tok.on { border-color: var(--ink); background: var(--paper); }
+.wd-pos { font-size: 0.64rem; line-height: 1.25; color: var(--ink-3); }
+.wd-word { font-family: var(--serif); font-size: 1.08rem; line-height: 1.3; }
+.wd-ent { display: contents; }
+.wd-ent .wd-tok::after { content: ""; position: absolute; left: -1px; right: -1px; bottom: -4px; height: 2px; background: var(--red); }
+.wd-ent-lab { align-self: flex-end; font-size: 0.72rem; line-height: 1.2; color: var(--red); padding: 0 0.55rem 0.3rem 0.2rem; white-space: nowrap; }
+/* WordNet's synsets as pills: a chain of hypernyms down the left joined by blue lines, and a list of kinds or parts
+   branching from one blue spine. The synset picked is outlined in ink, its chain up to the root in blue. */
+.wd-tree, .wd-parts { display: flex; flex-direction: column; align-items: flex-start; }
+.wd-level { display: flex; position: relative; padding-top: 12px; max-width: 100%; }
+.wd-level:first-child { padding-top: 0; }
+.wd-level:not(:first-child)::before { content: ""; position: absolute; top: 0; left: 17.5px; width: 1.5px; height: 12px; background: var(--blue); }
+.wd-node { font: inherit; font-family: var(--serif); font-size: 1rem; line-height: 1.3; color: var(--ink); background: var(--paper); border: 1.5px solid var(--rule); border-radius: 999px; padding: 0.1em 0.8em 0.16em; cursor: pointer; }
+.wd-node:hover { border-color: var(--ink-3); }
+.wd-node.path { border-color: var(--blue); }
+.wd-node.on { border-color: var(--ink); }
+.wd-part-list { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin: 10px 0 0 18px; padding-left: 22px; }
+.wd-part-list .wd-node { position: relative; }
+.wd-part-list .wd-node::before { content: ""; position: absolute; left: -24px; top: calc(50% - 0.75px); width: 22.5px; height: 1.5px; background: var(--blue); }
+.wd-part-list .wd-node::after { content: ""; position: absolute; left: -24px; top: -7.5px; bottom: -1.5px; width: 1.5px; background: var(--blue); }
+.wd-part-list .wd-node:first-child::after { top: -11.5px; }
+.wd-part-list .wd-node:last-child::after { bottom: calc(50% - 0.75px); }
+/* The senses of one spelling, under a blue rule for each origin; each sense a button with its uses as a bar. */
+.wd-origins { display: grid; gap: 16px; }
+.wd-origin { border-top: 1.5px solid var(--blue); padding-top: 0.5rem; }
+.wd-origin-head { font-size: 0.86rem; line-height: 1.4; color: var(--ink-2); margin: 0 0 0.3rem; }
+.wd-sense { font: inherit; color: var(--ink); background: transparent; border: 1px solid transparent; border-radius: 8px; width: 100%; display: grid; grid-template-columns: minmax(0, 10em) minmax(0, 1fr) 2.2em; align-items: center; gap: 0.7em; padding: 0.22rem 0.5rem; margin: 0.1rem 0; text-align: left; cursor: pointer; }
+.wd-sense:hover { background: var(--paper); }
+.wd-sense.on { border-color: var(--ink); background: var(--paper); }
+.wd-sense-name { font-family: var(--serif); font-size: 1rem; line-height: 1.3; }
+.wd-sense .wd-bar-n { font-family: var(--sans); font-weight: 400; font-variation-settings: normal; font-size: 0.85rem; }
+/* In a readout: a line quoted from the book, and a synset's name in the other language. */
+.ro .wd-line { font-family: var(--serif); font-style: italic; color: var(--ink-2); }
+.wd-other { font-size: 0.86rem; color: var(--ink-3); margin-left: 0.35em; white-space: nowrap; }
+/* The opening's small pictures: forms with their endings in carmine, named entities underlined in carmine, a word
+   joined in blue to its two origins. */
+.wd-pic { fill: var(--ink); font-family: var(--serif); font-size: 26px; }
+.wd-pic.mid { font-size: 25px; }
+.wd-pic.big { font-size: 40px; }
+.wd-pic.root { font-style: italic; font-size: 24px; fill: var(--ink-2); }
+.wd-pic-end { fill: var(--red); }
+.wd-pic-ent { stroke: var(--red); stroke-width: 2.4; stroke-linecap: round; }
+.wd-pic-rel { stroke: var(--blue); stroke-width: 2; stroke-linecap: round; }
+/* A constituent tree: blue branches, the words in serif, and a bracket under the phrase a pronoun can replace. */
+.wd-edge { stroke: var(--blue); stroke-width: 1.5; }
+.wd-leaf { fill: var(--ink); font-family: var(--serif); font-size: 19px; }
+.wd-leaf.alt { fill: var(--ink-2); font-style: italic; }
+.wd-brace { fill: none; stroke: var(--ink-3); stroke-width: 1.4; }
+@media (max-width: 560px) { .wd-leaf { font-size: 21px; } }
+/* On phones a bar takes the panel's whole width, under its name and number. */
+@media (max-width: 480px) {
+  .wd-bar-row, .wd-sense { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name n" "track track"; row-gap: 4px; }
+  .wd-bar-name, .wd-sense-name { grid-area: name; }
+  .wd-bar-track { grid-area: track; }
+  .wd-bar-n { grid-area: n; }
+  .wd-bar-row { margin: 0.4rem 0; }
+}
+/* The table of the levels of language, made to fit a 320 px screen. */
+.tbl.wd-levels th { text-align: left; }
+@media (max-width: 340px) { .tbl.wd-levels th, .tbl.wd-levels td { padding-left: 0.3rem; padding-right: 0.3rem; font-size: 0.88rem; hyphens: auto; -webkit-hyphens: auto; } }
+
 /* Figures stepped through like slides, with Next and Back. The controls sit right under the drawing, so the growing
    text never moves them, and new text appears only at the bottom, with earlier text dimmed above it. */
 .fig.steps { grid-template-areas: "draw" "ctl" "ro" "foot"; }

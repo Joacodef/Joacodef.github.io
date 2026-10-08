@@ -1,0 +1,238 @@
+---
+title: Palabras, lemas y WordNet
+module: Leyes del texto, recursos y tareas de NLP
+order: 2
+description: De qué está hecha una palabra, cómo los stems y los lemas reúnen sus formas, cómo se etiquetan las palabras de una oración y cómo WordNet relaciona sus significados.
+scripts:
+  - /assets/js/notes/natural-language-processing/words-and-wordnet.js
+---
+<div class="prose">
+  <p>El apunte anterior terminó en una diferencia: el original usa 22&nbsp;606 palabras distintas donde la traducción inglesa usa 14&nbsp;927, porque un verbo castellano toma decenas de formas y un conteo toma cada una por una palabra distinta. Para un lector, <i>dijo</i>, <i>dice</i> y <i>decir</i> son un verbo; para un conteo, tres palabras. También pasa lo contrario: una sola grafía para varias palabras. Este apunte mira de qué están hechas las palabras y qué significan, con las herramientas que usa el NLP para ambas cosas:</p>
+  <ul class="asks">
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Tres formas de un verbo, dijo, dice y decir, con sus terminaciones en rojo"><text class="wd-pic" x="100" y="44" text-anchor="middle">dij<tspan class="wd-pic-end">o</tspan></text><text class="wd-pic" x="100" y="76" text-anchor="middle">dic<tspan class="wd-pic-end">e</tspan></text><text class="wd-pic" x="100" y="108" text-anchor="middle">dec<tspan class="wd-pic-end">ir</tspan></text></svg>
+      <p>Tres palabras para un conteo, un verbo para un lector</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="la Mancha subrayada en rojo sola, y subrayada otra vez como parte del nombre don Quijote de la Mancha"><text class="wd-pic mid" x="100" y="38" text-anchor="middle">la Mancha</text><line class="wd-pic-ent" x1="45" y1="46" x2="154" y2="46"/><text class="wd-pic mid" x="100" y="78" text-anchor="middle">don Quijote</text><line class="wd-pic-ent" x1="38.5" y1="86" x2="162" y2="86"/><text class="wd-pic mid" x="100" y="110" text-anchor="middle">de la Mancha</text><line class="wd-pic-ent" x1="31.5" y1="118" x2="169" y2="118"/></svg>
+      <p>Las mismas palabras: un lugar, o parte de un nombre</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="La palabra real, unida por dos líneas a dos palabras latinas distintas, res y rex"><text class="wd-pic big" x="100" y="46" text-anchor="middle">real</text><line class="wd-pic-rel" x1="86" y1="60" x2="60" y2="86"/><line class="wd-pic-rel" x1="114" y1="60" x2="140" y2="86"/><text class="wd-pic root" x="54" y="112" text-anchor="middle">res</text><text class="wd-pic root" x="146" y="112" text-anchor="middle">rex</text></svg>
+      <p>Una grafía, dos palabras: una de res, «cosa», y otra de rex, «rey»</p>
+    </li>
+  </ul>
+  <p>Las secciones 1 y 2 tratan de las formas: de qué está hecha una palabra, y dos maneras de reunir sus formas, que acercan mucho los vocabularios de los dos libros. La sección 3 etiqueta cada palabra de una oración con su categoría gramatical y encuentra los nombres que contiene. Las secciones 4 y 5 tratan de los significados: cómo los relaciona WordNet, y cómo una grafía puede llevar varios.</p>
+</div>
+
+<section id="forms">
+  <div class="prose">
+    <h2><span class="n">1</span>De qué está hecha una palabra</h2>
+    <p>La lingüística describe el lenguaje en cuatro niveles, cada uno con la unidad que estudia y la disciplina que la estudia:</p>
+    <div class="tbl left wd-levels">
+      <table>
+        <thead><tr><th scope="col">Nivel</th><th scope="col">Unidad</th><th scope="col">Disciplina</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Morfológico</th><td>la palabra</td><td>morfología</td></tr>
+          <tr><th scope="row">Sintáctico</th><td>la oración</td><td>sintaxis</td></tr>
+          <tr><th scope="row">Léxico-semántico</th><td>el significado</td><td>lexicología y semántica</td></tr>
+          <tr><th scope="row">Textual</th><td>el texto</td><td>analítica textual</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Un sistema de NLP puede necesitar cualquiera de ellos; este apunte cubre los tres primeros, empezando por la palabra. Su pieza más pequeña con forma y significado a la vez es el <em>monema</em>, y los hay de dos clases. <i>Hablando</i> tiene uno de cada una: <i>habl-</i>, el <em>lexema</em>, lleva el significado y lo comparten palabras emparentadas como <i>hablador</i>; <i>-ando</i>, un <em>morfema</em>, agrega significado gramatical, aquí una acción en curso. Los morfemas marcan género, número, persona, tiempo y rasgos parecidos.</p>
+    <p>Según tomen o no esos morfemas, las palabras forman dos grupos. Las <em>variables</em>, como sustantivos, adjetivos, artículos, pronombres y verbos, cambian de forma; las <em>invariables</em>, como preposiciones, conjunciones, adverbios e interjecciones, tienen una sola. Las variables son las que agrandan un vocabulario. Elige una palabra con los botones para ver todas sus formas en el libro, cada una dividida en su lexema, en tinta, y su terminación, en carmín, con su conteo. Debajo, las formas de la misma palabra en la traducción inglesa.</p>
+  </div>
+
+  <div class="fig">
+    <div class="wd-panel" id="fig-forms" role="group" aria-label="Las formas de una palabra en el libro"></div>
+    <div class="ro">
+      <div class="modes" id="fig-forms-modes" role="group" aria-label="Palabra">
+        <button type="button" data-mode="decir" aria-pressed="true">decir</button>
+        <button type="button" data-mode="hablar" aria-pressed="false">hablar</button>
+        <button type="button" data-mode="caballero" aria-pressed="false">caballero</button>
+        <button type="button" data-mode="hermoso" aria-pressed="false">hermoso</button>
+        <button type="button" data-mode="con" aria-pressed="false">con</button>
+      </div>
+      <div id="fig-forms-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Elige una palabra con los botones. Las formas de una palabra son las que le da una lista de formas con sus lemas.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>El castellano lleva persona, número, tiempo y modo en las terminaciones de sus verbos, donde el inglés usa palabras aparte: <i>diremos</i> es <i>we will say</i>. Un conteo toma la forma castellana por una palabra más, y las inglesas por tres que ya tiene; la sección 2 mide cuánto de la diferencia entre los libros explica eso.</p>
+  </div>
+</section>
+
+<section id="stems">
+  <div class="prose">
+    <h2><span class="n">2</span>Stems y lemas</h2>
+    <p>Hay dos métodos para reunir las formas de una palabra. El <em>stemming</em> corta terminaciones con reglas, sin diccionario: los stemmers de Snowball, que nacieron del stemmer de Martin Porter para inglés, de 1980, y hoy cubren muchos idiomas, convierten <i>hablando</i> y <i>hablaba</i> en <i>habl</i>. Lo que queda, el <em>stem</em>, no tiene por qué ser una palabra. La <em>lematización</em> devuelve el <em>lema</em> de cada forma, la forma bajo la que la registra un diccionario: <i>dijo</i> y <i>dice</i> dan ambas <i>decir</i>. Un lematizador nunca inventa una palabra, pero necesita la categoría gramatical de cada forma, porque <i>vino</i> es forma de <i>venir</i> como verbo y una palabra propia como sustantivo; sin ella, el lematizador de NLTK, que es para inglés, toma toda palabra por sustantivo.</p>
+    <p>Elige una palabra para ver cuáles de las palabras del libro comparten su stem y cuáles su lema; una palabra que está en uno solo de los dos grupos va con borde carmín. Debajo, cuánto achica cada método el vocabulario de cada libro.</p>
+  </div>
+
+  <div class="fig">
+    <div class="wd-col">
+      <div class="wd-panel" id="fig-stems" role="group" aria-label="Las palabras del libro que comparten el stem de una palabra, y las que comparten su lema"></div>
+      <div class="wd-panel" id="fig-stems-bars" role="img" aria-label="Palabras distintas, stems y lemas de cada libro: el original, 22&nbsp;606, 10&nbsp;031 y 12&nbsp;596; la traducción inglesa, 14&nbsp;927, 9069 y 10&nbsp;341"></div>
+    </div>
+    <div class="ro">
+      <div class="modes" id="fig-stems-modes" role="group" aria-label="Palabra">
+        <button type="button" data-mode="dijo" aria-pressed="true">dijo</button>
+        <button type="button" data-mode="hablaba" aria-pressed="false">hablaba</button>
+        <button type="button" data-mode="caballeros" aria-pressed="false">caballeros</button>
+        <button type="button" data-mode="universidad" aria-pressed="false">universidad</button>
+        <button type="button" data-mode="fue" aria-pressed="false">fue</button>
+      </div>
+      <div id="fig-stems-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Elige una palabra con los botones. Los stems son los de Snowball; los lemas, los de la lista de formas.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Cada método falla a su manera, como muestran los ejemplos, pero lematizar acerca mucho los libros: las 22&nbsp;606 palabras distintas del original quedan en 12&nbsp;596 lemas, y las 14&nbsp;927 de la traducción en 10&nbsp;341. Una palabra que la lista no trae cuenta como su propio lema. Eso es correcto para la mayoría, porque la lista deja fuera las palabras que ya son lemas, como <i>con</i>, pero también le faltan los verbos con un pronombre pegado, como <i>decirle</i>, y las grafías antiguas de un libro de 1605, como <i>agora</i> por <i>ahora</i>, así que el número real de lemas del original es aún menor.</p>
+  </div>
+</section>
+
+<section id="tags">
+  <div class="prose">
+    <h2><span class="n">3</span>Categorías gramaticales y nombres</h2>
+    <p>Las oraciones también tienen partes. Sus palabras forman grupos, los <em>constituyentes</em>, y los grupos menores caben dentro de otros mayores. En <i>El escudero monta un asno</i>, <i>el escudero</i> es un sintagma nominal (SN): <i>él</i> puede ocupar su lugar, como en <i>Él monta un asno</i>, lo que muestra que las dos palabras funcionan como una. <i>Monta un asno</i> es un sintagma verbal (SV), un verbo con un sintagma nominal propio.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 440 214" role="img" aria-label="El árbol de constituyentes de El escudero monta un asno: la oración O se divide en el sintagma nominal El escudero, que él puede reemplazar, y el sintagma verbal monta un asno, hecho del verbo monta y el sintagma nominal un asno">
+        <line class="wd-edge" x1="200" y1="31" x2="113" y2="52"/><line class="wd-edge" x1="200" y1="31" x2="287" y2="52"/>
+        <line class="wd-edge" x1="105" y1="72" x2="70" y2="152"/><line class="wd-edge" x1="105" y1="72" x2="140" y2="152"/>
+        <line class="wd-edge" x1="292" y1="72" x2="238" y2="100"/><line class="wd-edge" x1="292" y1="72" x2="345" y2="100"/>
+        <line class="wd-edge" x1="235" y1="119" x2="235" y2="152"/>
+        <line class="wd-edge" x1="350" y1="119" x2="315" y2="152"/><line class="wd-edge" x1="350" y1="119" x2="385" y2="152"/>
+        <text class="dg-lab" x="200" y="25" text-anchor="middle">O</text>
+        <text class="dg-lab" x="105" y="67" text-anchor="middle">SN</text>
+        <text class="dg-lab" x="292" y="67" text-anchor="middle">SV</text>
+        <text class="dg-lab" x="235" y="114" text-anchor="middle">V</text>
+        <text class="dg-lab" x="350" y="114" text-anchor="middle">SN</text>
+        <text class="wd-leaf" x="70" y="172" text-anchor="middle">El</text><text class="wd-leaf" x="140" y="172" text-anchor="middle">escudero</text>
+        <text class="wd-leaf" x="235" y="172" text-anchor="middle">monta</text><text class="wd-leaf" x="315" y="172" text-anchor="middle">un</text><text class="wd-leaf" x="385" y="172" text-anchor="middle">asno</text>
+        <path class="wd-brace" d="M50,180 V185 H170 V180 M110,185 V190"/>
+        <text class="wd-leaf alt" x="110" y="208" text-anchor="middle">él</text>
+      </svg>
+      <figcaption>La oración (O) se divide en el sintagma nominal <i>el escudero</i>, que <i>él</i> puede reemplazar, y el sintagma verbal <i>monta un asno</i>: un verbo (V) y el sintagma nominal <i>un asno</i>.</figcaption>
+    </figure>
+    <p>Los analizadores sintácticos recuperan esta estructura, muchas veces a partir de la clase de cada palabra, su <em>categoría gramatical</em>: sustantivo, verbo, preposición, etc. Etiquetar cada palabra con ella es el <em>etiquetado POS</em> (de <i>part of speech</i>). El <em>reconocimiento de entidades nombradas</em> (NER) lee las mismas palabras con otra pregunta: no qué clase de palabra es cada una, sino a qué se refiere, como una persona, un lugar, una organización o una fecha.</p>
+    <p>La figura muestra la primera línea del capítulo primero y el título del capítulo, cada palabra con su categoría en las etiquetas de Universal Dependencies, un conjunto que se usa en muchos idiomas, y las entidades nombradas subrayadas en carmín. Elige una palabra para leer sus etiquetas, y compara <i>Mancha</i> en las dos.</p>
+  </div>
+
+  <div class="fig">
+    <div class="wd-panel" id="fig-tags" role="group" aria-label="Dos oraciones del capítulo primero, cada palabra con su categoría gramatical, y las entidades nombradas subrayadas"></div>
+    <div class="ro">
+      <div id="fig-tags-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Elige una palabra, o muévete entre las palabras con las flechas.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p><i>Mancha</i> es nombre propio las dos veces, así que su categoría no distingue un lugar de parte de un nombre. Las pistas vienen de dos fuentes. La forma de la palabra, como la mayúscula, dice que puede ser un nombre; sus vecinas dicen de qué clase: después de <i>un lugar de</i> viene un lugar, después de <i>don</i> una persona. Por eso el NER se llama una tarea morfosintáctica: necesita tanto la forma de la palabra como su lugar en la oración.</p>
+  </div>
+</section>
+
+<section id="wordnet">
+  <div class="prose">
+    <h2><span class="n">4</span>Significados en red</h2>
+    <p>Los significados también se relacionan, y dos relaciones importan más que las otras. Un caballero andante es una clase de caballero: <i>caballero andante</i> es <em>hipónimo</em> de <i>caballero</i>, y <i>caballero</i> <em>hiperónimo</em> de <i>caballero andante</i>. Un casco es una pieza de una armadura: <i>casco</i> es <em>merónimo</em> de <i>armadura</i>, y <i>armadura</i> <em>holónimo</em> de <i>casco</i>. La primera relación ordena las cosas en clases; la segunda las desarma.</p>
+    <p>WordNet registra ambas para el inglés, y está organizada por significados y no por palabras: cada <em>synset</em> es un conjunto de sinónimos con un significado, una definición y enlaces a otros synsets. El equipo de George Miller en Princeton empezó a construirla a mano en 1985; la versión 3.0 tiene 117&nbsp;659 synsets y 147&nbsp;306 palabras y expresiones distintas. NLTK la incluye, y su lematizador se apoya en ella: una forma irregular como <i>saw</i> se busca en una lista de excepciones, y una regular pierde su terminación solo si lo que queda está en WordNet. BabelNet va más allá: une WordNet con Wikipedia y otros recursos, de modo que cada una de sus entradas reúne las palabras de un concepto en muchos idiomas, junto con nombres de personas y lugares que a WordNet le faltan.</p>
+    <p>La figura muestra un trozo pequeño de WordNet, con las palabras en castellano que el Multilingual Central Repository da a cada synset. En <b>Clases</b>, la cadena de hiperónimos sobre <i>caballero</i> sube hasta <i>entidad</i>, y elegir un synset dibuja su cadena en azul; en <b>Partes</b>, diez de las partes de una armadura van de la cabeza a los pies. Una de ellas, la que protege el muslo, se llama <i>quijote</i>.</p>
+  </div>
+
+  <div class="fig">
+    <div class="wd-panel" id="fig-wordnet" role="group" aria-label="Un trozo de WordNet: las clases sobre y bajo caballero, o las partes de una armadura"></div>
+    <div class="ro">
+      <div class="modes" id="fig-wordnet-modes" role="group" aria-label="Relación">
+        <button type="button" data-mode="kinds" aria-pressed="true">Clases</button>
+        <button type="button" data-mode="parts" aria-pressed="false">Partes</button>
+      </div>
+      <div id="fig-wordnet-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Elige un synset, o muévete entre ellos con las flechas. Las definiciones son del apunte, y también los nombres en castellano de los cinco synsets que el repositorio deja sin uno.</p>
+    </div>
+  </div>
+</section>
+
+<section id="senses">
+  <div class="prose">
+    <h2><span class="n">5</span>Una grafía, varias palabras</h2>
+    <p>La sinonimia es varias formas para un significado. Lo inverso, una forma para varios significados, se da de dos maneras. En la <em>polisemia</em>, los sentidos de una palabra se fueron separando desde un origen común, muchas veces por metáfora. En la <em>homonimia</em>, dos palabras sin relación comparten la grafía por azar. Los diccionarios marcan la diferencia: dan a cada homónimo su propia entrada, y ponen los sentidos de una palabra polisémica dentro de la suya.</p>
+    <p>El <i>real</i> del libro muestra ambas. <i>Real</i> como verdadero viene del latín <i>realis</i>, de <i>res</i>, «cosa», y <i>real</i> como del rey viene de otra palabra, <i>regalis</i>, de <i>rex</i>, «rey»: dos palabras que suenan y se escriben igual por un accidente de la historia, y que el diccionario de la RAE separa en dos entradas. Cada una tiene sus sentidos: del rey salió también una moneda, el real. La figura reparte los 47 usos de <i>real</i> en el libro por sentido, etiquetados a mano; elige uno para ver su parte y una línea del libro.</p>
+  </div>
+
+  <div class="fig">
+    <div class="wd-panel" id="fig-senses" role="group" aria-label="Los sentidos de real en el libro, agrupados por sus dos orígenes, cada uno con su número de usos"></div>
+    <div class="ro">
+      <div id="fig-senses-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Elige un sentido, o muévete entre ellos con las flechas.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Elegir el sentido de una palabra a partir de su oración es la <em>desambiguación de sentidos</em>, y un lematizador no la hace: <i>real</i> recibe un solo lema, signifique lo que signifique. Los vectores de palabras de apuntes posteriores tienen el mismo punto ciego, un vector por palabra, hasta que los encoders construyen el vector de cada palabra a partir de su oración.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">6</span>Resumen</h2>
+    <p>Las ideas del apunte en NLTK, una biblioteca de Python para trabajar con texto. Su etiquetador, su lematizador y su NER son para inglés, así que esas filas usan la traducción. <code>tokens</code> tiene las palabras de una oración, y <code>wn</code> es <code>nltk.corpus.wordnet</code>, con el Open Multilingual Wordnet instalado para el castellano.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Stem</div>
+      <div class="f"><i>hablando</i> → <i>habl</i></div>
+      <div class="c"><code>SnowballStemmer("spanish")<br>&nbsp;&nbsp;&nbsp;&nbsp;.stem("hablando")</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Lema, dada la categoría</div>
+      <div class="f"><i>saw</i> → <i>see</i></div>
+      <div class="c"><code>wnl = WordNetLemmatizer()<br>wnl.lemmatize("saw", "v")</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Categorías gramaticales</div>
+      <div class="f"><i>Mancha</i> → nombre propio</div>
+      <div class="c"><code>nltk.pos_tag(tokens)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Entidades nombradas</div>
+      <div class="f"><i>La Mancha</i> → un lugar</div>
+      <div class="c"><code>nltk.ne_chunk(<br>&nbsp;&nbsp;&nbsp;&nbsp;nltk.pos_tag(tokens))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Hiperónimos</div>
+      <div class="f"><i>knight</i> → <i>male aristocrat</i></div>
+      <div class="c"><code>wn.synset("knight.n.01")<br>&nbsp;&nbsp;&nbsp;&nbsp;.hypernyms()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Merónimos</div>
+      <div class="f"><i>suit of armor</i> → <i>helmet</i>, …</div>
+      <div class="c"><code>wn.synset(<br>&nbsp;&nbsp;&nbsp;&nbsp;"body_armor.n.01"<br>).part_meronyms()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Un synset en castellano</div>
+      <div class="f"><i>knight</i> → <i>caballero</i></div>
+      <div class="c"><code>wn.synset("knight.n.01")<br>&nbsp;&nbsp;&nbsp;&nbsp;.lemma_names("spa")</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Sentidos de una forma</div>
+      <div class="f"><i>light</i> → 47 synsets</div>
+      <div class="c"><code>len(wn.synsets("light"))</code></div>
+    </div>
+  </div>
+  <div class="prose">
+    <p>Los datos del apunte: los lemas vienen de las <a href="https://github.com/michmech/lemmatization-lists">listas de lematización</a> de Michal Měchura (ODbL), los stems de los stemmers de <a href="https://snowballstem.org/">Snowball</a>, los synsets y sus relaciones de <a href="https://wordnet.princeton.edu/">WordNet</a> 3.0, de la Universidad de Princeton, y sus palabras en castellano del <a href="https://adimen.si.ehu.es/web/MCR">Multilingual Central Repository</a> 3.0 (CC BY 3.0).</p>
+  </div>
+</section>

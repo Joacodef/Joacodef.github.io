@@ -1,0 +1,238 @@
+---
+title: Words, lemmas and WordNet
+module: Laws of text, resources and NLP tasks
+order: 2
+description: What a word is made of, how stems and lemmas gather its forms, how the words of a sentence are tagged, and how WordNet relates their meanings.
+scripts:
+  - /assets/js/notes/natural-language-processing/words-and-wordnet.js
+---
+<div class="prose">
+  <p>The previous note ended on a gap: the Spanish original uses 22,606 different words where the translation uses 14,927, because a Spanish verb takes dozens of forms and a count takes each for a different word. To a reader, <i>said</i>, <i>says</i> and <i>saying</i> are one verb; to a count, three words. The opposite also happens, one spelling standing for several words. This note looks at what words are made of and what they mean, with the tools NLP uses for both:</p>
+  <ul class="asks">
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Three forms of one verb, said, says and saying, with the endings of says and saying in red"><text class="wd-pic" x="100" y="44" text-anchor="middle">said</text><text class="wd-pic" x="100" y="76" text-anchor="middle">say<tspan class="wd-pic-end">s</tspan></text><text class="wd-pic" x="100" y="108" text-anchor="middle">say<tspan class="wd-pic-end">ing</tspan></text></svg>
+      <p>Three words to a count, one verb to a reader</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="La Mancha underlined in red on its own, and underlined again as part of the name Don Quixote of La Mancha"><text class="wd-pic mid" x="100" y="38" text-anchor="middle">La Mancha</text><line class="wd-pic-ent" x1="42.5" y1="46" x2="158" y2="46"/><text class="wd-pic mid" x="100" y="78" text-anchor="middle">Don Quixote</text><line class="wd-pic-ent" x1="33" y1="86" x2="167.5" y2="86"/><text class="wd-pic mid" x="100" y="110" text-anchor="middle">of La Mancha</text><line class="wd-pic-ent" x1="28.5" y1="118" x2="172" y2="118"/></svg>
+      <p>The same words: a place, or part of a name</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="The word light, joined by two lines to two different roots, *leuk- and *legwh-"><text class="wd-pic big" x="100" y="46" text-anchor="middle">light</text><line class="wd-pic-rel" x1="86" y1="60" x2="60" y2="86"/><line class="wd-pic-rel" x1="114" y1="60" x2="140" y2="86"/><text class="wd-pic root" x="54" y="112" text-anchor="middle">*leuk-</text><text class="wd-pic root" x="146" y="112" text-anchor="middle">*legwh-</text></svg>
+      <p>One spelling, two words: brightness and not heavy</p>
+    </li>
+  </ul>
+  <p>Sections 1 and 2 are about forms: what a word is made of, and two ways of gathering a word's forms, which bring the two books' vocabularies much closer. Section 3 labels each word of a sentence with its part of speech and finds the names in it. Sections 4 and 5 are about meanings: how WordNet relates them, and how one spelling can carry several.</p>
+</div>
+
+<section id="forms">
+  <div class="prose">
+    <h2><span class="n">1</span>What a word is made of</h2>
+    <p>Linguistics describes language at four levels, each with the unit it studies and the discipline that studies it:</p>
+    <div class="tbl left wd-levels">
+      <table>
+        <thead><tr><th scope="col">Level</th><th scope="col">Unit</th><th scope="col">Discipline</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Morphological</th><td>the word</td><td>morphology</td></tr>
+          <tr><th scope="row">Syntactic</th><td>the sentence</td><td>syntax</td></tr>
+          <tr><th scope="row">Lexical-semantic</th><td>the meaning</td><td>lexicology and semantics</td></tr>
+          <tr><th scope="row">Textual</th><td>the text</td><td>text analytics</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>An NLP system may need any of them; this note covers the first three, starting with the word. Its smallest piece with both a form and a meaning is the <em>moneme</em>, and there are two kinds. <i>Speaking</i> holds one of each: <i>speak</i>, the <em>lexeme</em>, carries the meaning and is shared with related words such as <i>speaker</i>; <i>-ing</i>, a <em>morpheme</em>, adds grammatical meaning, here an action in progress. Morphemes mark gender, number, person, tense and the like.</p>
+    <p>Words split into two groups by whether they take such morphemes. <em>Variable</em> words, such as nouns, adjectives, verbs and pronouns, change their form; <em>invariable</em> ones, such as prepositions, conjunctions and interjections, keep a single form. Variable words are what makes a vocabulary large. Pick a word with the buttons to see all its forms in the book, each split into its lexeme, in ink, and its ending, in carmine, with its count. Below are the forms of the same word in the Spanish original.</p>
+  </div>
+
+  <div class="fig">
+    <div class="wd-panel" id="fig-forms" role="group" aria-label="The forms of a word in the book"></div>
+    <div class="ro">
+      <div class="modes" id="fig-forms-modes" role="group" aria-label="Word">
+        <button type="button" data-mode="say" aria-pressed="true">say</button>
+        <button type="button" data-mode="speak" aria-pressed="false">speak</button>
+        <button type="button" data-mode="knight" aria-pressed="false">knight</button>
+        <button type="button" data-mode="fair" aria-pressed="false">fair</button>
+        <button type="button" data-mode="with" aria-pressed="false">with</button>
+      </div>
+      <div id="fig-forms-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Pick a word with the buttons. A word's forms are those a list of forms and their lemmas gives for it.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Spanish puts person, number, tense and mood into its verbs' endings, where English uses separate words: <i>diremos</i> is <i>we will say</i>. A count takes the Spanish form for one more word, and the English words for three it already has; section 2 measures how much of the gap between the books that explains.</p>
+  </div>
+</section>
+
+<section id="stems">
+  <div class="prose">
+    <h2><span class="n">2</span>Stems and lemmas</h2>
+    <p>Two methods gather a word's forms. <em>Stemming</em> cuts endings off by rules, with no dictionary: the Snowball stemmers, which grew out of Martin Porter's 1980 stemmer for English and now cover many languages, turn <i>speaking</i> and <i>speaks</i> into <i>speak</i>. What remains, the <em>stem</em>, need not be a word. <em>Lemmatization</em> returns each form's <em>lemma</em>, the form a dictionary lists it under: <i>said</i> and <i>says</i> both give <i>say</i>. A lemmatizer never invents a word, but it needs each form's part of speech, since <i>saw</i> is a form of <i>see</i> as a verb and a word of its own as a noun; without it, NLTK's lemmatizer takes every word for a noun.</p>
+    <p>Pick a word to see which of the book's words share its stem and which share its lemma; a word in only one of the two groups is outlined in carmine. Below, how far each method shrinks each book's vocabulary.</p>
+  </div>
+
+  <div class="fig">
+    <div class="wd-col">
+      <div class="wd-panel" id="fig-stems" role="group" aria-label="The book's words that share a word's stem, and those that share its lemma"></div>
+      <div class="wd-panel" id="fig-stems-bars" role="img" aria-label="Different words, stems and lemmas in each book: the translation, 14,927, 9,069 and 10,341; the Spanish original, 22,606, 10,031 and 12,596"></div>
+    </div>
+    <div class="ro">
+      <div class="modes" id="fig-stems-modes" role="group" aria-label="Word">
+        <button type="button" data-mode="said" aria-pressed="true">said</button>
+        <button type="button" data-mode="speaking" aria-pressed="false">speaking</button>
+        <button type="button" data-mode="knights" aria-pressed="false">knights</button>
+        <button type="button" data-mode="university" aria-pressed="false">university</button>
+        <button type="button" data-mode="saw" aria-pressed="false">saw</button>
+      </div>
+      <div id="fig-stems-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Pick a word with the buttons. The stems are Snowball's; the lemmas, those of the list of forms.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Each method fails in its own way, as the examples show, but lemmatizing brings the books close: the translation's 14,927 different words become 10,341 lemmas, and the original's 22,606 become 12,596. A word the list lacks counts as its own lemma. That is right for most of them, since the list leaves out the words that are lemmas already, such as <i>with</i>, but the Spanish list also lacks verbs with a pronoun attached, such as <i>decirle</i> (to tell him), and the old spellings of a book from 1605, such as <i>agora</i> for <i>ahora</i> (now), so the original's true count is lower still.</p>
+  </div>
+</section>
+
+<section id="tags">
+  <div class="prose">
+    <h2><span class="n">3</span>Parts of speech and names</h2>
+    <p>Sentences have parts too. Their words form groups, the <em>constituents</em>, and smaller groups sit inside larger ones. In <i>The squire rides a donkey</i>, <i>the squire</i> is a noun phrase (NP): <i>he</i> can take its place, as in <i>He rides a donkey</i>, which shows that the two words work as one. <i>Rides a donkey</i> is a verb phrase (VP), a verb with a noun phrase of its own.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 440 214" role="img" aria-label="The constituent tree of The squire rides a donkey: the sentence S splits into the noun phrase The squire, which he can replace, and the verb phrase rides a donkey, made of the verb rides and the noun phrase a donkey">
+        <line class="wd-edge" x1="200" y1="31" x2="113" y2="52"/><line class="wd-edge" x1="200" y1="31" x2="287" y2="52"/>
+        <line class="wd-edge" x1="105" y1="72" x2="70" y2="152"/><line class="wd-edge" x1="105" y1="72" x2="140" y2="152"/>
+        <line class="wd-edge" x1="292" y1="72" x2="238" y2="100"/><line class="wd-edge" x1="292" y1="72" x2="345" y2="100"/>
+        <line class="wd-edge" x1="235" y1="119" x2="235" y2="152"/>
+        <line class="wd-edge" x1="350" y1="119" x2="315" y2="152"/><line class="wd-edge" x1="350" y1="119" x2="385" y2="152"/>
+        <text class="dg-lab" x="200" y="25" text-anchor="middle">S</text>
+        <text class="dg-lab" x="105" y="67" text-anchor="middle">NP</text>
+        <text class="dg-lab" x="292" y="67" text-anchor="middle">VP</text>
+        <text class="dg-lab" x="235" y="114" text-anchor="middle">V</text>
+        <text class="dg-lab" x="350" y="114" text-anchor="middle">NP</text>
+        <text class="wd-leaf" x="70" y="172" text-anchor="middle">The</text><text class="wd-leaf" x="140" y="172" text-anchor="middle">squire</text>
+        <text class="wd-leaf" x="235" y="172" text-anchor="middle">rides</text><text class="wd-leaf" x="315" y="172" text-anchor="middle">a</text><text class="wd-leaf" x="385" y="172" text-anchor="middle">donkey</text>
+        <path class="wd-brace" d="M50,180 V185 H170 V180 M110,185 V190"/>
+        <text class="wd-leaf alt" x="110" y="208" text-anchor="middle">he</text>
+      </svg>
+      <figcaption>The sentence (S) splits into the noun phrase <i>the squire</i>, which <i>he</i> can replace, and the verb phrase <i>rides a donkey</i>: a verb (V) and the noun phrase <i>a donkey</i>.</figcaption>
+    </figure>
+    <p>Parsers recover this structure, often starting from each word's category, its <em>part of speech</em>: noun, verb, preposition and so on. Labeling every word with it is <em>part-of-speech tagging</em> (POS tagging). <em>Named-entity recognition</em> (NER) reads the same words with another question: not what kind of word each one is, but what it refers to, such as a person, a place, an organization or a date.</p>
+    <p>The figure shows the first line of chapter I and the chapter's title, each word with its part of speech in the tags of Universal Dependencies, a set used across languages, and the named entities underlined in carmine. Pick a word to read its tags, and compare <i>Mancha</i> in the two.</p>
+  </div>
+
+  <div class="fig">
+    <div class="wd-panel" id="fig-tags" role="group" aria-label="Two sentences of chapter I, each word with its part of speech, and the named entities underlined"></div>
+    <div class="ro">
+      <div id="fig-tags-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Pick a word, or move between the words with the arrow keys.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p><i>Mancha</i> is a proper noun both times, so its part of speech cannot tell a place from part of a name. The clues come from two sources. The form of a word, such as a capital letter, says it may be a name; its neighbors say what kind: after <i>a village of</i> comes a place, after <i>Don</i> a person. NER is called a morphosyntactic task for that reason: it needs both the word's form and its place in the sentence.</p>
+  </div>
+</section>
+
+<section id="wordnet">
+  <div class="prose">
+    <h2><span class="n">4</span>Meanings in a network</h2>
+    <p>Meanings are related too, and two relations matter most. A knight-errant is a kind of knight: <i>knight-errant</i> is a <em>hyponym</em> of <i>knight</i>, and <i>knight</i> a <em>hypernym</em> of <i>knight-errant</i>. A helmet is a piece of a suit of armor: <i>helmet</i> is a <em>meronym</em> of <i>suit of armor</i>, and <i>suit of armor</i> a <em>holonym</em> of <i>helmet</i>. The first relation sorts things into classes; the second takes them apart.</p>
+    <p>WordNet records both for English, and it is organized by meanings rather than by words: each <em>synset</em> is a set of synonyms with one meaning, a definition, and links to other synsets. George Miller's team at Princeton began building it by hand in 1985; version 3.0 has 117,659 synsets and 147,306 different words and phrases. NLTK includes it, and its lemmatizer is built on it: an irregular form such as <i>saw</i> is looked up in a list of exceptions, and a regular one loses its ending only if what remains is in WordNet. BabelNet goes further: it merges WordNet with Wikipedia and other resources, so each of its entries gathers a concept's words in many languages, along with names of people and places that WordNet lacks.</p>
+    <p>The figure shows a small piece of WordNet, with the Spanish words that the Multilingual Central Repository gives each synset. In <b>Kinds</b>, the chain of hypernyms above <i>knight</i> runs up to <i>entity</i>, and picking a synset draws its chain in blue; in <b>Parts</b>, ten of the parts of a suit of armor run from head to foot. One of them, the thigh plate, is in Spanish a <i>quijote</i>.</p>
+  </div>
+
+  <div class="fig">
+    <div class="wd-panel" id="fig-wordnet" role="group" aria-label="A piece of WordNet: the kinds above and below knight, or the parts of a suit of armor"></div>
+    <div class="ro">
+      <div class="modes" id="fig-wordnet-modes" role="group" aria-label="Relation">
+        <button type="button" data-mode="kinds" aria-pressed="true">Kinds</button>
+        <button type="button" data-mode="parts" aria-pressed="false">Parts</button>
+      </div>
+      <div id="fig-wordnet-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Pick a synset, or move between them with the arrow keys. The definitions are the note's own, and so are the Spanish names of the five synsets the repository leaves without one.</p>
+    </div>
+  </div>
+</section>
+
+<section id="senses">
+  <div class="prose">
+    <h2><span class="n">5</span>One spelling, several words</h2>
+    <p>Synonymy is several forms for one meaning. The reverse, one form for several meanings, comes about in two ways. In <em>polysemy</em>, one word's senses grew apart from a shared origin, often by metaphor. In <em>homonymy</em>, two unrelated words share a spelling by chance. Dictionaries mark the difference: they give each homonym an entry of its own, and list the senses of a polysemous word inside its one entry. WordNet makes no such difference: it gives <i>light</i> 47 senses, 15 as a noun, 6 as a verb, 25 as an adjective and 1 as an adverb, with no mark of which ones share an origin.</p>
+    <p>The book's <i>light</i> shows both. <i>Light</i> as brightness comes from a root <i>*leuk-</i>, and <i>light</i> as not heavy from a different one, <i>*legwh-</i>: two words that look and sound alike by an accident of history. Each grew senses of its own. From brightness came a lamp, and the verb in <i>to light a candle</i>; from not heavy came <i>to light upon</i> something, which first meant to get down from a horse and so lighten its load, and <i>to make light of</i> it. The figure sorts the book's 98 uses of <i>light</i> by sense, labeled by hand; pick one to see its share and a line from the book.</p>
+  </div>
+
+  <div class="fig">
+    <div class="wd-panel" id="fig-senses" role="group" aria-label="The senses of light in the book, grouped by their two origins, each with its number of uses"></div>
+    <div class="ro">
+      <div id="fig-senses-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Pick a sense, or move between them with the arrow keys.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Choosing a word's sense from its sentence is <em>word-sense disambiguation</em>, and a lemmatizer does not do it: <i>light</i> gets one lemma whatever it means. The word vectors of later notes share that blind spot, one vector per word, until encoders build each word's vector from its sentence.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">6</span>Summary</h2>
+    <p>The note's ideas in NLTK, a Python library for working with text. <code>tokens</code> holds a sentence's words, and <code>wn</code> is <code>nltk.corpus.wordnet</code>, with the Open Multilingual Wordnet installed for Spanish.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Stem</div>
+      <div class="f"><i>speaking</i> → <i>speak</i></div>
+      <div class="c"><code>SnowballStemmer("english")<br>&nbsp;&nbsp;&nbsp;&nbsp;.stem("speaking")</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Lemma, given the part of speech</div>
+      <div class="f"><i>saw</i> → <i>see</i></div>
+      <div class="c"><code>wnl = WordNetLemmatizer()<br>wnl.lemmatize("saw", "v")</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Parts of speech</div>
+      <div class="f"><i>Mancha</i> → a proper noun</div>
+      <div class="c"><code>nltk.pos_tag(tokens)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Named entities</div>
+      <div class="f"><i>La Mancha</i> → a place</div>
+      <div class="c"><code>nltk.ne_chunk(<br>&nbsp;&nbsp;&nbsp;&nbsp;nltk.pos_tag(tokens))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Hypernyms</div>
+      <div class="f"><i>knight</i> → <i>male aristocrat</i></div>
+      <div class="c"><code>wn.synset("knight.n.01")<br>&nbsp;&nbsp;&nbsp;&nbsp;.hypernyms()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Meronyms</div>
+      <div class="f"><i>suit of armor</i> → <i>helmet</i>, …</div>
+      <div class="c"><code>wn.synset(<br>&nbsp;&nbsp;&nbsp;&nbsp;"body_armor.n.01"<br>).part_meronyms()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">A synset in Spanish</div>
+      <div class="f"><i>knight</i> → <i>caballero</i></div>
+      <div class="c"><code>wn.synset("knight.n.01")<br>&nbsp;&nbsp;&nbsp;&nbsp;.lemma_names("spa")</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Senses of a form</div>
+      <div class="f"><i>light</i> → 47 synsets</div>
+      <div class="c"><code>len(wn.synsets("light"))</code></div>
+    </div>
+  </div>
+  <div class="prose">
+    <p>The note's data: the lemmas come from Michal Měchura's <a href="https://github.com/michmech/lemmatization-lists">lemmatization lists</a> (ODbL), the stems from the <a href="https://snowballstem.org/">Snowball</a> stemmers, the synsets and their relations from Princeton University's <a href="https://wordnet.princeton.edu/">WordNet</a> 3.0, and their Spanish words from the <a href="https://adimen.si.ehu.es/web/MCR">Multilingual Central Repository</a> 3.0 (CC BY 3.0).</p>
+  </div>
+</section>
