@@ -1,0 +1,237 @@
+---
+title: The vector space model
+module: Laws of text, resources and NLP tasks
+order: 3
+description: How a search engine finds the chapter a query is about, by turning words into weights, chapters into vectors and relevance into an angle, and how BM25 refines the weights.
+scripts:
+  - /assets/js/notes/natural-language-processing/vector-space-model.js
+---
+<div class="prose">
+  <p>Readers remember the chapters of <i>Don Quixote</i> by their adventures: the windmills, the galley slaves, the lions, the puppet show. A search engine has only the words. Given a few of them, it must find the chapters they are about, out of the book's 126, 52 in part I and 74 in part II. The vector space model turns every chapter, and the query too, into a vector with one number per word of the vocabulary, and ranks the chapters by how closely they point the same way as the query:</p>
+  <ul class="asks">
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="The query windmills, and three chapters ranked under it, chapter VIII of part I first"><rect class="vs-pic-q" x="52" y="10" width="96" height="30" rx="15"/><text class="vs-pic-w" x="100" y="31" text-anchor="middle">windmills</text><text class="vs-pic-l" x="54" y="67" text-anchor="end">I.VIII</text><rect class="vs-pic-bar" x="62" y="56" width="120" height="14"/><text class="vs-pic-l" x="54" y="91" text-anchor="end">I.II</text><rect class="vs-pic-bar" x="62" y="80" width="73.3" height="14"/><text class="vs-pic-l" x="54" y="115" text-anchor="end">II.III</text><rect class="vs-pic-bar" x="62" y="104" width="67.5" height="14"/></svg>
+      <p>Which chapter has the windmills?</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="A small table of counts: three words in four chapters, with the column of one chapter outlined"><rect class="vs-pic-col" x="100" y="18" width="36" height="98" rx="7"/><text class="vs-pic-num" x="46" y="43" text-anchor="middle">6</text><text class="vs-pic-num" x="82" y="43" text-anchor="middle">0</text><text class="vs-pic-num" x="118" y="43" text-anchor="middle">1</text><text class="vs-pic-num" x="154" y="43" text-anchor="middle">0</text><text class="vs-pic-num" x="46" y="75" text-anchor="middle">7</text><text class="vs-pic-num" x="82" y="75" text-anchor="middle">0</text><text class="vs-pic-num" x="118" y="75" text-anchor="middle">0</text><text class="vs-pic-num" x="154" y="75" text-anchor="middle">0</text><text class="vs-pic-num" x="46" y="107" text-anchor="middle">0</text><text class="vs-pic-num" x="82" y="107" text-anchor="middle">0</text><text class="vs-pic-num" x="118" y="107" text-anchor="middle">19</text><text class="vs-pic-num" x="154" y="107" text-anchor="middle">7</text></svg>
+      <p>Each chapter, a column of counts</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="A query and two chapters as arrows from one point; the chapter at the smaller angle to the query ranks first"><path class="vs-pic-arc" d="M107.2,76.9 A84,84 0 0 0 101.5,65.9"/><line class="vs-pic-doc" x1="30" y1="110" x2="170" y2="50"/><line class="vs-pic-doc" x1="30" y1="110" x2="96" y2="18"/><line class="vs-pic-qv" x1="30" y1="110" x2="150" y2="36"/></svg>
+      <p>Chapters ranked by their angle to the query</p>
+    </li>
+  </ul>
+  <p>Section 1 prepares the words, section 2 builds the vectors, section 3 weighs them, section 4 ranks the chapters by angle, and section 5 replaces the weights with BM25's, which search engines still use as a standard.</p>
+</div>
+
+<section id="pipeline">
+  <div class="prose">
+    <h2><span class="n">1</span>Stopwords and the pipeline</h2>
+    <p>The book's most frequent words, the head of Zipf's curve from the first note, are the invariable ones from the second: <i>the</i>, <i>and</i>, <i>of</i>, <i>to</i>, along with pronouns and auxiliary verbs. They appear in every chapter, so they say nothing about which chapter is which. A search engine drops them as <em>stopwords</em>. Snowball's English list has 174 of them, and 161 appear in the book: about 1% of its different words, yet 55% of its tokens. Without them, the text keeps less than half its length and loses almost none of the words that tell chapters apart.</p>
+    <p>Dropping stopwords is one step of a <em>pipeline</em> that turns raw text into a vocabulary: split it into sentences, then into tokens, lowercase them, drop the stopwords and reduce each word to its lemma. Each step after the tokens is optional, and the figure lets you switch them on and off, both on the first line of chapter I and on the whole book.</p>
+  </div>
+
+  <div class="fig">
+    <div class="vs-panel" id="fig-pipe" role="group" aria-label="The first line of chapter I after the chosen steps"></div>
+    <div class="ro">
+      <div class="modes vs-toggles" id="fig-pipe-steps" role="group" aria-label="Steps">
+        <button type="button" data-step="lc" aria-pressed="false">Lowercase</button>
+        <button type="button" data-step="st" aria-pressed="false">Drop stopwords</button>
+        <button type="button" data-step="lm" aria-pressed="false">Lemmatize</button>
+      </div>
+      <div id="fig-pipe-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Switch the steps on and off with the buttons. A dropped word stays faint, struck through.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Stopwords are not always noise. In the line above, without them, <i>I have no desire to call to mind</i> becomes <i>desire call mind</i>: the <i>no</i> is gone, and with it the line's meaning. A search for an exact phrase, or a task where negation matters, keeps them.</p>
+  </div>
+</section>
+
+<section id="matrix">
+  <div class="prose">
+    <h2><span class="n">2</span>The term-document matrix</h2>
+    <p>After the pipeline, each chapter is a bag of words with their counts. Write the counts in a table with a row for each word of the vocabulary and a column for each chapter: this is the <em>term-document matrix</em>. Each column lists one chapter's counts, a vector</p>
+    <div class="disp"><span class="nowrap"><i>d</i><sub><i>j</i></sub> = (<i>w</i><sub>1,<i>j</i></sub>, …, <i>w</i><sub><i>V</i>,<i>j</i></sub>),</span></div>
+    <p>where <i>w</i><sub><i>i</i>,<i>j</i></sub> is the weight of word <i>i</i> in chapter <i>j</i>, for now its count. In the <em>vector space model</em> each word of the vocabulary is a dimension and each chapter a point in that space, here of 14,711 dimensions. Two of them at a time can be drawn: pick a pair of words, and every chapter becomes a point whose coordinates are its counts of the two.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-plane" role="group" aria-label="Every chapter as a point, by its counts of two words"></svg>
+    <div class="ro">
+      <div class="modes" id="fig-plane-modes" role="group" aria-label="Words">
+        <button type="button" data-mode="0" aria-pressed="true">“sancho” and “quixote”</button>
+        <button type="button" data-mode="1" aria-pressed="false">“knight” and “squire”</button>
+      </div>
+      <div id="fig-plane-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Click a point, or move from chapter to chapter with the arrow keys.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>A chapter's arrow has a direction and a length. The direction says which words dominate: the chapters of Sancho's government lean toward <i>sancho</i>. The length depends mostly on how long the chapter is, since a long chapter repeats everything more. Section 4 ranks by the first and ignores the second.</p>
+  </div>
+</section>
+
+<section id="weights">
+  <div class="prose">
+    <h2><span class="n">3</span>Weights</h2>
+    <p>The count is a poor weight, for two reasons. A word in every chapter tells none of them apart, however often it appears; and a word used ten times is not ten times as telling as a word used once. The usual weights fix both. The first scales by the chapter's most frequent word, or damps the count with a logarithm:</p>
+    <div class="disp"><span class="nowrap">tf<sub><i>i</i>,<i>j</i></sub> = <span class="frac"><span><i>f</i><sub><i>i</i>,<i>j</i></sub></span><span>max<sub><i>l</i></sub> <i>f</i><sub><i>l</i>,<i>j</i></sub></span></span>,</span> <span class="nowrap">tf<sup>log</sup><sub><i>i</i>,<i>j</i></sub> = 1 + log<sub>10</sub> <i>f</i><sub><i>i</i>,<i>j</i></sub> (for <i>f</i><sub><i>i</i>,<i>j</i></sub> &gt; 0),</span></div>
+    <p>where <i>f</i><sub><i>i</i>,<i>j</i></sub> counts word <i>i</i> in chapter <i>j</i>: 28 uses weigh 2.45, not 28. The second looks at the whole collection, <i>N</i> chapters, of which <i>n</i><sub><i>i</i></sub> contain the word, and rewards the rare:</p>
+    <div class="disp"><span class="nowrap">idf<sub><i>i</i></sub> = log<sub>10</sub> <span class="frac"><span><i>N</i></span><span><i>n</i><sub><i>i</i></sub></span></span>,</span> <span class="nowrap"><i>w</i><sub><i>i</i>,<i>j</i></sub> = tf<sub><i>i</i>,<i>j</i></sub> · idf<sub><i>i</i></sub>.</span></div>
+    <p>A word in every chapter gets idf<sub><i>i</i></sub> = log<sub>10</sub> 1 = 0 and drops out on its own; the product, <em>tf-idf</em>, is high for a word frequent in this chapter and rare in the rest. The figure shows five chapters' ten heaviest words under each weighting; tf-idf here uses the logarithmic tf.</p>
+  </div>
+
+  <div class="fig">
+    <div class="vs-panel" id="fig-weights" role="group" aria-label="A chapter's ten heaviest words under the chosen weighting"></div>
+    <div class="ro">
+      <div class="modes" id="fig-weights-chapters" role="group" aria-label="Chapter">
+        <button type="button" data-mode="0" aria-pressed="true">windmills</button>
+        <button type="button" data-mode="1" aria-pressed="false">galley slaves</button>
+        <button type="button" data-mode="2" aria-pressed="false">lions</button>
+        <button type="button" data-mode="3" aria-pressed="false">puppet show</button>
+        <button type="button" data-mode="4" aria-pressed="false">Sancho’s island</button>
+      </div>
+      <div class="modes" id="fig-weights-modes" role="group" aria-label="Weighting">
+        <button type="button" data-mode="f" aria-pressed="true">Count</button>
+        <button type="button" data-mode="tf" aria-pressed="false">tf</button>
+        <button type="button" data-mode="log" aria-pressed="false">Log tf</button>
+        <button type="button" data-mode="tfidf" aria-pressed="false">tf-idf</button>
+      </div>
+      <div id="fig-weights-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Pick a chapter and a weighting, then a word to see its calculation.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Under the count the chapters look alike, led by <i>don</i>, <i>quixote</i> and <i>said</i>. Under tf-idf each one shows its own story, its people, objects and places, and the words found in all 126 chapters, <i>chapter</i>, <i>said</i> and <i>will</i>, weigh 0.</p>
+  </div>
+</section>
+
+<section id="angle">
+  <div class="prose">
+    <h2><span class="n">4</span>Ranking by angle</h2>
+    <p>A query is a short text, so it becomes a vector like any chapter, with a weight for each of its words and 0 for the rest. Which chapters are closest to it? Distance is a poor answer: a long chapter has a long vector, far from a short query even when it points the same way. The angle ignores length. Its cosine is the dot product divided by both lengths:</p>
+    <div class="disp"><span class="nowrap">cos(<i>q</i>, <i>d</i>) = <span class="frac"><span><i>q</i> · <i>d</i></span><span>‖<i>q</i>‖ ‖<i>d</i>‖</span></span></span> <span class="nowrap">= <span class="frac"><span>∑<sub><i>i</i></sub> <i>q</i><sub><i>i</i></sub> <i>d</i><sub><i>i</i></sub></span><span>√∑<sub><i>i</i></sub> <i>q</i><sub><i>i</i></sub><sup>2</sup> √∑<sub><i>i</i></sub> <i>d</i><sub><i>i</i></sub><sup>2</sup></span></span>.</span></div>
+    <p>It is 1 when the two vectors point the same way and 0 when they share no word; with weights that are never negative, it is never below 0. The figure goes back to the plane of section 2, where the query is a point like any chapter, placed by how many times it uses each of the two words: the red point starts at (6, 2), as if the query said <i>sancho</i> six times and <i>quixote</i> twice. Drag it, and compare the chapters closest in angle with the closest in distance.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-angle" role="group" aria-label="A query as an arrow among the chapters, and the chapters closest to it"></svg>
+    <div class="ro">
+      <div class="modes" id="fig-angle-pairs" role="group" aria-label="Words">
+        <button type="button" data-mode="0" aria-pressed="true">“sancho” and “quixote”</button>
+        <button type="button" data-mode="1" aria-pressed="false">“knight” and “squire”</button>
+      </div>
+      <div class="modes" id="fig-angle-modes" role="group" aria-label="Closest by">
+        <button type="button" data-mode="angle" aria-pressed="true">Angle</button>
+        <button type="button" data-mode="dist" aria-pressed="false">Distance</button>
+      </div>
+      <div class="modes" id="fig-angle-zoom" role="group" aria-label="View">
+        <button type="button" data-mode="1" aria-pressed="false">Whole plane</button>
+        <button type="button" data-mode="3" aria-pressed="true">Close-up</button>
+      </div>
+      <div id="fig-angle-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Drag the query’s red point, or move it with the arrow keys. The close-up shows the corner near the origin, where most chapters lie.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>By angle, the closest chapters are those that use the two words in the query's proportion, whatever their length. By distance, they are the chapters as long as the query is short, whatever they are about. A search engine ranks by the cosine over all the dimensions at once, with tf-idf weights for both the query and the chapters.</p>
+  </div>
+</section>
+
+<section id="bm25">
+  <div class="prose">
+    <h2><span class="n">5</span>BM25</h2>
+    <p>BM25 is a weighting that search engines still use as a standard. A chapter's score for a query is the sum of its weights for the query's words:</p>
+    <div class="disp"><span class="nowrap"><i>w</i><sub><i>i</i>,<i>j</i></sub> = <span class="frac"><span><i>f</i><sub><i>i</i>,<i>j</i></sub> (<i>k</i><sub>1</sub> + 1)</span><span><i>k</i><sub>1</sub> [(1 − <i>b</i>) + <i>b</i> <i>l</i>(<i>d</i><sub><i>j</i></sub>) / <i>l</i><sub>avg</sub>] + <i>f</i><sub><i>i</i>,<i>j</i></sub></span></span></span> <span class="nowrap">· log<sub>10</sub> <span class="frac"><span><i>N</i></span><span><i>n</i><sub><i>i</i></sub></span></span>,</span></div>
+    <p>where <i>l</i>(<i>d</i><sub><i>j</i></sub>) is the chapter's length in words and <i>l</i><sub>avg</sub> the average, 1,441 here. The first factor saturates: in a chapter of average length, with <i>k</i><sub>1</sub> = 1.2, one use weighs 1, two weigh 1.38 and twenty only 2.08, under a ceiling of <i>k</i><sub>1</sub> + 1 = 2.2. The bracket corrects for length: a long chapter needs more uses to weigh as much, and <i>b</i> sets how much, from 0, no correction, to 1, full correction. The values <i>b</i> ≈ 0.75 and <i>k</i><sub>1</sub> ≈ 1.2 come from experiments, not from theory: they rank well on collections where people judged which documents answer which queries. Many implementations replace log(<i>N</i>/<i>n</i><sub><i>i</i></sub>) with a smoothed form, log((<i>N</i> − <i>n</i><sub><i>i</i></sub> + 0.5)/(<i>n</i><sub><i>i</i></sub> + 0.5)), with the same idea.</p>
+    <p>The figure searches the book's 126 chapters. Build a query with the words, and compare the cosine of section 4, over tf-idf, with BM25.</p>
+  </div>
+
+  <div class="fig">
+    <div class="vs-panel" id="fig-search" role="group" aria-label="A search over the book's chapters"></div>
+    <div class="ro">
+      <div class="modes" id="fig-search-modes" role="group" aria-label="Ranking">
+        <button type="button" data-mode="cos" aria-pressed="false">Cosine</button>
+        <button type="button" data-mode="bm25" aria-pressed="true">BM25</button>
+      </div>
+      <div class="vs-params" id="fig-search-params">
+        <div class="modes" id="fig-search-k1" role="group" aria-label="k1">
+          <span class="vs-param-name"><i>k</i><sub>1</sub></span>
+          <button type="button" data-mode="0.5" aria-pressed="false">0.5</button>
+          <button type="button" data-mode="1.2" aria-pressed="true">1.2</button>
+          <button type="button" data-mode="3" aria-pressed="false">3</button>
+        </div>
+        <div class="modes" id="fig-search-b" role="group" aria-label="b">
+          <span class="vs-param-name"><i>b</i></span>
+          <button type="button" data-mode="0" aria-pressed="false">0</button>
+          <button type="button" data-mode="0.75" aria-pressed="true">0.75</button>
+          <button type="button" data-mode="1" aria-pressed="false">1</button>
+        </div>
+      </div>
+      <div id="fig-search-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Pick one or more words for the query, then a ranking.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Ask for <i>lions</i>. The cosine ranks first chapter XXX of part II, short, where <i>lions</i> appears 7 times, all in Don Quixote's new title, the Knight of the Lions. BM25 ranks first chapter XVII, the adventure of the lions itself, with 19 uses in a chapter twice as long. The cosine divides by the length of the whole chapter vector, which favors short chapters; BM25's saturation and its milder length correction let the 19 uses count.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">6</span>Summary</h2>
+    <p>The note's ideas in NumPy. <code>f</code> is the term-document matrix of counts, a row per word and a column per chapter, <code>l</code> the chapters' lengths, <code>w_q</code> the query's vector and <code>q</code> the rows of its words.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Normalized tf</div>
+      <div class="f">tf<sub><i>i</i>,<i>j</i></sub> = <i>f</i><sub><i>i</i>,<i>j</i></sub> / max<sub><i>l</i></sub> <i>f</i><sub><i>l</i>,<i>j</i></sub></div>
+      <div class="c"><code>tf = f / f.max(axis=0)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Logarithmic tf</div>
+      <div class="f">1 + log<sub>10</sub> <i>f</i><sub><i>i</i>,<i>j</i></sub></div>
+      <div class="c"><code>g = np.maximum(f, 1)<br>tf_log = 1 + np.log10(g)<br>tf_log *= f &gt; 0</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">idf</div>
+      <div class="f">log<sub>10</sub>(<i>N</i>/<i>n</i><sub><i>i</i></sub>)</div>
+      <div class="c"><code>N = f.shape[1]<br>n = (f &gt; 0).sum(axis=1)<br>idf = np.log10(N / n)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">tf-idf</div>
+      <div class="f"><i>w</i><sub><i>i</i>,<i>j</i></sub> = tf<sub><i>i</i>,<i>j</i></sub> · idf<sub><i>i</i></sub></div>
+      <div class="c"><code>w = tf_log * idf[:, None]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Cosine</div>
+      <div class="f">cos(<i>q</i>, <i>d</i>) = <i>q</i> · <i>d</i> / (‖<i>q</i>‖ ‖<i>d</i>‖)</div>
+      <div class="c"><code>norm = np.linalg.norm<br>cos = w.T @ w_q / (<br>&nbsp;&nbsp;&nbsp;&nbsp;norm(w, axis=0)<br>&nbsp;&nbsp;&nbsp;&nbsp;* norm(w_q))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">BM25</div>
+      <div class="f"><span class="frac"><span><i>f</i> (<i>k</i><sub>1</sub> + 1)</span><span><i>k</i><sub>1</sub> [1 − <i>b</i> + <i>b</i> <i>l</i>/<i>l</i><sub>avg</sub>] + <i>f</i></span></span> · idf</div>
+      <div class="c"><code>r = l / l.mean()<br>k = k1 * (1 - b + b * r)<br>bm = f * (k1+1) / (k+f)<br>s = bm[q] * idf[q, None]<br>score = s.sum(axis=0)</code></div>
+    </div>
+  </div>
+  <div class="prose">
+    <p>The note's data: the stopwords are <a href="https://snowballstem.org/">Snowball</a>'s lists, and the lemmas come from Michal Měchura's <a href="https://github.com/michmech/lemmatization-lists">lemmatization lists</a> (ODbL).</p>
+  </div>
+</section>

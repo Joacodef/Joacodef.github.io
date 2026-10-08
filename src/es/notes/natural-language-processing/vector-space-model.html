@@ -1,0 +1,237 @@
+---
+title: El modelo de espacio vectorial
+module: Leyes del texto, recursos y tareas de NLP
+order: 3
+description: Cómo un buscador encuentra el capítulo del que trata una consulta, convirtiendo palabras en pesos, capítulos en vectores y la relevancia en un ángulo, y cómo BM25 refina los pesos.
+scripts:
+  - /assets/js/notes/natural-language-processing/vector-space-model.js
+---
+<div class="prose">
+  <p>Los lectores recuerdan los capítulos del <i>Quijote</i> por sus aventuras: los molinos, los galeotes, los leones, el retablo de maese Pedro. Un buscador solo tiene las palabras. Dadas unas pocas, debe encontrar los capítulos de los que tratan, entre los 126 del libro, 52 de la primera parte y 74 de la segunda. El modelo de espacio vectorial convierte cada capítulo, y también la consulta, en un vector con un número por cada palabra del vocabulario, y ordena los capítulos según cuánto apuntan en la misma dirección que la consulta:</p>
+  <ul class="asks">
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="La consulta molinos, y tres capítulos ordenados bajo ella, primero el capítulo VIII de la primera parte"><rect class="vs-pic-q" x="52" y="10" width="96" height="30" rx="15"/><text class="vs-pic-w" x="100" y="31" text-anchor="middle">molinos</text><text class="vs-pic-l" x="54" y="67" text-anchor="end">I.VIII</text><rect class="vs-pic-bar" x="62" y="56" width="120" height="14"/><text class="vs-pic-l" x="54" y="91" text-anchor="end">I.II</text><rect class="vs-pic-bar" x="62" y="80" width="70.5" height="14"/><text class="vs-pic-l" x="54" y="115" text-anchor="end">II.III</text><rect class="vs-pic-bar" x="62" y="104" width="65.9" height="14"/></svg>
+      <p>¿Qué capítulo tiene los molinos?</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Una pequeña tabla de conteos: tres palabras en cuatro capítulos, con la columna de un capítulo destacada"><rect class="vs-pic-col" x="100" y="18" width="36" height="98" rx="7"/><text class="vs-pic-num" x="46" y="43" text-anchor="middle">7</text><text class="vs-pic-num" x="82" y="43" text-anchor="middle">0</text><text class="vs-pic-num" x="118" y="43" text-anchor="middle">1</text><text class="vs-pic-num" x="154" y="43" text-anchor="middle">0</text><text class="vs-pic-num" x="46" y="75" text-anchor="middle">7</text><text class="vs-pic-num" x="82" y="75" text-anchor="middle">0</text><text class="vs-pic-num" x="118" y="75" text-anchor="middle">0</text><text class="vs-pic-num" x="154" y="75" text-anchor="middle">0</text><text class="vs-pic-num" x="46" y="107" text-anchor="middle">0</text><text class="vs-pic-num" x="82" y="107" text-anchor="middle">0</text><text class="vs-pic-num" x="118" y="107" text-anchor="middle">18</text><text class="vs-pic-num" x="154" y="107" text-anchor="middle">7</text></svg>
+      <p>Cada capítulo, una columna de conteos</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Una consulta y dos capítulos como flechas que salen de un punto; el capítulo con menor ángulo respecto de la consulta queda primero"><path class="vs-pic-arc" d="M107.2,76.9 A84,84 0 0 0 101.5,65.9"/><line class="vs-pic-doc" x1="30" y1="110" x2="170" y2="50"/><line class="vs-pic-doc" x1="30" y1="110" x2="96" y2="18"/><line class="vs-pic-qv" x1="30" y1="110" x2="150" y2="36"/></svg>
+      <p>Capítulos ordenados por su ángulo con la consulta</p>
+    </li>
+  </ul>
+  <p>La sección 1 prepara las palabras, la sección 2 arma los vectores, la sección 3 les da pesos, la sección 4 ordena los capítulos por ángulo y la sección 5 cambia los pesos por los de BM25, que los buscadores todavía usan como estándar.</p>
+</div>
+
+<section id="pipeline">
+  <div class="prose">
+    <h2><span class="n">1</span>Stopwords y el pipeline</h2>
+    <p>Las palabras más frecuentes del libro, la cabeza de la curva de Zipf del primer apunte, son las invariables del segundo: <i>que</i>, <i>y</i>, <i>de</i>, <i>a</i>, junto con pronombres y verbos auxiliares. Aparecen en todos los capítulos, así que no dicen nada de cuál es cuál. Un buscador las descarta como <em>stopwords</em>. La lista de Snowball para el castellano tiene 308, y 262 aparecen en el libro: cerca del 1% de sus palabras distintas, pero el 52% de sus tokens. Sin ellas, el texto conserva algo menos de la mitad de su largo y no pierde casi ninguna de las palabras que distinguen un capítulo de otro.</p>
+    <p>Quitar las stopwords es un paso de un <em>pipeline</em> que convierte texto crudo en un vocabulario: dividirlo en oraciones, luego en tokens, pasarlos a minúsculas, quitar las stopwords y llevar cada palabra a su lema. Cada paso después de los tokens es optativo, y la figura te deja activarlos y desactivarlos, en la primera línea del capítulo primero y en el libro entero.</p>
+  </div>
+
+  <div class="fig">
+    <div class="vs-panel" id="fig-pipe" role="group" aria-label="La primera línea del capítulo primero tras los pasos elegidos"></div>
+    <div class="ro">
+      <div class="modes vs-toggles" id="fig-pipe-steps" role="group" aria-label="Pasos">
+        <button type="button" data-step="lc" aria-pressed="false">Minúsculas</button>
+        <button type="button" data-step="st" aria-pressed="false">Quitar stopwords</button>
+        <button type="button" data-step="lm" aria-pressed="false">Lematizar</button>
+      </div>
+      <div id="fig-pipe-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Activa y desactiva los pasos con los botones. Una palabra quitada queda tenue y tachada.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Las stopwords no siempre son ruido. En la línea de arriba, sin ellas, <i>de cuyo nombre no quiero acordarme</i> queda en <i>cuyo nombre quiero acordarme</i>: se fue el <i>no</i>, y con él el sentido de la línea. Una búsqueda de una frase exacta, o una tarea en la que importa la negación, las conserva.</p>
+  </div>
+</section>
+
+<section id="matrix">
+  <div class="prose">
+    <h2><span class="n">2</span>La matriz término-documento</h2>
+    <p>Tras el pipeline, cada capítulo es una bolsa de palabras con sus conteos. Escribe los conteos en una tabla con una fila por cada palabra del vocabulario y una columna por cada capítulo: es la <em>matriz término-documento</em>. Cada columna reúne los conteos de un capítulo, un vector</p>
+    <div class="disp"><span class="nowrap"><i>d</i><sub><i>j</i></sub> = (<i>w</i><sub>1,<i>j</i></sub>, …, <i>w</i><sub><i>V</i>,<i>j</i></sub>),</span></div>
+    <p>donde <i>w</i><sub><i>i</i>,<i>j</i></sub> es el peso de la palabra <i>i</i> en el capítulo <i>j</i>, por ahora su conteo. En el <em>modelo de espacio vectorial</em> cada palabra del vocabulario es una dimensión y cada capítulo un punto en ese espacio, aquí de 22&nbsp;146 dimensiones. Se pueden dibujar de a dos: elige un par de palabras, y cada capítulo se vuelve un punto cuyas coordenadas son sus conteos de ambas.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-plane" role="group" aria-label="Cada capítulo como un punto, según sus conteos de dos palabras"></svg>
+    <div class="ro">
+      <div class="modes" id="fig-plane-modes" role="group" aria-label="Palabras">
+        <button type="button" data-mode="0" aria-pressed="true">«sancho» y «quijote»</button>
+        <button type="button" data-mode="1" aria-pressed="false">«caballero» y «escudero»</button>
+      </div>
+      <div id="fig-plane-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Haz clic en un punto, o pasa de un capítulo a otro con las flechas.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>La flecha de un capítulo tiene una dirección y un largo. La dirección dice qué palabras dominan: los capítulos del gobierno de Sancho se inclinan hacia <i>sancho</i>. El largo depende sobre todo de cuán largo es el capítulo, porque un capítulo largo lo repite todo más. La sección 4 ordena por lo primero e ignora lo segundo.</p>
+  </div>
+</section>
+
+<section id="weights">
+  <div class="prose">
+    <h2><span class="n">3</span>Pesos</h2>
+    <p>El conteo es un mal peso, por dos razones. Una palabra que está en todos los capítulos no distingue a ninguno, por más que aparezca; y una palabra usada diez veces no dice diez veces más que una usada una vez. Los pesos de siempre corrigen ambas cosas. El primero escala por la palabra más frecuente del capítulo, o amortigua el conteo con un logaritmo:</p>
+    <div class="disp"><span class="nowrap">tf<sub><i>i</i>,<i>j</i></sub> = <span class="frac"><span><i>f</i><sub><i>i</i>,<i>j</i></sub></span><span>max<sub><i>l</i></sub> <i>f</i><sub><i>l</i>,<i>j</i></sub></span></span>,</span> <span class="nowrap">tf<sup>log</sup><sub><i>i</i>,<i>j</i></sub> = 1 + log<sub>10</sub> <i>f</i><sub><i>i</i>,<i>j</i></sub> (si <i>f</i><sub><i>i</i>,<i>j</i></sub> &gt; 0),</span></div>
+    <p>donde <i>f</i><sub><i>i</i>,<i>j</i></sub> cuenta la palabra <i>i</i> en el capítulo <i>j</i>: 31 usos pesan 2.49, no 31. El segundo mira la colección entera, <i>N</i> capítulos, de los cuales <i>n</i><sub><i>i</i></sub> contienen la palabra, y premia lo raro:</p>
+    <div class="disp"><span class="nowrap">idf<sub><i>i</i></sub> = log<sub>10</sub> <span class="frac"><span><i>N</i></span><span><i>n</i><sub><i>i</i></sub></span></span>,</span> <span class="nowrap"><i>w</i><sub><i>i</i>,<i>j</i></sub> = tf<sub><i>i</i>,<i>j</i></sub> · idf<sub><i>i</i></sub>.</span></div>
+    <p>Una palabra que está en todos los capítulos recibe idf<sub><i>i</i></sub> = log<sub>10</sub> 1 = 0 y se anula sola; el producto, <em>tf-idf</em>, es alto para una palabra frecuente en este capítulo y rara en el resto. La figura muestra las diez palabras de más peso de cinco capítulos con cada función de pesos; aquí tf-idf usa el tf logarítmico.</p>
+  </div>
+
+  <div class="fig">
+    <div class="vs-panel" id="fig-weights" role="group" aria-label="Las diez palabras de más peso de un capítulo con la función de pesos elegida"></div>
+    <div class="ro">
+      <div class="modes" id="fig-weights-chapters" role="group" aria-label="Capítulo">
+        <button type="button" data-mode="0" aria-pressed="true">molinos</button>
+        <button type="button" data-mode="1" aria-pressed="false">galeotes</button>
+        <button type="button" data-mode="2" aria-pressed="false">leones</button>
+        <button type="button" data-mode="3" aria-pressed="false">retablo</button>
+        <button type="button" data-mode="4" aria-pressed="false">ínsula de Sancho</button>
+      </div>
+      <div class="modes" id="fig-weights-modes" role="group" aria-label="Función de pesos">
+        <button type="button" data-mode="f" aria-pressed="true">Conteo</button>
+        <button type="button" data-mode="tf" aria-pressed="false">tf</button>
+        <button type="button" data-mode="log" aria-pressed="false">tf logarítmico</button>
+        <button type="button" data-mode="tfidf" aria-pressed="false">tf-idf</button>
+      </div>
+      <div id="fig-weights-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Elige un capítulo y una función de pesos, y luego una palabra para ver su cálculo.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Con el conteo los capítulos se parecen, encabezados por <i>don</i>, <i>quijote</i> y <i>dijo</i>. Con tf-idf cada uno muestra su propia historia, su gente, sus objetos y sus lugares, y las palabras que están en los 126 capítulos, <i>capítulo</i>, <i>así</i> y <i>si</i>, pesan 0.</p>
+  </div>
+</section>
+
+<section id="angle">
+  <div class="prose">
+    <h2><span class="n">4</span>Ordenar por ángulo</h2>
+    <p>Una consulta es un texto corto, así que se vuelve un vector como cualquier capítulo, con un peso para cada una de sus palabras y 0 para el resto. ¿Qué capítulos están más cerca de ella? La distancia es una mala respuesta: un capítulo largo tiene un vector largo, lejos de una consulta corta aunque apunte en la misma dirección. El ángulo ignora el largo. Su coseno es el producto punto dividido por ambos largos:</p>
+    <div class="disp"><span class="nowrap">cos(<i>q</i>, <i>d</i>) = <span class="frac"><span><i>q</i> · <i>d</i></span><span>‖<i>q</i>‖ ‖<i>d</i>‖</span></span></span> <span class="nowrap">= <span class="frac"><span>∑<sub><i>i</i></sub> <i>q</i><sub><i>i</i></sub> <i>d</i><sub><i>i</i></sub></span><span>√∑<sub><i>i</i></sub> <i>q</i><sub><i>i</i></sub><sup>2</sup> √∑<sub><i>i</i></sub> <i>d</i><sub><i>i</i></sub><sup>2</sup></span></span>.</span></div>
+    <p>Vale 1 cuando los dos vectores apuntan igual y 0 cuando no comparten ninguna palabra; con pesos que nunca son negativos, nunca baja de 0. La figura vuelve al plano de la sección 2, donde la consulta es un punto como cualquier capítulo, ubicado según cuántas veces usa cada una de las dos palabras: el punto rojo parte en (6, 2), como si la consulta dijera <i>sancho</i> seis veces y <i>quijote</i> dos. Arrástralo, y compara los capítulos más cercanos en ángulo con los más cercanos en distancia.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-angle" role="group" aria-label="Una consulta como flecha entre los capítulos, y los capítulos más cercanos a ella"></svg>
+    <div class="ro">
+      <div class="modes" id="fig-angle-pairs" role="group" aria-label="Palabras">
+        <button type="button" data-mode="0" aria-pressed="true">«sancho» y «quijote»</button>
+        <button type="button" data-mode="1" aria-pressed="false">«caballero» y «escudero»</button>
+      </div>
+      <div class="modes" id="fig-angle-modes" role="group" aria-label="Más cercanos por">
+        <button type="button" data-mode="angle" aria-pressed="true">Ángulo</button>
+        <button type="button" data-mode="dist" aria-pressed="false">Distancia</button>
+      </div>
+      <div class="modes" id="fig-angle-zoom" role="group" aria-label="Vista">
+        <button type="button" data-mode="1" aria-pressed="false">Plano completo</button>
+        <button type="button" data-mode="3" aria-pressed="true">De cerca</button>
+      </div>
+      <div id="fig-angle-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Arrastra el punto rojo de la consulta, o muévelo con las flechas. De cerca se ve la esquina junto al origen, donde está la mayoría de los capítulos.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Por ángulo, los capítulos más cercanos son los que usan las dos palabras en la proporción de la consulta, sea cual sea su largo. Por distancia, son los capítulos tan cortos como la consulta, sea cual sea su tema. Un buscador ordena por el coseno en todas las dimensiones a la vez, con pesos tf-idf tanto para la consulta como para los capítulos.</p>
+  </div>
+</section>
+
+<section id="bm25">
+  <div class="prose">
+    <h2><span class="n">5</span>BM25</h2>
+    <p>BM25 es una función de pesos que los buscadores todavía usan como estándar. El puntaje de un capítulo para una consulta es la suma de sus pesos para las palabras de la consulta:</p>
+    <div class="disp"><span class="nowrap"><i>w</i><sub><i>i</i>,<i>j</i></sub> = <span class="frac"><span><i>f</i><sub><i>i</i>,<i>j</i></sub> (<i>k</i><sub>1</sub> + 1)</span><span><i>k</i><sub>1</sub> [(1 − <i>b</i>) + <i>b</i> <i>l</i>(<i>d</i><sub><i>j</i></sub>) / <i>l</i><sub>avg</sub>] + <i>f</i><sub><i>i</i>,<i>j</i></sub></span></span></span> <span class="nowrap">· log<sub>10</sub> <span class="frac"><span><i>N</i></span><span><i>n</i><sub><i>i</i></sub></span></span>,</span></div>
+    <p>donde <i>l</i>(<i>d</i><sub><i>j</i></sub>) es el largo del capítulo en palabras y <i>l</i><sub>avg</sub> el promedio, 1420 aquí. El primer factor se satura: en un capítulo de largo promedio, con <i>k</i><sub>1</sub> = 1.2, un uso pesa 1, dos pesan 1.38 y veinte apenas 2.08, bajo un techo de <i>k</i><sub>1</sub> + 1 = 2.2. El corchete corrige por largo: un capítulo largo necesita más usos para pesar lo mismo, y <i>b</i> fija cuánto, desde 0, sin corrección, hasta 1, corrección completa. Los valores <i>b</i> ≈ 0.75 y <i>k</i><sub>1</sub> ≈ 1.2 vienen de experimentos, no de una teoría: ordenan bien en colecciones donde hay personas que juzgaron qué documentos responden a qué consultas. Muchas implementaciones cambian log(<i>N</i>/<i>n</i><sub><i>i</i></sub>) por una forma suavizada, log((<i>N</i> − <i>n</i><sub><i>i</i></sub> + 0.5)/(<i>n</i><sub><i>i</i></sub> + 0.5)), con la misma idea.</p>
+    <p>La figura busca en los 126 capítulos del libro. Arma una consulta con las palabras, y compara el coseno de la sección 4, sobre tf-idf, con BM25.</p>
+  </div>
+
+  <div class="fig">
+    <div class="vs-panel" id="fig-search" role="group" aria-label="Una búsqueda en los capítulos del libro"></div>
+    <div class="ro">
+      <div class="modes" id="fig-search-modes" role="group" aria-label="Orden">
+        <button type="button" data-mode="cos" aria-pressed="false">Coseno</button>
+        <button type="button" data-mode="bm25" aria-pressed="true">BM25</button>
+      </div>
+      <div class="vs-params" id="fig-search-params">
+        <div class="modes" id="fig-search-k1" role="group" aria-label="k1">
+          <span class="vs-param-name"><i>k</i><sub>1</sub></span>
+          <button type="button" data-mode="0.5" aria-pressed="false">0.5</button>
+          <button type="button" data-mode="1.2" aria-pressed="true">1.2</button>
+          <button type="button" data-mode="3" aria-pressed="false">3</button>
+        </div>
+        <div class="modes" id="fig-search-b" role="group" aria-label="b">
+          <span class="vs-param-name"><i>b</i></span>
+          <button type="button" data-mode="0" aria-pressed="false">0</button>
+          <button type="button" data-mode="0.75" aria-pressed="true">0.75</button>
+          <button type="button" data-mode="1" aria-pressed="false">1</button>
+        </div>
+      </div>
+      <div id="fig-search-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Elige una o más palabras para la consulta, y luego un orden.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Busca <i>leones</i>. El coseno pone primero el capítulo XXX de la segunda parte, corto, donde <i>leones</i> aparece 7 veces, todas en el nuevo título de don Quijote, el Caballero de los Leones. BM25 pone primero el capítulo XVII, la aventura de los leones misma, con 18 usos en un capítulo el doble de largo. El coseno divide por el largo del vector completo del capítulo, lo que favorece a los capítulos cortos; la saturación de BM25 y su corrección por largo, más suave, dejan que los 18 usos cuenten.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">6</span>Resumen</h2>
+    <p>Las ideas del apunte en NumPy. <code>f</code> es la matriz término-documento de conteos, una fila por palabra y una columna por capítulo, <code>l</code> los largos de los capítulos, <code>w_q</code> el vector de la consulta y <code>q</code> las filas de sus palabras.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">tf normalizado</div>
+      <div class="f">tf<sub><i>i</i>,<i>j</i></sub> = <i>f</i><sub><i>i</i>,<i>j</i></sub> / max<sub><i>l</i></sub> <i>f</i><sub><i>l</i>,<i>j</i></sub></div>
+      <div class="c"><code>tf = f / f.max(axis=0)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">tf logarítmico</div>
+      <div class="f">1 + log<sub>10</sub> <i>f</i><sub><i>i</i>,<i>j</i></sub></div>
+      <div class="c"><code>g = np.maximum(f, 1)<br>tf_log = 1 + np.log10(g)<br>tf_log *= f &gt; 0</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">idf</div>
+      <div class="f">log<sub>10</sub>(<i>N</i>/<i>n</i><sub><i>i</i></sub>)</div>
+      <div class="c"><code>N = f.shape[1]<br>n = (f &gt; 0).sum(axis=1)<br>idf = np.log10(N / n)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">tf-idf</div>
+      <div class="f"><i>w</i><sub><i>i</i>,<i>j</i></sub> = tf<sub><i>i</i>,<i>j</i></sub> · idf<sub><i>i</i></sub></div>
+      <div class="c"><code>w = tf_log * idf[:, None]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Coseno</div>
+      <div class="f">cos(<i>q</i>, <i>d</i>) = <i>q</i> · <i>d</i> / (‖<i>q</i>‖ ‖<i>d</i>‖)</div>
+      <div class="c"><code>norm = np.linalg.norm<br>cos = w.T @ w_q / (<br>&nbsp;&nbsp;&nbsp;&nbsp;norm(w, axis=0)<br>&nbsp;&nbsp;&nbsp;&nbsp;* norm(w_q))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">BM25</div>
+      <div class="f"><span class="frac"><span><i>f</i> (<i>k</i><sub>1</sub> + 1)</span><span><i>k</i><sub>1</sub> [1 − <i>b</i> + <i>b</i> <i>l</i>/<i>l</i><sub>avg</sub>] + <i>f</i></span></span> · idf</div>
+      <div class="c"><code>r = l / l.mean()<br>k = k1 * (1 - b + b * r)<br>bm = f * (k1+1) / (k+f)<br>s = bm[q] * idf[q, None]<br>score = s.sum(axis=0)</code></div>
+    </div>
+  </div>
+  <div class="prose">
+    <p>Los datos del apunte: las stopwords son las listas de <a href="https://snowballstem.org/">Snowball</a>, y los lemas vienen de las <a href="https://github.com/michmech/lemmatization-lists">listas de lematización</a> de Michal Měchura (ODbL).</p>
+  </div>
+</section>

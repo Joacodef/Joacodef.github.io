@@ -529,6 +529,77 @@ ol.steps b { font-weight: 600; }
 .tbl.wd-levels th { text-align: left; }
 @media (max-width: 340px) { .tbl.wd-levels th, .tbl.wd-levels td { padding-left: 0.3rem; padding-right: 0.3rem; font-size: 0.88rem; hyphens: auto; -webkit-hyphens: auto; } }
 
+/* The vector space model (natural language processing): the pipeline, a chapter's weights and the search are figures
+   made of words, in panels like those of words and WordNet, and the chapters' counts of two words are drawn on a
+   plane. A query, what the reader looks for, is carmine; vectors and scores are blue; chapters are faint ink points
+   until they rank. */
+.vs-panel { background: var(--card); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+:is(.vs-head, .vs-axname, .vs-lab, .vs-val, .vs-res-lab, .vs-res-n, .vs-param-name) { font-family: var(--sans); font-weight: 400; font-variation-settings: normal; }
+.vs-head { font-size: 0.86rem; line-height: 1.4; color: var(--ink-2); margin: 0 0 0.55rem; }
+.vs-head + .vs-head, .vs-chips + .vs-head { margin-top: 1rem; }
+/* The pipeline: each token a chip, a dropped one faint and struck through, one its lemma changed in carmine. */
+.vs-tokens { display: flex; flex-wrap: wrap; gap: 6px; }
+.vs-tok { font-family: var(--serif); font-size: 1.08rem; line-height: 1.35; padding: 0.1em 0.5em 0.16em; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); color: var(--ink); }
+.vs-tok.gone { color: var(--ink-3); text-decoration: line-through; text-decoration-thickness: 1px; opacity: 0.6; }
+.vs-tok.changed { color: var(--red); border-color: var(--red); }
+.vs-toggles { margin-bottom: 1.1rem; }
+/* The plane of two words: the chapters as faint points, the ones picked or ranked in ink with their vectors in blue,
+   the query in carmine, and the angle between them as a blue arc. */
+.vs-axname { fill: var(--ink-2); font-size: 15px; }
+.vs-doc { fill: var(--ink-3); fill-opacity: 0.45; }
+.vs-doc.on { fill: var(--ink); fill-opacity: 1; }
+.vs-vec { stroke: var(--blue); stroke-width: 2.4; stroke-linecap: round; }
+.vs-vec.dash { stroke-dasharray: 6 5; stroke-width: 1.8; }
+.vs-q { stroke: var(--red); stroke-width: 2.6; stroke-linecap: round; }
+.vs-arc { fill: none; stroke: var(--blue); stroke-width: 1.5; }
+.vs-lab { fill: var(--ink); font-size: 15px; paint-order: stroke; stroke: var(--card); stroke-width: 4px; stroke-linejoin: round; }
+@media (max-width: 560px) { .vs-axname, .vs-lab { font-size: 19px; } }
+.ro .vs-title { font-family: var(--serif); font-style: italic; color: var(--ink-2); }
+/* A chapter's heaviest words: each a button with its weight as a carmine bar, outlined in ink when picked. On phones
+   the bar takes the row's whole width, under the word and its weight. */
+.vs-rows { display: grid; gap: 2px; }
+.vs-row { font: inherit; color: var(--ink); background: transparent; border: 1px solid transparent; border-radius: 8px; width: 100%; display: grid; grid-template-columns: minmax(0, 8.5em) minmax(0, 1fr) 3.4em; align-items: center; gap: 0.7em; padding: 0.15rem 0.5rem; text-align: left; cursor: pointer; }
+.vs-row:hover { background: var(--paper); }
+.vs-row.on { border-color: var(--ink); background: var(--paper); }
+.vs-word { font-family: var(--serif); font-size: 1rem; line-height: 1.3; overflow-wrap: anywhere; }
+.vs-track { display: block; height: 10px; background: var(--paper-2); border-radius: 3px; overflow: hidden; }
+.vs-bar { display: block; height: 100%; min-width: 2px; background: var(--red); }
+.vs-val { font-size: 0.85rem; text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 480px) {
+  .vs-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "word val" "track track"; row-gap: 3px; }
+  .vs-word { grid-area: word; }
+  .vs-track { grid-area: track; }
+  .vs-val { grid-area: val; }
+}
+/* The search: the query's words as chips, carmine when pressed, and the first chapters with their scores as blue bars;
+   BM25's parameters, k₁ and b, as rows of mode buttons. */
+.vs-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.vs-chip { font: inherit; font-family: var(--serif); font-size: 1rem; line-height: 1.3; color: var(--ink-2); background: var(--paper); border: 1px solid var(--rule); border-radius: 999px; padding: 0.12em 0.75em 0.18em; cursor: pointer; }
+.vs-chip:hover { border-color: var(--ink-3); }
+.vs-chip[aria-pressed="true"] { color: var(--red); border-color: var(--red); }
+.vs-results { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.vs-res { display: grid; grid-template-columns: 3.6em minmax(0, 1fr) 3em; grid-template-areas: "lab title n" "lab track n"; column-gap: 0.7em; row-gap: 3px; align-items: center; }
+.vs-res-lab { grid-area: lab; font-size: 0.86rem; color: var(--ink-2); }
+.vs-res-title { grid-area: title; font-family: var(--serif); font-size: 0.95rem; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.vs-res-track { grid-area: track; display: block; height: 8px; background: var(--paper-2); border-radius: 3px; overflow: hidden; }
+.vs-res-bar { display: block; height: 100%; min-width: 2px; background: var(--blue); }
+.vs-res-n { grid-area: n; font-size: 0.85rem; text-align: right; font-variant-numeric: tabular-nums; }
+.vs-params { margin: -0.4rem 0 0.4rem; }
+.vs-params .modes { align-items: center; margin-bottom: 0.6rem; }
+.vs-param-name { font-size: 0.9rem; color: var(--ink-2); min-width: 1.6em; }
+.vs-param-name i { font-family: var(--serif); font-size: 1.05rem; }
+/* The opening's small pictures: a query in carmine over its ranking in blue, a table of counts with one chapter's
+   column outlined in blue, and two chapters and a query as arrows. */
+.vs-pic-q { fill: var(--card); stroke: var(--red); stroke-width: 2.2; }
+.vs-pic-w { fill: var(--red); font-family: var(--serif); font-size: 21px; }
+.vs-pic-l { fill: var(--ink-2); font-family: var(--sans); font-size: 15px; }
+.vs-pic-bar { fill: var(--blue); }
+.vs-pic-num { fill: var(--ink); font-family: var(--serif); font-size: 21px; }
+.vs-pic-col { fill: none; stroke: var(--blue); stroke-width: 2.2; }
+.vs-pic-doc { stroke: var(--blue); stroke-width: 2.6; stroke-linecap: round; }
+.vs-pic-qv { stroke: var(--red); stroke-width: 2.8; stroke-linecap: round; }
+.vs-pic-arc { fill: none; stroke: var(--blue); stroke-width: 2; }
+
 /* Figures stepped through like slides, with Next and Back. The controls sit right under the drawing, so the growing
    text never moves them, and new text appears only at the bottom, with earlier text dimmed above it. */
 .fig.steps { grid-template-areas: "draw" "ctl" "ro" "foot"; }
