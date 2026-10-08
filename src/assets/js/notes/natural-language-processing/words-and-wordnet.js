@@ -2,28 +2,13 @@
 // the forms of a word, stems against lemmas, parts of speech and named entities, WordNet's kinds and parts, and the
 // senses of one spelling. These figures are made of words, so they are HTML, which wraps to the screen's width; each
 // item the reader can pick is a button, and the arrow keys move between them.
-import { tr, lang, modeButtons } from "../../plane.js";
+import { tr, lang, modeButtons, roving } from "../../plane.js";
 import { DATA } from "./words-and-wordnet-data.js";
 
 const other = lang === "es" ? "en" : "es";
 const num = (n) => (lang === "es" ? (n >= 10000 ? String(n).replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0") : String(n)) : n.toLocaleString("en-US"));
 const q = (w) => (lang === "es" ? `«${w}»` : `“${w}”`);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; };
-
-// Arrow keys move the focus between the buttons of a list, which a click or Enter selects.
-function roving(buttons, select, { grid } = {}) {
-  buttons.forEach((b, i) => {
-    b.addEventListener("click", () => select(i));
-    b.addEventListener("keydown", (e) => {
-      const step = grid ? grid(i, e.key) : { ArrowRight: i + 1, ArrowDown: i + 1, ArrowLeft: i - 1, ArrowUp: i - 1 }[e.key];
-      if (step === undefined || step === null) return;
-      e.preventDefault();
-      const j = Math.max(0, Math.min(buttons.length - 1, step));
-      buttons[j].focus();
-      select(j);
-    });
-  });
-}
 
 /* ---------- Figure 1: the forms of a word ---------- */
 

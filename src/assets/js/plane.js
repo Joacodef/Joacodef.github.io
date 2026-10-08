@@ -513,6 +513,24 @@ export function modeButtons(group, onChange) {
   return press;
 }
 
+// A list of buttons, such as a figure's words, that the arrow keys move through: Right and Down go to the next button,
+// Left and Up to the previous one, stopping at the ends. A click on a button, or an arrow key that moves the focus to it,
+// calls select(i) with its index; select marks the button picked and gives it tabindex 0 and the others −1, so Tab enters
+// the list there.
+export function roving(buttons, select) {
+  buttons.forEach((b, i) => {
+    b.addEventListener("click", () => select(i));
+    b.addEventListener("keydown", (e) => {
+      const step = { ArrowRight: i + 1, ArrowDown: i + 1, ArrowLeft: i - 1, ArrowUp: i - 1 }[e.key];
+      if (step === undefined) return;
+      e.preventDefault();
+      const j = Math.max(0, Math.min(buttons.length - 1, step));
+      buttons[j].focus();
+      select(j);
+    });
+  });
+}
+
 // A number input that accepts whole numbers from min to max. Only such a number calls set(v); while the field
 // holds anything else (a lone minus sign, say), the figure waits. Leaving the field writes back get().
 // The returned function shows a value in the field, unless the reader is typing in it.
