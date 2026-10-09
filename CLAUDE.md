@@ -8,6 +8,7 @@ Custom domain `joaquindeferrari.com`: DNS lives on Cloudflare as DNS-only record
 
 - `npm install`, then `npm start` for a live-reload server at http://localhost:8080
 - `npm run build` writes the site to `_site/`. Run it before every commit and fix any error it reports.
+- Show changes in the local preview before committing: give Joaquín the URL of each changed page (`npm start` moves to port 8081 when 8080 is busy), commit only after he approves, and push only when he says, since a push deploys. He asked for this after a commit landed before he had looked.
 - Check changes at desktop width and at 390px wide, in both light and dark mode, and for notes in both languages.
 
 ## Where content lives
@@ -16,7 +17,7 @@ Custom domain `joaquindeferrari.com`: DNS lives on Cloudflare as DNS-only record
 - Publications: `src/_data/publications.json` (`"selected": true` puts one on the homepage)
 - Research lines: `src/_data/research.json`
 - Notes: `src/notes/<course>/`, and their Spanish versions in `src/es/notes/<course>/`. Each course folder's JSON file sets the course's name, its `source` credit and its place on the notes page (`courseOrder`); its figure scripts are in `src/assets/js/notes/<course>/`. The note layout's text in each language: `src/_data/i18n.json`.
-- Rules for writing notes: `.claude/rules/notes.md` for every course, and `.claude/rules/notes-<course>.md` for each course's own sources and notation. Private course materials: `course-materials/` (gitignored; see its README).
+- Rules for writing notes: `.claude/rules/notes.md` for every course, `.claude/rules/notes-<course>.md` for each course's own sources and notation, and a file per note in `.claude/rules/<course>/`; each loads when you open a file it covers. Private course materials: `course-materials/` (gitignored; see its README).
 - Prefer editing these JSON files over templates when the change is about content.
 
 ## Content rules
@@ -25,14 +26,14 @@ Custom domain `joaquindeferrari.com`: DNS lives on Cloudflare as DNS-only record
 - Never publish Joaquín's phone number. Public contact is the institutional email, GitHub, ORCID and LinkedIn.
 - Publication and research facts must match his CV exactly. Never invent venues, metrics, rankings or claims. Mark equal contribution with `*` and keep every DOI.
 - Positioning: the tagline describes a broad identity (machine learning for medical imaging and clinical language, learning from imperfect supervision). The specific current project belongs only in the "Currently" line.
-- Study notes are written for a reader who never took the course. The course materials set a note's subject and keep its theory and formula notation close to the class, so the notes also serve for studying it. Everything else (the names of things, numbers, examples, the data behind figures) is chosen to make the concepts clear, never copied from the class. See `.claude/rules/notes.md`.
+- Study notes are written for a reader who never took the course. The course materials set a note's subject and keep its theory and formula notation close to the class, so the notes also serve for studying it. Everything else (the names of things, numbers, examples, the data behind figures) is chosen to make the concepts clear, never copied from the class, except where a course's rules file says otherwise. See `.claude/rules/notes.md`.
 - Notes keep the AI-assistance and "may contain errors" notice from `src/_includes/note.njk`.
 - Credit course sources through the `source` field of each course folder's JSON file.
 
 ## Design system: "notebook"
 
-- Fonts: Newsreader for headings, formulas, ledes and body text, with the body text light and at a small optical size (weight 320, optical size 8: the `--text-weight` and `--text-optical` tokens in `site.css`; headings and ledes keep their own weight and optical size, and on screens up to 340 px so do display formulas and readout equations, to fit); Public Sans for controls, menus, breadcrumbs, table headers and figure labels; JetBrains Mono only for code.
-- Colors come only from the tokens in `src/assets/css/site.css` (`--paper`, `--paper-2`, `--card`, `--ink`, `--ink-2`, `--ink-3`, `--rule`, `--blue`, `--red`, `--ok`, `--pick` (the yellow of a move just chosen, in the reinforcement learning figures), `--coral` and `--heat-max` (the heatmap of those figures: positive values in `--ok`, mixed in up to `--heat-max`, and negative ones, more faintly, in `--coral`, which is mixed from `--red` and `--pick` and so follows both themes), and `--img-lo`/`--img-hi` for gray values in figures). Never hardcode hex values in components. Any new token needs both a light and a dark value.
+- Fonts: Newsreader for headings, formulas, ledes and body text, the body text light and at a small optical size (`--text-weight` and `--text-optical` in `site.css`), while headings and ledes keep their own weight and optical size, and so do display formulas and readout equations on screens up to 340 px, to fit; Public Sans for controls, menus, breadcrumbs, table headers and figure labels; JetBrains Mono only for code.
+- Colors come only from the tokens in `src/assets/css/site.css` (`--paper`, `--paper-2`, `--card`, `--ink`, `--ink-2`, `--ink-3`, `--rule`, `--blue`, `--red`, `--ok`, `--pick`, `--coral` and `--heat-max` (the move just chosen and the heatmap of the reinforcement learning figures, as `site.css` and that course's rules file describe), and `--img-lo`/`--img-hi` for gray values in figures). Never hardcode hex values in components. Any new token needs both a light and a dark value.
 - Semantic ink, one fixed color per concept across the whole site:
   - Blue ink: lines, links, anatomy.
   - Carmine (`--red`): points, findings, segmentation masks, "what we look for".
