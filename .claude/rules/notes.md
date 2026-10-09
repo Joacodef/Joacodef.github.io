@@ -63,6 +63,7 @@ These rules hold for the notes of every course. Each course also has a rules fil
 
 ## Interactive figures
 
+- Every chart names its axes, in the figures and in the opening's small pictures alike: what an axis measures, in words in Public Sans, with its symbol in the serif where the page gives it one ("rank r", "uses of “worship” x₁"). A bar chart names what its bars measure, and a chart whose bars point two ways names each way (Joaquín, 8 Oct 2026).
 - Snap draggable points to integers so readouts stay clean.
 - `createPlane(svg, { max, tick, labelStep, grid })` in `plane.js` draws a 2D plane from 0 to `max` (40 by default), with ticks every `tick`, numbers every `labelStep` and, with `grid`, faint lines at every tick. For small, readable cross products, use a small plane, as the homogeneous coordinates note does with 0 to 10. Its `placeAlong(t, p, dir, dist, memo)` flips a label to the other side of its point when it would leave the plane; with a memo object, the label keeps that side until it must flip again, instead of flipping back.
 - To let readers pick a mode (a kind of transformation, an interpolation method), use a `.modes` group of buttons with `data-mode` and `aria-pressed`, wired with `modeButtons` from `plane.js`.

@@ -600,6 +600,125 @@ ol.steps b { font-weight: 600; }
 .vs-pic-qv { stroke: var(--red); stroke-width: 2.8; stroke-linecap: round; }
 .vs-pic-arc { fill: none; stroke: var(--blue); stroke-width: 2; }
 
+/* Classifying documents with linear models (natural language processing): a speech's words with their weights and a
+   line's three voices are figures made of words, in panels like those of words and WordNet; the speeches piled on the
+   plane of two words, what three models make of a score, the loss and gradient descent are charts. Sancho, the class
+   y = 1, is carmine; Don Quixote, y = 0, ink; the narrator, a third voice, green; the boundary, w and the functions are
+   blue. */
+.lc-panel { background: var(--card); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+:is(.lc-head, .lc-val, .lc-note, .lc-times, .lc-axname, .lc-lab, .lc-pic-l, .lc-curvename, .lc-vs, .lc-vp, .lc-vhead) { font-family: var(--sans); font-weight: 400; font-variation-settings: normal; }
+.lc-head { font-size: 0.86rem; line-height: 1.4; color: var(--ink-2); margin: 0 0 0.35rem; }
+.lc-quote { font-family: var(--serif); font-style: italic; font-size: 1.08rem; line-height: 1.4; color: var(--ink); margin: 0 0 0.8rem; }
+.lc-rows { display: grid; gap: 2px; }
+.lc-row { font: inherit; color: var(--ink); background: transparent; border: 1px solid transparent; border-radius: 8px; width: 100%; display: grid; grid-template-columns: minmax(0, 8em) minmax(0, 1fr) 3.4em; align-items: center; gap: 0.7em; padding: 0.12rem 0.5rem; text-align: left; }
+button.lc-row { cursor: pointer; }
+button.lc-row:hover { background: var(--paper); }
+.lc-row[aria-pressed="false"] { color: var(--ink-3); }
+.lc-row[aria-pressed="false"] .lc-word { text-decoration: line-through; text-decoration-thickness: 1px; }
+.lc-row[aria-pressed="false"] .lc-bar { opacity: 0.25; }
+.lc-still { color: var(--ink-2); }
+.lc-bias { border-top: 1px solid var(--rule); border-radius: 0; margin-top: 4px; padding-top: 0.3rem; }
+.lc-word { font-family: var(--serif); font-size: 1rem; line-height: 1.3; overflow-wrap: anywhere; }
+.lc-still .lc-word { color: var(--ink-3); }
+.lc-bias .lc-word { font-family: var(--sans); font-size: 0.86rem; color: var(--ink-2); }
+.lc-times { font-size: 0.8rem; color: var(--ink-3); }
+.lc-note { font-size: 0.78rem; color: var(--ink-3); }
+.lc-track { position: relative; display: block; height: 10px; }
+.lc-track::before { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--rule); }
+.lc-bar { position: absolute; top: 0; height: 100%; min-width: 2px; border-radius: 2px; }
+.lc-bar.sp { background: var(--red); }
+.lc-bar.dq { background: var(--ink-2); }
+.lc-val { font-size: 0.85rem; text-align: right; font-variant-numeric: tabular-nums; }
+/* The key over the bars: which way, and in which color, a weight pushes. */
+.lc-keyrow { padding-top: 0; padding-bottom: 0.15rem; }
+.lc-keyrow .lc-word { font-family: var(--sans); font-weight: 400; font-variation-settings: normal; font-size: 0.78rem; color: var(--ink-2); }
+.lc-keyrow .lc-val { font-family: var(--serif); font-size: 0.95rem; color: var(--ink-2); }
+.lc-keys { display: flex; justify-content: space-between; gap: 0.6em; font-family: var(--sans); font-weight: 400; font-variation-settings: normal; font-size: 0.78rem; line-height: 1.3; color: var(--ink-2); white-space: nowrap; }
+.lc-sw { display: inline-block; width: 0.75em; height: 0.75em; border-radius: 2px; vertical-align: -0.08em; }
+.lc-sw.dq { background: var(--ink-2); margin-right: 0.4em; }
+.lc-sw.sp { background: var(--red); margin-left: 0.4em; }
+@media (max-width: 480px) {
+  .lc-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "word val" "track track"; row-gap: 3px; }
+  .lc-word { grid-area: word; }
+  .lc-track, .lc-note, .lc-keys { grid-area: track; }
+  .lc-val { grid-area: val; }
+}
+.lc-axname { fill: var(--ink-2); font-size: 15px; paint-order: stroke; stroke: var(--card); stroke-width: 4px; stroke-linejoin: round; }
+.lc-axname .m { font-family: var(--serif); font-style: italic; font-size: 18px; }
+.lc-axname .sub { font-size: 13px; }
+.lc-keytext { fill: var(--ink-2); font-family: var(--sans); font-size: 14px; }
+/* The names of figure 2's two rows of buttons. */
+.ro .lc-ctl-name { font-family: var(--sans); font-weight: 400; font-variation-settings: normal; font-size: 0.86rem; line-height: 1.4; color: var(--ink-2); margin: 0 0 0.35rem; }
+.ro .lc-ctl-name i { font-family: var(--serif); font-size: 1.05rem; }
+.ro .modes + .lc-ctl-name { margin-top: 0.2rem; }
+@media (max-width: 560px) { .lc-keytext { font-size: 18px; } }
+.lc-lab { fill: var(--blue); font-size: 15px; font-style: italic; font-family: var(--serif); paint-order: stroke; stroke: var(--card); stroke-width: 4px; stroke-linejoin: round; }
+@media (max-width: 560px) { .lc-axname, .lc-lab { font-size: 19px; } .lc-axname .m { font-size: 21px; } .lc-axname .sub { font-size: 15px; } }
+.lc-region { fill: var(--red); fill-opacity: 0.07; }
+.lc-pile-sp { fill: var(--red); }
+.lc-pile-dq { fill: var(--ink-2); }
+.lc-pile-base { stroke: var(--ink-3); stroke-width: 1.2; }
+.lc-boundary { stroke: var(--blue); stroke-width: 2.4; stroke-linecap: round; }
+.lc-w { stroke: var(--blue); stroke-width: 2.2; stroke-linecap: round; }
+.lc-w-head { fill: var(--blue); }
+/* Figures 3 to 5: functions are blue lines, except the two losses, each in its speaker's color; the curve of the
+   speaker who did not speak fades. */
+.lc-fn { fill: none; stroke: var(--blue); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.lc-fn.sp { stroke: var(--red); }
+.lc-fn.dq { stroke: var(--ink-2); }
+.lc-fn.faint, .lc-curvename.faint { opacity: 0.3; }
+.lc-guide { fill: none; stroke: var(--ink-3); stroke-width: 1.2; stroke-dasharray: 3 4; }
+.lc-zero { stroke: var(--rule); stroke-width: 1.2; }
+.lc-lowest { stroke: var(--ink-3); stroke-width: 1.2; stroke-dasharray: 6 4; }
+/* A function's value: blue as its line, or in the color of the speaker it names. */
+.lc-out { fill: var(--blue); }
+.lc-out.sp { fill: var(--red); }
+.lc-out.dq { fill: var(--ink-2); }
+.lc-curvename { fill: var(--ink-2); font-size: 14px; paint-order: stroke; stroke: var(--card); stroke-width: 4px; stroke-linejoin: round; }
+.lc-axname .r { font-family: var(--serif); font-size: 18px; }
+@media (max-width: 560px) { .lc-curvename { font-size: 17px; } .lc-axname .r { font-size: 21px; } }
+/* Figure 6: a line's three voices, one row each: name, score, probability bar and probability. The narrator's bar is
+   green, Don Quixote's ink and Sancho's carmine. */
+.lc-vrows { display: grid; gap: 4px; }
+.lc-vrow { display: grid; grid-template-columns: minmax(0, 7em) 3.6em minmax(0, 1fr) 2.8em; align-items: center; gap: 0.7em; padding: 0.15rem 0; }
+.lc-vname { font-family: var(--serif); font-size: 1rem; line-height: 1.3; color: var(--ink); white-space: nowrap; }
+.lc-vs, .lc-vp { font-size: 0.85rem; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+.lc-vtrack { position: relative; display: block; height: 12px; background: var(--paper); border-radius: 2px; }
+.lc-vbar { position: absolute; left: 0; top: 0; height: 100%; min-width: 3px; border-radius: 2px; box-sizing: border-box; }
+.lc-vbar.sp { background: var(--red); }
+.lc-vbar.dq { background: var(--ink-2); }
+.lc-vbar.nr, .lc-sw.nr { background: var(--ok); }
+.lc-vname .lc-sw { margin: 0 0.45em 0 0; }
+.lc-vhead { padding-bottom: 0.15rem; border-bottom: 1px solid var(--rule); margin-bottom: 2px; }
+.lc-vhead > span { font-family: var(--sans); font-weight: 400; font-variation-settings: normal; font-size: 0.78rem; line-height: 1.3; color: var(--ink-2); background: none; height: auto; }
+.lc-vhead i { font-family: var(--serif); font-size: 0.95rem; }
+/* The score's name is wider than its column; it reaches left, over the empty end of "voice". */
+.lc-vhead .lc-vname { grid-column: 1; grid-row: 1; }
+.lc-vhead .lc-vs { grid-column: 1 / 3; grid-row: 1; justify-self: end; white-space: nowrap; }
+@media (max-width: 480px) {
+  .lc-vrow { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name s" "track p"; row-gap: 3px; }
+  .lc-vname, .lc-vhead .lc-vname { grid-area: name; }
+  .lc-vs, .lc-vhead .lc-vs { grid-area: s; }
+  .lc-vtrack { grid-area: track; }
+  .lc-vp { grid-area: p; }
+}
+/* Section 6's table: who said each line, against what the model says. */
+.tbl.lc-confusion th[scope="colgroup"] { text-align: center; font-weight: 400; }
+.tbl.lc-confusion thead tr:first-child td { border-bottom: none; }
+.tbl.lc-confusion td.hit { font-weight: 600; }
+@media (max-width: 360px) { .tbl.lc-confusion :is(th, td) { padding-right: 0.3rem; } .tbl.lc-confusion :is(th, td):not(:first-child) { padding-left: 0.3rem; } }
+/* The opening's small pictures. */
+.lc-pic-box { fill: var(--card); stroke: var(--rule); stroke-width: 1.4; }
+.lc-pic-q { fill: var(--ink); font-family: var(--serif); font-style: italic; font-size: 17px; }
+.lc-pic-l { fill: var(--ink-2); font-size: 14px; }
+.lc-pic-sp { fill: var(--red); }
+.lc-pic-dq { fill: var(--ink-2); }
+.lc-pic-w { fill: var(--ink); font-family: var(--serif); font-size: 19px; }
+.lc-pic-axis { stroke: var(--ink-3); stroke-width: 1.4; }
+.lc-pic-guide { stroke: var(--rule); stroke-width: 1.2; stroke-dasharray: 3 4; }
+.lc-pic-curve { fill: none; stroke: var(--blue); stroke-width: 2.6; stroke-linejoin: round; }
+.lc-pic-pt { fill: var(--red); }
+
 /* Figures stepped through like slides, with Next and Back. The controls sit right under the drawing, so the growing
    text never moves them, and new text appears only at the bottom, with earlier text dimmed above it. */
 .fig.steps { grid-template-areas: "draw" "ctl" "ro" "foot"; }

@@ -1,0 +1,251 @@
+---
+title: Classifying documents with linear models
+module: Text encoders
+order: 4
+description: How a weighted sum of a document's words decides which of two classes it belongs to, how logistic regression turns the sum into a probability, and how gradient descent learns the weights.
+scripts:
+  - /assets/js/notes/natural-language-processing/linear-classifiers.js
+---
+<div class="prose">
+  <p>Much of <i>Don Quixote</i> is the knight and his squire talking. Cover the names and a reader can often still tell who is speaking: one calls the other <i>your worship</i>, the other answers with <i>thou</i> and <i>friend Sancho</i>. A linear model can learn to do the same from the words alone. It gives each word a weight, adds up the weights of a speech's words and reads the sign of the sum. Trained on the speeches that the book attributes to one of the two, it names the speaker of 83% of the speeches from chapters it never saw:</p>
+  <ul class="asks">
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="A line of dialogue, Why dost thou say that, Sancho?, and the two who may have said it"><rect class="lc-pic-box" x="12" y="10" width="176" height="62" rx="12"/><text class="lc-pic-q" x="100" y="36" text-anchor="middle">“Why dost thou say</text><text class="lc-pic-q" x="100" y="59" text-anchor="middle">that, Sancho?”</text><rect class="lc-pic-dq" x="14" y="96" width="13" height="13" rx="2"/><text class="lc-pic-l" x="33" y="108">Don Quixote</text><rect class="lc-pic-sp" x="128" y="96" width="13" height="13" rx="2"/><text class="lc-pic-l" x="147" y="108">Sancho</text></svg>
+      <p>Which of the two said it?</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Two words with their weights: worship pushes toward Sancho, thou toward Don Quixote"><line class="lc-pic-axis" x1="100" y1="14" x2="100" y2="108"/><text class="lc-pic-w" x="92" y="51" text-anchor="end">worship</text><rect class="lc-pic-sp" x="100" y="36" width="63" height="20"/><text class="lc-pic-w" x="108" y="95">thou</text><rect class="lc-pic-dq" x="42.8" y="80" width="57.2" height="20"/><text class="lc-pic-l" x="6" y="126">Don Quixote</text><text class="lc-pic-l" x="194" y="126" text-anchor="end">Sancho</text></svg>
+      <p>Each word pushes toward one of them</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="An S-shaped curve that turns a score into a probability between 0 and 1"><line class="lc-pic-guide" x1="22" y1="112" x2="182" y2="112"/><line class="lc-pic-guide" x1="22" y1="20" x2="182" y2="20"/><text class="lc-pic-l" x="16" y="117" text-anchor="end">0</text><text class="lc-pic-l" x="16" y="25" text-anchor="end">1</text><polyline class="lc-pic-curve" points="22,111.8 25.3,111.7 28.7,111.6 32,111.5 35.3,111.4 38.7,111.2 42,111 45.3,110.7 48.7,110.3 52,109.9 55.3,109.3 58.7,108.6 62,107.6 65.3,106.5 68.7,105 72,103.2 75.3,101 78.7,98.4 82,95.2 85.3,91.5 88.7,87.3 92,82.5 95.3,77.3 98.7,71.7 102,66 105.3,60.3 108.7,54.7 112,49.5 115.3,44.7 118.7,40.5 122,36.8 125.3,33.6 128.7,31 132,28.8 135.3,27 138.7,25.5 142,24.4 145.3,23.4 148.7,22.7 152,22.1 155.3,21.7 158.7,21.3 162,21 165.3,20.8 168.7,20.6 172,20.5 175.3,20.4 178.7,20.3 182,20.2"/><circle class="lc-pic-pt" cx="132.8" cy="28.3" r="6"/><text class="lc-pic-l" x="182" y="128" text-anchor="end">score</text><text class="lc-pic-l" x="22" y="11">probability</text></svg>
+      <p>The pushes add up to a probability</p>
+    </li>
+  </ul>
+  <p>Section 1 adds up the weights of a speech's words, section 2 draws the line that the sign of the sum makes between the two speakers, section 3 turns the sum into a probability, section 4 measures how wrong a probability is, section 5 learns the weights from the speeches, and section 6 adds the narrator as a third voice.</p>
+</div>
+
+<section id="weights">
+  <div class="prose">
+    <h2><span class="n">1</span>A weight per word</h2>
+    <p>A speech is a bag of words: a vector <i>x</i> that counts each word of the vocabulary in it, as each chapter was a vector of counts in the vector space model note. A <em>linear model</em> gives each word <i>i</i> a weight <i>w</i><sub><i>i</i></sub> and adds up the counts times their weights into a <em>score</em>:</p>
+    <div class="disp"><span class="nowrap"><i>s</i> = <i>w</i><sup class="t">T</sup><i>x</i></span> <span class="nowrap">= ∑<span class="lims"><span><i>V</i></span><span><i>i</i>=0</span></span> <i>w</i><sub><i>i</i></sub> <i>x</i><sub><i>i</i></sub>.</span></div>
+    <p>The sum starts at <i>i</i> = 0, with <i>x</i><sub>0</sub> = 1 in every speech, so that <i>w</i><sub>0</sub>, the <em>bias</em>, is the score of a speech with none of the vocabulary's words. Here a positive score means Sancho and a negative one Don Quixote. A word pushes toward whoever says it, not toward whoever it names: <i>sancho</i> pushes toward Don Quixote, who is the one that calls his squire by name. The weights in the figure were learned from the speeches of four chapters in every five (section 5 shows how), and its six speeches come from the fifth, which the model never saw. All 2,541 words of its vocabulary are kept, stopwords included: the <i>don't</i> and <i>I'll</i> that a search engine would drop are part of Sancho's voice.</p>
+  </div>
+
+  <div class="fig">
+    <div class="lc-panel" id="fig-words" role="group" aria-label="A speech's words with their weights"></div>
+    <div class="ro">
+      <div class="modes" id="fig-words-speeches" role="group" aria-label="Speech">
+        <button type="button" data-mode="0" aria-pressed="true">“Sinner that I am!”</button>
+        <button type="button" data-mode="1" aria-pressed="false">“It makes it worse…”</button>
+        <button type="button" data-mode="2" aria-pressed="false">“I don’t believe…”</button>
+        <button type="button" data-mode="3" aria-pressed="false">“Why dost thou…”</button>
+        <button type="button" data-mode="4" aria-pressed="false">“May God hear…”</button>
+        <button type="button" data-mode="5" aria-pressed="false">“I will bet…”</button>
+      </div>
+      <div id="fig-words-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Pick a speech, then click a word to take it out of the sum, or to put it back.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>The heaviest weights belong to the words with which each addresses the other: <i>worship</i> and <i>master</i> point to Sancho; <i>thou</i>, <i>friend</i> and <i>sancho</i> to Don Quixote. Words the model never met in training, such as <i>cabbages</i>, weigh 0. The last speech is Sancho's, but it addresses no one, and the small weights of its common words lean the other way: what this model reads, above all, is to whom a speech is spoken.</p>
+  </div>
+</section>
+
+<section id="boundary">
+  <div class="prose">
+    <h2><span class="n">2</span>A line between the two</h2>
+    <p>A speech is a point in a space with a dimension for each word, and the sign of its score splits that space in two: Sancho's side, where <i>s</i> &gt; 0, and Don Quixote's, where <i>s</i> &lt; 0. The <em>boundary</em> between them, where <i>s</i> = 0, is a hyperplane perpendicular to <i>w</i>, and <i>w</i> points toward the positive side. With two words the space is a plane and the boundary a line, which can be drawn.</p>
+    <p>Take two of the heaviest words: <i>worship</i>, from the <i>your worship</i> with which Sancho addresses his master, and <i>thou</i>, with which his master addresses him. Each speech sits at its counts of the two, and many share a point: 817 of the 1,232 contain neither word and pile up at (0, 0). With only these two words the score is <span class="nowrap"><i>s</i> = <i>w</i><sub>0</sub> + <i>w</i><sub>1</sub><i>x</i><sub>1</sub> + <i>w</i><sub>2</sub><i>x</i><sub>2</sub>.</span> In the figure, pick the direction of <i>w</i> and the bias, and see where the line falls.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-line" role="img" aria-label="The speeches piled at their counts of two words, and the line between the two speakers"></svg>
+    <div class="ro">
+      <p class="lc-ctl-name">Direction of <i>w</i></p>
+      <div class="modes" id="fig-line-dir" role="group" aria-label="Direction of w">
+        <button type="button" data-mode="both" aria-pressed="true">Both words</button>
+        <button type="button" data-mode="second" aria-pressed="false">Only “thou”</button>
+        <button type="button" data-mode="first" aria-pressed="false">Only “worship”</button>
+      </div>
+      <p class="lc-ctl-name">Bias <i>w</i><sub>0</sub></p>
+      <div class="modes" id="fig-line-bias" role="group" aria-label="Bias w0">
+        <button type="button" data-mode="-0.5" aria-pressed="true">−0.5</button>
+        <button type="button" data-mode="0" aria-pressed="false">0</button>
+        <button type="button" data-mode="0.5" aria-pressed="false">+0.5</button>
+      </div>
+      <div id="fig-line-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Pick a direction for <i>w</i> and a bias. Two speeches by Don Quixote, with <i>thou</i> 9 and 13 times, lie above the drawing.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>A pile goes whole to one side, so the pile at the origin, two speeches in three, is decided by the bias alone: whatever the line does elsewhere, it gets right either the 427 by Sancho there or the 390 by Don Quixote. No line on these two words gets more than 820 of the 1,232 speeches right, 67%. The model of section 1 does better because it reads every word: of the speeches from its unseen chapters that contain neither of these two, it names the speaker of 161 of 218, 74%.</p>
+  </div>
+</section>
+
+<section id="logistic">
+  <div class="prose">
+    <h2><span class="n">3</span>From a score to a probability</h2>
+    <p>A score says on which side of the line a speech falls, and how far from it, but not how sure to be. Three classic models compute the same score and differ only in the function θ they apply to it:</p>
+    <div class="disp"><span class="nowrap"><i>y</i> = θ(<i>s</i>)</span> <span class="nowrap">= θ(<i>w</i><sup class="t">T</sup><i>x</i>).</span></div>
+    <p>The <em>perceptron</em> keeps only the sign, a step from 0 for Don Quixote to 1 for Sancho: it decides, but says nothing of its confidence, and a jump has no slope to learn from. <em>Linear regression</em> keeps the score itself, any real number, which suits a quantity to predict, not a class. <em>Logistic regression</em> squeezes the score between 0 and 1 with the logistic function, smooth enough to learn from its slope, and reads the result as a probability:</p>
+    <div class="disp"><span class="nowrap"><i>h</i>(<i>x</i>) = θ(<i>w</i><sup class="t">T</sup><i>x</i>)</span> <span class="nowrap">= <span class="frac"><span>1</span><span>1 + <i>e</i><sup>−<i>w</i><sup class="t">T</sup><i>x</i></sup></span></span></span> <span class="nowrap">= P[<i>y</i> = 1 | <i>x</i>],</span></div>
+    <p>the probability that Sancho, <i>y</i> = 1, said the speech <i>x</i>, rather than Don Quixote, <i>y</i> = 0. Don Quixote's needs no second model: θ(−<i>s</i>) = 1 − θ(<i>s</i>), the same score with its sign turned. In the figure, drag the score and follow the three outputs.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-theta" role="group" aria-label="What three models do with the same score: a step, the identity and the logistic curve"></svg>
+    <div class="ro">
+      <div id="fig-theta-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Drag the red point along the score, or move it with the arrow keys.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Far from 0 the logistic flattens: a score of 4 or of 8 gives nearly the same certainty, near 1, as the step would. Near 0 it rises steeply, and there a small change in the score moves the probability most.</p>
+  </div>
+</section>
+
+<section id="loss">
+  <div class="prose">
+    <h2><span class="n">4</span>How wrong a probability is</h2>
+    <p>To learn its weights, the model needs one number that says how wrong its probabilities are on the speeches whose speaker it knows. For one speech, look at the probability <i>p</i> it gave the right speaker: <i>h</i>(<i>x</i>) if Sancho spoke, 1 − <i>h</i>(<i>x</i>) if Don Quixote did. A good model makes <i>p</i> large for all the speeches at once, that is, makes their product large; the logarithm turns that product into a sum, and a minus sign turns it into a loss to make small. Averaged over the <i>N</i> speeches, with natural logarithms, this is the <em>binary cross-entropy</em>:</p>
+    <div class="disp"><span class="nowrap">ℒ(<i>w</i>) = −<span class="frac"><span>1</span><span><i>N</i></span></span> ∑<span class="lims"><span><i>N</i></span><span><i>n</i>=1</span></span></span> <span class="nowrap">[<i>y</i><sub><i>n</i></sub> log <i>h</i>(<i>x</i><sub><i>n</i></sub>)</span> <span class="nowrap">+ (1 − <i>y</i><sub><i>n</i></sub>) log(1 − <i>h</i>(<i>x</i><sub><i>n</i></sub>))].</span></div>
+    <p>Since each <i>y</i><sub><i>n</i></sub> is 1 or 0, one of the two terms vanishes for every speech, and what is left is −log <i>p</i>. A right answer given with confidence, <i>p</i> near 1, costs almost nothing; a wrong one given with confidence, <i>p</i> near 0, costs without bound. In the figure, drag the probability <i>h</i> that the model gives Sancho, and choose who really spoke.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-loss" role="group" aria-label="The loss of one speech against the probability the model gives Sancho, for each of the two speakers"></svg>
+    <div class="ro">
+      <div class="modes" id="fig-loss-who" role="group" aria-label="Who spoke">
+        <button type="button" data-mode="sancho" aria-pressed="true">Sancho spoke</button>
+        <button type="button" data-mode="dq" aria-pressed="false">Don Quixote spoke</button>
+      </div>
+      <div id="fig-loss-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Drag the red point along <i>h</i>, or move it with the arrow keys, and switch who spoke.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>The two curves are mirror images: Sancho's loss is small where the model leans to him, Don Quixote's where it leans away. That is the asymmetry the loss is built for: hesitating costs a little, and being confidently wrong costs a lot.</p>
+  </div>
+</section>
+
+<section id="descent">
+  <div class="prose">
+    <h2><span class="n">5</span>Learning the weights</h2>
+    <p>Learning means finding the <i>w</i> that makes ℒ smallest. The loss depends on <i>w</i> through the probability <i>h</i>, which depends on the score <i>s</i>, which depends on <i>w</i>; by the chain rule, its derivative for one speech is the product of three links,</p>
+    <div class="disp"><span class="nowrap"><span class="frac"><span>∂ℒ<sub><i>n</i></sub></span><span>∂<i>h</i></span></span> = <span class="frac"><span><i>h</i> − <i>y</i></span><span><i>h</i>(1 − <i>h</i>)</span></span>,</span> <span class="nowrap"><span class="frac"><span>∂<i>h</i></span><span>∂<i>s</i></span></span> = <i>h</i>(1 − <i>h</i>),</span> <span class="nowrap"><span class="frac"><span>∂<i>s</i></span><span>∂<i>w</i></span></span> = <i>x</i>,</span></div>
+    <p>and the product is simply (<i>h</i> − <i>y</i>)<i>x</i>: the speech's error times the speech. Averaged over the speeches, it gives the gradient, which points to where the loss grows fastest, and <em>gradient descent</em> steps the other way, by a length set by the <em>learning rate</em> η:</p>
+    <div class="disp"><span class="nowrap">∇ℒ(<i>w</i>) = <span class="frac"><span>1</span><span><i>N</i></span></span> ∑<span class="lims"><span><i>N</i></span><span><i>n</i>=1</span></span> (<i>h</i>(<i>x</i><sub><i>n</i></sub>) − <i>y</i><sub><i>n</i></sub>) <i>x</i><sub><i>n</i></sub>,</span> <span class="nowrap"><i>w</i> ← <i>w</i> − η∇ℒ(<i>w</i>).</span></div>
+    <p>A speech that the model gives too much of Sancho pushes the weights of its words toward Don Quixote, and the reverse: the perceptron's rule, with a graded error instead of a yes or a no. The figure runs gradient descent on the plane of section 2, from <i>w</i> = 0, where every speech gets <i>h</i> = 0.5. Choose a learning rate and take steps.</p>
+  </div>
+
+  <div class="fig steps">
+    <div class="modes" id="fig-descent-eta" role="group" aria-label="Learning rate">
+      <button type="button" data-mode="0.5" aria-pressed="false">η = 0.5</button>
+      <button type="button" data-mode="5" aria-pressed="true">η = 5</button>
+      <button type="button" data-mode="16" aria-pressed="false">η = 16</button>
+    </div>
+    <svg id="fig-descent" role="img" aria-label="Gradient descent on the plane of two words: the line after each step, and the loss step by step"></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-descent-back">Back</button><button type="button" class="btn" id="fig-descent-next">Next</button><span class="count" id="fig-descent-count"></span><button type="button" class="btn" id="fig-descent-reset" hidden>Reset</button></div>
+    <div class="ro" id="fig-descent-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Pick a learning rate. Next takes a step, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>With η = 0.5 the line soon finds its place, but the weights, and with them the probabilities, grow slowly: after thirty steps the loss, 0.569, is still far above its lowest, 0.538. With η = 5 the loss comes within 0.01 of its lowest in seven steps. With η = 16 the steps jump past the minimum, back and forth: the gradient changes sign at nearly every step, the weights swing and grow, and the loss climbs above where it started. The model of section 1 learned its 2,542 weights the same way, every word a dimension of the same descent.</p>
+  </div>
+</section>
+
+<section id="softmax">
+  <div class="prose">
+    <h2><span class="n">6</span>Three voices: softmax</h2>
+    <p>The book has a third voice, the narrator's, who tells what the two do between their words. With <i>K</i> classes, <i>w</i> becomes a matrix with a row of weights per class, and each line gets a score from each row:</p>
+    <div class="disp"><span class="nowrap"><i>s</i><sub><i>k</i></sub> = <i>w</i><sub><i>k</i></sub><sup class="t">T</sup><i>x</i>,</span> <span class="nowrap"><i>p</i><sub><i>k</i></sub> = <span class="frac"><span><i>e</i><sup><i>s</i><sub><i>k</i></sub></sup></span><span>∑<sub><i>j</i>=1</sub><sup><i>K</i></sup> <i>e</i><sup><i>s</i><sub><i>j</i></sub></sup></span></span>.</span></div>
+    <p>The <em>softmax</em> turns the <i>K</i> scores into probabilities, all positive and adding up to 1, each the larger the further its score stands above the others; with <i>K</i> = 2 it is the logistic function again, applied to the difference of the two scores. Trained on the same chapters, with sentences of the narrator as a third class, the model names the voice of 76% of the lines from chapters it never saw. Pick a line to see its three scores and what the softmax makes of them.</p>
+  </div>
+
+  <div class="fig">
+    <div class="lc-panel" id="fig-voices" role="group" aria-label="A line's score and probability for each of the three voices"></div>
+    <div class="ro">
+      <div class="modes" id="fig-voices-lines" role="group" aria-label="Line">
+        <button type="button" data-mode="0" aria-pressed="true">“When Don Quixote perceived…”</button>
+        <button type="button" data-mode="1" aria-pressed="false">“What wouldst thou…”</button>
+        <button type="button" data-mode="2" aria-pressed="false">“Sinner that I am!”</button>
+        <button type="button" data-mode="3" aria-pressed="false">“Then you knew her?”</button>
+      </div>
+      <div id="fig-voices-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Pick a line from a chapter the model never saw.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>The table counts how the model reads the 445 lines of its unseen chapters:</p>
+    <div class="tbl lc-confusion">
+      <table>
+        <thead><tr><td></td><th scope="colgroup" colspan="3">The model says</th></tr><tr><th scope="col">Said by</th><th scope="col">Narrator</th><th scope="col">Don Quixote</th><th scope="col">Sancho</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Narrator</th><td class="hit">84</td><td>9</td><td>6</td></tr>
+          <tr><th scope="row">Don Quixote</th><td>28</td><td class="hit">117</td><td>30</td></tr>
+          <tr><th scope="row">Sancho</th><td>21</td><td>13</td><td class="hit">137</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Of its 107 mistakes, 43 take the knight and the squire for each other and 49 take a speech for the narrator. Those speeches run short, half of them 22 words or fewer against 40 for speeches in general, with few telling words, like the last line of the figure. The narrator's own sentences are misread only 15 times in 99.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">7</span>Summary</h2>
+    <p>The note's ideas in NumPy. <code>x</code> holds the speeches' counts, a row per speech with a first column of ones, <code>y</code> their labels, 1 for Sancho and 0 for Don Quixote, and <code>w</code> the weights, the bias first; for three voices, <code>w</code> has a row per class.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Score</div>
+      <div class="f"><i>s</i> = <i>w</i><sup class="t">T</sup><i>x</i></div>
+      <div class="c"><code>s = x @ w</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Logistic</div>
+      <div class="f"><i>h</i> = 1 / (1 + <i>e</i><sup>−<i>s</i></sup>)</div>
+      <div class="c"><code>h = 1 / (1 + np.exp(-s))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Binary cross-entropy</div>
+      <div class="f">ℒ = −(1/<i>N</i>) ∑ [<i>y</i> log <i>h</i> + (1 − <i>y</i>) log(1 − <i>h</i>)]</div>
+      <div class="c"><code>loss = -np.mean(<br>&nbsp;&nbsp;&nbsp;&nbsp;y * np.log(h)<br>&nbsp;&nbsp;&nbsp;&nbsp;+ (1 - y) * np.log(1 - h))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Gradient</div>
+      <div class="f">∇ℒ = (1/<i>N</i>) ∑ (<i>h</i> − <i>y</i>) <i>x</i></div>
+      <div class="c"><code>grad = x.T @ (h - y) / len(y)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Gradient descent</div>
+      <div class="f"><i>w</i> ← <i>w</i> − η∇ℒ</div>
+      <div class="c"><code>w -= eta * grad</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Softmax</div>
+      <div class="f"><i>p</i><sub><i>k</i></sub> = <i>e</i><sup><i>s</i><sub><i>k</i></sub></sup> / ∑<sub><i>j</i></sub> <i>e</i><sup><i>s</i><sub><i>j</i></sub></sup></div>
+      <div class="c"><code>s = x @ w.T<br>s -= s.max(1, keepdims=True)<br>e = np.exp(s)<br>p = e / e.sum(1, keepdims=True)</code></div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,251 @@
+---
+title: Clasificar documentos con modelos lineales
+module: Encoders de texto
+order: 4
+description: Cómo una suma ponderada de las palabras de un documento decide a cuál de dos clases pertenece, cómo la regresión logística convierte esa suma en una probabilidad y cómo el descenso de gradiente aprende los pesos.
+scripts:
+  - /assets/js/notes/natural-language-processing/linear-classifiers.js
+---
+<div class="prose">
+  <p>Buena parte del <i>Quijote</i> es el caballero y su escudero conversando. Si se tapan los nombres, un lector todavía puede adivinar muchas veces quién habla: uno trata al otro de <i>vuestra merced</i>, el otro le responde con <i>tú</i> y <i>amigo Sancho</i>. Un modelo lineal puede aprender a hacer lo mismo solo con las palabras. Le da un peso a cada palabra, suma los pesos de las palabras de un parlamento y lee el signo de la suma. Entrenado con los parlamentos que el libro atribuye a uno de los dos, acierta quién habla en el 76% de los parlamentos de capítulos que nunca vio:</p>
+  <ul class="asks">
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Una línea de diálogo, ¿Por qué lo dices, Sancho?, y los dos que pudieron decirla"><rect class="lc-pic-box" x="12" y="10" width="176" height="62" rx="12"/><text class="lc-pic-q" x="100" y="36" text-anchor="middle">«¿Por qué lo dices,</text><text class="lc-pic-q" x="100" y="59" text-anchor="middle">Sancho?»</text><rect class="lc-pic-dq" x="14" y="96" width="13" height="13" rx="2"/><text class="lc-pic-l" x="33" y="108">Don Quijote</text><rect class="lc-pic-sp" x="128" y="96" width="13" height="13" rx="2"/><text class="lc-pic-l" x="147" y="108">Sancho</text></svg>
+      <p>¿Cuál de los dos lo dijo?</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Dos palabras con sus pesos: merced empuja hacia Sancho, tú hacia don Quijote"><line class="lc-pic-axis" x1="100" y1="14" x2="100" y2="108"/><text class="lc-pic-w" x="92" y="51" text-anchor="end">merced</text><rect class="lc-pic-sp" x="100" y="36" width="34.9" height="20"/><text class="lc-pic-w" x="108" y="95">tú</text><rect class="lc-pic-dq" x="61.5" y="80" width="38.5" height="20"/><text class="lc-pic-l" x="6" y="126">Don Quijote</text><text class="lc-pic-l" x="194" y="126" text-anchor="end">Sancho</text></svg>
+      <p>Cada palabra empuja hacia uno de ellos</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Una curva en forma de S que convierte una puntuación en una probabilidad entre 0 y 1"><line class="lc-pic-guide" x1="22" y1="112" x2="182" y2="112"/><line class="lc-pic-guide" x1="22" y1="20" x2="182" y2="20"/><text class="lc-pic-l" x="16" y="117" text-anchor="end">0</text><text class="lc-pic-l" x="16" y="25" text-anchor="end">1</text><polyline class="lc-pic-curve" points="22,111.8 25.3,111.7 28.7,111.6 32,111.5 35.3,111.4 38.7,111.2 42,111 45.3,110.7 48.7,110.3 52,109.9 55.3,109.3 58.7,108.6 62,107.6 65.3,106.5 68.7,105 72,103.2 75.3,101 78.7,98.4 82,95.2 85.3,91.5 88.7,87.3 92,82.5 95.3,77.3 98.7,71.7 102,66 105.3,60.3 108.7,54.7 112,49.5 115.3,44.7 118.7,40.5 122,36.8 125.3,33.6 128.7,31 132,28.8 135.3,27 138.7,25.5 142,24.4 145.3,23.4 148.7,22.7 152,22.1 155.3,21.7 158.7,21.3 162,21 165.3,20.8 168.7,20.6 172,20.5 175.3,20.4 178.7,20.3 182,20.2"/><circle class="lc-pic-pt" cx="137.6" cy="26" r="6"/><text class="lc-pic-l" x="182" y="128" text-anchor="end">puntuación</text><text class="lc-pic-l" x="22" y="11">probabilidad</text></svg>
+      <p>Los empujes suman una probabilidad</p>
+    </li>
+  </ul>
+  <p>La sección 1 suma los pesos de las palabras de un parlamento, la sección 2 traza la recta que el signo de la suma marca entre los dos, la sección 3 convierte la suma en una probabilidad, la sección 4 mide cuán equivocada está una probabilidad, la sección 5 aprende los pesos a partir de los parlamentos y la sección 6 agrega al narrador como tercera voz.</p>
+</div>
+
+<section id="weights">
+  <div class="prose">
+    <h2><span class="n">1</span>Un peso por palabra</h2>
+    <p>Un parlamento es una bolsa de palabras: un vector <i>x</i> que cuenta cada palabra del vocabulario en él, como cada capítulo era un vector de conteos en el apunte del modelo de espacio vectorial. Un <em>modelo lineal</em> le da a cada palabra <i>i</i> un peso <i>w</i><sub><i>i</i></sub> y suma los conteos por sus pesos en una <em>puntuación</em>:</p>
+    <div class="disp"><span class="nowrap"><i>s</i> = <i>w</i><sup class="t">T</sup><i>x</i></span> <span class="nowrap">= ∑<span class="lims"><span><i>V</i></span><span><i>i</i>=0</span></span> <i>w</i><sub><i>i</i></sub> <i>x</i><sub><i>i</i></sub>.</span></div>
+    <p>La suma parte en <i>i</i> = 0, con <i>x</i><sub>0</sub> = 1 en todo parlamento, para que <i>w</i><sub>0</sub>, el <em>sesgo</em>, sea la puntuación de un parlamento sin ninguna palabra del vocabulario. Aquí una puntuación positiva significa Sancho y una negativa don Quijote. Una palabra empuja hacia quien la dice, no hacia quien nombra: <i>sancho</i> empuja hacia don Quijote, que es quien llama a su escudero por su nombre. Los pesos de la figura se aprendieron con los parlamentos de cuatro de cada cinco capítulos (la sección 5 muestra cómo), y sus seis parlamentos vienen del quinto, que el modelo nunca vio. Se conservan las 2544 palabras de su vocabulario, stopwords incluidas: el <i>tú</i> y el <i>os</i> que un buscador descartaría son parte de la voz de don Quijote, y el <i>vuestra</i>, de la de Sancho.</p>
+  </div>
+
+  <div class="fig">
+    <div class="lc-panel" id="fig-words" role="group" aria-label="Las palabras de un parlamento con sus pesos"></div>
+    <div class="ro">
+      <div class="modes" id="fig-words-speeches" role="group" aria-label="Parlamento">
+        <button type="button" data-mode="0" aria-pressed="true">«¡Pecador de mí!»</button>
+        <button type="button" data-mode="1" aria-pressed="false">«Peor es meneallo…»</button>
+        <button type="button" data-mode="2" aria-pressed="false">«Yo no creo…»</button>
+        <button type="button" data-mode="3" aria-pressed="false">«¿Por qué lo dices…?»</button>
+        <button type="button" data-mode="4" aria-pressed="false">«Dios lo oiga…»</button>
+        <button type="button" data-mode="5" aria-pressed="false">«Yo apostaré…»</button>
+      </div>
+      <div id="fig-words-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Elige un parlamento y luego haz clic en una palabra para sacarla de la suma, o para devolverla.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Los pesos más grandes son los de las palabras con que cada uno se dirige al otro: <i>merced</i> y <i>señor</i> apuntan a Sancho; <i>tú</i>, <i>amigo</i> y <i>sancho</i> a don Quijote. Las palabras que el modelo no vio al entrenarse, como <i>hideperro</i>, pesan 0. El último parlamento es de Sancho, pero no se dirige a nadie, y los pesos chicos de sus palabras comunes se inclinan al otro lado: lo que este modelo lee, sobre todo, es a quién se habla.</p>
+  </div>
+</section>
+
+<section id="boundary">
+  <div class="prose">
+    <h2><span class="n">2</span>Una recta entre los dos</h2>
+    <p>Un parlamento es un punto en un espacio con una dimensión por palabra, y el signo de su puntuación parte ese espacio en dos: el lado de Sancho, donde <i>s</i> &gt; 0, y el de don Quijote, donde <i>s</i> &lt; 0. La <em>frontera</em> entre ellos, donde <i>s</i> = 0, es un hiperplano perpendicular a <i>w</i>, y <i>w</i> apunta hacia el lado positivo. Con dos palabras el espacio es un plano y la frontera una recta, que se puede dibujar.</p>
+    <p>Toma dos de las palabras de más peso: <i>merced</i>, del <i>vuestra merced</i> con que Sancho trata a su amo, y <i>tú</i>, con que su amo lo trata a él. Cada parlamento queda en sus conteos de ambas, y muchos comparten un punto: 795 de los 1089 no tienen ninguna de las dos y se amontonan en (0, 0). Con solo estas dos palabras la puntuación es <span class="nowrap"><i>s</i> = <i>w</i><sub>0</sub> + <i>w</i><sub>1</sub><i>x</i><sub>1</sub> + <i>w</i><sub>2</sub><i>x</i><sub>2</sub>.</span> En la figura, elige la dirección de <i>w</i> y el sesgo, y mira dónde cae la recta.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-line" role="img" aria-label="Los parlamentos amontonados según sus conteos de dos palabras, y la recta entre los dos"></svg>
+    <div class="ro">
+      <p class="lc-ctl-name">Dirección de <i>w</i></p>
+      <div class="modes" id="fig-line-dir" role="group" aria-label="Dirección de w">
+        <button type="button" data-mode="both" aria-pressed="true">Las dos palabras</button>
+        <button type="button" data-mode="second" aria-pressed="false">Solo «tú»</button>
+        <button type="button" data-mode="first" aria-pressed="false">Solo «merced»</button>
+      </div>
+      <p class="lc-ctl-name">Sesgo <i>w</i><sub>0</sub></p>
+      <div class="modes" id="fig-line-bias" role="group" aria-label="Sesgo w0">
+        <button type="button" data-mode="-0.5" aria-pressed="true">−0.5</button>
+        <button type="button" data-mode="0" aria-pressed="false">0</button>
+        <button type="button" data-mode="0.5" aria-pressed="false">+0.5</button>
+      </div>
+      <div id="fig-line-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Elige una dirección para <i>w</i> y un sesgo.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Un montón queda entero de un lado, así que el del origen, siete de cada diez parlamentos, lo decide solo el sesgo: haga lo que haga la recta en el resto del plano, acierta los 362 de Sancho que hay ahí o los 433 de don Quijote. Ninguna recta sobre estas dos palabras acierta más de 686 de los 1089 parlamentos, el 63%. El modelo de la sección 1 lo hace mejor porque lee todas las palabras: de los parlamentos de sus capítulos no vistos que no tienen ninguna de estas dos, acierta quién habla en 136 de 192, el 71%.</p>
+  </div>
+</section>
+
+<section id="logistic">
+  <div class="prose">
+    <h2><span class="n">3</span>De una puntuación a una probabilidad</h2>
+    <p>Una puntuación dice de qué lado de la recta cae un parlamento, y a qué distancia, pero no cuánta seguridad tener. Tres modelos clásicos calculan la misma puntuación y solo difieren en la función θ que le aplican:</p>
+    <div class="disp"><span class="nowrap"><i>y</i> = θ(<i>s</i>)</span> <span class="nowrap">= θ(<i>w</i><sup class="t">T</sup><i>x</i>).</span></div>
+    <p>El <em>perceptrón</em> se queda solo con el signo, un escalón de 0 para don Quijote a 1 para Sancho: decide, pero no dice nada de su confianza, y un salto no tiene pendiente de la cual aprender. La <em>regresión lineal</em> conserva la puntuación misma, cualquier número real, lo que sirve para predecir una magnitud, no una clase. La <em>regresión logística</em> comprime la puntuación entre 0 y 1 con la función logística, lo bastante suave para aprender de su pendiente, y lee el resultado como una probabilidad:</p>
+    <div class="disp"><span class="nowrap"><i>h</i>(<i>x</i>) = θ(<i>w</i><sup class="t">T</sup><i>x</i>)</span> <span class="nowrap">= <span class="frac"><span>1</span><span>1 + <i>e</i><sup>−<i>w</i><sup class="t">T</sup><i>x</i></sup></span></span></span> <span class="nowrap">= P[<i>y</i> = 1 | <i>x</i>],</span></div>
+    <p>la probabilidad de que Sancho, <i>y</i> = 1, haya dicho el parlamento <i>x</i>, y no don Quijote, <i>y</i> = 0. La de don Quijote no necesita un segundo modelo: θ(−<i>s</i>) = 1 − θ(<i>s</i>), la misma puntuación con el signo dado vuelta. En la figura, arrastra la puntuación y sigue las tres salidas.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-theta" role="group" aria-label="Lo que hacen tres modelos con la misma puntuación: un escalón, la identidad y la curva logística"></svg>
+    <div class="ro">
+      <div id="fig-theta-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Arrastra el punto rojo a lo largo de la puntuación, o muévelo con las flechas.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Lejos de 0 la logística se aplana: una puntuación de 4 o de 8 da casi la misma certeza, cercana a 1, como la daría el escalón. Cerca de 0 sube con fuerza, y ahí un cambio chico en la puntuación es el que más mueve la probabilidad.</p>
+  </div>
+</section>
+
+<section id="loss">
+  <div class="prose">
+    <h2><span class="n">4</span>Cuán equivocada está una probabilidad</h2>
+    <p>Para aprender sus pesos, el modelo necesita un número que diga cuán equivocadas están sus probabilidades en los parlamentos cuyo autor conoce. Para un parlamento, mira la probabilidad <i>p</i> que le dio a quien de verdad habló: <i>h</i>(<i>x</i>) si habló Sancho, 1 − <i>h</i>(<i>x</i>) si habló don Quijote. Un buen modelo hace grande <i>p</i> en todos los parlamentos a la vez, es decir, hace grande su producto; el logaritmo convierte ese producto en una suma, y un signo menos la convierte en una pérdida que hay que achicar. Promediada sobre los <i>N</i> parlamentos, con logaritmos naturales, es la <em>entropía cruzada binaria</em>:</p>
+    <div class="disp"><span class="nowrap">ℒ(<i>w</i>) = −<span class="frac"><span>1</span><span><i>N</i></span></span> ∑<span class="lims"><span><i>N</i></span><span><i>n</i>=1</span></span></span> <span class="nowrap">[<i>y</i><sub><i>n</i></sub> log <i>h</i>(<i>x</i><sub><i>n</i></sub>)</span> <span class="nowrap">+ (1 − <i>y</i><sub><i>n</i></sub>) log(1 − <i>h</i>(<i>x</i><sub><i>n</i></sub>))].</span></div>
+    <p>Como cada <i>y</i><sub><i>n</i></sub> vale 1 o 0, en cada parlamento uno de los dos términos se anula, y lo que queda es −log <i>p</i>. Una respuesta correcta dada con confianza, <i>p</i> cerca de 1, casi no cuesta; una equivocada dada con confianza, <i>p</i> cerca de 0, cuesta sin límite. En la figura, arrastra la probabilidad <i>h</i> que el modelo le da a Sancho, y elige quién habló de verdad.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-loss" role="group" aria-label="La pérdida de un parlamento según la probabilidad que el modelo le da a Sancho, para cada uno de los dos"></svg>
+    <div class="ro">
+      <div class="modes" id="fig-loss-who" role="group" aria-label="Quién habló">
+        <button type="button" data-mode="sancho" aria-pressed="true">Habló Sancho</button>
+        <button type="button" data-mode="dq" aria-pressed="false">Habló don Quijote</button>
+      </div>
+      <div id="fig-loss-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Arrastra el punto rojo a lo largo de <i>h</i>, o muévelo con las flechas, y cambia quién habló.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Las dos curvas son reflejos una de la otra: la pérdida de Sancho es chica donde el modelo se inclina hacia él, la de don Quijote donde se inclina al revés. Esa es la asimetría para la que está hecha la pérdida: dudar cuesta un poco, y equivocarse con seguridad cuesta mucho.</p>
+  </div>
+</section>
+
+<section id="descent">
+  <div class="prose">
+    <h2><span class="n">5</span>Aprender los pesos</h2>
+    <p>Aprender es encontrar el <i>w</i> que hace más chica a ℒ. La pérdida depende de <i>w</i> a través de la probabilidad <i>h</i>, que depende de la puntuación <i>s</i>, que depende de <i>w</i>; por la regla de la cadena, su derivada para un parlamento es el producto de tres eslabones,</p>
+    <div class="disp"><span class="nowrap"><span class="frac"><span>∂ℒ<sub><i>n</i></sub></span><span>∂<i>h</i></span></span> = <span class="frac"><span><i>h</i> − <i>y</i></span><span><i>h</i>(1 − <i>h</i>)</span></span>,</span> <span class="nowrap"><span class="frac"><span>∂<i>h</i></span><span>∂<i>s</i></span></span> = <i>h</i>(1 − <i>h</i>),</span> <span class="nowrap"><span class="frac"><span>∂<i>s</i></span><span>∂<i>w</i></span></span> = <i>x</i>,</span></div>
+    <p>y el producto es simplemente (<i>h</i> − <i>y</i>)<i>x</i>: el error del parlamento por el parlamento. Promediado sobre los parlamentos da el gradiente, que apunta hacia donde la pérdida crece más rápido, y el <em>descenso de gradiente</em> da un paso en sentido contrario, de un largo que fija la <em>tasa de aprendizaje</em> η:</p>
+    <div class="disp"><span class="nowrap">∇ℒ(<i>w</i>) = <span class="frac"><span>1</span><span><i>N</i></span></span> ∑<span class="lims"><span><i>N</i></span><span><i>n</i>=1</span></span> (<i>h</i>(<i>x</i><sub><i>n</i></sub>) − <i>y</i><sub><i>n</i></sub>) <i>x</i><sub><i>n</i></sub>,</span> <span class="nowrap"><i>w</i> ← <i>w</i> − η∇ℒ(<i>w</i>).</span></div>
+    <p>Un parlamento al que el modelo le da demasiado de Sancho empuja los pesos de sus palabras hacia don Quijote, y al revés: la regla del perceptrón, con un error graduado en vez de un sí o un no. La figura corre el descenso de gradiente en el plano de la sección 2, desde <i>w</i> = 0, donde cada parlamento recibe <i>h</i> = 0.5. Elige una tasa de aprendizaje y da pasos.</p>
+  </div>
+
+  <div class="fig steps">
+    <div class="modes" id="fig-descent-eta" role="group" aria-label="Tasa de aprendizaje">
+      <button type="button" data-mode="0.5" aria-pressed="false">η = 0.5</button>
+      <button type="button" data-mode="5" aria-pressed="true">η = 5</button>
+      <button type="button" data-mode="16" aria-pressed="false">η = 16</button>
+    </div>
+    <svg id="fig-descent" role="img" aria-label="El descenso de gradiente en el plano de dos palabras: la recta tras cada paso, y la pérdida paso a paso"></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-descent-back">Atrás</button><button type="button" class="btn" id="fig-descent-next">Siguiente</button><span class="count" id="fig-descent-count"></span><button type="button" class="btn" id="fig-descent-reset" hidden>Reiniciar</button></div>
+    <div class="ro" id="fig-descent-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Elige una tasa de aprendizaje. Siguiente da un paso, Atrás retrocede. Teclas: <span class="nowrap">→ y ←</span>.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Con η = 0.5 la recta encuentra pronto su lugar, pero los pesos, y con ellos las probabilidades, crecen despacio: tras treinta pasos la pérdida, 0.644, sigue muy por encima de su mínimo, 0.615. Con η = 5 la pérdida queda a 0.01 de su mínimo en trece pasos. Con η = 16 los pasos saltan más allá del mínimo, de un lado a otro: el gradiente cambia de signo casi en cada paso, los pesos oscilan y crecen, y la pérdida sube por encima de donde empezó. El modelo de la sección 1 aprendió sus 2545 pesos del mismo modo, cada palabra una dimensión del mismo descenso.</p>
+  </div>
+</section>
+
+<section id="softmax">
+  <div class="prose">
+    <h2><span class="n">6</span>Tres voces: softmax</h2>
+    <p>El libro tiene una tercera voz, la del narrador, que cuenta lo que los dos hacen entre sus palabras. Con <i>K</i> clases, <i>w</i> se vuelve una matriz con una fila de pesos por clase, y cada línea recibe una puntuación de cada fila:</p>
+    <div class="disp"><span class="nowrap"><i>s</i><sub><i>k</i></sub> = <i>w</i><sub><i>k</i></sub><sup class="t">T</sup><i>x</i>,</span> <span class="nowrap"><i>p</i><sub><i>k</i></sub> = <span class="frac"><span><i>e</i><sup><i>s</i><sub><i>k</i></sub></sup></span><span>∑<sub><i>j</i>=1</sub><sup><i>K</i></sup> <i>e</i><sup><i>s</i><sub><i>j</i></sub></sup></span></span>.</span></div>
+    <p>La <em>softmax</em> convierte las <i>K</i> puntuaciones en probabilidades, todas positivas y que suman 1, cada una más grande cuanto más se destaca su puntuación sobre las demás; con <i>K</i> = 2 es otra vez la función logística, aplicada a la diferencia de las dos puntuaciones. Entrenado con los mismos capítulos, con oraciones del narrador como tercera clase, el modelo acierta la voz del 76% de las líneas de capítulos que nunca vio. Elige una línea para ver sus tres puntuaciones y lo que la softmax hace con ellas.</p>
+  </div>
+
+  <div class="fig">
+    <div class="lc-panel" id="fig-voices" role="group" aria-label="La puntuación y la probabilidad de una línea para cada una de las tres voces"></div>
+    <div class="ro">
+      <div class="modes" id="fig-voices-lines" role="group" aria-label="Línea">
+        <button type="button" data-mode="0" aria-pressed="true">«Cuando don Quijote vio…»</button>
+        <button type="button" data-mode="1" aria-pressed="false">«¿Qué quieres…?»</button>
+        <button type="button" data-mode="2" aria-pressed="false">«¡Pecador de mí!»</button>
+        <button type="button" data-mode="3" aria-pressed="false">«Luego, ¿conocístela tú?»</button>
+      </div>
+      <div id="fig-voices-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Elige una línea de un capítulo que el modelo nunca vio.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>La tabla cuenta cómo lee el modelo las 381 líneas de sus capítulos no vistos:</p>
+    <div class="tbl lc-confusion">
+      <table>
+        <thead><tr><td></td><th scope="colgroup" colspan="3">El modelo dice</th></tr><tr><th scope="col">Dicho por</th><th scope="col">Narrador</th><th scope="col">Don Quijote</th><th scope="col">Sancho</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Narrador</th><td class="hit">83</td><td>6</td><td>3</td></tr>
+          <tr><th scope="row">Don Quijote</th><td>11</td><td class="hit">94</td><td>44</td></tr>
+          <tr><th scope="row">Sancho</th><td>11</td><td>17</td><td class="hit">112</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>De sus 92 errores, 61 confunden al caballero con el escudero y 22 toman un parlamento por el narrador. Esos parlamentos son cortos, la mitad de 7 palabras o menos frente a 38 en los parlamentos en general, con pocas palabras que delaten a quien habla, como la última línea de la figura. Las oraciones del narrador se leen mal solo 9 veces de 92.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">7</span>Resumen</h2>
+    <p>Las ideas del apunte en NumPy. <code>x</code> guarda los conteos de los parlamentos, una fila por parlamento con una primera columna de unos, <code>y</code> sus etiquetas, 1 para Sancho y 0 para don Quijote, y <code>w</code> los pesos, el sesgo primero; para tres voces, <code>w</code> tiene una fila por clase.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Puntuación</div>
+      <div class="f"><i>s</i> = <i>w</i><sup class="t">T</sup><i>x</i></div>
+      <div class="c"><code>s = x @ w</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Logística</div>
+      <div class="f"><i>h</i> = 1 / (1 + <i>e</i><sup>−<i>s</i></sup>)</div>
+      <div class="c"><code>h = 1 / (1 + np.exp(-s))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Entropía cruzada binaria</div>
+      <div class="f">ℒ = −(1/<i>N</i>) ∑ [<i>y</i> log <i>h</i> + (1 − <i>y</i>) log(1 − <i>h</i>)]</div>
+      <div class="c"><code>loss = -np.mean(<br>&nbsp;&nbsp;&nbsp;&nbsp;y * np.log(h)<br>&nbsp;&nbsp;&nbsp;&nbsp;+ (1 - y) * np.log(1 - h))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Gradiente</div>
+      <div class="f">∇ℒ = (1/<i>N</i>) ∑ (<i>h</i> − <i>y</i>) <i>x</i></div>
+      <div class="c"><code>grad = x.T @ (h - y) / len(y)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Descenso de gradiente</div>
+      <div class="f"><i>w</i> ← <i>w</i> − η∇ℒ</div>
+      <div class="c"><code>w -= eta * grad</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Softmax</div>
+      <div class="f"><i>p</i><sub><i>k</i></sub> = <i>e</i><sup><i>s</i><sub><i>k</i></sub></sup> / ∑<sub><i>j</i></sub> <i>e</i><sup><i>s</i><sub><i>j</i></sub></sup></div>
+      <div class="c"><code>s = x @ w.T<br>s -= s.max(1, keepdims=True)<br>e = np.exp(s)<br>p = e / e.sum(1, keepdims=True)</code></div>
+    </div>
+  </div>
+</section>
