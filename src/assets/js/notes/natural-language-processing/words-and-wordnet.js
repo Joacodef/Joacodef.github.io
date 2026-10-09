@@ -2,7 +2,7 @@
 // the forms of a word, stems against lemmas, parts of speech and named entities, WordNet's kinds and parts, and the
 // senses of one spelling. These figures are made of words, so they are HTML, which wraps to the screen's width; each
 // item the reader can pick is a button, and the arrow keys move between them.
-import { tr, lang, modeButtons, roving } from "../../plane.js";
+import { tr, lang, modeButtons, roving, steadyHeight } from "../../plane.js";
 import { DATA } from "./words-and-wordnet-data.js";
 
 const other = lang === "es" ? "en" : "es";
@@ -19,22 +19,6 @@ function chip(w, count, cut, cls = "") {
   if (cut < w.length) word.append(h("span", "wd-end", w.slice(cut)));
   c.append(word, h("span", "wd-n", num(count)));
   return c;
-}
-// A panel whose content changes with its mode keeps the height of its tallest mode, so the page below never jumps.
-// The height is measured again when the fonts arrive and when the window changes width.
-function steadyHeight(panel, modes, show, current) {
-  const fit = () => {
-    const now = current();
-    panel.style.minHeight = "";
-    let tallest = 0;
-    for (const m of modes) { show(m); tallest = Math.max(tallest, panel.offsetHeight); }
-    panel.style.minHeight = `${tallest}px`;
-    show(now);
-  };
-  fit();
-  document.fonts?.ready.then(fit);
-  let width = window.innerWidth;
-  window.addEventListener("resize", () => { if (window.innerWidth !== width) { width = window.innerWidth; fit(); } });
 }
 const PAIRS = { decir: "say", hablar: "speak", caballero: "knight", hermoso: "fair", con: "with" };
 const PAIR_OF = Object.fromEntries(Object.entries(PAIRS).flatMap(([es, en]) => [[es, en], [en, es]]));

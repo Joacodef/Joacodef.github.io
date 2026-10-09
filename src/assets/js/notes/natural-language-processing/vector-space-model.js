@@ -2,18 +2,11 @@
 // Ormsby's translation on the English one): the pipeline on chapter I's first line, the chapters as points in the
 // plane of two words, a chapter's heaviest words under four weightings, a query ranked against the chapters by angle
 // or by distance, and a search over all the chapters by cosine or by BM25.
-import { el, tr, lang, createPlane, svgPoint, modeButtons, roving } from "../../plane.js";
+import { el, tr, lang, createPlane, svgPoint, modeButtons, roving, localNum as fmt } from "../../plane.js";
 import { DATA } from "./vector-space-model-data.js";
 
 const D = DATA[lang];
 const N = D.N;
-// Numbers as the page writes them: a decimal point in both languages; thousands with a comma in English and, from
-// five digits on, a non-breaking space in Spanish.
-function fmt(x, d = 0) {
-  const [i, f] = Math.abs(x).toFixed(d).split(".");
-  const big = lang === "es" ? (i.length > 4 ? i.replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0") : i) : i.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return `${x < 0 ? "−" : ""}${big}${f ? `.${f}` : ""}`;
-}
 const q = (w) => (lang === "es" ? `«${w}»` : `“${w}”`);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; };
 const label = (j) => D.chapters[j][0];

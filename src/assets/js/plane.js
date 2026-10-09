@@ -259,6 +259,13 @@ export function fmt(n, d = 2) {
   if (Object.is(r, -0)) r = 0;
   return (r < 0 ? MINUS : "") + String(Math.abs(r));
 }
+// A number as the notes' text writes it, with d decimals: a decimal point in both languages, a real minus sign, and
+// thousands set apart, with a comma in English and, from five digits on, a non-breaking space in Spanish.
+export function localNum(x, d = 0) {
+  const [i, f] = Math.abs(x).toFixed(d).split(".");
+  const big = lang === "es" ? (i.length > 4 ? i.replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0") : i) : i.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${x < 0 ? MINUS : ""}${big}${f ? `.${f}` : ""}`;
+}
 export const isRounded = (n) => Math.round(n * 100) !== n * 100;
 // Like fmt, but numbers below 1 keep `digits` significant digits, so an entry such as −0.000585 does not
 // round to 0. Below 0.001 it writes a power of ten.
@@ -529,6 +536,24 @@ export function roving(buttons, select) {
       select(j);
     });
   });
+}
+
+// A panel whose content changes with its mode keeps the height of its tallest mode, so the page below never jumps:
+// show(m) draws mode m, and current() gives the mode on show. The height is measured again when the fonts arrive and
+// when the window changes width.
+export function steadyHeight(panel, modes, show, current) {
+  const fit = () => {
+    const now = current();
+    panel.style.minHeight = "";
+    let tallest = 0;
+    for (const m of modes) { show(m); tallest = Math.max(tallest, panel.offsetHeight); }
+    panel.style.minHeight = `${tallest}px`;
+    show(now);
+  };
+  fit();
+  document.fonts?.ready.then(fit);
+  let width = window.innerWidth;
+  window.addEventListener("resize", () => { if (window.innerWidth !== width) { width = window.innerWidth; fit(); } });
 }
 
 // A number input that accepts whole numbers from min to max. Only such a number calls set(v); while the field
