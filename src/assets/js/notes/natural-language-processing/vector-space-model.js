@@ -180,6 +180,9 @@ function weightsFigure() {
       .sort((x, y) => y.v - x.v || x.w.localeCompare(y.w)).slice(0, 10);
     const top = rows[0].v || 1;
     panel.replaceChildren(h("p", "vs-head", `${chapterName(C.j)}: ${title(C.j)}`));
+    // What the bars measure: the words' weight under the weighting picked, named as its button is.
+    const weighting = { f: tr("count", "conteo"), tf: "tf", log: tr("log tf", "tf logarítmico"), tfidf: "tf-idf" }[mode];
+    panel.append(h("p", "vs-measure", tr(`weight: ${weighting}`, `peso: ${weighting}`)));
     const list = h("div", "vs-rows");
     const buttons = rows.map((r) => {
       const b = h("button", "vs-row");
@@ -334,9 +337,12 @@ function searchFigure() {
     chips.append(c);
   }
   const results = h("ol", "vs-results");
-  panel.append(h("p", "vs-head", tr("Query", "Consulta")), chips, h("p", "vs-head", tr("The first five chapters", "Los cinco primeros capítulos")), results);
+  // What the bars measure: the chapter's score under the ranking picked.
+  const measure = h("p", "vs-measure");
+  panel.append(h("p", "vs-head", tr("Query", "Consulta")), chips, h("p", "vs-head", tr("The first five chapters", "Los cinco primeros capítulos")), measure, results);
   function update() {
     params.style.visibility = mode === "bm25" ? "visible" : "hidden";
+    measure.textContent = mode === "bm25" ? tr("BM25 score", "puntuación BM25") : tr("cosine", "coseno");
     results.replaceChildren();
     if (!chosen.size) {
       out.innerHTML = `<p class="lbl">${tr("The query", "La consulta")}</p><p>${tr("Pick a word for the query.", "Elige una palabra para la consulta.")}</p>`;

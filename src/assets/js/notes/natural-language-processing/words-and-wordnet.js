@@ -125,6 +125,8 @@ function groupsFigure() {
     const t = DATA.totals[l];
     const grp = h("div", `wd-bars${l === lang ? "" : " faint"}`);
     grp.append(h("p", "wd-head", l === "es" ? tr("The Spanish original", "El original") : tr("The translation", "La traducción inglesa")));
+    // What the bars measure, named once, over the first book's bars.
+    if (l === lang) grp.append(h("p", "wd-measure", tr("vocabulary size", "tamaño del vocabulario")));
     for (const [k, en, es] of [["words", "different words", "palabras distintas"], ["stems", "stems", "stems"], ["lemmas", "lemmas", "lemas"]]) {
       const row = h("div", "wd-bar-row");
       row.append(h("span", "wd-bar-name", tr(en, es)));
@@ -277,7 +279,7 @@ function sensesFigure() {
     }
     cols.append(col);
   }
-  panel.append(cols);
+  panel.append(h("p", "wd-measure", tr("uses in the book", "usos en el libro")), cols);
   function select(i) {
     buttons.forEach((b, j) => { b.classList.toggle("on", j === i); b.tabIndex = j === i ? 0 : -1; b.setAttribute("aria-pressed", String(j === i)); });
     const [, k] = keys[i], c = S.counts[k];
