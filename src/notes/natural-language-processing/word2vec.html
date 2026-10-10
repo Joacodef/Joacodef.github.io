@@ -1,0 +1,249 @@
+---
+title: "word2vec: learning from a word's neighbors"
+module: Text encoders
+order: 5
+description: How a bag of words loses the order of a text, how n-grams and skip-grams keep some of it, and how word2vec learns a vector for every word by guessing the words around it, a training that negative sampling makes cheap.
+scripts:
+  - /assets/js/notes/natural-language-processing/word2vec.js
+---
+<div class="prose">
+  <p>The notes so far turned a text into counts: how many times each word appears in a chapter or a speech. Counts keep which words a text uses and lose the rest, including which words stand next to which. Yet the words around a word say a great deal about it. In 2013, Tomáš Mikolov and his colleagues at Google built word2vec on that idea. Its skip-gram model is a classifier trained to guess, from each word of a text, which words stand near it, and the text itself holds the answers: <i>Don Quixote</i> alone yields over a million and a half such examples. And nobody needs the guesses: what is kept is what the classifier learns along the way, a short list of numbers for every word, its vector.</p>
+  <ul class="asks">
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="The word giants between the words not and but"><path class="w2v-pic-link" d="M100,66 Q69,26 38,66"/><path class="w2v-pic-link" d="M100,66 Q131,26 162,66"/><rect class="w2v-pic-tok ctx" x="16.7" y="66" width="42.6" height="32" rx="6"/><text class="w2v-pic-w on" x="38" y="87.5" text-anchor="middle" style="font-size:16px">not</text><rect class="w2v-pic-tok tgt" x="67.3" y="66" width="65.4" height="32" rx="6"/><text class="w2v-pic-w on" x="100" y="87.5" text-anchor="middle" style="font-size:16px">giants</text><rect class="w2v-pic-tok ctx" x="140.7" y="66" width="42.6" height="32" rx="6"/><text class="w2v-pic-w on" x="162" y="87.5" text-anchor="middle" style="font-size:16px">but</text></svg>
+      <p>Each word, with the words around it</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="The probability of each word as a context of the word giants: the four words around it in the line get about a quarter each, namely the words windmills, but, are and not; the word we, outside its window, gets almost nothing"><text class="w2v-pic-w tgt" x="8" y="21" style="font-size:19px">giants</text><text class="w2v-pic-l" x="194" y="20" text-anchor="end" style="font-size:15px">probability</text><text class="w2v-pic-w" x="79" y="47.5" text-anchor="end" style="font-size:15px">windmills</text><rect class="w2v-pic-bar" x="86" y="36" width="90.1" height="13" rx="2"/><text class="w2v-pic-w" x="79" y="66" text-anchor="end" style="font-size:15px">but</text><rect class="w2v-pic-bar" x="86" y="54.5" width="88.4" height="13" rx="2"/><text class="w2v-pic-w" x="79" y="84.5" text-anchor="end" style="font-size:15px">are</text><rect class="w2v-pic-bar" x="86" y="73" width="87.5" height="13" rx="2"/><text class="w2v-pic-w" x="79" y="103" text-anchor="end" style="font-size:15px">not</text><rect class="w2v-pic-bar" x="86" y="91.5" width="84.1" height="13" rx="2"/><text class="w2v-pic-w" x="79" y="121.5" text-anchor="end" style="font-size:15px">we</text><rect class="w2v-pic-bar faint" x="86" y="110" width="4" height="13" rx="2"/></svg>
+      <p>A classifier guesses them from the word</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="A table with a row of three numbers per word; the row of the word giants is outlined"><rect class="w2v-pic-cell" x="6" y="8" width="62" height="17"/><rect class="w2v-pic-cell" x="68" y="8" width="43" height="17"/><rect class="w2v-pic-cell" x="111" y="8" width="43" height="17"/><rect class="w2v-pic-cell" x="154" y="8" width="43" height="17"/><rect class="w2v-pic-cell" x="6" y="29" width="62" height="17"/><rect class="w2v-pic-cell" x="68" y="29" width="43" height="17"/><rect class="w2v-pic-cell" x="111" y="29" width="43" height="17"/><rect class="w2v-pic-cell" x="154" y="29" width="43" height="17"/><rect class="w2v-pic-cell" x="6" y="50" width="62" height="34"/><rect class="w2v-pic-cell" x="68" y="50" width="43" height="34"/><rect class="w2v-pic-cell" x="111" y="50" width="43" height="34"/><rect class="w2v-pic-cell" x="154" y="50" width="43" height="34"/><text class="w2v-pic-w tgt" x="12" y="72" style="font-size:15px">giants</text><text class="w2v-pic-n tgt" x="89.5" y="71.5" text-anchor="middle" style="font-size:13px">0.17</text><text class="w2v-pic-n tgt" x="132.5" y="71.5" text-anchor="middle" style="font-size:13px">−1.99</text><text class="w2v-pic-n tgt" x="175.5" y="71.5" text-anchor="middle" style="font-size:13px">−0.43</text><rect class="w2v-pic-row" x="5" y="49" width="193" height="36" rx="3"/><rect class="w2v-pic-cell" x="6" y="88" width="62" height="17"/><rect class="w2v-pic-cell" x="68" y="88" width="43" height="17"/><rect class="w2v-pic-cell" x="111" y="88" width="43" height="17"/><rect class="w2v-pic-cell" x="154" y="88" width="43" height="17"/><rect class="w2v-pic-cell" x="6" y="109" width="62" height="17"/><rect class="w2v-pic-cell" x="68" y="109" width="43" height="17"/><rect class="w2v-pic-cell" x="111" y="109" width="43" height="17"/><rect class="w2v-pic-cell" x="154" y="109" width="43" height="17"/></svg>
+      <p>What is kept: a short vector per word</p>
+    </li>
+  </ul>
+  <p>Section 1 shows the order that counting words loses and how much of it n-grams, runs of words in a row, win back; section 2 pairs each word with its neighbors; section 3 builds the classifier that guesses them, with its two tables of vectors; section 4 makes its training cheap with negative sampling; and section 5 shows how the words it trains against are drawn. What the vectors end up capturing, and what other models do with them, is the subject of the next note.</p>
+</div>
+
+<section id="order">
+  <div class="prose">
+    <h2><span class="n">1</span>Order, and n-grams</h2>
+    <p>A bag of words <i>x</i> counts each word of the vocabulary in a text, as the note on linear models counted the words of each speech. Write <i>w</i><sub>1</sub>, …, <i>w</i><sub><i>N</i></sub> for the <i>N</i> words of a text in their order (in this note <i>w</i> is always a word, never a weight). Reordering them leaves every count as it was:</p>
+    <div class="disp"><span class="nowrap"><i>x</i>(<i>w</i><sub>1</sub>, …, <i>w</i><sub><i>N</i></sub>)</span> <span class="nowrap">= <i>x</i>(<i>w</i><sub>π(1)</sub>, …, <i>w</i><sub>π(<i>N</i>)</sub>)</span></div>
+    <p>for any permutation π of the words. At the windmills, in chapter VIII of part I of <i>Don Quixote</i>, Sancho warns his master: “what we see there are not giants but windmills”. Swap <i>giants</i> and <i>windmills</i> and the same words say what Don Quixote believes. The two orders give the same <i>x</i>, so a model that reads only <i>x</i> treats them alike, however well trained. For telling Sancho from Don Quixote, as the note on linear models did, that cost little, since <i>worship</i> and <i>thou</i> give each away wherever they stand; here the order is the whole point, since it decides which of the two things is denied.</p>
+    <p>Counting short runs of words keeps a little of the order. A run of <i>n</i> words in a row is an <em>n-gram</em>: slide a window <i>n</i> words wide along the text, one word per step, and at each position <i>i</i> it frames one,</p>
+    <div class="disp"><span class="nowrap"><i>g</i><sub><i>i</i></sub> = (<i>w</i><sub><i>i</i></sub>, <i>w</i><sub><i>i</i>+1</sub>, …, <i>w</i><sub><i>i</i>+<i>n</i>−1</sub>),</span> <span class="nowrap"><i>i</i> = 1, 2, …, <i>N</i> − <i>n</i> + 1,</span></div>
+    <p>one position for each word that still has <i>n</i> − 1 words after it. Runs of two words are called <em>bigrams</em> and runs of three, <em>trigrams</em>; with <i>n</i> = 1 the runs are the single words again. In the figure, pick the order of Sancho's line and the length <i>n</i>.</p>
+  </div>
+
+  <div class="fig">
+    <div class="w2v-panel" id="fig-order" role="group" aria-label="Sancho's line and its n-grams"></div>
+    <div class="ro">
+      <p class="w2v-ctl-name">Order</p>
+      <div class="modes" id="fig-order-order" role="group" aria-label="Order">
+        <button type="button" data-mode="sancho" aria-pressed="true">Sancho's</button>
+        <button type="button" data-mode="dq" aria-pressed="false">Don Quixote's</button>
+      </div>
+      <p class="w2v-ctl-name">Length <i>n</i></p>
+      <div class="modes" id="fig-order-n" role="group" aria-label="Length n">
+        <button type="button" data-mode="1" aria-pressed="true">1, words</button>
+        <button type="button" data-mode="2" aria-pressed="false">2, bigrams</button>
+        <button type="button" data-mode="3" aria-pressed="false">3, trigrams</button>
+      </div>
+      <div class="w2v-ro" id="fig-order-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Pick an order of the line and a length.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>The bigrams that tell the two orders apart are the one that starts at <i>not</i> and the two around <i>but</i>: “not giants” is Sancho's denial. The price is the vocabulary. Each different n-gram needs a coordinate of its own: the book has 143,448 different bigrams, almost ten times its 14,921 different words, and the longer the runs, the more of them come up only once:</p>
+    <div class="tbl w2v-ngrams">
+      <table>
+        <thead><tr><td></td><th scope="col">Different</th><th scope="col">Seen once</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Words</th><td>14,921</td><td>36.7%</td></tr>
+          <tr><th scope="row">Bigrams</th><td>143,448</td><td>71.5%</td></tr>
+          <tr><th scope="row">Trigrams</th><td>305,757</td><td>88.0%</td></tr>
+          <tr><th scope="row">4-grams</th><td>377,659</td><td>96.0%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>A coordinate seen once says little about the next text, where the same run of words will rarely come back: the order won back is paid for with the repetition that made counts informative.</p>
+  </div>
+</section>
+
+<section id="skip-grams">
+  <div class="prose">
+    <h2><span class="n">2</span>Skip-grams: a word and its neighbors</h2>
+    <p>word2vec keeps the window, but what it frames no longer becomes coordinates: it becomes examples to learn each word's vector from, so the vocabulary stays at the book's 14,921 words. The window centers on one word, the <em>target</em>, and pairs it with every word up to <i>m</i> positions away on either side, its <em>context</em> words:</p>
+    <div class="disp"><span class="nowrap">(<i>w</i><sub><i>i</i></sub>, <i>w</i><sub><i>i</i>+<i>j</i></sub>),</span> <span class="nowrap">0 &lt; |<i>j</i>| ≤ <i>m</i>,</span></div>
+    <p>a window of 2<i>m</i> + 1 words. A pair is written (<i>o</i>, <i>c</i>), <i>o</i> for the target and <i>c</i> for the context word, and <i>S</i> is the set of all the pairs, |<i>S</i>| their number. With <i>m</i> = 2, the word <i>see</i> pairs with <i>we</i> and <i>there</i> beside it and with <i>what</i> and <i>are</i> one word further off; the pair (<i>see</i>, <i>what</i>) leaves out <i>we</i>, the skipped word that gives skip-grams their name. In the figure, pick a target in Sancho's line and the radius <i>m</i>.</p>
+  </div>
+
+  <div class="fig">
+    <div class="w2v-panel" id="fig-pairs" role="group" aria-label="Sancho's line, a target word and the context words around it"></div>
+    <div class="ro">
+      <p class="w2v-ctl-name">Radius <i>m</i></p>
+      <div class="modes" id="fig-pairs-m" role="group" aria-label="Radius m">
+        <button type="button" data-mode="1" aria-pressed="false"><i>m</i> = 1</button>
+        <button type="button" data-mode="2" aria-pressed="true"><i>m</i> = 2</button>
+        <button type="button" data-mode="3" aria-pressed="false"><i>m</i> = 3</button>
+      </div>
+      <div class="w2v-ro" id="fig-pairs-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Click a word to make it the target, or move along the line with the arrow keys, and pick the radius.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Over the whole book, with <i>m</i> = 2, its <i>N</i> = 404,923 tokens give 1,619,686 pairs, the examples the opening promised. The original word2vec program does not use the same radius for every target: it draws one from 1 to <i>m</i> for each, so that nearer words make more pairs. The classifier of the next section ignores <i>j</i>: it guesses which words appear within <i>m</i> of the target, not where.</p>
+  </div>
+</section>
+
+<section id="model">
+  <div class="prose">
+    <h2><span class="n">3</span>Guessing the neighbors</h2>
+    <p>word2vec has two models, and this note follows the <em>skip-gram</em>, which guesses the neighbors from the word (the other, CBOW, for continuous bag of words, guesses the word from its neighbors). Given a target <i>o</i>, it gives every word <i>c</i> of the vocabulary a probability of appearing around it: it is the softmax of the note on linear models with one class per word, <i>V</i> classes in all:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>p</i>(<i>c</i> | <i>o</i>) = <span class="frac"><span><i>e</i><sup><i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub></sup></span><span>∑<sub><i>w</i>=1</sub><sup><i>V</i></sup> <i>e</i><sup><i>u</i><sub><i>w</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub></sup></span></span></span></div>
+    <p>Each word <i>w</i> has two vectors of <i>d</i> numbers, <i>v</i><sub><i>w</i></sub> for when it is the target and <i>u</i><sub><i>w</i></sub> for when it is a context word, so a pair (<i>o</i>, <i>c</i>) is scored by <span class="nowrap"><i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub>,</span> as a speech was scored in the note on linear models, weights times counts: <i>u</i><sub><i>c</i></sub> takes the place of class <i>c</i>'s weights and <i>v</i><sub><i>o</i></sub> that of the counts.</p>
+    <p>The vectors fill two tables, the weights of a small <em>network</em>: a model built in <em>layers</em>, each multiplying what it receives by a table of weights and often passing the result through a fixed function; here the first layer only multiplies and the second adds the softmax. <span class="nowrap"><i>W</i><sub>in</sub> ∈ ℝ<sup><i>V</i>×<i>d</i></sup>,</span> <i>V</i> rows of <i>d</i> numbers, holds the targets' vectors, row <i>o</i> being <i>v</i><sub><i>o</i></sub>; <span class="nowrap"><i>W</i><sub>out</sub> ∈ ℝ<sup><i>d</i>×<i>V</i></sup>,</span> <i>V</i> columns of <i>d</i> numbers, holds the context words' vectors, column <i>c</i> being <i>u</i><sub><i>c</i></sub>.</p>
+    <p>The target enters as a one-hot vector <i>x</i>, 1 at <i>o</i> and 0 everywhere else: the bag of words of a text one word long. The network's <em>forward pass</em> takes it through the two layers in three equations, which select a row, score every word and normalize the scores:</p>
+    <div class="disp"><span class="nowrap"><i>v</i><sub><i>o</i></sub> = <i>W</i><sub>in</sub><sup class="t">T</sup><i>x</i>,</span> <span class="nowrap"><i>z</i> = <i>W</i><sub>out</sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub>,</span> <span class="nowrap"><span class="hat lo"><i>y</i></span> = softmax(<i>z</i>).</span></div>
+    <p><i>W</i><sub>in</sub><sup class="t">T</sup><i>x</i> adds up the rows of <i>W</i><sub>in</sub> weighted by the entries of <i>x</i>, and a one-hot <i>x</i> keeps only row <i>o</i>: the vector passed from one layer to the next, the <em>hidden layer</em> (hidden because no data supplies it), is <i>v</i><sub><i>o</i></sub> itself. Each entry of <i>z</i> is one word's score, <span class="nowrap"><i>z</i><sub><i>c</i></sub> = <i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub>,</span> and <span class="hat lo"><i>y</i></span> holds <i>p</i>(<i>c</i> | <i>o</i>) for every word <i>c</i>. Training changes the numbers of both tables by gradient descent, as in the note on linear models, to make that note's −log <i>p</i> small, with <i>p</i> now the probability the model gave the word that really appeared; averaged over the pairs, it is the <em>cross-entropy</em></p>
+    <div class="disp"><span class="nowrap">ℒ = −<span class="frac"><span>1</span><span>|<i>S</i>|</span></span> ∑<span class="lims"><span></span><span>(<i>o</i>, <i>c</i>)∈<i>S</i></span></span> log <i>p</i>(<i>c</i> | <i>o</i>).</span></div>
+    <p>The figure shows a model trained this way on the 30 pairs of Sancho's line, with <i>V</i> = 9 words and vectors of <i>d</i> = 3 numbers. Pick a target and follow the three steps.</p>
+  </div>
+
+  <div class="fig">
+    <div class="w2v-panel" id="fig-net" role="group" aria-label="A skip-gram model's two tables: the row of the target, and every word's score and probability as its context"></div>
+    <div class="ro">
+      <div class="w2v-ro" id="fig-net-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Click a word in the first table to make it the target, or move through the table with the arrow keys.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>A word inside the line gives about a quarter to each of its four neighbors and much less to the other words. The guess that makes ℒ smallest gives each word the share of the target's pairs that it appears in, a quarter to each neighbor and nothing to the others, which on these pairs puts ℒ at 1.24; the model's loss, 1.29, comes close to it. Training keeps <i>W</i><sub>in</sub>: its rows are the vectors this note is after. The columns of <i>W</i><sub>out</sub> could serve as word vectors as well, and some systems add the two tables, but the original program saves only <i>W</i><sub>in</sub>.</p>
+    <p>On the collections of text, or <em>corpora</em>, that word2vec was made for, <i>d</i> is a few hundred and <i>V</i> hundreds of thousands or more. With a few hundred numbers for each of so many words, the model cannot store a separate guess for every word, as the figure's nine words nearly could with three: words with similar neighbors end up with similar numbers, which the next note looks at.</p>
+  </div>
+</section>
+
+<section id="negative-sampling">
+  <div class="prose">
+    <h2><span class="n">4</span>Negative sampling</h2>
+    <p>To normalize, every pair needs all <i>V</i> scores, 14,921 for this book alone, and the sum of their exponentials. <em>Negative sampling</em> does away with them. Take the pair (<i>giants</i>, <i>windmills</i>) of Sancho's line. Negative sampling sets beside it <i>k</i> pairs of <i>giants</i> with words drawn at random from the book, such as (<i>giants</i>, <i>habit</i>): the <em>negatives</em>. It labels the observed pair <span class="nowrap"><i>y</i> = 1</span> and the drawn ones <span class="nowrap"><i>y</i> = 0,</span> and asks of each pair only whether the text produced it, answering with the probability that it did, written P(+ | <i>o</i>, <i>c</i>): the logistic function of its score,</p>
+    <div class="disp hero-f"><span class="nowrap"><i>h</i> = P(+ | <i>o</i>, <i>c</i>)</span> <span class="nowrap">= σ(<i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub>),</span></div>
+    <p>where σ is the logistic function that the note on linear models wrote θ. With <i>S</i> now holding both kinds of pairs, the loss is that note's binary cross-entropy:</p>
+    <div class="disp"><span class="nowrap">ℒ = −<span class="frac"><span>1</span><span>|<i>S</i>|</span></span> ∑<span class="lims"><span></span><span>(<i>o</i>, <i>c</i>)∈<i>S</i></span></span></span> <span class="nowrap">[<i>y</i> log <i>h</i> + (1 − <i>y</i>) log(1 − <i>h</i>)].</span></div>
+    <p>Each observed pair now needs <i>k</i> + 1 scores instead of <i>V</i>. Mikolov and his colleagues introduced the method late in 2013, in their second paper on word2vec, where <i>k</i> from 5 to 20 worked on small corpora, while on large ones <i>k</i> could be as small as 2 to 5; the paper tested negative sampling on a billion words of news, with a vocabulary of 692,000 words. Each pair contributes the (<i>h</i> − <i>y</i>)<i>x</i> of the note on linear models, with the other vector as <i>x</i>: <span class="nowrap">(<i>h</i> − <i>y</i>)<i>v</i><sub><i>o</i></sub></span> to its context vector and <span class="nowrap">(<i>h</i> − <i>y</i>)<i>u</i><sub><i>c</i></sub></span> to the target's; averaged over the pairs, as that note averaged over the speeches, these give ℒ's gradient.</p>
+    <p>A dot product reads the same from either side, so the roles of section 3 can swap: seen from the target, negative sampling is logistic regression with <i>v</i><sub><i>o</i></sub> as the weights and each context vector as a point. The line where <span class="nowrap"><i>u</i><sup class="t">T</sup><i>v</i><sub><i>o</i></sub> = 0</span> splits the points whose pairs look real from the rest, and unlike in the note on linear models, the points move too.</p>
+    <p>The figure follows the pair (<i>giants</i>, <i>windmills</i>) and three words drawn from the book, with vectors of two numbers so that they can be plotted, each word labeled with its pair's <i>h</i>. It repeats that example's step ten times, with the same drawn words, to show where the steps lead; in training, each pair takes a single step per reading of the text, with new drawn words every time: <em>stochastic</em> gradient descent, one step per example rather than one on the average of all of them. Take steps of gradient descent with a learning rate <span class="nowrap">η = 1.2.</span></p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-ns" role="img" aria-label="The vectors of a target, the word seen with it and three drawn words"></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-ns-back">Back</button><button type="button" class="btn" id="fig-ns-next">Next</button><span class="count" id="fig-ns-count"></span><button type="button" class="btn" id="fig-ns-reset" hidden>Reset</button></div>
+    <div class="ro" id="fig-ns-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Next takes a step of gradient descent, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>The observed pair's <i>h</i> climbs toward 1 and the drawn words' fall toward 0: the target's vector turns toward <i>windmills</i> and away from the drawn words, which step away from it as well. Over the book, each of the 1,619,686 pairs takes such steps, and the vectors settle where all those pulls balance.</p>
+  </div>
+</section>
+
+<section id="negatives">
+  <div class="prose">
+    <h2><span class="n">5</span>How the negatives are drawn</h2>
+    <p>Which words to draw? If every word of the vocabulary had the same chance, more than a third of the draws would be words seen only once in the whole book: easy negatives, since such a word is almost never near any target, and rejecting it teaches the model little. Drawing by frequency instead would make a quarter of the draws one of the ten most frequent words, led by <i>the</i>, <i>and</i>, <i>to</i> and <i>of</i>, which appear next to any word and so do not help tell words apart either. word2vec draws by the frequency raised to a power β between 0 and 1:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>P</i>(<i>w</i>) = <span class="frac"><span><i>f</i>(<i>w</i>)<sup>β</sup></span><span>∑<sub><i>w</i>′</sub> <i>f</i>(<i>w</i>′)<sup>β</sup></span></span>,</span> <span class="nowrap">β = ¾,</span></div>
+    <p>where <i>f</i>(<i>w</i>) is the number of times <i>w</i> appears in the text it trains on (in the figure, the book) and the sum runs over the vocabulary; β = 0 gives every word the same chance and β = 1 draws by frequency. Mikolov and his colleagues chose ¾ by experiment, because it worked better than either. In the figure, pick β and draw ten words from the book; the faint curve is β = 1, kept for comparison.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-draw" role="img" aria-label="The probability of drawing each of the book's words against its rank"></svg>
+    <div class="ro">
+      <div class="modes" id="fig-draw-beta" role="group" aria-label="Power β">
+        <button type="button" data-mode="0" aria-pressed="false">β = 0</button>
+        <button type="button" data-mode="0.75" aria-pressed="true">β = ¾</button>
+        <button type="button" data-mode="1" aria-pressed="false">β = 1</button>
+      </div>
+      <div class="w2v-ro" id="fig-draw-out" aria-live="polite"></div>
+      <div class="w2v-draws" id="fig-draw-words"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Pick β and draw another ten words.</p>
+      <button type="button" class="btn" id="fig-draw-again">Draw again</button>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>On the log–log axes of the first note, the book's frequencies fall along a nearly straight line, Zipf's law. Raising them to the power β multiplies its slope by β, so β = ¾ makes the line flatter: frequent words lose and rare ones gain. The two lines cross at the words seen about 262 times, and <i>dulcinea</i>, at rank 172, is the first word that β = ¾ draws more often than β = 1 does. The word <i>the</i> falls from 5.1% of the draws to 1.7%, and <i>windmills</i>, seen 10 times, more than doubles its chance.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">6</span>Summary</h2>
+    <p>The note's ideas in NumPy. <code>words</code> is a text as a list of words; <code>w_in</code> and <code>w_out</code> are the two matrices, a row of <code>w_in</code> and a column of <code>w_out</code> per word of the vocabulary; <code>o</code> and <code>c</code> are words' positions in the vocabulary, and <code>neg</code> those of the <code>k</code> drawn words; <code>f</code> holds the words' counts, <code>beta</code> is β and <code>rng</code> is a NumPy random generator.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">n-grams</div>
+      <div class="f"><i>g</i><sub><i>i</i></sub> = (<i>w</i><sub><i>i</i></sub>, …, <i>w</i><sub><i>i</i>+<i>n</i>−1</sub>)</div>
+      <div class="c"><code>grams = list(zip(*[words[i:]<br>&nbsp;&nbsp;&nbsp;&nbsp;for i in range(n)]))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Skip-gram pairs</div>
+      <div class="f">(<i>w</i><sub><i>i</i></sub>, <i>w</i><sub><i>i</i>+<i>j</i></sub>), 0 &lt; |<i>j</i>| ≤ <i>m</i></div>
+      <div class="c"><code>N = len(words)<br>pairs = [(words[i], words[i + j])<br>&nbsp;&nbsp;&nbsp;&nbsp;for i in range(N)<br>&nbsp;&nbsp;&nbsp;&nbsp;for j in range(-m, m + 1)<br>&nbsp;&nbsp;&nbsp;&nbsp;if j and 0 &lt;= i + j &lt; N]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Select</div>
+      <div class="f"><i>v</i><sub><i>o</i></sub> = <i>W</i><sub>in</sub><sup class="t">T</sup><i>x</i></div>
+      <div class="c"><code>v_o = w_in[o]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Score</div>
+      <div class="f"><i>z</i> = <i>W</i><sub>out</sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub></div>
+      <div class="c"><code>z = v_o @ w_out</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Normalize</div>
+      <div class="f"><span class="hat lo"><i>y</i></span> = softmax(<i>z</i>)</div>
+      <div class="c"><code>e = np.exp(z - z.max())<br>y_hat = e / e.sum()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Cross-entropy of a pair</div>
+      <div class="f">−log <i>p</i>(<i>c</i> | <i>o</i>)</div>
+      <div class="c"><code>loss = -np.log(y_hat[c])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Negative sampling</div>
+      <div class="f"><i>h</i> = σ(<i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub>)</div>
+      <div class="c"><code>cs = np.r_[c, neg]<br>h = 1 / (1 + np.exp(<br>&nbsp;&nbsp;&nbsp;&nbsp;-(v_o @ w_out[:, cs])))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Binary cross-entropy</div>
+      <div class="f"><span class="nowrap">ℒ = −(1/|<i>S</i>|) ∑ [<i>y</i> log <i>h</i> +</span> <span class="nowrap">(1 − <i>y</i>) log(1 − <i>h</i>)]</span></div>
+      <div class="c"><code>y = np.r_[1, np.zeros(k)]<br>loss = -np.mean(y * np.log(h)<br>&nbsp;&nbsp;&nbsp;&nbsp;+ (1 - y) * np.log(1 - h))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Gradient</div>
+      <div class="f"><span class="nowrap">(1/|<i>S</i>|)(<i>h</i> − <i>y</i>)<i>v</i><sub><i>o</i></sub> for each <i>u</i><sub><i>c</i></sub></span><br><span class="nowrap">(1/|<i>S</i>|) ∑ (<i>h</i> − <i>y</i>)<i>u</i><sub><i>c</i></sub> for <i>v</i><sub><i>o</i></sub></span></div>
+      <div class="c"><code>g = (h - y) / len(cs)<br>grad_u = np.outer(v_o, g)<br>grad_v = w_out[:, cs] @ g</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Drawing the negatives</div>
+      <div class="f"><i>P</i>(<i>w</i>) = <i>f</i>(<i>w</i>)<sup>β</sup> / ∑<sub><i>w</i>′</sub> <i>f</i>(<i>w</i>′)<sup>β</sup></div>
+      <div class="c"><code>p = f ** beta<br>p = p / p.sum()<br>neg = rng.choice(len(f),<br>&nbsp;&nbsp;&nbsp;&nbsp;size=k, p=p)</code></div>
+    </div>
+  </div>
+</section>

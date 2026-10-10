@@ -1,0 +1,249 @@
+---
+title: "word2vec: aprender de las vecinas de una palabra"
+module: Encoders de texto
+order: 5
+description: Cómo una bolsa de palabras pierde el orden de un texto, cómo los n-gramas y los skip-gramas recuperan parte de él, y cómo word2vec aprende un vector para cada palabra adivinando las que la rodean, un entrenamiento que el muestreo negativo abarata.
+scripts:
+  - /assets/js/notes/natural-language-processing/word2vec.js
+---
+<div class="prose">
+  <p>Los apuntes anteriores convirtieron un texto en conteos: cuántas veces aparece cada palabra en un capítulo o en un parlamento. Los conteos guardan qué palabras usa un texto y pierden lo demás, incluido qué palabras van al lado de cuáles. Y sin embargo, las palabras que rodean a una palabra dicen mucho de ella. En 2013, Tomáš Mikolov y sus colegas de Google construyeron word2vec sobre esa idea. Su modelo skip-gram es un clasificador entrenado para adivinar, a partir de cada palabra de un texto, qué palabras tiene cerca, y las respuestas están en el propio texto: el <i>Quijote</i>, por sí solo, da más de un millón y medio de ejemplos así. Y nadie necesita esas predicciones: lo que se guarda es lo que el clasificador aprende en el camino, una lista corta de números para cada palabra, su vector.</p>
+  <ul class="asks">
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="La palabra gigantes entre las palabras son y sino"><path class="w2v-pic-link" d="M97.6,66 Q61.6,26 25.5,66"/><path class="w2v-pic-link" d="M97.6,66 Q134.8,26 172.1,66"/><rect class="w2v-pic-tok ctx" x="3.1" y="66" width="44.9" height="32" rx="6"/><text class="w2v-pic-w on" x="25.5" y="87.5" text-anchor="middle" style="font-size:16px">son</text><rect class="w2v-pic-tok tgt" x="56" y="66" width="83.3" height="32" rx="6"/><text class="w2v-pic-w on" x="97.6" y="87.5" text-anchor="middle" style="font-size:16px">gigantes</text><rect class="w2v-pic-tok ctx" x="147.2" y="66" width="49.7" height="32" rx="6"/><text class="w2v-pic-w on" x="172.1" y="87.5" text-anchor="middle" style="font-size:16px">sino</text></svg>
+      <p>Cada palabra, con las que la rodean</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="La probabilidad de cada palabra como contexto de la palabra gigantes: las cuatro palabras a su alrededor en la línea reciben cerca de un cuarto cada una, a saber, las palabras molinos, no, son y sino; la palabra viento, fuera de su ventana, recibe mucho menos"><text class="w2v-pic-w tgt" x="8" y="21" style="font-size:19px">gigantes</text><text class="w2v-pic-l" x="194" y="20" text-anchor="end" style="font-size:15px">probabilidad</text><text class="w2v-pic-w" x="77" y="47.5" text-anchor="end" style="font-size:15px">molinos</text><rect class="w2v-pic-bar" x="84" y="36" width="90.3" height="13" rx="2"/><text class="w2v-pic-w" x="77" y="66" text-anchor="end" style="font-size:15px">no</text><rect class="w2v-pic-bar" x="84" y="54.5" width="84.2" height="13" rx="2"/><text class="w2v-pic-w" x="77" y="84.5" text-anchor="end" style="font-size:15px">son</text><rect class="w2v-pic-bar" x="84" y="73" width="80.9" height="13" rx="2"/><text class="w2v-pic-w" x="77" y="103" text-anchor="end" style="font-size:15px">sino</text><rect class="w2v-pic-bar" x="84" y="91.5" width="76.2" height="13" rx="2"/><text class="w2v-pic-w" x="77" y="121.5" text-anchor="end" style="font-size:15px">viento</text><rect class="w2v-pic-bar faint" x="84" y="110" width="20.6" height="13" rx="2"/></svg>
+      <p>Un clasificador las adivina a partir de la palabra</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Una tabla con una fila de tres números por palabra; la fila de la palabra gigantes está marcada"><rect class="w2v-pic-cell" x="6" y="8" width="62" height="17"/><rect class="w2v-pic-cell" x="68" y="8" width="43" height="17"/><rect class="w2v-pic-cell" x="111" y="8" width="43" height="17"/><rect class="w2v-pic-cell" x="154" y="8" width="43" height="17"/><rect class="w2v-pic-cell" x="6" y="29" width="62" height="17"/><rect class="w2v-pic-cell" x="68" y="29" width="43" height="17"/><rect class="w2v-pic-cell" x="111" y="29" width="43" height="17"/><rect class="w2v-pic-cell" x="154" y="29" width="43" height="17"/><rect class="w2v-pic-cell" x="6" y="50" width="62" height="34"/><rect class="w2v-pic-cell" x="68" y="50" width="43" height="34"/><rect class="w2v-pic-cell" x="111" y="50" width="43" height="34"/><rect class="w2v-pic-cell" x="154" y="50" width="43" height="34"/><text class="w2v-pic-w tgt" x="12" y="72" style="font-size:15px">gigantes</text><text class="w2v-pic-n tgt" x="89.5" y="71.5" text-anchor="middle" style="font-size:13px">−1.60</text><text class="w2v-pic-n tgt" x="132.5" y="71.5" text-anchor="middle" style="font-size:13px">1.61</text><text class="w2v-pic-n tgt" x="175.5" y="71.5" text-anchor="middle" style="font-size:13px">1.00</text><rect class="w2v-pic-row" x="5" y="49" width="193" height="36" rx="3"/><rect class="w2v-pic-cell" x="6" y="88" width="62" height="17"/><rect class="w2v-pic-cell" x="68" y="88" width="43" height="17"/><rect class="w2v-pic-cell" x="111" y="88" width="43" height="17"/><rect class="w2v-pic-cell" x="154" y="88" width="43" height="17"/><rect class="w2v-pic-cell" x="6" y="109" width="62" height="17"/><rect class="w2v-pic-cell" x="68" y="109" width="43" height="17"/><rect class="w2v-pic-cell" x="111" y="109" width="43" height="17"/><rect class="w2v-pic-cell" x="154" y="109" width="43" height="17"/></svg>
+      <p>Lo que queda: un vector corto por palabra</p>
+    </li>
+  </ul>
+  <p>La sección 1 muestra el orden que se pierde al contar palabras y cuánto de él recuperan los n-gramas, los tramos de palabras seguidas; la sección 2 empareja cada palabra con sus vecinas; la sección 3 construye el clasificador que las adivina, con sus dos tablas de vectores; la sección 4 abarata su entrenamiento con el muestreo negativo, y la sección 5 muestra cómo se sortean las palabras contra las que entrena. Lo que los vectores terminan capturando, y lo que otros modelos hacen con ellos, es el tema del próximo apunte.</p>
+</div>
+
+<section id="order">
+  <div class="prose">
+    <h2><span class="n">1</span>El orden y los n-gramas</h2>
+    <p>Una bolsa de palabras <i>x</i> cuenta cada palabra del vocabulario en un texto, como el apunte de los modelos lineales contó las palabras de cada parlamento. Llamemos <i>w</i><sub>1</sub>, …, <i>w</i><sub><i>N</i></sub> a las <i>N</i> palabras de un texto, en su orden (en este apunte <i>w</i> es siempre una palabra, nunca un peso). Reordenarlas deja cada conteo como estaba:</p>
+    <div class="disp"><span class="nowrap"><i>x</i>(<i>w</i><sub>1</sub>, …, <i>w</i><sub><i>N</i></sub>)</span> <span class="nowrap">= <i>x</i>(<i>w</i><sub>π(1)</sub>, …, <i>w</i><sub>π(<i>N</i>)</sub>)</span></div>
+    <p>para cualquier permutación π de las palabras. Ante los molinos, en el capítulo VIII de la primera parte del <i>Quijote</i>, Sancho le advierte a su amo: «aquellos que allí se parecen no son gigantes, sino molinos de viento». Intercambia <i>gigantes</i> y <i>molinos de viento</i>, y las mismas palabras dicen lo que cree don Quijote. Los dos órdenes dan el mismo <i>x</i>, así que un modelo que solo lee <i>x</i> los trata igual, por bien entrenado que esté. Para distinguir a Sancho de don Quijote, como hizo el apunte de los modelos lineales, eso costaba poco, porque <i>merced</i> y <i>tú</i> delatan a cada uno estén donde estén; aquí el orden es lo esencial, porque decide cuál de las dos cosas se niega.</p>
+    <p>Contar tramos cortos de palabras conserva algo del orden. Un tramo de <i>n</i> palabras seguidas es un <em>n-grama</em>: desliza una ventana de <i>n</i> palabras por el texto, una palabra por paso, y en cada posición <i>i</i> la ventana encierra uno,</p>
+    <div class="disp"><span class="nowrap"><i>g</i><sub><i>i</i></sub> = (<i>w</i><sub><i>i</i></sub>, <i>w</i><sub><i>i</i>+1</sub>, …, <i>w</i><sub><i>i</i>+<i>n</i>−1</sub>),</span> <span class="nowrap"><i>i</i> = 1, 2, …, <i>N</i> − <i>n</i> + 1,</span></div>
+    <p>una posición por cada palabra que todavía tiene <i>n</i> − 1 palabras después. Los tramos de dos palabras se llaman <em>bigramas</em> y los de tres, <em>trigramas</em>, y con <i>n</i> = 1 los tramos vuelven a ser las palabras sueltas. En la figura, elige el orden de la línea de Sancho y el largo <i>n</i>.</p>
+  </div>
+
+  <div class="fig">
+    <div class="w2v-panel" id="fig-order" role="group" aria-label="La línea de Sancho y sus n-gramas"></div>
+    <div class="ro">
+      <p class="w2v-ctl-name">Orden</p>
+      <div class="modes" id="fig-order-order" role="group" aria-label="Orden">
+        <button type="button" data-mode="sancho" aria-pressed="true">El de Sancho</button>
+        <button type="button" data-mode="dq" aria-pressed="false">El de don Quijote</button>
+      </div>
+      <p class="w2v-ctl-name">Largo <i>n</i></p>
+      <div class="modes" id="fig-order-n" role="group" aria-label="Largo n">
+        <button type="button" data-mode="1" aria-pressed="true">1, palabras</button>
+        <button type="button" data-mode="2" aria-pressed="false">2, bigramas</button>
+        <button type="button" data-mode="3" aria-pressed="false">3, trigramas</button>
+      </div>
+      <div class="w2v-ro" id="fig-order-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Elige un orden de la línea y un largo.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Los bigramas que separan los dos órdenes son el que empieza en <i>son</i> y los dos que rodean a <i>sino</i>: «son gigantes» es lo que Sancho niega. El precio está en el vocabulario. Cada n-grama distinto necesita una coordenada propia: el libro tiene 152&nbsp;433 bigramas distintos, casi siete veces sus 22&nbsp;605 palabras distintas, y cuanto más largos los tramos, más de ellos aparecen una sola vez:</p>
+    <div class="tbl w2v-ngrams">
+      <table>
+        <thead><tr><td></td><th scope="col">Distintos</th><th scope="col">Vistos una vez</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Palabras</th><td>22&nbsp;605</td><td>48.7%</td></tr>
+          <tr><th scope="row">Bigramas</th><td>152&nbsp;433</td><td>75.1%</td></tr>
+          <tr><th scope="row">Trigramas</th><td>295&nbsp;186</td><td>89.8%</td></tr>
+          <tr><th scope="row">4-gramas</th><td>354&nbsp;497</td><td>96.6%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Una coordenada vista una vez dice poco del próximo texto, donde ese mismo tramo rara vez vuelve: el orden recuperado se paga con la repetición que hacía informativos los conteos.</p>
+  </div>
+</section>
+
+<section id="skip-grams">
+  <div class="prose">
+    <h2><span class="n">2</span>Skip-gramas: una palabra y sus vecinas</h2>
+    <p>word2vec conserva la ventana, pero lo que encierra ya no se convierte en coordenadas, sino en ejemplos con los que aprender el vector de cada palabra, así que el vocabulario se queda en las 22&nbsp;605 palabras del libro. La ventana se centra en una palabra, el <em>objetivo</em>, y la empareja con cada palabra que esté a <i>m</i> posiciones o menos a cada lado, sus palabras de <em>contexto</em>:</p>
+    <div class="disp"><span class="nowrap">(<i>w</i><sub><i>i</i></sub>, <i>w</i><sub><i>i</i>+<i>j</i></sub>),</span> <span class="nowrap">0 &lt; |<i>j</i>| ≤ <i>m</i>,</span></div>
+    <p>una ventana de 2<i>m</i> + 1 palabras. Un par se escribe (<i>o</i>, <i>c</i>), con <i>o</i> el objetivo y <i>c</i> la palabra de contexto, y <i>S</i> es el conjunto de todos los pares, |<i>S</i>| su número. Con <i>m</i> = 2, la palabra <i>allí</i> forma pares con <i>que</i> y <i>se</i>, a su lado, y con <i>aquellos</i> y <i>parecen</i>, una posición más lejos; el par (<i>allí</i>, <i>aquellos</i>) deja fuera la palabra <i>que</i>, y esa palabra saltada da su nombre a los skip-gramas. En la figura, elige un objetivo en la línea de Sancho y el radio <i>m</i>.</p>
+  </div>
+
+  <div class="fig">
+    <div class="w2v-panel" id="fig-pairs" role="group" aria-label="La línea de Sancho, una palabra objetivo y las palabras de contexto a su alrededor"></div>
+    <div class="ro">
+      <p class="w2v-ctl-name">Radio <i>m</i></p>
+      <div class="modes" id="fig-pairs-m" role="group" aria-label="Radio m">
+        <button type="button" data-mode="1" aria-pressed="false"><i>m</i> = 1</button>
+        <button type="button" data-mode="2" aria-pressed="true"><i>m</i> = 2</button>
+        <button type="button" data-mode="3" aria-pressed="false"><i>m</i> = 3</button>
+      </div>
+      <div class="w2v-ro" id="fig-pairs-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Haz clic en una palabra para que sea el objetivo, o recorre la línea con las flechas del teclado, y elige el radio.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>En todo el libro, con <i>m</i> = 2, sus <i>N</i> = 376&nbsp;597 tokens dan 1&nbsp;506&nbsp;382 pares, los ejemplos que prometía el comienzo. El programa original de word2vec no usa el mismo radio para todos los objetivos: sortea uno entre 1 y <i>m</i> para cada uno, así que las palabras más cercanas forman más pares. El clasificador de la sección siguiente ignora <i>j</i>: adivina qué palabras aparecen a <i>m</i> posiciones o menos del objetivo, no dónde.</p>
+  </div>
+</section>
+
+<section id="model">
+  <div class="prose">
+    <h2><span class="n">3</span>Adivinar las vecinas</h2>
+    <p>word2vec tiene dos modelos, y este apunte sigue el <em>skip-gram</em>, que adivina las vecinas a partir de la palabra (el otro, CBOW, por continuous bag of words, adivina la palabra a partir de sus vecinas). Dado un objetivo <i>o</i>, le da a cada palabra <i>c</i> del vocabulario una probabilidad de aparecer a su alrededor: es la softmax del apunte de los modelos lineales con una clase por palabra, <i>V</i> clases en total:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>p</i>(<i>c</i> | <i>o</i>) = <span class="frac"><span><i>e</i><sup><i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub></sup></span><span>∑<sub><i>w</i>=1</sub><sup><i>V</i></sup> <i>e</i><sup><i>u</i><sub><i>w</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub></sup></span></span></span></div>
+    <p>Cada palabra <i>w</i> tiene dos vectores de <i>d</i> números, <i>v</i><sub><i>w</i></sub> para cuando es el objetivo y <i>u</i><sub><i>w</i></sub> para cuando es una palabra de contexto, así que un par (<i>o</i>, <i>c</i>) se puntúa con <span class="nowrap"><i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub>,</span> como se puntuaba un parlamento en el apunte de los modelos lineales, pesos por conteos: <i>u</i><sub><i>c</i></sub> ocupa el lugar de los pesos de la clase <i>c</i>, y <i>v</i><sub><i>o</i></sub> el de los conteos.</p>
+    <p>Los vectores llenan dos tablas, los pesos de una pequeña <em>red</em>: un modelo hecho de <em>capas</em>, cada una de las cuales multiplica lo que recibe por una tabla de pesos y a menudo le aplica al resultado una función fija; aquí la primera capa solo multiplica y la segunda agrega la softmax. <span class="nowrap"><i>W</i><sub>in</sub> ∈ ℝ<sup><i>V</i>×<i>d</i></sup>,</span> <i>V</i> filas de <i>d</i> números, guarda los vectores de los objetivos, y su fila <i>o</i> es <i>v</i><sub><i>o</i></sub>; <span class="nowrap"><i>W</i><sub>out</sub> ∈ ℝ<sup><i>d</i>×<i>V</i></sup>,</span> <i>V</i> columnas de <i>d</i> números, guarda los de las palabras de contexto, y su columna <i>c</i> es <i>u</i><sub><i>c</i></sub>.</p>
+    <p>El objetivo entra como un vector one-hot <i>x</i>, con un 1 en <i>o</i> y 0 en todo lo demás: la bolsa de palabras de un texto de una sola palabra. La red lo lleva por sus dos capas con tres ecuaciones, sus <em>ecuaciones de transferencia</em>, que seleccionan una fila, puntúan cada palabra y normalizan las puntuaciones:</p>
+    <div class="disp"><span class="nowrap"><i>v</i><sub><i>o</i></sub> = <i>W</i><sub>in</sub><sup class="t">T</sup><i>x</i>,</span> <span class="nowrap"><i>z</i> = <i>W</i><sub>out</sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub>,</span> <span class="nowrap"><span class="hat lo"><i>y</i></span> = softmax(<i>z</i>).</span></div>
+    <p><i>W</i><sub>in</sub><sup class="t">T</sup><i>x</i> suma las filas de <i>W</i><sub>in</sub> ponderadas por las componentes de <i>x</i>, y un one-hot deja solo la fila <i>o</i>: el vector que pasa de una capa a la otra, la <em>capa oculta</em> (oculta porque ningún dato la entrega), es el propio <i>v</i><sub><i>o</i></sub>. Cada componente de <i>z</i> es la puntuación de una palabra, <span class="nowrap"><i>z</i><sub><i>c</i></sub> = <i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub>,</span> y <span class="hat lo"><i>y</i></span> guarda <i>p</i>(<i>c</i> | <i>o</i>) para cada palabra <i>c</i>. Entrenar cambia los números de ambas tablas por descenso de gradiente, como en el apunte de los modelos lineales, para achicar el −log <i>p</i> de ese apunte, con <i>p</i> ahora la probabilidad que el modelo le dio a la palabra que de verdad apareció; promediado sobre los pares, es la <em>entropía cruzada</em></p>
+    <div class="disp"><span class="nowrap">ℒ = −<span class="frac"><span>1</span><span>|<i>S</i>|</span></span> ∑<span class="lims"><span></span><span>(<i>o</i>, <i>c</i>)∈<i>S</i></span></span> log <i>p</i>(<i>c</i> | <i>o</i>).</span></div>
+    <p>La figura muestra un modelo entrenado así con los 42 pares de la línea de Sancho, con <i>V</i> = 12 palabras y vectores de <i>d</i> = 3 números. Elige un objetivo y sigue los tres pasos.</p>
+  </div>
+
+  <div class="fig">
+    <div class="w2v-panel" id="fig-net" role="group" aria-label="Las dos tablas de un modelo skip-gram: la fila del objetivo, y la puntuación y la probabilidad de cada palabra como su contexto"></div>
+    <div class="ro">
+      <div class="w2v-ro" id="fig-net-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Haz clic en una palabra de la primera tabla para que sea el objetivo, o recorre la tabla con las flechas del teclado.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Una palabra del interior de la línea le da cerca de un cuarto a cada una de sus cuatro vecinas y mucho menos a las demás. La predicción que minimiza ℒ le da a cada palabra la fracción de los pares del objetivo en que aparece, un cuarto a cada vecina y nada a las demás, y con estos pares deja ℒ en 1.28; la pérdida del modelo, 1.39, queda cerca. El entrenamiento conserva <i>W</i><sub>in</sub>: sus filas son los vectores que busca este apunte. Las columnas de <i>W</i><sub>out</sub> también podrían servir de vectores de palabras, y algunos sistemas suman ambas tablas, pero el programa original solo guarda <i>W</i><sub>in</sub>.</p>
+    <p>En las colecciones de texto, o <em>corpus</em>, para las que se hizo word2vec, <i>d</i> es de unos cientos y <i>V</i> de cientos de miles o más. Con unos cientos de números para cada una de tantas palabras, el modelo no puede guardar una predicción aparte para cada palabra, como casi lo logran las doce palabras de la figura con tres: las palabras con vecinas parecidas terminan con números parecidos, que es lo que estudia el próximo apunte.</p>
+  </div>
+</section>
+
+<section id="negative-sampling">
+  <div class="prose">
+    <h2><span class="n">4</span>Muestreo negativo</h2>
+    <p>Para normalizar, cada par necesita las <i>V</i> puntuaciones, 22&nbsp;605 solo para este libro, y la suma de sus exponenciales. El <em>muestreo negativo</em> se deshace de ellas. Toma el par (<i>gigantes</i>, <i>molinos</i>) de la línea de Sancho. El muestreo negativo pone a su lado <i>k</i> pares de <i>gigantes</i> con palabras sorteadas del libro, como (<i>gigantes</i>, <i>atrevió</i>): los <em>negativos</em>. Al par observado le da la etiqueta <span class="nowrap"><i>y</i> = 1;</span> a los sorteados, la etiqueta <span class="nowrap"><i>y</i> = 0.</span> De cada par solo pregunta si lo produjo el texto, y responde con la probabilidad de que así sea, escrita P(+ | <i>o</i>, <i>c</i>): la función logística de su puntuación,</p>
+    <div class="disp hero-f"><span class="nowrap"><i>h</i> = P(+ | <i>o</i>, <i>c</i>)</span> <span class="nowrap">= σ(<i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub>),</span></div>
+    <p>donde σ es la función logística que el apunte de los modelos lineales escribía θ. Con <i>S</i> conteniendo ahora ambos tipos de pares, la pérdida es la entropía cruzada binaria de ese apunte:</p>
+    <div class="disp"><span class="nowrap">ℒ = −<span class="frac"><span>1</span><span>|<i>S</i>|</span></span> ∑<span class="lims"><span></span><span>(<i>o</i>, <i>c</i>)∈<i>S</i></span></span></span> <span class="nowrap">[<i>y</i> log <i>h</i> + (1 − <i>y</i>) log(1 − <i>h</i>)].</span></div>
+    <p>Cada par observado necesita ahora <i>k</i> + 1 puntuaciones en lugar de <i>V</i>. Mikolov y sus colegas propusieron el método a fines de 2013, en su segundo artículo sobre word2vec, donde <i>k</i> entre 5 y 20 funcionó en corpus pequeños, mientras que en corpus grandes podía bastar con 2 a 5; el artículo probó el muestreo negativo con mil millones de palabras de noticias y un vocabulario de 692&nbsp;000 palabras. Cada par aporta el (<i>h</i> − <i>y</i>)<i>x</i> del apunte de los modelos lineales, con el otro vector en el lugar de <i>x</i>: <span class="nowrap">(<i>h</i> − <i>y</i>)<i>v</i><sub><i>o</i></sub></span> a su vector de contexto y <span class="nowrap">(<i>h</i> − <i>y</i>)<i>u</i><sub><i>c</i></sub></span> al del objetivo; promediados sobre los pares, como ese apunte promediaba sobre los parlamentos, dan el gradiente de ℒ.</p>
+    <p>Un producto punto se lee igual desde cualquiera de los dos lados, así que los papeles de la sección 3 pueden intercambiarse: visto desde el objetivo, el muestreo negativo es una regresión logística, con <i>v</i><sub><i>o</i></sub> como los pesos y cada vector de contexto como un punto. La recta donde <span class="nowrap"><i>u</i><sup class="t">T</sup><i>v</i><sub><i>o</i></sub> = 0</span> separa los puntos cuyos pares parecen reales del resto y, a diferencia del apunte de los modelos lineales, los puntos también se mueven.</p>
+    <p>La figura sigue el par (<i>gigantes</i>, <i>molinos</i>) y tres palabras sorteadas del libro, con vectores de dos números para poder dibujarlos, y cada palabra lleva la <i>h</i> de su par. En ella, el paso de ese ejemplo se repite diez veces, con las mismas palabras sorteadas, para mostrar adónde llevan los pasos; al entrenar, cada par da un solo paso en cada lectura del texto, siempre con palabras sorteadas nuevas: descenso de gradiente <em>estocástico</em>, un paso por ejemplo en vez de uno sobre el promedio de todos. Da pasos de descenso de gradiente con una tasa de aprendizaje <span class="nowrap">η = 1.2.</span></p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-ns" role="img" aria-label="Los vectores de un objetivo, de la palabra vista con él y de tres palabras sorteadas"></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-ns-back">Atrás</button><button type="button" class="btn" id="fig-ns-next">Siguiente</button><span class="count" id="fig-ns-count"></span><button type="button" class="btn" id="fig-ns-reset" hidden>Reiniciar</button></div>
+    <div class="ro" id="fig-ns-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Siguiente da un paso de descenso de gradiente, Atrás retrocede. Teclas: <span class="nowrap">→ y ←</span>.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>La <i>h</i> del par observado sube hacia 1 y la de las palabras sorteadas baja hacia 0: el vector del objetivo gira hacia <i>molinos</i> y se aleja de las sorteadas, que también se apartan de él. En el libro, cada uno de los 1&nbsp;506&nbsp;382 pares da pasos así, y los vectores se asientan donde todos esos tirones se equilibran.</p>
+  </div>
+</section>
+
+<section id="negatives">
+  <div class="prose">
+    <h2><span class="n">5</span>Cómo se sortean los negativos</h2>
+    <p>¿Qué palabras sortear? Si todas las palabras del vocabulario tuvieran la misma probabilidad, casi la mitad de los sorteos darían palabras vistas una sola vez en todo el libro: negativos fáciles, porque una palabra así casi nunca está cerca de ningún objetivo, y rechazarla le enseña poco al modelo. Sortear según la frecuencia, en cambio, haría que más de una cuarta parte de los sorteos fuera alguna de las diez palabras más frecuentes, encabezadas por <i>que</i>, <i>y</i>, <i>de</i> y <i>la</i>, que aparecen junto a cualquier otra y por eso tampoco ayudan a distinguir unas de otras. word2vec sortea según la frecuencia elevada a una potencia β entre 0 y 1:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>P</i>(<i>w</i>) = <span class="frac"><span><i>f</i>(<i>w</i>)<sup>β</sup></span><span>∑<sub><i>w</i>′</sub> <i>f</i>(<i>w</i>′)<sup>β</sup></span></span>,</span> <span class="nowrap">β = ¾,</span></div>
+    <p>donde <i>f</i>(<i>w</i>) es el número de veces que <i>w</i> aparece en el texto con que se entrena (en la figura, el libro) y la suma recorre el vocabulario; β = 0 le da a cada palabra la misma probabilidad y β = 1 sortea según la frecuencia. Mikolov y sus colegas eligieron ¾ por experimento, porque funcionó mejor que β = 0 y que β = 1. En la figura, elige β y sortea diez palabras del libro; la curva tenue, β = 1, queda como referencia.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-draw" role="img" aria-label="La probabilidad de sortear cada palabra del libro contra su rango"></svg>
+    <div class="ro">
+      <div class="modes" id="fig-draw-beta" role="group" aria-label="Potencia β">
+        <button type="button" data-mode="0" aria-pressed="false">β = 0</button>
+        <button type="button" data-mode="0.75" aria-pressed="true">β = ¾</button>
+        <button type="button" data-mode="1" aria-pressed="false">β = 1</button>
+      </div>
+      <div class="w2v-ro" id="fig-draw-out" aria-live="polite"></div>
+      <div class="w2v-draws" id="fig-draw-words"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Elige β y sortea otras diez palabras.</p>
+      <button type="button" class="btn" id="fig-draw-again">Sortear otra vez</button>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>En los ejes log–log del primer apunte, las frecuencias del libro caen cerca de una recta, la ley de Zipf. Elevarlas a la potencia β multiplica su pendiente por β, así que β = ¾ deja la recta más plana: las palabras frecuentes pierden y las raras ganan. Las dos rectas se cruzan en las palabras vistas unas 170 veces, y <i>modo</i>, en el rango 231, es la primera palabra que β = ¾ sortea más que β = 1. La palabra <i>que</i>, la más frecuente, baja del 5.4% de los sorteos al 1.6%, y <i>molinos</i>, que aparece 12 veces, casi duplica su probabilidad.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">6</span>Resumen</h2>
+    <p>Las ideas del apunte en NumPy. <code>words</code> es un texto como lista de palabras; <code>w_in</code> y <code>w_out</code> son las dos matrices, con una fila de <code>w_in</code> y una columna de <code>w_out</code> por palabra del vocabulario; <code>o</code> y <code>c</code> son posiciones de palabras en el vocabulario, y <code>neg</code> las de las <code>k</code> palabras sorteadas; <code>f</code> tiene los conteos de las palabras, <code>beta</code> es β y <code>rng</code> es un generador aleatorio de NumPy.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">n-gramas</div>
+      <div class="f"><i>g</i><sub><i>i</i></sub> = (<i>w</i><sub><i>i</i></sub>, …, <i>w</i><sub><i>i</i>+<i>n</i>−1</sub>)</div>
+      <div class="c"><code>grams = list(zip(*[words[i:]<br>&nbsp;&nbsp;&nbsp;&nbsp;for i in range(n)]))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Pares de skip-gramas</div>
+      <div class="f">(<i>w</i><sub><i>i</i></sub>, <i>w</i><sub><i>i</i>+<i>j</i></sub>), 0 &lt; |<i>j</i>| ≤ <i>m</i></div>
+      <div class="c"><code>N = len(words)<br>pairs = [(words[i], words[i + j])<br>&nbsp;&nbsp;&nbsp;&nbsp;for i in range(N)<br>&nbsp;&nbsp;&nbsp;&nbsp;for j in range(-m, m + 1)<br>&nbsp;&nbsp;&nbsp;&nbsp;if j and 0 &lt;= i + j &lt; N]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Seleccionar la fila</div>
+      <div class="f"><i>v</i><sub><i>o</i></sub> = <i>W</i><sub>in</sub><sup class="t">T</sup><i>x</i></div>
+      <div class="c"><code>v_o = w_in[o]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Puntuar</div>
+      <div class="f"><i>z</i> = <i>W</i><sub>out</sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub></div>
+      <div class="c"><code>z = v_o @ w_out</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Normalizar</div>
+      <div class="f"><span class="hat lo"><i>y</i></span> = softmax(<i>z</i>)</div>
+      <div class="c"><code>e = np.exp(z - z.max())<br>y_hat = e / e.sum()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Entropía cruzada de un par</div>
+      <div class="f">−log <i>p</i>(<i>c</i> | <i>o</i>)</div>
+      <div class="c"><code>loss = -np.log(y_hat[c])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Muestreo negativo</div>
+      <div class="f"><i>h</i> = σ(<i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub>)</div>
+      <div class="c"><code>cs = np.r_[c, neg]<br>h = 1 / (1 + np.exp(<br>&nbsp;&nbsp;&nbsp;&nbsp;-(v_o @ w_out[:, cs])))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Entropía cruzada binaria</div>
+      <div class="f"><span class="nowrap">ℒ = −(1/|<i>S</i>|) ∑ [<i>y</i> log <i>h</i> +</span> <span class="nowrap">(1 − <i>y</i>) log(1 − <i>h</i>)]</span></div>
+      <div class="c"><code>y = np.r_[1, np.zeros(k)]<br>loss = -np.mean(y * np.log(h)<br>&nbsp;&nbsp;&nbsp;&nbsp;+ (1 - y) * np.log(1 - h))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Gradiente</div>
+      <div class="f"><span class="nowrap">(1/|<i>S</i>|)(<i>h</i> − <i>y</i>)<i>v</i><sub><i>o</i></sub> para cada <i>u</i><sub><i>c</i></sub></span><br><span class="nowrap">(1/|<i>S</i>|) ∑ (<i>h</i> − <i>y</i>)<i>u</i><sub><i>c</i></sub> para <i>v</i><sub><i>o</i></sub></span></div>
+      <div class="c"><code>g = (h - y) / len(cs)<br>grad_u = np.outer(v_o, g)<br>grad_v = w_out[:, cs] @ g</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Sortear los negativos</div>
+      <div class="f"><i>P</i>(<i>w</i>) = <i>f</i>(<i>w</i>)<sup>β</sup> / ∑<sub><i>w</i>′</sub> <i>f</i>(<i>w</i>′)<sup>β</sup></div>
+      <div class="c"><code>p = f ** beta<br>p = p / p.sum()<br>neg = rng.choice(len(f),<br>&nbsp;&nbsp;&nbsp;&nbsp;size=k, p=p)</code></div>
+    </div>
+  </div>
+</section>

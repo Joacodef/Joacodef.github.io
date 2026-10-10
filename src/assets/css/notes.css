@@ -719,6 +719,137 @@ button.lc-row:hover { background: var(--paper); }
 .lc-pic-curve { fill: none; stroke: var(--blue); stroke-width: 2.6; stroke-linejoin: round; }
 .lc-pic-pt { fill: var(--red); }
 
+/* word2vec (natural language processing): figures made of words, in panels like those of the earlier notes, a plane
+   of two-number vectors and a log-log chart. The target is carmine, the context words it was seen with green, the
+   drawn words ink; lines and curves are blue. */
+.w2v-panel { background: var(--card); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+:is(.w2v-head, .w2v-key, .w2v-n, .w2v-step, .w2v-tab, .w2v-axname, .w2v-keytext, .w2v-lab, .w2v-marklab, .w2v-faintlab, .w2v-pic-l) { font-family: var(--sans); font-weight: 400; font-variation-settings: normal; }
+.w2v-head { font-size: 0.86rem; line-height: 1.4; color: var(--ink-2); margin: 0 0 0.5rem; }
+.w2v-line + .w2v-head, .w2v-key + .w2v-head, .w2v-chips + .w2v-head { margin-top: 1rem; }
+/* The line: each word a tile; in figure 2 the tiles are buttons, the target filled carmine and its context green. The
+   word picked has a thicker ink border, as a pressed mode button has, leaving the outline to keyboard focus. */
+.w2v-line { display: flex; flex-wrap: wrap; gap: 6px; }
+.w2v-tok { font: inherit; font-family: var(--serif); font-size: 1.08rem; line-height: 1.35; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 0.1em 0.5em 0.16em; margin: 0; }
+button.w2v-tok { cursor: pointer; }
+button.w2v-tok:not(.tgt):not(.ctx):hover { border-color: var(--ink-3); }
+.w2v-tok.tgt { background: var(--red); border-color: var(--red); color: var(--card); }
+.w2v-tok.ctx { background: var(--ok); border-color: var(--ok); color: var(--card); }
+.w2v-tok.on { border: 2px solid var(--ink); padding: calc(0.1em - 1px) calc(0.5em - 1px) calc(0.16em - 1px); }
+/* Chips: the line's n-grams, a target's pairs, the words drawn. An n-gram the other order lacks is outlined in carmine. */
+.w2v-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.w2v-chip { display: inline-flex; align-items: baseline; gap: 0.45em; padding: 0.1em 0.55em 0.16em; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); }
+.w2v-chip.only { border-color: var(--red); }
+.w2v-chip.only .w2v-w { color: var(--red); }
+.w2v-w { font-family: var(--serif); font-size: 1.02rem; line-height: 1.35; color: var(--ink); }
+.w2v-w .tgt { color: var(--red); }
+.w2v-w .ctx { color: var(--ok); }
+.w2v-n { font-size: 0.75rem; color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.w2v-n i { font-family: var(--serif); font-size: 0.95rem; }
+/* A key: each item a swatch and the words that name its class, which wrap beside the swatch, never under it. */
+.w2v-key { font-size: 0.78rem; line-height: 1.4; color: var(--ink-2); margin: 0.55rem 0 0; display: flex; flex-wrap: wrap; gap: 0.2em 1.1em; }
+.w2v-ki { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 0.4em; align-items: start; }
+.w2v-sw { display: block; width: 0.8em; height: 0.8em; border-radius: 2px; margin-top: 0.3em; }
+.w2v-sw.tgt { background: var(--red); }
+.w2v-sw.ctx { background: var(--ok); }
+.w2v-sw.only { background: var(--paper); border: 1.5px solid var(--red); box-sizing: border-box; }
+/* A readout whose height is kept steady holds its last margin inside, so its tallest state is no taller than the
+   height kept. */
+.w2v-ro { display: flow-root; }
+.ro .w2v-ctl-name { font-family: var(--sans); font-weight: 400; font-variation-settings: normal; font-size: 0.86rem; line-height: 1.4; color: var(--ink-2); margin: 0 0 0.35rem; }
+.ro .w2v-ctl-name i { font-family: var(--serif); font-size: 1.05rem; }
+.ro .modes + .w2v-ctl-name { margin-top: 0.2rem; }
+/* Figure 3: two tables, one row per word. The first, W_in with x, has the buttons that pick the target, whose row is
+   carmine and outlined; the second writes each column u of W_out across its word's row, with the score and the
+   probability, green for the words around the target in the line. */
+.w2v-step { font-size: 0.86rem; line-height: 1.4; color: var(--ink-2); margin: 1.1rem 0 0.4rem; }
+.w2v-head + .w2v-step { margin-top: 0.6rem; }
+.w2v-stepn { display: inline-grid; place-items: center; width: 1.35em; height: 1.35em; border-radius: 50%; border: 1px solid var(--ink-3); font-size: 0.78rem; margin: 0 0.4em 0 0; }
+.w2v-step i, .w2v-tab i { font-family: var(--serif); font-size: 1.05em; }
+.w2v-tab { display: grid; gap: 1px; font-size: 0.85rem; }
+.w2v-trow { font: inherit; color: var(--ink); background: transparent; border: 1px solid transparent; border-radius: 6px; width: 100%; display: grid; align-items: center; column-gap: 0.45em; padding: 0.08rem 0.4rem; text-align: right; margin: 0; }
+.w2v-in .w2v-trow { grid-template-columns: minmax(4.4em, 1fr) 1.4em repeat(3, 3.3em); }
+.w2v-out .w2v-trow { grid-template-columns: minmax(4.4em, 5.2em) repeat(3, 2.95em) 3.3em minmax(3em, 1fr) 2.6em; column-gap: 0.4em; }
+button.w2v-trow { cursor: pointer; }
+button.w2v-trow:hover { background: var(--paper); }
+.w2v-trow.on { border-color: var(--ink); background: var(--paper); }
+.w2v-thead { color: var(--ink-2); font-size: 0.78rem; padding-bottom: 0.15rem; border-bottom: 1px solid var(--rule); border-radius: 0; margin-bottom: 2px; }
+.w2v-thead > span { line-height: 1.3; }
+.w2v-word { text-align: left; font-family: var(--serif); font-size: 1rem; line-height: 1.3; }
+.w2v-thead .w2v-word { font-family: var(--sans); font-size: inherit; }
+.w2v-span3 { grid-column: span 3; text-align: center; }
+.w2v-num, .w2v-x, .w2v-z, .w2v-p { font-variant-numeric: tabular-nums; }
+.w2v-x { text-align: center; color: var(--ink-3); }
+.w2v-in .w2v-trow:not(.tgt) .w2v-num { color: var(--ink-3); }
+.w2v-trow.tgt .w2v-word, .w2v-trow.tgt .w2v-x, .w2v-trow.tgt .w2v-num { color: var(--red); }
+.w2v-trow.tgt .w2v-x { font-weight: 600; }
+.w2v-pbar { grid-column: span 2; text-align: left; padding-left: 0.2em; }
+.w2v-bartrack { display: block; height: 10px; background: var(--paper-2); border-radius: 2px; overflow: hidden; }
+.w2v-bar { display: block; height: 100%; min-width: 1px; background: var(--ink-3); opacity: 0.55; }
+.w2v-trow.ctx .w2v-bar { background: var(--ok); opacity: 1; }
+@media (max-width: 480px) {
+  .w2v-tab { font-size: 0.74rem; }
+  .w2v-trow { column-gap: 0.25em; padding: 0.06rem 0.2rem; }
+  .w2v-word { font-size: 0.92rem; }
+  .w2v-in .w2v-trow { grid-template-columns: minmax(4em, 1fr) 1em repeat(3, 3.05em); }
+  .w2v-out .w2v-trow { grid-template-columns: minmax(4em, 1fr) repeat(3, 3.05em) 3.05em; grid-template-areas: "word u1 u2 u3 z" "bar bar bar bar p"; row-gap: 2px; column-gap: 0.3em; }
+  .w2v-out .w2v-word { grid-area: word; }
+  .w2v-out .w2v-z { grid-area: z; }
+  .w2v-out .w2v-bartrack { grid-area: bar; }
+  .w2v-out .w2v-p { grid-area: p; }
+  .w2v-out .w2v-thead { grid-template-areas: "word u u u z" "bar bar bar bar bar"; }
+  .w2v-out .w2v-thead .w2v-span3 { grid-area: u; }
+  .w2v-out .w2v-thead .w2v-pbar { grid-area: bar; text-align: right; padding: 0; }
+}
+/* Figure 4: the plane of two-number vectors. The shaded side of the blue line through the origin is where a context
+   vector makes its pair look real; trails show where each vector has been. */
+.w2v-frame { fill: none; stroke: var(--ink-3); stroke-width: 1; }
+.w2v-zero { stroke: var(--rule); stroke-width: 1.2; }
+.w2v-half { fill: var(--ok); fill-opacity: 0.09; }
+.w2v-bound { stroke: var(--blue); stroke-width: 2; stroke-linecap: round; }
+.w2v-v { stroke: var(--red); stroke-width: 3; stroke-linecap: round; }
+.w2v-vhead { fill: var(--red); }
+.w2v-pt.ctx { fill: var(--ok); }
+.w2v-pt.neg { fill: var(--ink-2); }
+.w2v-trail { fill: none; stroke-width: 1.4; stroke-linejoin: round; stroke-dasharray: 2 3; opacity: 0.7; }
+.w2v-trail.tgt { stroke: var(--red); }
+.w2v-trail.ctx { stroke: var(--ok); }
+.w2v-trail.neg { stroke: var(--ink-3); }
+.w2v-lab { font-size: 15px; paint-order: stroke; stroke: var(--card); stroke-width: 4px; stroke-linejoin: round; }
+.w2v-lab.tgt { fill: var(--red); }
+.w2v-lab.ctx { fill: var(--ok); }
+.w2v-lab.neg { fill: var(--ink-2); }
+.w2v-axname { fill: var(--ink-2); font-size: 15px; }
+.w2v-axname .m { font-family: var(--serif); font-style: italic; font-size: 18px; }
+.w2v-keytext { fill: var(--ink-2); font-size: 14px; }
+@media (max-width: 560px) { .w2v-lab, .w2v-axname { font-size: 19px; } .w2v-axname .m { font-size: 21px; } .w2v-keytext { font-size: 17px; } }
+/* Figure 5: the chart of the draws. The chosen β's curve is blue, the book's frequencies faint behind it and named
+   under its tail; two words marked on the curve, quoted, as note 1 labels its words; the words drawn as ink chips. */
+.w2v-curve { fill: none; stroke: var(--blue); stroke-width: 2.4; stroke-linejoin: round; }
+.w2v-curve.faint { stroke: var(--ink-3); stroke-width: 1.6; opacity: 0.55; }
+.w2v-mark { fill: var(--blue); stroke: var(--card); stroke-width: 2; }
+.w2v-marklab, .w2v-faintlab { font-size: 15px; paint-order: stroke; stroke: var(--card); stroke-width: 4px; stroke-linejoin: round; }
+.w2v-marklab { fill: var(--ink); }
+.w2v-faintlab { fill: var(--ink-3); }
+@media (max-width: 560px) { .w2v-marklab, .w2v-faintlab { font-size: 19px; } }
+.w2v-draws { margin-top: 1rem; }
+.w2v-chip.neg .w2v-w { color: var(--ink); }
+/* The opening's small pictures. pictures.mjs sets each text's size inline, since it lays the pictures out from
+   those sizes. */
+.w2v-pic-tok { fill: var(--paper); stroke: var(--rule); stroke-width: 1.2; }
+.w2v-pic-tok.tgt { fill: var(--red); stroke: var(--red); }
+.w2v-pic-tok.ctx { fill: var(--ok); stroke: var(--ok); }
+.w2v-pic-w { fill: var(--ink); font-family: var(--serif); }
+.w2v-pic-w.on { fill: var(--card); }
+.w2v-pic-w.tgt { fill: var(--red); }
+.w2v-pic-link { fill: none; stroke: var(--blue); stroke-width: 1.6; }
+.w2v-pic-l { fill: var(--ink-2); }
+.w2v-pic-bar { fill: var(--ok); }
+.w2v-pic-bar.faint { fill: var(--ink-3); opacity: 0.55; }
+.w2v-pic-cell { fill: var(--paper); stroke: var(--rule); stroke-width: 1; }
+.w2v-pic-row { fill: none; stroke: var(--red); stroke-width: 1.6; }
+.w2v-pic-n { fill: var(--ink-3); font-family: var(--sans); font-variant-numeric: tabular-nums; }
+.w2v-pic-n.tgt { fill: var(--red); }
+
 /* Figures stepped through like slides, with Next and Back. The controls sit right under the drawing, so the growing
    text never moves them, and new text appears only at the bottom, with earlier text dimmed above it. */
 .fig.steps { grid-template-areas: "draw" "ctl" "ro" "foot"; }
