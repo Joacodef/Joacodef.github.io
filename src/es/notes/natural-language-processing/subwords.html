@@ -1,0 +1,266 @@
+---
+title: Subwords y fastText
+module: Encoders de texto
+order: 7
+description: Cómo una palabra para la que ninguna tabla tiene vector recibe uno a partir de sus subwords, tramos de tres a seis caracteres que comparte con otras palabras, cómo los entrena fastText, con qué se entrenaron los vectores que se descargan, y cuándo compartir letras es compartir significado.
+scripts:
+  - /assets/js/notes/natural-language-processing/subwords.js
+---
+<div class="prose">
+  <p>El apunte de los vectores de palabras le dio un vector a cada una de las 5259 palabras que el <i>Quijote</i> usa al menos cinco veces; las otras 17&nbsp;346 palabras distintas, tres cuartas partes, se quedaron sin ninguno. El apunte de las leyes del texto mostró que cada nuevo tramo de texto trae palabras nunca vistas, y ni siquiera la tabla de dos millones de palabras de fastText, entrenada con la web, tiene 2845 de las palabras que deja fuera la tabla del libro, ni en minúsculas ni con mayúscula. Cuando Sancho, creyendo muerto a su amo, lo llora como «acometedor de peligros, sufridor de afrentas» (capítulo LII de la primera parte), ninguna de las dos tablas tiene una fila para <i>acometedor</i>: el libro usa la palabra solo dos veces, y la tabla de la web no la tiene. Quien la lee por primera vez la entiende igual, porque está hecha de pedazos que conoce. Este apunte arma el vector de una palabra con sus pedazos, tramos de unos pocos caracteres que comparten otras palabras, para que hasta una palabra que ninguna tabla tiene reciba uno; y muestra el precio: palabras que solo comparten una terminación quedan juntas.</p>
+  <ul class="asks">
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="La palabra acometedor, sin fila en la tabla del libro ni en la de la web"><text class="sw-pic-w red" x="100" y="30" text-anchor="middle" style="font-size:17px">acometedor</text><rect class="sw-pic-slot" x="8" y="52" width="88" height="64" rx="6"/><text class="sw-pic-l" x="52" y="76" text-anchor="middle" style="font-size:12.5px">la tabla</text><text class="sw-pic-l" x="52" y="91" text-anchor="middle" style="font-size:12.5px">del libro</text><text class="sw-pic-n" x="52" y="108" text-anchor="middle" style="font-size:12.5px">sin fila</text><rect class="sw-pic-slot" x="104" y="52" width="88" height="64" rx="6"/><text class="sw-pic-l" x="148" y="76" text-anchor="middle" style="font-size:12.5px">la tabla</text><text class="sw-pic-l" x="148" y="91" text-anchor="middle" style="font-size:12.5px">de la web</text><text class="sw-pic-n" x="148" y="108" text-anchor="middle" style="font-size:12.5px">sin fila</text></svg>
+      <p>Una palabra que ninguna tabla tiene</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Una flecha para acometedor, armada con sus 34 subwords, a 28 grados de la flecha de acometer"><path class="sw-pic-arc" d="M80,112 A50,50 0 0 0 74.1,88.5"/><line class="sw-pic-v blue" x1="30" y1="112" x2="150.1" y2="48.2"/><path class="sw-pic-head blue" d="M158,43.9 L150.6,53.5 L146,44.7 Z"/><line class="sw-pic-v red" x1="30" y1="112" x2="168" y2="112"/><path class="sw-pic-head red" d="M177,112 L166,107 L166,117 Z"/><text class="sw-pic-w blue" x="176" y="36" text-anchor="end" style="font-size:15px">acometer</text><text class="sw-pic-w red" x="177" y="128" text-anchor="end" style="font-size:15px">acometedor</text><text class="sw-pic-l" x="88" y="104" style="font-size:12.5px">28°</text><text class="sw-pic-l" x="12" y="20" style="font-size:12.5px">armada con sus</text><text class="sw-pic-l" x="12" y="35" style="font-size:12.5px">34 subwords</text></svg>
+      <p>Un vector con sus pedazos</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="manteamientos, cuya palabra más cercana es movimientos, con la que comparte mientos, mientras manta llega en el puesto 982"><text class="sw-pic-w" x="100" y="34" text-anchor="middle" style="font-size:17px">mantea<tspan class="sw-pic-end">mientos</tspan></text><text class="sw-pic-l" x="100" y="62" text-anchor="middle" style="font-size:12.5px">su palabra más cercana</text><text class="sw-pic-w" x="100" y="86" text-anchor="middle" style="font-size:17px">movi<tspan class="sw-pic-end">mientos</tspan></text><text class="sw-pic-l" x="100" y="118" text-anchor="middle" style="font-size:12.5px">manta llega en el puesto 982</text></svg>
+      <p>La grafía puede engañar</p>
+    </li>
+  </ul>
+  <p>La sección 1 cuenta las palabras sin vector; la sección 2 corta una palabra en subwords, y la sección 3 arma su vector con los de ellos; la sección 4 muestra por qué unos pocos símbolos escriben cualquier palabra, y cómo fastText le pone tope a las filas de sus subwords; la sección 5 los entrena; la sección 6 es fastText y sus tablas publicadas; y la sección 7 muestra cuándo un subword compartido es un significado compartido.</p>
+</div>
+
+<section id="oov">
+  <div class="prose">
+    <h2><span class="n">1</span>Palabras sin vector</h2>
+    <p>Una tabla de vectores ya entrenada es fija: una palabra que no guardó queda <em>fuera del vocabulario</em> (OOV) y no tiene fila, así que tampoco vector. Un clasificador que la lee no le da nada, como el modelo lineal del apunte de los modelos lineales le daba peso 0 a <i>hideperro</i>. Estas palabras son de dos tipos: las que la tabla dejó fuera, que el texto usó de una a cuatro veces, y las que nunca se vieron. Más texto baja su parte sin acabarla nunca, como mostró el apunte de las leyes del texto: la cola de palabras raras no se agota. En la figura, entrena la tabla con el libro hasta el punto que arrastras, guardando las palabras usadas al menos cinco veces, y mira cuántos de los tokens de la décima siguiente del libro quedan sin vector.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-oov" role="group" aria-label="La parte de los tokens de la décima siguiente que no tienen vector, según la parte del libro con que se entrenó la tabla"></svg>
+    <div class="ro">
+      <div class="sw-ro" id="fig-oov-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Arrastra el punto rojo a lo largo del libro, o muévelo con las flechas del teclado.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Entrenada con la primera parte, la tabla no tiene vector para el 14.3% de los tokens de la segunda parte ni para el 82.3% de sus palabras distintas; aun guardando todas las palabras, el 6.8% de los tokens de la segunda parte son nuevos. Entre las palabras que le faltan hay otras formas de palabras que tienen vector, como <i>dueñas</i> y <i>leones</i>, verbos con un pronombre pegado, como <i>preguntóle</i> y <i>púsose</i>, nombres, y palabras que la primera parte nunca necesitó, como <i>duquesa</i> y <i>vuesa</i>; son más largas que las palabras con vector, 7.9 letras contra 6.4. De las 17&nbsp;346 palabras que deja fuera la tabla del libro, a la de fastText le faltan 2845, ni en minúsculas ni con mayúscula: nombres como <i>caraculiambro</i> y <i>malindrania</i>, verbos con pronombre pegado como <i>desvelábase</i> y <i>admiráronse</i>, y grafías antiguas como <i>quitalle</i> y <i>rescibió</i>. Las otras formas de palabras conocidas son las que los pedazos de palabras pueden rescatar.</p>
+  </div>
+</section>
+
+<section id="subwords">
+  <div class="prose">
+    <h2><span class="n">2</span>Los subwords de una palabra</h2>
+    <p>¿De qué podría estar hecha una palabra sin vector? Marca su comienzo y su final con &lt; y &gt;, y desliza por ella una ventana de <i>n</i> caracteres de ancho, de a un carácter, como el apunte de word2vec deslizaba una ventana por un texto. Cada tramo de <i>n</i> caracteres seguidos es un <em>n-grama de caracteres</em> (char n-grama), o <em>subword</em>; los pedazos de palabras del apunte anterior son estos subwords. Las marcas de borde distinguen un tramo del final de una palabra, como <i>ino&gt;</i>, de las mismas letras dentro de una palabra. fastText toma todos los <i>n</i> de 3 a 6, y una palabra que tiene fila propia, una usada al menos cinco veces, cuenta esa fila como una más:</p>
+    <div class="disp hero-f long"><span class="nowrap">𝒢<sub><i>o</i></sub> = {los tramos de 3 a 6</span> <span class="nowrap">caracteres de &lt;<i>o</i>&gt;}</span></div>
+    <p>con <i>o</i> misma agregada cuando tiene fila propia. Una palabra de |<i>o</i>| caracteres tiene |<i>o</i>| + 3 − <i>n</i> tramos de largo <i>n</i>, así que 4|<i>o</i>| − 6 en total cuando |<i>o</i>| es al menos 3. En la figura, elige una palabra y un rango de largos.</p>
+  </div>
+
+  <div class="fig">
+    <div class="sw-panel" id="fig-subwords" role="group" aria-label="Una palabra con sus marcas de borde y sus subwords"></div>
+    <div class="ro">
+      <p class="sw-ctl-name">Palabra</p>
+      <div class="sw-picks" id="fig-subwords-words"></div>
+      <div class="modes" id="fig-subwords-mode" role="group" aria-label="Largos">
+        <button type="button" data-mode="3" aria-pressed="false">Subwords de 3 caracteres</button>
+        <button type="button" data-mode="36" aria-pressed="true">Subwords de 3 a 6 caracteres</button>
+      </div>
+      <div class="sw-ro" id="fig-subwords-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Haz clic en una palabra, o recorre las palabras con las flechas del teclado, y elige los largos.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Las 17&nbsp;346 palabras sin vector tienen el 71% de sus subwords en palabras que sí tienen: el 95% de sus subwords de 3 caracteres, pero solo el 36% de los de 6. Los tramos cortos se comparten; los largos son propios de cada palabra. <i>molinillo</i>, que el libro nunca usa, comparte 10 de sus 30 subwords con <i>molino</i>, y 9, como <i>linil</i> e <i>inillo</i>, no están en ninguna palabra con vector.</p>
+  </div>
+</section>
+
+<section id="sum">
+  <div class="prose">
+    <h2><span class="n">3</span>Una palabra como la suma de sus subwords</h2>
+    <p>Cada subword recibe un vector propio, <span class="nowrap"><i>v</i><sub><i>g</i></sub> ∈ ℝ<sup><i>d</i></sup>,</span> una fila de la tabla, y el vector de una palabra suma los vectores de sus subwords:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>v</i><sub><i>o</i></sub> = ∑<span class="lims"><span></span><span><i>g</i>∈𝒢<sub><i>o</i></sub></span></span> <i>v</i><sub><i>g</i></sub></span></div>
+    <p>Una palabra nunca vista tiene de todos modos subwords vistos dentro de otras palabras, así que recibe un vector, cerca de las palabras que los comparten. Es el pooling del apunte de los vectores de palabras, sobre los subwords de una palabra en vez de las palabras de un texto. El programa de fastText toma la media en vez de la suma, dividiendo por el número de filas, lo que, como mostró ese apunte, no cambia ninguna dirección ni ningún coseno; las figuras siguen al programa. La figura usa vectores entrenados con el libro y con subwords, como explica la sección 5. Elige una palabra y compara sus palabras más cercanas con las del apunte de los vectores de palabras, que solo guardaba palabras enteras.</p>
+  </div>
+
+  <div class="fig">
+    <div class="sw-panel" id="fig-sum" role="group" aria-label="Los subwords de una palabra y sus palabras más cercanas"></div>
+    <div class="ro">
+      <p class="sw-ctl-name">Palabra</p>
+      <div class="sw-picks" id="fig-sum-words"></div>
+      <div class="modes" id="fig-sum-mode" role="group" aria-label="Vectores">
+        <button type="button" data-mode="sub" aria-pressed="true">Armados con subwords</button>
+        <button type="button" data-mode="whole" aria-pressed="false">Solo palabras enteras</button>
+      </div>
+      <div class="sw-ro" id="fig-sum-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Haz clic en una palabra, o recorre las palabras con las flechas del teclado, y elige los vectores.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Una fila que ninguna palabra con vector usa conserva su comienzo al azar, tan corto que casi no suma nada: un largo de unos 0.06, contra una mediana de 2.6 para el vector de una palabra. Para una palabra con fila propia, esa fila es una entre muchas: la de <i>escudero</i> es 1 de sus 27, y sin ella el vector conservaría un coseno de 0.999 con el que tiene. Así cambian también las palabras más cercanas de una palabra frecuente, hacia palabras escritas como ella: <i>escuderos</i> y <i>majadero</i> para <i>escudero</i>, donde las palabras enteras daban <i>asendereado</i>.</p>
+  </div>
+</section>
+
+<section id="catalog">
+  <div class="prose">
+    <h2><span class="n">4</span>Pocos símbolos, todas las palabras</h2>
+    <p>¿No serán nuevos también los subwords de una palabra nueva, y cuántas filas hacen falta? Un conjunto fijo de símbolos compone todas las palabras: esto es la <em>composicionalidad</em>. El libro escribe sus palabras con 35 caracteres (las 25 letras de la a a la z salvo la k, más la ñ y 9 vocales con tilde, acento grave o diéresis), 37 con las dos marcas, así que puede haber a lo más</p>
+    <div class="disp"><span class="nowrap">|Σ|<sup>3</sup> = 37<sup>3</sup> = 50&nbsp;653</span></div>
+    <p>subwords de 3 caracteres, donde |Σ| es el número de símbolos; solo 45&nbsp;360 pueden darse, porque una marca solo abre o cierra un tramo. Los subwords de 3 caracteres crecen cada vez más despacio y quedan muy por debajo de ese techo, 4957 tras el libro entero, mientras siguen llegando palabras nuevas. Los subwords de hasta 6 caracteres siguen creciendo, así que fastText le pone un tope a la tabla: una función de hash convierte cada subword en un número, cuyo resto al dividir por 2&nbsp;000&nbsp;000 elige su fila, y dos subwords pueden entonces compartir una. Las palabras con fila guardan además sus filas propias, así que 𝒢<sub><i>o</i></sub> lista filas entre <span class="nowrap"><i>G</i> = <i>V</i> + 2&nbsp;000&nbsp;000,</span> donde <i>V</i> es el número de palabras con fila propia, 5259 en el libro. En la figura, arrastra el punto rojo a lo largo del texto leído; el anillo marca diez veces más texto.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-catalog" role="group" aria-label="Palabras distintas y subwords distintos según los tokens leídos; un punto rojo marca un tramo del texto y un anillo diez veces más"></svg>
+    <div class="ro">
+      <div class="sw-ro" id="fig-catalog-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Arrastra el punto rojo a lo largo del texto leído, o muévelo con las flechas del teclado.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>La ley de Heaps del apunte de las leyes del texto predice unas 4.2 veces las palabras para diez veces el texto, y el libro da 3.9. Los 36&nbsp;373 subwords de las palabras con vector caen en 36&nbsp;046 filas, así que unos cientos de filas guardan dos subwords, y entrenar con el libro solo alcanza esas filas de los 2&nbsp;000&nbsp;000.</p>
+  </div>
+</section>
+
+<section id="training">
+  <div class="prose">
+    <h2><span class="n">5</span>Entrenar con subwords</h2>
+    <p>¿De dónde salen los vectores de los subwords? Del entrenamiento del apunte de word2vec, con un cambio: el objetivo entra por sus subwords. Los pares (<i>o</i>, <i>c</i>) son los de ese apunte, pero el objetivo ya no es un vector one-hot: es un vector <em>multi-hot</em>, con un 1 por cada uno de sus subwords,</p>
+    <div class="disp"><span class="nowrap"><i>x</i><sub><i>o</i></sub> = ∑<span class="lims"><span></span><span><i>g</i>∈𝒢<sub><i>o</i></sub></span></span> <i>e</i><sub><i>g</i></sub> ∈ {0, 1, 2, …}<sup><i>G</i></sup>,</span> <span class="nowrap"><i>v</i><sub><i>o</i></sub> = <i>W</i><sub>in</sub><sup class="t">T</sup><i>x</i><sub><i>o</i></sub> = ∑<span class="lims"><span></span><span><i>g</i>∈𝒢<sub><i>o</i></sub></span></span> <i>v</i><sub><i>g</i></sub>,</span></div>
+    <p>donde <i>e</i><sub><i>g</i></sub> tiene un 1 en la fila <i>g</i> y 0 en todas las demás (no es el embedding <i>e</i>(<i>w</i>) del apunte de los vectores de palabras), y un subword repetido en una palabra, o dos subwords que comparten fila, dan un 2. Ahora <span class="nowrap"><i>W</i><sub>in</sub> ∈ ℝ<sup><i>G</i>×<i>d</i></sup></span> mientras que <span class="nowrap"><i>W</i><sub>out</sub> ∈ ℝ<sup><i>d</i>×<i>V</i></sup></span> sigue igual, y también <span class="nowrap"><i>z</i> = <i>W</i><sub>out</sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub></span> y <span class="nowrap"><span class="hat lo"><i>y</i></span> = softmax(<i>z</i>),</span> que el entrenamiento reemplaza por el muestreo negativo. La primera capa sigue seleccionando filas de <i>W</i><sub>in</sub> y sumándolas, como ese apunte dijo que hace <i>W</i><sub>in</sub><sup class="t">T</sup><i>x</i>, ponderadas por <i>x</i>. Un producto punto es lineal, así que el puntaje de un par es la suma de los puntajes de sus subwords:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>s</i>(<i>o</i>, <i>c</i>) = ∑<span class="lims"><span></span><span><i>g</i>∈𝒢<sub><i>o</i></sub></span></span> <i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>g</i></sub></span> <span class="nowrap">= <i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub>,</span></div>
+    <p>y la pérdida es la entropía cruzada binaria de ese apunte, con <span class="nowrap"><i>h</i> = σ(<i>s</i>(<i>o</i>, <i>c</i>)).</span> La parte del gradiente de cada fila es (<i>h</i> − <i>y</i>)<i>u</i><sub><i>c</i></sub>, la misma para todos los subwords del objetivo: un paso mueve todas las filas que usa el objetivo, así que una palabra que comparte algunas de esas filas se mueve sin que la entrenen. Solo se divide el lado del objetivo. Sus filas son la tabla que se guarda, como el programa original de word2vec guardaba solo <i>W</i><sub>in</sub>, así que deben servir para palabras nunca vistas; <i>W</i><sub>out</sub> guarda una columna por palabra y no interviene en los vectores de palabras.</p>
+    <p>La figura sigue un ejemplo diseñado con dos números por vector, y solo con subwords de 3 caracteres, para que sea pequeño: el objetivo <i>gigantes</i>, con sus ocho subwords y su fila propia; el par (<i>gigantes</i>, <i>molinos</i>) del apunte de word2vec, <i>molinos</i> en verde, y una palabra sorteada, <i>atrevió</i>, en tinta; y <i>giganta</i>, que no está en ningún par ni tiene fila propia, y comparte cinco de sus siete subwords con <i>gigantes</i>. El vector del objetivo es la media de sus filas, como lo calcula fastText, y cada fila da el paso entero. Da pasos de descenso de gradiente con <span class="nowrap">η = 0.4.</span></p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-train" role="group" aria-label="Las filas de gigantes, su vector, el vector de giganta y los vectores de contexto de molinos y atrevió"></svg>
+    <div class="ctl sw-ctl"><button type="button" class="btn" id="fig-train-back">Atrás</button><button type="button" class="btn" id="fig-train-next">Siguiente</button><span class="count" id="fig-train-count"></span><button type="button" class="btn" id="fig-train-reset" hidden>Reiniciar</button></div>
+    <div class="ro" id="fig-train-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Siguiente da un paso de descenso de gradiente, Atrás vuelve. Teclas: <span class="nowrap">→ y ←</span>.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>El modelo del libro es el entrenamiento del apunte de los vectores de palabras (<i>d</i> = 100, un radio sorteado hasta <i>m</i> = 5, <i>k</i> = 5 palabras sorteadas con β = ¾, 20 lecturas, una frecuencia mínima de 5, cinco entrenamientos), con cada objetivo entrando por sus subwords de 3 a 6 caracteres y su fila propia, en 2&nbsp;000&nbsp;000 filas; con los subwords apagados, da exactamente los vectores de ese apunte. Las figuras y los números citados muestran el primer entrenamiento, y el texto solo afirma lo que se cumplió en al menos cuatro de los cinco. En nuestro programa tardó unas 2.6 veces más (98 segundos contra 38 con el libro en español); el artículo de fastText reporta que es 1.5 veces más lento que el skip-gram.</p>
+  </div>
+</section>
+
+<section id="fasttext">
+  <div class="prose">
+    <h2><span class="n">6</span>fastText y los vectores que se descargan</h2>
+    <p>fastText es el programa de Bojanowski, Grave, Joulin y Mikolov («Enriching Word Vectors with Subword Information», 2017): el skip-gram de las secciones 2 a 5. Su artículo lo entrenó con Wikipedia en nueve idiomas, con <i>d</i> = 300, 5 negativos sorteados por la raíz cuadrada de las frecuencias (β = ½), un radio sorteado de 1 a 5 y 5 lecturas del texto. Entre los vectores que se publicaron después están 294 idiomas entrenados con Wikipedia con ese skip-gram, y 157 idiomas entrenados con Common Crawl y Wikipedia (Grave et al. 2018), las tablas del apunte de los vectores de palabras. Esas son CBOW con pesos por posición, solo con subwords de 5 caracteres, un radio sorteado de 1 a 5, 10 negativos y <i>d</i> = 300: cada palabra de alrededor entra como la media de sus filas, ponderada número por número por un vector aprendido para su lugar en la ventana. En CBOW las palabras de alrededor entran por sus subwords y la palabra que se predice queda entera: en los dos modelos, el lado que entra por pedazos es la entrada, cuyas filas se guardan. En la figura, elige un objetivo en la línea de Sancho del apunte de word2vec, con radio <i>m</i> = 2, y un modelo.</p>
+  </div>
+
+  <div class="fig">
+    <div class="sw-panel" id="fig-sides" role="group" aria-label="Qué palabras de la línea de Sancho entran por sus subwords y cuáles salen enteras"></div>
+    <div class="ro">
+      <div class="modes" id="fig-sides-mode" role="group" aria-label="Modelo">
+        <button type="button" data-mode="sg" aria-pressed="true">El artículo: skip-gram, subwords de 3 a 6</button>
+        <button type="button" data-mode="cbow" aria-pressed="false">Las tablas de la web: CBOW, subwords de 5</button>
+      </div>
+      <div class="sw-ro" id="fig-sides-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Haz clic en una palabra de la línea para que sea el objetivo, o recorre la línea con las flechas del teclado, y elige un modelo.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Las tablas de la web sortean un radio de hasta 5, no de 2 como la figura. Su archivo .vec guarda una fila terminada por palabra, la fila propia de la palabra promediada con las de sus subwords, así que no puede armar una palabra nueva; su archivo .bin, de unos 7 GB, guarda las filas de los subwords y sí puede. Con subwords de 5 caracteres solamente, una palabra de una o dos letras que no está en la tabla no tiene ningún subword y recibe el vector cero. Como los vectores del libro, estos tienen un vector por grafía, sea cual sea la oración. La misma biblioteca también clasifica textos (Joulin et al. 2017), y los mil millones de palabras en menos de diez minutos que tanto se citan son la velocidad de ese clasificador.</p>
+  </div>
+</section>
+
+<section id="right-and-wrong">
+  <div class="prose">
+    <h2><span class="n">7</span>Lo que los subwords aciertan y lo que no</h2>
+    <p>¿Estar cerca en la grafía es estar cerca en el significado? El corte no ve el significado: cuando los subwords compartidos son el lexema, el parecido es real, y cuando son solo la terminación, es grafía. Por la misma linealidad de la sección 5, el coseno de una palabra con otra se divide en una parte por subword:</p>
+    <div class="disp hero-f"><span class="nowrap">cos(<i>v</i><sub><i>o</i></sub>, <i>v</i><sub><i>o</i>′</sub>) = <span class="frac"><span>∑<sub><i>g</i>∈𝒢<sub><i>o</i></sub></sub> <i>v</i><sub><i>g</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i>′</sub></span><span>‖<i>v</i><sub><i>o</i></sub>‖ ‖<i>v</i><sub><i>o</i>′</sub>‖</span></span></span></div>
+    <p>(con la media del programa, el mismo valor). Así, el coseno tiende a subir con el número de subwords que comparten las dos palabras, |𝒢<sub><i>o</i></sub> ∩ 𝒢<sub><i>o</i>′</sub>|. Si el vector de cada subword tuviera el mismo largo y formara ángulo recto con los demás, el coseno sería la parte en común, <span class="nowrap">|𝒢<sub><i>o</i></sub> ∩ 𝒢<sub><i>o</i>′</sub>| / √(|𝒢<sub><i>o</i></sub>| |𝒢<sub><i>o</i>′</sub>|);</span> las filas entrenadas no cumplen ninguna de las dos cosas, así que la cuenta es una tendencia, no una regla. Elige una palabra sin vector y compara su palabra más cercana que comparte su inicio con su palabra más cercana que comparte su final.</p>
+  </div>
+
+  <div class="fig">
+    <div class="sw-panel" id="fig-split" role="group" aria-label="Las palabras más cercanas a una palabra que comparten su inicio y su final, con cada coseno dividido en la parte de los subwords compartidos y el resto"></div>
+    <div class="ro">
+      <p class="sw-ctl-name">Palabra</p>
+      <div class="sw-picks" id="fig-split-words"></div>
+      <div class="sw-ro" id="fig-split-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Haz clic en una palabra, o recorre las palabras con las flechas del teclado.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Los subwords aciertan con las formas. De 734 palabras cuya forma con una s o una es agregada también tiene vector (plurales como <i>caballeros</i>, pero también formas verbales como <i>tienes</i>), los vectores de palabras enteras del apunte de los vectores de palabras ponen esa forma, en la mediana, en el puesto 1041 entre las palabras más cercanas a la palabra, y primera en ninguna; con subwords queda, en la mediana, quinta, y primera en el 18%. <i>galeotes</i> pasa del puesto 3330 al primero para <i>galeote</i>. Las analogías de forma ganan y las de significado pierden: <span class="nowrap"><i>hijo</i> : <i>hija</i></span> <span class="nowrap">:: <i>hermano</i> : <i>hermana</i></span> pasa del puesto 106 al primero en los cinco entrenamientos, mientras que <span class="nowrap"><i>rey</i> : <i>reino</i></span> <span class="nowrap">:: <i>gobernador</i> : <i>ínsula</i>,</span> primera con las palabras enteras, cae al segundo puesto o al cuarto, detrás de <i>gobernar</i>. El artículo de fastText encontró la misma división entre analogías de forma y de significado.</p>
+    <p>Se equivocan con el significado donde la grafía engaña. Las palabras frecuentes se desvían hacia palabras escritas como ellas: de las 10 palabras más cercanas a cada una de las 883 palabras más frecuentes del libro que tienen cuatro letras o más, 4.1 comparten con ella un tramo de 4 caracteres, contra 0.23 con palabras enteras. <i>tantos</i> queda ahora junto a <i>santos</i> y <i>apenas</i> junto a <i>penas</i>, en cuatro de los cinco entrenamientos, donde el apunte de los vectores de palabras ponía <i>apenas</i> junto a <i>hubo</i>; <i>conveniente</i> queda junto a <i>inconveniente</i> en los cinco, pero por su lexema compartido, un parentesco real entre opuestos. Con mucho más texto los accidentes se desvanecen: en la tabla de la web, <i>molinillo</i> tiene un coseno de 0.585 con <i>molino</i> y de 0.237 con <i>anillo</i>, y <i>tantos</i> de 0.361 con <i>santos</i>. Los subwords ayudan más donde hay poco texto, y sus errores son errores de grafía; una grafía sigue teniendo un solo vector. Los próximos apuntes cortan el texto mismo en piezas elegidas por fusiones, y arman vectores que cambian con la oración.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">8</span>Resumen</h2>
+    <p>Las ideas del apunte en NumPy. <code>w_in</code> tiene una fila por palabra con vector y luego 2&nbsp;000&nbsp;000 filas de subwords, y <code>w_out</code> una columna por palabra; <code>idx</code> da la fila de una palabra, <code>rows</code> lista las filas de la palabra <code>o</code>, <code>c</code> es la columna de una palabra de contexto, <code>y</code> su etiqueta y <code>eta</code> la tasa de aprendizaje; <code>tokens</code> es un texto, y <code>V</code> el número de palabras con vector.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Subwords</div>
+      <div class="f">los tramos de 3 a 6 caracteres de &lt;<i>o</i>&gt;; con la fila propia de <i>o</i>, si la tiene, forman 𝒢<sub><i>o</i></sub></div>
+      <div class="c"><code>s = "&lt;" + o + "&gt;"<br>subs = [s[i:i + n]<br>&nbsp;&nbsp;&nbsp;&nbsp;for i in range(len(s))<br>&nbsp;&nbsp;&nbsp;&nbsp;for n in range(3, 7)<br>&nbsp;&nbsp;&nbsp;&nbsp;if i + n &lt;= len(s)]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">La fila de un subword</div>
+      <div class="f"><i>V</i> más el resto, al dividir por 2&nbsp;000&nbsp;000, del hash de fastText: FNV-1a sobre los bytes UTF-8 del subword, cada byte sobre 127 leído como negativo</div>
+      <div class="c"><code>fnv = 2166136261<br>for b in g.encode("utf-8"):<br>&nbsp;&nbsp;&nbsp;&nbsp;b = b if b &lt; 128 else b | 0xFFFFFF00<br>&nbsp;&nbsp;&nbsp;&nbsp;fnv = ((fnv ^ b) * 16777619) % 2**32<br>row = V + fnv % 2_000_000</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Multi-hot, y la suma</div>
+      <div class="f"><i>v</i><sub><i>o</i></sub> = <i>W</i><sub>in</sub><sup class="t">T</sup><i>x</i><sub><i>o</i></sub> = ∑<sub><i>g</i></sub> <i>v</i><sub><i>g</i></sub></div>
+      <div class="c"><code>x_o = np.zeros(len(w_in))<br>np.add.at(x_o, rows, 1)<br>v_o = w_in.T @ x_o&nbsp;&nbsp;# = w_in[rows].sum(axis=0)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Lo que calcula el programa</div>
+      <div class="f">la media de las filas</div>
+      <div class="c"><code>v_o = w_in[rows].mean(axis=0)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Un puntaje, subword por subword</div>
+      <div class="f"><i>s</i>(<i>o</i>, <i>c</i>) = ∑<sub><i>g</i></sub> <i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>g</i></sub></div>
+      <div class="c"><code>s = (w_in[rows] @ w_out[:, c]).sum()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Un paso, todas las filas</div>
+      <div class="f">(<i>h</i> − <i>y</i>)<i>u</i><sub><i>c</i></sub> para cada <i>v</i><sub><i>g</i></sub></div>
+      <div class="c"><code>h = 1 / (1 + np.exp(-(w_out[:, c] @ v_o)))<br>g_in = (h - y) * w_out[:, c]<br>g_out = (h - y) * v_o<br>np.subtract.at(w_in, rows, eta * g_in)<br>w_out[:, c] -= eta * g_out</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Un coseno, subword por subword</div>
+      <div class="f">∑<sub><i>g</i></sub> <i>v</i><sub><i>g</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i>′</sub> / (‖<i>v</i><sub><i>o</i></sub>‖ ‖<i>v</i><sub><i>o</i>′</sub>‖)</div>
+      <div class="c"><code>v_o = w_in[rows].sum(axis=0)<br>parts = w_in[rows] @ v_o2 / (<br>&nbsp;&nbsp;&nbsp;&nbsp;np.linalg.norm(v_o)<br>&nbsp;&nbsp;&nbsp;&nbsp;* np.linalg.norm(v_o2))<br>cos = parts.sum()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">La parte en común</div>
+      <div class="f">|𝒢<sub><i>o</i></sub> ∩ 𝒢<sub><i>o</i>′</sub>| / √(|𝒢<sub><i>o</i></sub>| |𝒢<sub><i>o</i>′</sub>|)</div>
+      <div class="c"><code>a, b = set(rows), set(rows2)<br>share = len(a &amp; b) / np.sqrt(len(a) * len(b))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Tokens sin vector</div>
+      <div class="f">su parte en un texto</div>
+      <div class="c"><code>oov = np.mean([w not in idx for w in tokens])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Un modelo descargado</div>
+      <div class="f">un vector para cualquier palabra, desde el .bin</div>
+      <div class="c"><code>import fasttext<br>m = fasttext.load_model("cc.es.300.bin")<br>v = m.get_word_vector("acometedor")</code></div>
+    </div>
+  </div>
+  <div class="prose">
+    <p>Los datos del apunte: los libros son el <i>Don Quijote</i> de Project Gutenberg (#2000) y la traducción de Ormsby (#996); las cuentas de las tablas de fastText, cc.en.300 y cc.es.300 (Grave et al. 2018), salen de los archivos de <a href="https://fasttext.cc/docs/en/crawl-vectors.html">fasttext.cc</a>, con la licencia <a href="https://creativecommons.org/licenses/by-sa/3.0/">Creative Commons Atribución-CompartirIgual 3.0</a>, y la página solo muestra lo que se calculó con ellas. Los vectores del libro con subwords se entrenaron para este apunte.</p>
+  </div>
+</section>

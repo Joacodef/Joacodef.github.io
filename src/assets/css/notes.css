@@ -980,6 +980,149 @@ button.w2v-trow:hover { background: var(--paper); }
 .wv-pic-chip.odd { fill: var(--red); stroke: var(--red); }
 .wv-pic-step { stroke: var(--blue); stroke-width: 2; stroke-linecap: round; }
 
+/* Subwords and fastText (natural language processing): two charts in SVG, a plane of two-number vectors and figures
+   made of words in panels like those of the earlier notes. Carmine is what is counted or looked for (the words with no
+   vector, the target, a shared ending), blue the closest word and the subwords it shares, green the words around a
+   target, ink the drawn word and a shared lexeme. */
+.sw-panel { background: var(--card); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+:is(.sw-head, .sw-marked, .sw-nlab, .sw-own, .sw-none, .sw-key, .sw-measure, .sw-norow, .sw-picked-in, .sw-k, .sw-sidelab, .sw-axname, .sw-lab, .sw-plab, .sw-keytext, .sw-pic-l, .sw-pic-n) { font-family: var(--sans); font-weight: 400; font-variation-settings: normal; }
+.sw-head, .sw-marked { font-size: 0.86rem; line-height: 1.4; color: var(--ink-2); margin: 0 0 0.6rem; }
+.sw-marked .sw-w { font-family: var(--serif); font-size: 1.25rem; color: var(--ink); white-space: nowrap; }
+.sw-ro { display: flow-root; }
+.ro .sw-ctl-name { font-family: var(--sans); font-weight: 400; font-variation-settings: normal; font-size: 0.86rem; line-height: 1.4; color: var(--ink-2); margin: 0 0 0.35rem; }
+.ro .modes + .sw-ro { margin-top: 0.2rem; }
+/* Words the reader picks from: chips in a row, the one picked outlined in ink. */
+.sw-picks { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 0.9rem; }
+.sw-pick { font: inherit; font-family: var(--serif); font-size: 1rem; line-height: 1.35; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 0.1em 0.5em 0.16em; margin: 0; cursor: pointer; text-align: left; }
+.sw-pick:hover { border-color: var(--ink-3); }
+.sw-pick.on { border: 2px solid var(--ink); padding: calc(0.1em - 1px) calc(0.5em - 1px) calc(0.16em - 1px); background: var(--card); }
+/* Subwords as tiles: in ink when a word with a vector has them, faint with a dashed edge when none does (a row that
+   keeps its random start), blue when the closest word shares them; a word's own row is the whole word, set a little
+   apart. In the figure of the two models, what goes in and what comes out take the target's carmine and the context's
+   green. */
+.sw-tiles { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px; min-width: 0; }
+.sw-tiles.flow { margin: 0 0 0.8rem; }
+.sw-tile { font-family: var(--serif); font-size: 1rem; line-height: 1.3; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 5px; padding: 0.06em 0.4em 0.12em; white-space: pre; }
+.sw-tile.unknown { color: var(--ink-3); background: transparent; border-style: dashed; border-color: var(--ink-3); }
+.sw-tile.shared { color: var(--blue); border-color: var(--blue); }
+.sw-tile.own { margin-left: 0.5em; background: var(--paper-2); }
+.sw-tile.tgt { color: var(--red); border-color: var(--red); }
+.sw-tile.ctx { color: var(--ok); border-color: var(--ok); }
+.sw-tile.mini { display: inline-block; width: 1.5em; height: 0.85em; padding: 0; margin-top: 0.28em; box-sizing: border-box; }
+/* Figure 2: one row of tiles per length, its name beside it; on phones, above it. */
+.sw-nrows { display: grid; gap: 8px; }
+.sw-nrow { display: grid; grid-template-columns: 6.6em minmax(0, 1fr); column-gap: 0.6em; align-items: baseline; }
+.sw-nlab { font-size: 0.78rem; line-height: 1.3; color: var(--ink-2); }
+.sw-none { font-size: 0.82rem; color: var(--ink-3); }
+@media (max-width: 480px) { .sw-nrow { grid-template-columns: minmax(0, 1fr); row-gap: 3px; } }
+.sw-own { font-size: 0.86rem; line-height: 1.4; color: var(--ink-2); margin: 0.8rem 0 0; }
+/* A key: each item a swatch and the words that name its class, which wrap beside the swatch, never under it. */
+.sw-key { font-size: 0.78rem; line-height: 1.4; color: var(--ink-2); margin: 0.55rem 0 0.9rem; display: flex; flex-wrap: wrap; gap: 0.2em 1.1em; }
+.sw-key:empty { display: none; }
+.sw-ki { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 0.45em; align-items: start; }
+.sw-sw { display: block; width: 0.8em; height: 0.8em; border-radius: 2px; margin-top: 0.3em; }
+.sw-sw.start { background: var(--ink-2); }
+.sw-sw.end { background: var(--red); }
+.sw-sw.rest { background: var(--ink-3); opacity: 0.45; }
+/* Rows of words with a bar each and its value: a word's closest words, with blue cosines; in figure 7, each cosine split
+   into the shared subwords' part (in ink for a shared start, carmine for a shared end) and the faint rest. */
+.sw-measure { font-size: 0.78rem; line-height: 1.3; color: var(--ink-2); text-align: right; margin: 0 0 0.3rem; }
+.sw-measure:empty { display: none; }
+.sw-rows { display: grid; gap: 4px; }
+.sw-row { display: grid; grid-template-columns: minmax(5.5em, 9em) minmax(3em, 1fr) 3.1em; align-items: center; column-gap: 0.6em; }
+.sw-row.split { grid-template-columns: minmax(6em, 12em) minmax(3em, 1fr) 3.4em; }
+.sw-word { font-family: var(--serif); font-size: 1.02rem; line-height: 1.3; color: var(--ink); overflow-wrap: anywhere; }
+.sw-row.first .sw-word { color: var(--blue); }
+.sw-k { display: block; font-size: 0.72rem; line-height: 1.3; color: var(--ink-3); }
+@media (max-width: 400px) {
+  .sw-rows { grid-template-columns: fit-content(9em) minmax(1.2em, 1fr) 3.1em; }
+  .sw-rows.split { grid-template-columns: fit-content(12em) minmax(1.2em, 1fr) 3.4em; }
+  .sw-row, .sw-row.split { grid-column: 1 / -1; grid-template-columns: subgrid; }
+  .sw-word { overflow-wrap: normal; }
+}
+.sw-val { font-family: var(--sans); font-weight: 400; font-variation-settings: normal; font-size: 0.82rem; color: var(--ink-2); text-align: right; font-variant-numeric: tabular-nums; }
+.sw-track { display: block; height: 10px; background: var(--paper-2); border-radius: 2px; overflow: hidden; }
+.sw-track.split { display: flex; }
+.sw-bar { display: block; flex: none; height: 100%; min-width: 1px; background: var(--blue); }
+.sw-bar.start { background: var(--ink-2); }
+.sw-bar.end { background: var(--red); }
+.sw-bar.rest { background: var(--ink-3); opacity: 0.45; }
+.sw-u.start { text-decoration: underline; text-decoration-color: var(--ink); text-decoration-thickness: 2px; text-underline-offset: 0.2em; }
+.sw-u.end { color: var(--red); text-decoration: underline; text-decoration-color: var(--red); text-decoration-thickness: 2px; text-underline-offset: 0.2em; }
+.sw-norow { font-size: 0.86rem; color: var(--ink-3); margin: 0.3rem 0 0; }
+.sw-picked { margin: 0 0 0.7rem; }
+.sw-picked-w { font-family: var(--serif); font-size: 1.3rem; color: var(--red); }
+.sw-picked-in { font-size: 0.82rem; color: var(--ink-2); margin-left: 0.4em; }
+/* Figure 6: Sancho's line, the target filled carmine and the words around it green, as in the word2vec note; under it,
+   the rows that go in and the columns that come out. */
+.sw-line { display: flex; flex-wrap: wrap; gap: 6px; }
+.sw-tok { font: inherit; font-family: var(--serif); font-size: 1.08rem; line-height: 1.35; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 0.1em 0.5em 0.16em; margin: 0; cursor: pointer; }
+.sw-tok:not(.tgt):not(.ctx):hover { border-color: var(--ink-3); }
+.sw-tok.tgt { background: var(--red); border-color: var(--red); color: var(--card); }
+.sw-tok.ctx { background: var(--ok); border-color: var(--ok); color: var(--card); }
+.sw-tok.on { border: 2px solid var(--ink); padding: calc(0.1em - 1px) calc(0.5em - 1px) calc(0.16em - 1px); }
+.sw-side { margin-top: 1rem; }
+.sw-sidelab { font-size: 0.86rem; line-height: 1.4; color: var(--ink-2); margin: 0 0 0.4rem; }
+.sw-sidelab i { font-family: var(--serif); font-size: 1.05rem; }
+.sw-side .sw-tiles.flow { margin: 0; }
+.sw-groups { display: flex; flex-wrap: wrap; gap: 8px; }
+.sw-group { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; padding: 4px; border: 1px solid var(--rule); border-radius: 8px; }
+.sw-group .sw-tile.own { margin-left: 0.3em; }
+/* Figures 1 and 4: the counts as carmine curves, the kind the section is about full and the next paler, the words or
+   the other book faint; a dashed guide drops from the point the reader holds, and a hollow ring marks ten times the
+   text. */
+.sw-axname { fill: var(--ink-2); font-size: 14px; }
+.sw-curve { fill: none; stroke: var(--red); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.sw-curve.pale { stroke: color-mix(in srgb, var(--red) 45%, var(--card)); }
+.sw-curve.faint { stroke: var(--ink-3); stroke-width: 1.8; stroke-opacity: 0.55; }
+.sw-lab { fill: var(--red); font-size: 15px; paint-order: stroke; stroke: var(--card); stroke-width: 4px; stroke-linejoin: round; }
+.sw-lab.pale { fill: color-mix(in srgb, var(--red) 60%, var(--card)); }
+.sw-lab.faint { fill: var(--ink-3); }
+.sw-band { fill: var(--red); fill-opacity: 0.2; }
+.sw-guide { fill: none; stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 3 4; }
+.sw-cap { stroke: var(--ink-3); stroke-width: 1.2; stroke-dasharray: 6 5; }
+.sw-ring { fill: var(--card); stroke: var(--red); stroke-width: 2.4; }
+/* Figure 5: the plane of two-number vectors. The target's rows are small carmine dots, filled for those the second word
+   shares; the second word's other rows faint; both words' vectors carmine arrows, the second's tip a hollow ring. */
+.sw-frame { fill: none; stroke: var(--ink-3); stroke-width: 1; }
+.sw-zero { stroke: var(--rule); stroke-width: 1.2; }
+.sw-row-dot { fill: var(--red); }
+.sw-row-dot.hollow { fill: var(--card); stroke: var(--red); stroke-width: 1.6; }
+.sw-row-dot.faint { fill: var(--ink-3); opacity: 0.6; }
+.sw-v { stroke: var(--red); stroke-width: 3; stroke-linecap: round; }
+.sw-vhead { fill: var(--red); }
+.sw-pt.ctx { fill: var(--ok); }
+.sw-pt.neg { fill: var(--ink-2); }
+.sw-trail { fill: none; stroke-width: 1.4; stroke-linejoin: round; stroke-dasharray: 2 3; opacity: 0.7; }
+.sw-trail.tgt { stroke: var(--red); }
+.sw-trail.ctx { stroke: var(--ok); }
+.sw-trail.neg { stroke: var(--ink-3); }
+.sw-plab { font-size: 15px; paint-order: stroke; stroke: var(--card); stroke-width: 4px; stroke-linejoin: round; }
+.sw-plab.tgt { fill: var(--red); }
+.sw-plab.ctx { fill: var(--ok); }
+.sw-plab.neg { fill: var(--ink-2); }
+.sw-keytext { fill: var(--ink-2); font-size: 14px; }
+/* Reset keeps its place while hidden, so the controls wrap the same way at every step and the page below never jumps. */
+.sw-ctl .btn[hidden] { display: inline-block; visibility: hidden; }
+@media (max-width: 560px) {
+  .sw-lab, .sw-plab, .sw-axname { font-size: 19px; }
+  .sw-keytext { font-size: 17px; }
+}
+/* The opening's small pictures. */
+.sw-pic-w { fill: var(--ink); font-family: var(--serif); }
+.sw-pic-w.red { fill: var(--red); }
+.sw-pic-w.blue { fill: var(--blue); }
+.sw-pic-end { fill: var(--red); }
+.sw-pic-slot { fill: var(--paper); stroke: var(--rule); stroke-width: 1.2; }
+.sw-pic-l { fill: var(--ink-2); }
+.sw-pic-n { fill: var(--ink-3); }
+.sw-pic-arc { fill: none; stroke: var(--blue); stroke-width: 1.6; }
+.sw-pic-v { stroke-width: 3; stroke-linecap: round; }
+.sw-pic-v.red { stroke: var(--red); }
+.sw-pic-v.blue { stroke: var(--blue); }
+.sw-pic-head.red { fill: var(--red); }
+.sw-pic-head.blue { fill: var(--blue); }
+
 /* Figures stepped through like slides, with Next and Back. The controls sit right under the drawing, so the growing
    text never moves them, and new text appears only at the bottom, with earlier text dimmed above it. */
 .fig.steps { grid-template-areas: "draw" "ctl" "ro" "foot"; }

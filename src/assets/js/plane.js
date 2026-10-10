@@ -545,6 +545,28 @@ export function logChart(svg, { x: [x0, x1], y: [y0, y1], box: [L, R, T, B], siz
   };
 }
 
+/* ---------- Linear charts ---------- */
+
+// Linear axes from 0: x from 0 to x[1] and y from 0 to y[1], with a tick and a number every step[0] and step[1],
+// inside the box [L, R, T, B] of a viewBox size wide and tall; xLabel and yLabel write the numbers (localNum by
+// default). The caller names the axes. Returns X(x), Y(y), the box and toX. Moved here from note 1 for note 7.
+export function linChart(svg, { x: [, x1], y: [, y1], step: [xs, ys], box: [L, R, T, B], size: [w, h], xLabel = localNum, yLabel = localNum }) {
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  const X = (x) => L + ((R - L) * x) / x1, Y = (y) => B - ((B - T) * y) / y1;
+  const g = el("g", { class: "axes" }, svg);
+  el("line", { x1: L, y1: B, x2: R, y2: B }, g);
+  el("line", { x1: L, y1: B, x2: L, y2: T }, g);
+  for (let v = 0; v <= x1; v += xs) {
+    el("line", { x1: X(v), y1: B, x2: X(v), y2: B + 6 }, g);
+    el("text", { x: X(v), y: B + 21, "text-anchor": "middle", class: "tick" }, svg).textContent = xLabel(v);
+  }
+  for (let v = 0; v <= y1; v += ys) {
+    el("line", { x1: L, y1: Y(v), x2: L - 6, y2: Y(v) }, g);
+    el("text", { x: L - 10, y: Y(v) + 4.5, "text-anchor": "end", class: "tick" }, svg).textContent = yLabel(v);
+  }
+  return { X, Y, L, R, T, B, toX: (sx) => ((sx - L) * x1) / (R - L) };
+}
+
 /* ---------- Controls ---------- */
 
 // Toggle buttons with a data-mode attribute inside `group`, one pressed at a time. A click presses its button and
@@ -848,8 +870,10 @@ export function placeBeside(S, t, p, clear, line, obstacles, memo) {
 // steps: the number of steps; frame [L, R, T, B]: the box every label stays inside, 3 units in; zero [x0, y0]: the
 //   origin, out of which a label prefers to point and whose two axes it avoids lying across;
 // arrows(j): points sampled along the arrows at step j (a tip's own label ignores those within 14 units of it);
-// lines(j): points along lines that a label may cross at a small cost, such as a boundary.
-// A place beside its mark (16 directions, 4 distances) costs much for covering a label already placed, a point or an
+// lines(j): points along lines that a label may cross at a small cost, such as a boundary;
+// others(j), optional: small marks that no label names but every label avoids, such as a vector's rows;
+// dists, optional: the distances from its mark a label tries, farther ones for a crowded plane.
+// A place beside its mark (16 directions, at each distance) costs much for covering a label already placed, a point or an
 // arrow, for lying across one of the axes, for being nearer another mark than its own (it would read as that mark's),
 // and for stretching over another mark; a little for crossing a line and for being far from its mark or turned away
 // from the direction out of the origin. Each label's places over all the steps are the cheapest path through them,
@@ -857,11 +881,11 @@ export function placeBeside(S, t, p, clear, line, obstacles, memo) {
 // costs much. The labels are placed one after another, each clear of those already placed, then each again, clear of
 // all the others, a few times over, so that an early label also makes room for later ones. Returns, for each step,
 // the middle and baseline of each label ({ x, y }, for text-anchor middle).
-export function stepLabels({ items, steps, frame: [L, R, T, B], zero: [X0, Y0], arrows, lines, rounds = 4 }) {
+export function stepLabels({ items, steps, frame: [L, R, T, B], zero: [X0, Y0], arrows, lines, others = () => [], dists = [9, 14, 22, 32], rounds = 4 }) {
   const overlap = (a, b, pad) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) + pad) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) + pad);
-  function candidates(t, [px, py], placed, pts, arrowPts, linePts, marks) {
+  function candidates(t, [px, py], placed, pts, arrowPts, linePts, marks, small) {
     const bb0 = t.getBBox(), w = bb0.width, hgt = bb0.height, a0 = Math.atan2(py - Y0, px - X0), out = [];
-    for (const dist of [9, 14, 22, 32]) for (let k = 0; k < 16; k++) {
+    for (const dist of dists) for (let k = 0; k < 16; k++) {
       const turn = (k % 2 ? 1 : -1) * Math.ceil(k / 2), a = a0 + turn * (Math.PI / 8), ca = Math.cos(a), sa = Math.sin(a);
       const reach = Math.min(Math.abs(ca) > 1e-6 ? (w / 2 + dist) / Math.abs(ca) : Infinity, Math.abs(sa) > 1e-6 ? (hgt / 2 + dist) / Math.abs(sa) : Infinity);
       const box = { x: px + ca * reach - w / 2, y: py + sa * reach - hgt / 2, w, h: hgt };
@@ -869,6 +893,7 @@ export function stepLabels({ items, steps, frame: [L, R, T, B], zero: [X0, Y0], 
       let cost = dist * 0.4 + Math.abs(turn) * 1.5;
       for (const b of placed) cost += overlap(box, b, 3) * 5;
       for (const [qx, qy] of pts) cost += overlap(box, { x: qx - 7, y: qy - 7, w: 14, h: 14 }, 1) * 5;
+      for (const [qx, qy] of small) cost += overlap(box, { x: qx - 5, y: qy - 5, w: 10, h: 10 }, 1) * 1;
       for (const [qx, qy] of arrowPts) if (qx > box.x - 3 && qx < box.x + w + 3 && qy > box.y - 3 && qy < box.y + hgt + 3) cost += 60;
       for (const [qx, qy] of linePts) if (qx > box.x && qx < box.x + w && qy > box.y && qy < box.y + hgt) cost += 4;
       if (box.x - 2 < X0 && box.x + w + 2 > X0) cost += 50;
@@ -891,11 +916,11 @@ export function stepLabels({ items, steps, frame: [L, R, T, B], zero: [X0, Y0], 
   const placeOne = (li) => {
     const it = items[li];
     const C = Array.from({ length: steps }, (_, j) => {
-      const others = boxes.flatMap((bs, q) => (q !== li && bs[j] ? [bs[j]] : []));
+      const placedBoxes = boxes.flatMap((bs, q) => (q !== li && bs[j] ? [bs[j]] : []));
       const at = it.at(j), dots = items.flatMap((o, q) => (q !== li && o.dot ? [o.at(j)] : [])), tips = items.flatMap((o, q) => (q !== li && !o.dot ? [o.at(j)] : []));
       const arrowPts = it.dot ? arrows(j) : arrows(j).filter(([ax, ay]) => Math.hypot(ax - at[0], ay - at[1]) > 14);
       it.el.textContent = it.text(j);
-      return candidates(it.el, at, others, dots, arrowPts, lines(j), [...dots, ...tips]);
+      return candidates(it.el, at, placedBoxes, dots, arrowPts, lines(j), [...dots, ...tips], others(j));
     });
     const total = [C[0].map((c) => c.cost)], from = [[]];
     for (let j = 1; j < C.length; j++) {

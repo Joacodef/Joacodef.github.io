@@ -1,7 +1,7 @@
 // Figures of the laws-of-text note, on the words of Don Quijote: rank times frequency (Zipf's law), the least squares
 // line in log–log, the vocabulary as the book goes on (Heaps' law), and the words seen once. The English page counts
 // John Ormsby's translation and the Spanish page the original; laws-of-text-data.js holds both.
-import { el, tr, lang, makeHandle, makeDraggable, logChart } from "../../plane.js";
+import { el, tr, lang, makeHandle, makeDraggable, logChart, linChart } from "../../plane.js";
 import { BOOKS } from "./laws-of-text-data.js";
 
 const book = BOOKS[lang];
@@ -57,24 +57,11 @@ function logAxes(svg, { max, xName, yName }) {
 
 // Linear axes from 0 to xMax and yMax, with labeled ticks every xStep and yStep. The top tick sits at the top of the
 // plot, so the y axis's name goes higher than on the log charts, clear of its label.
-function linChart(svg, { xMax, yMax, xStep, yStep, xName, yName, height = 440 }) {
-  svg.setAttribute("viewBox", `0 0 460 ${height}`);
-  const L = 70, R = 440, T = 44, B = height - 50;
-  const X = (x) => L + ((R - L) * x) / xMax, Y = (y) => B - ((B - T) * y) / yMax;
-  const g = el("g", { class: "axes" }, svg);
-  el("line", { x1: L, y1: B, x2: R, y2: B }, g);
-  el("line", { x1: L, y1: B, x2: L, y2: T }, g);
-  for (let v = 0; v <= xMax; v += xStep) {
-    el("line", { x1: X(v), y1: B, x2: X(v), y2: B + 6 }, g);
-    el("text", { x: X(v), y: B + 21, "text-anchor": "middle", class: "tick" }, svg).textContent = num(v);
-  }
-  for (let v = 0; v <= yMax; v += yStep) {
-    el("line", { x1: L, y1: Y(v), x2: L - 6, y2: Y(v) }, g);
-    el("text", { x: L - 10, y: Y(v) + 4.5, "text-anchor": "end", class: "tick" }, svg).textContent = num(v);
-  }
-  axisName(svg, R, B + 43, "end", xName);
-  axisName(svg, L - 8, T - 22, "start", yName);
-  return { X, Y, L, R, T, B, toX: (sx) => ((sx - L) * xMax) / (R - L) };
+function linAxes(svg, { xMax, yMax, xStep, yStep, xName, yName, height = 440 }) {
+  const C = linChart(svg, { x: [0, xMax], y: [0, yMax], step: [xStep, yStep], box: [70, 440, 44, height - 50], size: [460, height], xLabel: num, yLabel: num });
+  axisName(svg, C.R, C.B + 43, "end", xName);
+  axisName(svg, C.L - 8, C.T - 22, "start", yName);
+  return C;
 }
 
 const RANK = () => [tr("rank", "rango"), "r"];
@@ -213,7 +200,7 @@ function heapsFigure() {
   const svg = document.getElementById("fig-heaps");
   if (!svg) return;
   const out = document.getElementById("fig-heaps-out");
-  const C = linChart(svg, { xMax: 420000, yMax: 25000, xStep: 100000, yStep: 5000, xName: [tr("tokens read", "tokens leídos"), "n"], yName: [tr("different words", "palabras distintas"), "V"] });
+  const C = linAxes(svg, { xMax: 420000, yMax: 25000, xStep: 100000, yStep: 5000, xName: [tr("tokens read", "tokens leídos"), "n"], yName: [tr("different words", "palabras distintas"), "V"] });
   const poly = (b) => [[0, 0], ...b.vocab].map(([t, v]) => `${C.X(t).toFixed(1)},${C.Y(v).toFixed(1)}`).join(" ");
 
   // The other language's book, faint, named 60% of the way along, on the side away from this page's curve: above and to

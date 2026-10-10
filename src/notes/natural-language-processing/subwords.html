@@ -1,0 +1,266 @@
+---
+title: Subwords and fastText
+module: Text encoders
+order: 7
+description: How a word that no table has a vector for gets one from its subwords, runs of three to six characters it shares with other words, how fastText trains them, what the vectors you download were trained with, and when shared letters mean shared meaning.
+scripts:
+  - /assets/js/notes/natural-language-processing/subwords.js
+---
+<div class="prose">
+  <p>The note on word vectors gave a vector to the 4,993 words that <i>Don Quixote</i> uses at least five times; the other 9,928 different words, two thirds of them, got none. The note on the laws of text showed that every new stretch of text brings words never seen before, and even fastText's table of two million words, trained on the web, lacks 794 of the words the book's table drops, in lowercase or with a capital. When Sancho, believing his master dead, mourns him as an “encounterer of dangers, endurer of outrages” (chapter LII of part I), neither table has a row for <i>encounterer</i>: the book uses it once, and the web's table not at all. A reader meeting the word for the first time still understands it, because it is made of pieces they know. This note builds a word's vector from its pieces, runs of a few characters that other words share, so that even a word no table has gets one; and it shows the price, words that share only an ending landing close together.</p>
+  <ul class="asks">
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="The word encounterer, with no row in the book's table and none in the web's table"><text class="sw-pic-w red" x="100" y="30" text-anchor="middle" style="font-size:17px">encounterer</text><rect class="sw-pic-slot" x="8" y="52" width="88" height="64" rx="6"/><text class="sw-pic-l" x="52" y="76" text-anchor="middle" style="font-size:12.5px">the book's</text><text class="sw-pic-l" x="52" y="91" text-anchor="middle" style="font-size:12.5px">table</text><text class="sw-pic-n" x="52" y="108" text-anchor="middle" style="font-size:12.5px">no row</text><rect class="sw-pic-slot" x="104" y="52" width="88" height="64" rx="6"/><text class="sw-pic-l" x="148" y="76" text-anchor="middle" style="font-size:12.5px">the web's</text><text class="sw-pic-l" x="148" y="91" text-anchor="middle" style="font-size:12.5px">table</text><text class="sw-pic-n" x="148" y="108" text-anchor="middle" style="font-size:12.5px">no row</text></svg>
+      <p>A word no table has</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="An arrow for encounterer, built from its 38 subwords, 10 degrees from the arrow of encounter"><path class="sw-pic-arc" d="M125,112 A95,95 0 0 0 123.6,95.5"/><line class="sw-pic-v blue" x1="30" y1="112" x2="163.9" y2="88.4"/><path class="sw-pic-head blue" d="M172.8,86.8 L161.4,84.4 L163.2,94.3 Z"/><line class="sw-pic-v red" x1="30" y1="112" x2="168" y2="112"/><path class="sw-pic-head red" d="M177,112 L166,107 L166,117 Z"/><text class="sw-pic-w blue" x="176" y="74" text-anchor="end" style="font-size:15px">encounter</text><text class="sw-pic-w red" x="177" y="128" text-anchor="end" style="font-size:15px">encounterer</text><text class="sw-pic-l" x="129" y="108" style="font-size:12.5px">10°</text><text class="sw-pic-l" x="12" y="24" style="font-size:12.5px">built from its 38 subwords</text></svg>
+      <p>A vector from its pieces</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="knighting, whose closest word is righting, sharing ighting, while knight comes 4th"><text class="sw-pic-w" x="100" y="34" text-anchor="middle" style="font-size:17px">kn<tspan class="sw-pic-end">ighting</tspan></text><text class="sw-pic-l" x="100" y="62" text-anchor="middle" style="font-size:12.5px">its closest word</text><text class="sw-pic-w" x="100" y="86" text-anchor="middle" style="font-size:17px">r<tspan class="sw-pic-end">ighting</tspan></text><text class="sw-pic-l" x="100" y="118" text-anchor="middle" style="font-size:12.5px">knight comes 4th</text></svg>
+      <p>Spelling can mislead</p>
+    </li>
+  </ul>
+  <p>Section 1 counts the words with no vector; section 2 cuts a word into subwords, and section 3 builds its vector from theirs; section 4 shows why a few symbols spell every word, and how fastText caps the rows its subwords need; section 5 trains them; section 6 is fastText and its published tables; and section 7 shows when a shared subword means a shared meaning.</p>
+</div>
+
+<section id="oov">
+  <div class="prose">
+    <h2><span class="n">1</span>Words with no vector</h2>
+    <p>A trained table of vectors is fixed: a word it did not keep is <em>out of vocabulary</em> (OOV) and has no row, so no vector. A classifier that reads it gives it nothing, as the linear model weighed the cabbages of the note on linear models at 0. Such words come in two kinds: the words the table dropped, which the text used one to four times, and the words never seen at all. More text lowers their share without ever ending it, as the note on the laws of text showed: the tail of rare words never runs out. In the figure, train the table on the book up to the red point, keeping the words used at least five times, and see how many of the tokens of the next tenth of the book have no vector.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-oov" role="group" aria-label="The share of the next tenth's tokens with no vector, against the share of the book the table was trained on"></svg>
+    <div class="ro">
+      <div class="sw-ro" id="fig-oov-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Drag the red point along the book, or move it with the arrow keys.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Trained on part I, the table has no vector for 10.1% of part II's tokens and 74.5% of its different words; even keeping every word, 4.1% of part II's tokens are new. Among the words it lacks are other forms of words that have a vector, such as <i>lions</i> and <i>proverbs</i>, names, and words the first part never needed, such as <i>duchess</i> and <i>majordomo</i>; they run longer than the words with a vector, 7.4 letters against 6.2. Of the 9,928 words the book's table drops, fastText's table lacks 794, in lowercase or with a capital: names such as <i>babieca</i> and <i>caraculiambro</i>, old forms such as <i>o'er</i>, and words with an apostrophe such as <i>knight's</i>. The other forms of known words are the ones that pieces of words can rescue.</p>
+  </div>
+</section>
+
+<section id="subwords">
+  <div class="prose">
+    <h2><span class="n">2</span>A word's subwords</h2>
+    <p>What could a word with no vector be made of? Mark its start and end with &lt; and &gt;, then slide a window <i>n</i> characters wide along it, one character at a time, as the note on word2vec slid a window along a text. Each run of <i>n</i> characters is a <em>character n-gram</em>, or <em>subword</em>; the pieces of words of the last note are these subwords. The marks tell a run at a word's end, such as <i>mill&gt;</i>, from the same letters inside a word. fastText takes every <i>n</i> from 3 to 6, and a word that has a row of its own, one used at least five times, counts that row as one more:</p>
+    <div class="disp hero-f long"><span class="nowrap">𝒢<sub><i>o</i></sub> = {the runs of 3 to 6</span> <span class="nowrap">characters of &lt;<i>o</i>&gt;}</span></div>
+    <p>with <i>o</i> itself added when it has a row of its own. A word of |<i>o</i>| characters has |<i>o</i>| + 3 − <i>n</i> runs of length <i>n</i>, so 4|<i>o</i>| − 6 in all once |<i>o</i>| is at least 3. In the figure, pick a word and a range of lengths.</p>
+  </div>
+
+  <div class="fig">
+    <div class="sw-panel" id="fig-subwords" role="group" aria-label="A word with its boundary marks and its subwords"></div>
+    <div class="ro">
+      <p class="sw-ctl-name">Word</p>
+      <div class="sw-picks" id="fig-subwords-words"></div>
+      <div class="modes" id="fig-subwords-mode" role="group" aria-label="Lengths">
+        <button type="button" data-mode="3" aria-pressed="false">Subwords of 3 characters</button>
+        <button type="button" data-mode="36" aria-pressed="true">Subwords of 3 to 6 characters</button>
+      </div>
+      <div class="sw-ro" id="fig-subwords-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Click a word, or move along the words with the arrow keys, and pick the lengths.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>The 9,928 words with no vector have 67% of their subwords in words that have one: 95% of their subwords of 3 characters, but only 31% of those of 6. Short runs are shared, long runs are specific. <i>windmill</i>, which the book never uses, shares 22 of its 26 subwords with <i>windmills</i>, and one, <i>dmill&gt;</i>, is in no word with a vector.</p>
+  </div>
+</section>
+
+<section id="sum">
+  <div class="prose">
+    <h2><span class="n">3</span>A word as the sum of its subwords</h2>
+    <p>Each subword gets a vector of its own, <span class="nowrap"><i>v</i><sub><i>g</i></sub> ∈ ℝ<sup><i>d</i></sup>,</span> a row of the table, and a word's vector adds up its subwords' vectors:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>v</i><sub><i>o</i></sub> = ∑<span class="lims"><span></span><span><i>g</i>∈𝒢<sub><i>o</i></sub></span></span> <i>v</i><sub><i>g</i></sub></span></div>
+    <p>A word never seen still has subwords seen inside other words, so it gets a vector, near the words that share them. It is the pooling of the note on word vectors, over a word's subwords instead of a text's words. fastText's program takes the mean instead of the sum, dividing by the number of rows, which, as that note showed, changes no direction and no cosine; the figures follow the program. The figure uses vectors trained on the book with subwords, as section 5 explains. Pick a word, and compare its closest words with those of the note on word vectors, which kept whole words only.</p>
+  </div>
+
+  <div class="fig">
+    <div class="sw-panel" id="fig-sum" role="group" aria-label="A word's subwords and its closest words"></div>
+    <div class="ro">
+      <p class="sw-ctl-name">Word</p>
+      <div class="sw-picks" id="fig-sum-words"></div>
+      <div class="modes" id="fig-sum-mode" role="group" aria-label="Vectors">
+        <button type="button" data-mode="sub" aria-pressed="true">Built from subwords</button>
+        <button type="button" data-mode="whole" aria-pressed="false">Whole words only</button>
+      </div>
+      <div class="sw-ro" id="fig-sum-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Click a word, or move along the words with the arrow keys, and pick the vectors.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>A row that no word with a vector uses keeps its random start, so short that it adds almost nothing: a length of about 0.06, against a median of 2.4 for a word's vector. For a word with a row of its own, that row is one of many: <i>squire</i>'s is 1 of its 19, and without it the vector would keep a cosine of 0.999 with what it is. So a frequent word's closest words change too, toward words spelled like it: <i>esquire</i> and <i>squirely</i> for <i>squire</i>, where the whole words gave <i>panza</i>.</p>
+  </div>
+</section>
+
+<section id="catalog">
+  <div class="prose">
+    <h2><span class="n">4</span>Few symbols, every word</h2>
+    <p>Won't a new word's subwords be new as well, and how many rows does this take? A fixed set of symbols composes every word: this is <em>compositionality</em>. The book writes its words with 37 characters (26 letters, the apostrophe, and 10 others from names and borrowed words, such as é, ñ and æ), 39 with the two marks, so there can be at most</p>
+    <div class="disp"><span class="nowrap">|Σ|<sup>3</sup> = 39<sup>3</sup> = 59,319</span></div>
+    <p>subwords of 3 characters, where |Σ| is the number of symbols; only 53,280 can occur, since a mark only opens or closes a run and the apostrophe stands only between letters. Subwords of 3 characters grow ever more slowly and stay far below that ceiling, 4,764 after the whole book, while new words keep coming. Subwords of up to 6 characters keep growing, so fastText caps the table: a hash function turns each subword into a number, whose remainder after dividing by 2,000,000 picks its row, and two subwords can then share one. Words with a row keep their own rows as well, so 𝒢<sub><i>o</i></sub> lists rows among <span class="nowrap"><i>G</i> = <i>V</i> + 2,000,000,</span> where <i>V</i> is the number of words with a row of their own, 4,993 for the book. In the figure, drag the red point along the text read; the ring marks ten times as much text.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-catalog" role="group" aria-label="Different words and different subwords against the tokens read; a red point marks a stretch of text and a ring ten times as much"></svg>
+    <div class="ro">
+      <div class="sw-ro" id="fig-catalog-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Drag the red point along the text read, or move it with the arrow keys.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Heaps' law of the note on the laws of text predicts about 3.3 times the words for ten times the text, and the book gives 3.0. The 36,983 subwords of the words with a vector land in 36,621 rows, so a few hundred rows hold two subwords, and training on the book reaches only those rows of the 2,000,000.</p>
+  </div>
+</section>
+
+<section id="training">
+  <div class="prose">
+    <h2><span class="n">5</span>Training with subwords</h2>
+    <p>Where do the subwords' vectors come from? From the training of the note on word2vec, with one change: the target goes in by its subwords. The pairs (<i>o</i>, <i>c</i>) are that note's, but the target is no longer a one-hot vector: it is a <em>multi-hot</em> vector, with a 1 for each of its subwords,</p>
+    <div class="disp"><span class="nowrap"><i>x</i><sub><i>o</i></sub> = ∑<span class="lims"><span></span><span><i>g</i>∈𝒢<sub><i>o</i></sub></span></span> <i>e</i><sub><i>g</i></sub> ∈ {0, 1, 2, …}<sup><i>G</i></sup>,</span> <span class="nowrap"><i>v</i><sub><i>o</i></sub> = <i>W</i><sub>in</sub><sup class="t">T</sup><i>x</i><sub><i>o</i></sub> = ∑<span class="lims"><span></span><span><i>g</i>∈𝒢<sub><i>o</i></sub></span></span> <i>v</i><sub><i>g</i></sub>,</span></div>
+    <p>where <i>e</i><sub><i>g</i></sub> has a 1 at row <i>g</i> and 0 everywhere else (it is not the embedding <i>e</i>(<i>w</i>) of the note on word vectors), and a subword repeated in a word, or two subwords sharing a row, gives a 2. Now <span class="nowrap"><i>W</i><sub>in</sub> ∈ ℝ<sup><i>G</i>×<i>d</i></sup></span> while <span class="nowrap"><i>W</i><sub>out</sub> ∈ ℝ<sup><i>d</i>×<i>V</i></sup></span> is as before, and so are <span class="nowrap"><i>z</i> = <i>W</i><sub>out</sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub></span> and <span class="nowrap"><span class="hat lo"><i>y</i></span> = softmax(<i>z</i>),</span> which training replaces with negative sampling. The first layer still selects rows of <i>W</i><sub>in</sub> and adds them up, as that note said <i>W</i><sub>in</sub><sup class="t">T</sup><i>x</i> does, weighted by <i>x</i>. A dot product is linear, so a pair's score is the sum of its subwords' scores:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>s</i>(<i>o</i>, <i>c</i>) = ∑<span class="lims"><span></span><span><i>g</i>∈𝒢<sub><i>o</i></sub></span></span> <i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>g</i></sub></span> <span class="nowrap">= <i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub>,</span></div>
+    <p>and the loss is that note's binary cross-entropy with <span class="nowrap"><i>h</i> = σ(<i>s</i>(<i>o</i>, <i>c</i>)).</span> Each row's share of the gradient is (<i>h</i> − <i>y</i>)<i>u</i><sub><i>c</i></sub>, the same for every subword of the target: one step moves every row the target uses, so a word that shares some of those rows moves without being trained. Only the target's side is split. Its rows are the table that is kept, as word2vec's original program kept only <i>W</i><sub>in</sub>, so they must serve words never seen; <i>W</i><sub>out</sub> keeps a column per word and plays no part in the word vectors.</p>
+    <p>The figure follows a designed example in two numbers per vector, with subwords of 3 characters only, to keep it small: the target <i>giants</i>, with its six subwords and its own row; the pair (<i>giants</i>, <i>windmills</i>) of the note on word2vec, <i>windmills</i> in green, and one drawn word, <i>habit</i>, in ink; and <i>giantess</i>, in no pair and with no row of its own, which shares four of its eight subwords with <i>giants</i>. The target's vector is the mean of its rows, as fastText computes it, and every row takes the whole step. Take steps of gradient descent with <span class="nowrap">η = 0.4.</span></p>
+  </div>
+
+  <div class="fig steps">
+    <svg id="fig-train" role="group" aria-label="The rows of giants, its vector, the vector of giantess and the context vectors of windmills and habit"></svg>
+    <div class="ctl sw-ctl"><button type="button" class="btn" id="fig-train-back">Back</button><button type="button" class="btn" id="fig-train-next">Next</button><span class="count" id="fig-train-count"></span><button type="button" class="btn" id="fig-train-reset" hidden>Reset</button></div>
+    <div class="ro" id="fig-train-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Next takes a step of gradient descent, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>The book's model is the training of the note on word vectors (<i>d</i> = 100, a radius drawn up to <i>m</i> = 5, <i>k</i> = 5 drawn words with β = ¾, 20 readings, a minimum count of 5, five training runs), with each target going in by its subwords of 3 to 6 characters and its own row, in 2,000,000 rows; with the subwords switched off, it gives that note's vectors exactly. The figures and the numbers quoted show the first training run, and the text claims only what held in at least four of the five. In our program it took about 2.5 times as long (101 seconds against 41 on the English book); the paper on fastText reports about 1.5 times slower than the skip-gram.</p>
+  </div>
+</section>
+
+<section id="fasttext">
+  <div class="prose">
+    <h2><span class="n">6</span>fastText and the vectors you download</h2>
+    <p>fastText is the program of Bojanowski, Grave, Joulin and Mikolov (“Enriching Word Vectors with Subword Information”, 2017): the skip-gram of sections 2 to 5. Their paper trained it on Wikipedia in nine languages, with <i>d</i> = 300, 5 negatives drawn by the square root of the counts (β = ½), a radius drawn from 1 to 5, and 5 readings of the text. Among the vectors published later are 294 languages trained on Wikipedia with that skip-gram, and 157 languages trained on Common Crawl and Wikipedia (Grave et al. 2018), the tables of the note on word vectors. Those are CBOW with position weights, with subwords of 5 characters only, a radius drawn from 1 to 5, 10 negatives and <i>d</i> = 300: each word around goes in as the mean of its rows, weighted number by number by a vector learned for its place in the window. In CBOW the words around go in by their subwords and the word guessed stays whole: in both models, the side that goes in by pieces is the input, whose rows are kept. In the figure, pick a target in Sancho's line from the note on word2vec, with radius <i>m</i> = 2, and a model.</p>
+  </div>
+
+  <div class="fig">
+    <div class="sw-panel" id="fig-sides" role="group" aria-label="Which words of Sancho's line go in by their subwords, and which come out whole"></div>
+    <div class="ro">
+      <div class="modes" id="fig-sides-mode" role="group" aria-label="Model">
+        <button type="button" data-mode="sg" aria-pressed="true">The paper: skip-gram, subwords of 3 to 6</button>
+        <button type="button" data-mode="cbow" aria-pressed="false">The web's tables: CBOW, subwords of 5</button>
+      </div>
+      <div class="sw-ro" id="fig-sides-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Click a word of the line to make it the target, or move along the line with the arrow keys, and pick a model.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>The web's tables draw a radius of up to 5, not the figure's 2. Their .vec file holds one finished row per word, the word's own row averaged with its subwords', so it cannot build a new word; their .bin file, about 7 GB, keeps the subword rows and can. With subwords of 5 characters only, a word of one or two letters missing from the table has no subword at all and gets the zero vector. Like the book's vectors, these have one vector per spelling, whatever the sentence. The same library also classifies texts (Joulin et al. 2017), and the often-quoted billion words in under ten minutes is that classifier's speed.</p>
+  </div>
+</section>
+
+<section id="right-and-wrong">
+  <div class="prose">
+    <h2><span class="n">7</span>What subwords get right and wrong</h2>
+    <p>Is closeness in spelling closeness in meaning? The cut is blind to meaning: when the shared subwords are the lexeme, the likeness is real, and when they are only the ending, it is spelling. By the same linearity as section 5, a word's cosine with another splits into one part per subword:</p>
+    <div class="disp hero-f"><span class="nowrap">cos(<i>v</i><sub><i>o</i></sub>, <i>v</i><sub><i>o</i>′</sub>) = <span class="frac"><span>∑<sub><i>g</i>∈𝒢<sub><i>o</i></sub></sub> <i>v</i><sub><i>g</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i>′</sub></span><span>‖<i>v</i><sub><i>o</i></sub>‖ ‖<i>v</i><sub><i>o</i>′</sub>‖</span></span></span></div>
+    <p>(with the program's mean, the same value). So the cosine tends to rise with the number of subwords the two words share, |𝒢<sub><i>o</i></sub> ∩ 𝒢<sub><i>o</i>′</sub>|. If every subword's vector had the same length and stood at right angles to the others, the cosine would be the share in common, <span class="nowrap">|𝒢<sub><i>o</i></sub> ∩ 𝒢<sub><i>o</i>′</sub>| / √(|𝒢<sub><i>o</i></sub>| |𝒢<sub><i>o</i>′</sub>|);</span> trained rows are neither, so the count is a tendency, not a rule. Pick a word with no vector, and compare its closest word that shares its start with its closest word that shares its end.</p>
+  </div>
+
+  <div class="fig">
+    <div class="sw-panel" id="fig-split" role="group" aria-label="A word's closest words sharing its start and its end, with each cosine split into the shared subwords' part and the rest"></div>
+    <div class="ro">
+      <p class="sw-ctl-name">Word</p>
+      <div class="sw-picks" id="fig-split-words"></div>
+      <div class="sw-ro" id="fig-split-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Click a word, or move along the words with the arrow keys.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Subwords get forms right. Of 532 words whose form with an added s also has a vector (plurals such as <i>knights</i>, but also verb forms such as <i>knows</i>), the whole-word vectors of the note on word vectors put that form, at the median, 335th among the word's closest words, and first in 1% of them; with subwords it comes first in 66%. <i>falsehoods</i> moves from 164th to first for <i>falsehood</i>. Analogies of form gain while those of meaning lose: <span class="nowrap"><i>knight</i> : <i>knights</i></span> <span class="nowrap">:: <i>giant</i> : <i>giants</i></span> moves from 180th to first in all five training runs, while <span class="nowrap"><i>king</i> : <i>kingdom</i></span> <span class="nowrap">:: <i>governor</i> : <i>island</i>,</span> first for the whole words, falls to sixth or seventh, behind <i>governor's</i>. The paper on fastText found the same split between analogies of form and of meaning.</p>
+    <p>They get meaning wrong where spelling misleads. Frequent words drift toward words spelled like them: of the 10 closest words of each of the book's 878 most frequent words of four letters or more, 3.4 share a run of 4 characters with it, against 0.19 with whole words. <i>still</i> now sits by <i>till</i> and <i>bread</i> by <i>breadth</i>, in all five training runs, where the note on word vectors put <i>bread</i> by <i>cheese</i>; <i>patience</i> sits by <i>impatience</i> too, but through their shared lexeme, a real relation between opposites. With far more text the accidents fade: in the web's table, <i>knighting</i> has a cosine of 0.585 with <i>knight</i> and 0.199 with <i>righting</i>, and <i>still</i> 0.259 with <i>till</i>. Subwords help most where text is scarce, and their mistakes are spelling's mistakes; one spelling still keeps one vector. Later notes cut the text itself into pieces chosen by merges, and build vectors that change with the sentence.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">8</span>Summary</h2>
+    <p>The note's ideas in NumPy. <code>w_in</code> has a row per word with a vector, then 2,000,000 rows of subwords, and <code>w_out</code> a column per word; <code>idx</code> gives a word's row, <code>rows</code> lists the rows of the word <code>o</code>, <code>c</code> is a context word's column, <code>y</code> its label and <code>eta</code> the learning rate; <code>tokens</code> is a text, and <code>V</code> the number of words with a vector.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Subwords</div>
+      <div class="f">the runs of 3 to 6 characters of &lt;<i>o</i>&gt;; with <i>o</i>'s own row, if it has one, they make 𝒢<sub><i>o</i></sub></div>
+      <div class="c"><code>s = "&lt;" + o + "&gt;"<br>subs = [s[i:i + n]<br>&nbsp;&nbsp;&nbsp;&nbsp;for i in range(len(s))<br>&nbsp;&nbsp;&nbsp;&nbsp;for n in range(3, 7)<br>&nbsp;&nbsp;&nbsp;&nbsp;if i + n &lt;= len(s)]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">A subword's row</div>
+      <div class="f"><i>V</i> plus the remainder, after dividing by 2,000,000, of fastText's hash: FNV-1a over the subword's UTF-8 bytes, each byte above 127 read as negative</div>
+      <div class="c"><code>fnv = 2166136261<br>for b in g.encode("utf-8"):<br>&nbsp;&nbsp;&nbsp;&nbsp;b = b if b &lt; 128 else b | 0xFFFFFF00<br>&nbsp;&nbsp;&nbsp;&nbsp;fnv = ((fnv ^ b) * 16777619) % 2**32<br>row = V + fnv % 2_000_000</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Multi-hot, and the sum</div>
+      <div class="f"><i>v</i><sub><i>o</i></sub> = <i>W</i><sub>in</sub><sup class="t">T</sup><i>x</i><sub><i>o</i></sub> = ∑<sub><i>g</i></sub> <i>v</i><sub><i>g</i></sub></div>
+      <div class="c"><code>x_o = np.zeros(len(w_in))<br>np.add.at(x_o, rows, 1)<br>v_o = w_in.T @ x_o&nbsp;&nbsp;# = w_in[rows].sum(axis=0)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">What the program computes</div>
+      <div class="f">the mean of the rows</div>
+      <div class="c"><code>v_o = w_in[rows].mean(axis=0)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">A score, subword by subword</div>
+      <div class="f"><i>s</i>(<i>o</i>, <i>c</i>) = ∑<sub><i>g</i></sub> <i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>g</i></sub></div>
+      <div class="c"><code>s = (w_in[rows] @ w_out[:, c]).sum()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">One step, every row</div>
+      <div class="f">(<i>h</i> − <i>y</i>)<i>u</i><sub><i>c</i></sub> for each <i>v</i><sub><i>g</i></sub></div>
+      <div class="c"><code>h = 1 / (1 + np.exp(-(w_out[:, c] @ v_o)))<br>g_in = (h - y) * w_out[:, c]<br>g_out = (h - y) * v_o<br>np.subtract.at(w_in, rows, eta * g_in)<br>w_out[:, c] -= eta * g_out</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">A cosine, subword by subword</div>
+      <div class="f">∑<sub><i>g</i></sub> <i>v</i><sub><i>g</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i>′</sub> / (‖<i>v</i><sub><i>o</i></sub>‖ ‖<i>v</i><sub><i>o</i>′</sub>‖)</div>
+      <div class="c"><code>v_o = w_in[rows].sum(axis=0)<br>parts = w_in[rows] @ v_o2 / (<br>&nbsp;&nbsp;&nbsp;&nbsp;np.linalg.norm(v_o)<br>&nbsp;&nbsp;&nbsp;&nbsp;* np.linalg.norm(v_o2))<br>cos = parts.sum()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">The share in common</div>
+      <div class="f">|𝒢<sub><i>o</i></sub> ∩ 𝒢<sub><i>o</i>′</sub>| / √(|𝒢<sub><i>o</i></sub>| |𝒢<sub><i>o</i>′</sub>|)</div>
+      <div class="c"><code>a, b = set(rows), set(rows2)<br>share = len(a &amp; b) / np.sqrt(len(a) * len(b))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Tokens with no vector</div>
+      <div class="f">their share of a text</div>
+      <div class="c"><code>oov = np.mean([w not in idx for w in tokens])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">A downloaded model</div>
+      <div class="f">a vector for any word, from the .bin</div>
+      <div class="c"><code>import fasttext<br>m = fasttext.load_model("cc.en.300.bin")<br>v = m.get_word_vector("encounterer")</code></div>
+    </div>
+  </div>
+  <div class="prose">
+    <p>The note's data: the books are Project Gutenberg's <i>Don Quijote</i> (#2000) and Ormsby's translation (#996); the counts of fastText's tables, cc.en.300 and cc.es.300 (Grave et al. 2018), come from the files at <a href="https://fasttext.cc/docs/en/crawl-vectors.html">fasttext.cc</a>, under the <a href="https://creativecommons.org/licenses/by-sa/3.0/">Creative Commons Attribution-ShareAlike 3.0</a> license, and the page shows only what was computed from them. The book's vectors with subwords were trained for this note.</p>
+  </div>
+</section>
