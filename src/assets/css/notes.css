@@ -1123,6 +1123,121 @@ button.w2v-trow:hover { background: var(--paper); }
 .sw-pic-head.red { fill: var(--red); }
 .sw-pic-head.blue { fill: var(--blue); }
 
+/* Sequence labeling (natural language processing): figures made of words and grids, in panels like those of the earlier
+   notes. Figures 2 to 6 share one grid, a column per token and a row per label, each box a button, with a layer of
+   lines drawn over its gaps. Carmine is a name's underline and the labeling or chain asked about (its path); blue is
+   scores and what flows (a box's share, the table's cells, the forward recursion's edges, back-pointers); ink the box
+   picked; faint the rest. Label codes are set in the sans, so that I-PER never reads as part I of a chapter label. */
+.sl-panel { background: var(--card); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+:is(.sl-head, .sl-code, .sl-codes, .sl-tag, .sl-kind, .sl-rowhead, .sl-box, .sl-key, .sl-gloss, .sl-below, .sl-tcol, .sl-tcell, .sl-xname, .sl-start-name, .sl-pic-l, .sl-pic-c) { font-family: var(--sans); font-weight: 400; font-variation-settings: normal; }
+.sl-head { font-size: 0.86rem; line-height: 1.4; color: var(--ink-2); margin: 0 0 0.6rem; }
+.sl-head i { font-family: var(--serif); font-size: 1.05rem; }
+.sl-thead { margin-top: 1.1rem; }
+.sl-code { font-size: 0.86em; letter-spacing: 0.01em; white-space: nowrap; }
+.ro .sl-codes { font-size: 0.92rem; color: var(--ink-2); margin: 0.2rem 0 0.4rem; }
+.sl-ro { display: flow-root; }
+.sl-ro .eq sub .sl-code, .sl-ro .eq sup .sl-code { font-size: 0.8em; }
+/* A fraction whose sum is too long for the line wraps it between its terms, under the bar. */
+.sl-ro .frac { max-width: calc(100% - 1.4em); }
+.sl-ro .frac > span:last-child { white-space: normal; }
+.sl-ctl .btn[hidden] { display: inline-block; visibility: hidden; }
+.ro .sl-ctl { margin-top: 0.6rem; }
+/* Figure 1: the phrase's words in a row, each a button, its label small above it; a name underlined in carmine across
+   its words, its kind after the last; an I- that continues nothing dashed and faint. */
+.sl-line { display: flex; flex-wrap: wrap; align-items: flex-start; row-gap: 0.7rem; }
+.sl-w { font: inherit; background: transparent; border: 1px solid transparent; border-radius: 6px; margin: 0; padding: 0.15em 0.25rem 0.3em; display: inline-flex; flex-direction: column; align-items: stretch; color: var(--ink); cursor: pointer; text-align: left; }
+span.sl-w { cursor: default; }
+button.sl-w:hover { border-color: var(--rule); }
+.sl-tag { font-size: 0.72rem; line-height: 1.3; color: var(--ink-3); min-height: 1.3em; white-space: nowrap; }
+.sl-tag.o { opacity: 0.6; }
+.sl-word { position: relative; display: block; font-family: var(--serif); font-size: 1.12rem; line-height: 1.35; white-space: nowrap; }
+.sl-w.in .sl-word::after, .sl-w.broken .sl-word::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; border-bottom: 2px solid var(--red); }
+.sl-w.cont .sl-word::after { right: calc(-0.5rem - 2px); }
+.sl-w.broken .sl-word::after { border-bottom: 1.5px dashed var(--ink-3); }
+.sl-w .sl-kind { display: block; font-size: 0.7rem; line-height: 1.2; color: var(--red); margin-top: 4px; white-space: nowrap; }
+/* The grid. */
+.sl-gridwrap { position: relative; }
+.sl-grid { display: grid; column-gap: 16px; row-gap: 5px; align-items: center; }
+.sl-grid.has-extra { column-gap: 8px; }
+.sl-colhead { display: flex; flex-direction: column; align-items: center; min-width: 0; padding-bottom: 6px; }
+.sl-colhead .sl-word { font-size: 1rem; display: inline; }
+.sl-rowhead { font-size: 0.78rem; color: var(--ink-2); text-align: right; white-space: nowrap; }
+/* Room for the start dot between the row names and the first column. */
+.sl-grid .sl-rowhead { padding-right: 9px; }
+.sl-box { font-size: 0.8rem; line-height: 1.2; font-variant-numeric: tabular-nums; color: var(--ink); background: color-mix(in srgb, var(--blue) calc(var(--a, 0) * 50%), var(--card)); border: 1px solid var(--rule); border-radius: 5px; padding: 0.38em 0.1em; margin: 0; min-width: 0; text-align: center; white-space: nowrap; cursor: pointer; position: relative; }
+/* A box on the path: a carmine border and a ring just outside it, which takes nothing from the number. */
+.sl-box.on { border-color: var(--red); box-shadow: 0 0 0 1px var(--red); }
+.sl-box.on.filled { background: color-mix(in srgb, var(--red) 14%, var(--card)); }
+.sl-box.picked { outline: 2px solid var(--ink); outline-offset: 2px; }
+.sl-box.none { background: transparent; border: 1px dashed color-mix(in srgb, var(--ink-3) 55%, transparent); cursor: default; }
+.sl-box:focus-visible, .sl-box.picked:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.sl-extra { align-self: center; justify-self: center; padding: 0.38em 0.35em; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.sl-xname { font-size: 0.72rem; color: var(--ink-2); }
+.sl-xname i { font-family: var(--serif); font-size: 1rem; }
+.sl-below { font-size: 0.74rem; color: var(--ink-2); text-align: center; font-variant-numeric: tabular-nums; padding-top: 3px; }
+.sl-belowhead { font-size: 0.72rem; }
+.fig svg.sl-edges { position: absolute; inset: 0; width: 100%; height: 100%; background: none; border-radius: 0; pointer-events: none; overflow: visible; }
+.sl-edge { stroke: var(--ink-3); stroke-width: 1; fill: none; }
+.sl-edge.faint { stroke-opacity: 0.3; stroke-width: 0.8; }
+.sl-edge.path { stroke: var(--red); stroke-width: 2.4; stroke-linecap: round; }
+.sl-edge.flow { stroke: var(--blue); stroke-linecap: round; }
+.sl-edge.back { stroke: var(--blue); stroke-width: 1.2; stroke-opacity: 0.8; }
+.sl-start { fill: var(--ink-2); }
+.sl-uline { stroke: var(--red); stroke-width: 2; }
+.sl-uline.broken { stroke: var(--ink-3); stroke-width: 1.5; stroke-dasharray: 3 3; }
+/* The table A of figure 3: one blue scale, the cells the labeling uses outlined in ink. */
+.sl-table { display: grid; column-gap: 4px; row-gap: 4px; align-items: center; }
+.sl-tcol { font-size: 0.72rem; color: var(--ink-2); text-align: center; white-space: nowrap; }
+.sl-tcell { font-size: 0.76rem; line-height: 1.2; font-variant-numeric: tabular-nums; text-align: center; padding: 0.3em 0; border-radius: 4px; border: 1px solid transparent; background: color-mix(in srgb, var(--blue) calc(var(--a, 0) * 50%), var(--card)); color: var(--ink); }
+.sl-tcell.used { border: 2px solid var(--ink); }
+.sl-start-name { font-size: 0.78rem; color: var(--ink-2); }
+/* Keys and glosses. */
+.sl-key { font-size: 0.78rem; line-height: 1.4; color: var(--ink-2); margin: 0.7rem 0 0; display: flex; flex-wrap: wrap; gap: 0.2em 1.1em; }
+.sl-ki { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 0.45em; align-items: center; }
+.sl-sw { display: block; width: 1.4em; height: 0.8em; border-radius: 2px; }
+.sl-sw.blue { background: color-mix(in srgb, var(--blue) 50%, var(--card)); }
+.sl-sw.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-2); justify-self: center; }
+.sl-sw.faint { background: var(--card); border: 1px solid var(--rule); box-sizing: border-box; }
+.sl-sw.used { background: var(--card); border: 2px solid var(--ink); box-sizing: border-box; }
+.sl-sw.path { height: 0; border-top: 2.4px solid var(--red); border-radius: 0; }
+.sl-sw.back, .sl-sw.bluel { height: 0; border-top: 2px solid var(--blue); border-radius: 0; }
+.sl-sw.back { border-top-width: 1.2px; }
+.sl-gloss { font-size: 0.76rem; line-height: 1.45; color: var(--ink-2); margin: 0.7rem 0 0; }
+@media (max-width: 480px) {
+  .sl-panel { padding: 12px 10px; }
+  .sl-grid { column-gap: 7px; row-gap: 4px; }
+  .sl-grid.has-extra { column-gap: 7px; }
+  .sl-extra { margin-top: 10px; }
+  .sl-box.sl-extra { padding: 0.42em 0.35em; }
+  .sl-box { font-size: 0.7rem; padding: 0.42em 0; }
+  .sl-colhead .sl-word { font-size: 0.86rem; }
+  .sl-rowhead, .sl-tcol { font-size: 0.66rem; }
+  .sl-grid .sl-rowhead { padding-right: 6px; }
+  .sl-tcell { font-size: 0.66rem; }
+  .sl-tag { font-size: 0.64rem; }
+}
+@media (max-width: 360px) {
+  .sl-panel { padding: 12px 6px; }
+  .sl-grid, .sl-grid.has-extra { column-gap: 3px; }
+  .sl-box { font-size: 0.6rem; letter-spacing: -0.03em; }
+  .sl-rowhead, .sl-tcol, .sl-tcell { font-size: 0.6rem; }
+  .sl-grid .sl-rowhead { padding-right: 6px; }
+  .sl-colhead .sl-word { font-size: 0.8rem; }
+  .sl-table { column-gap: 3px; }
+}
+/* The opening's small pictures. */
+.sl-pic-w { fill: var(--ink); font-family: var(--serif); }
+.sl-pic-l { fill: var(--ink-2); }
+.sl-pic-c { fill: var(--ink-3); }
+.sl-pic-ent { stroke: var(--red); stroke-width: 2; }
+.sl-pic-kind { fill: var(--red); font-family: var(--sans); }
+.sl-pic-bar { fill: var(--ink-3); opacity: 0.6; }
+.sl-pic-zero { stroke: var(--ink-3); stroke-width: 0.6; }
+.sl-pic-hook { fill: none; stroke: var(--blue); stroke-width: 1.4; }
+.sl-pic-box { fill: var(--card); stroke: var(--rule); stroke-width: 1; }
+.sl-pic-box.on { stroke: var(--red); stroke-width: 2; }
+.sl-pic-path { fill: none; stroke: var(--red); stroke-width: 2; stroke-linejoin: round; }
+
 /* Figures stepped through like slides, with Next and Back. The controls sit right under the drawing, so the growing
    text never moves them, and new text appears only at the bottom, with earlier text dimmed above it. */
 .fig.steps { grid-template-areas: "draw" "ctl" "ro" "foot"; }

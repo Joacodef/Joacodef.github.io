@@ -1,0 +1,268 @@
+---
+title: "Sequence labeling: CRF, HMM and Viterbi"
+module: Text encoders
+order: 8
+description: "How a model gives every token of a sentence a label, such as the start of a name or a part of speech: a head that scores each token, a table that scores which label may follow which, the probability of a whole labeling computed without listing them all, and the hidden Markov model, trained by counting and decoded with Viterbi."
+scripts:
+  - /assets/js/notes/natural-language-processing/sequence-labeling.js
+---
+<div class="prose">
+  <p>The notes so far gave every word a vector, the same wherever it stands, and gave a whole text one label, such as who is speaking. Many tasks want a label on every token instead: its part of speech, or whether it begins or continues the name of a person or a place, the two tasks of the note on words. There, <i>La Mancha</i> was a place in “a village of La Mancha” and part of a person's name in “Don Quixote of La Mancha”, and only the neighbors told which. A table of word vectors gives <i>La</i> and <i>Mancha</i> the same numbers both times, so a model that labels each word by itself must label them the same way both times. This note labels a sentence's tokens together: it scores how well each label fits its token and how well it follows the label before it, turns the score of a whole labeling into a probability, and finds the best labeling out of hundreds or thousands without listing them. It ends with an older model whose tables are simply counted, the hidden Markov model, and with the algorithm that finds its best labeling, Viterbi's.</p>
+  <ul class="asks">
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="La Mancha in a village of La Mancha and in Don Quixote of La Mancha: under each word the first 12 of its 100 numbers, the same both times; a place in the first and part of a person's name in the second"><text class="sl-pic-w" x="112.2" y="26" text-anchor="end" style="font-size:15px">a village of</text><text class="sl-pic-w" x="115.7" y="26" style="font-size:15px">La</text><text class="sl-pic-w" x="135.5" y="26" style="font-size:15px">Mancha</text><line class="sl-pic-zero" x1="108.9" y1="37" x2="138.9" y2="37"/><rect class="sl-pic-bar" x="109.2" y="37" width="1.9" height="3.6"/><rect class="sl-pic-bar" x="111.7" y="37" width="1.9" height="2.4"/><rect class="sl-pic-bar" x="114.2" y="37" width="1.9" height="1.6"/><rect class="sl-pic-bar" x="116.7" y="31.9" width="1.9" height="5.1"/><rect class="sl-pic-bar" x="119.2" y="37" width="1.9" height="0.8"/><rect class="sl-pic-bar" x="121.7" y="34.6" width="1.9" height="2.4"/><rect class="sl-pic-bar" x="124.2" y="36.4" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="126.7" y="37" width="1.9" height="0.7"/><rect class="sl-pic-bar" x="129.2" y="36.4" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="131.7" y="37" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="134.2" y="36.4" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="136.7" y="37" width="1.9" height="0.6"/><line class="sl-pic-zero" x1="147" y1="37" x2="177" y2="37"/><rect class="sl-pic-bar" x="147.3" y="37" width="1.9" height="4"/><rect class="sl-pic-bar" x="149.8" y="37" width="1.9" height="2.4"/><rect class="sl-pic-bar" x="152.3" y="37" width="1.9" height="1"/><rect class="sl-pic-bar" x="154.8" y="32.2" width="1.9" height="4.8"/><rect class="sl-pic-bar" x="157.3" y="37" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="159.8" y="35.1" width="1.9" height="1.9"/><rect class="sl-pic-bar" x="162.3" y="36.4" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="164.8" y="37" width="1.9" height="0.7"/><rect class="sl-pic-bar" x="167.3" y="36.1" width="1.9" height="0.9"/><rect class="sl-pic-bar" x="169.8" y="35.9" width="1.9" height="1.1"/><rect class="sl-pic-bar" x="172.3" y="36.3" width="1.9" height="0.7"/><rect class="sl-pic-bar" x="174.8" y="36.2" width="1.9" height="0.8"/><text class="sl-pic-c" x="103.9" y="41" text-anchor="end" style="font-size:10.5px">first 12 of</text><text class="sl-pic-c" x="103.9" y="53" text-anchor="end" style="font-size:10.5px">its 100 numbers</text><text class="sl-pic-c" x="179" y="40.5" style="font-size:10px">0</text><line class="sl-pic-ent" x1="115.7" y1="45" x2="188.5" y2="45"/><text class="sl-pic-kind" x="188.5" y="57" text-anchor="end" style="font-size:11.5px">a place</text><text class="sl-pic-w" x="112.2" y="84" text-anchor="end" style="font-size:15px">Don Quixote of</text><text class="sl-pic-w" x="115.7" y="84" style="font-size:15px">La</text><text class="sl-pic-w" x="135.5" y="84" style="font-size:15px">Mancha</text><line class="sl-pic-zero" x1="108.9" y1="95" x2="138.9" y2="95"/><rect class="sl-pic-bar" x="109.2" y="95" width="1.9" height="3.6"/><rect class="sl-pic-bar" x="111.7" y="95" width="1.9" height="2.4"/><rect class="sl-pic-bar" x="114.2" y="95" width="1.9" height="1.6"/><rect class="sl-pic-bar" x="116.7" y="89.9" width="1.9" height="5.1"/><rect class="sl-pic-bar" x="119.2" y="95" width="1.9" height="0.8"/><rect class="sl-pic-bar" x="121.7" y="92.6" width="1.9" height="2.4"/><rect class="sl-pic-bar" x="124.2" y="94.4" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="126.7" y="95" width="1.9" height="0.7"/><rect class="sl-pic-bar" x="129.2" y="94.4" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="131.7" y="95" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="134.2" y="94.4" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="136.7" y="95" width="1.9" height="0.6"/><line class="sl-pic-zero" x1="147" y1="95" x2="177" y2="95"/><rect class="sl-pic-bar" x="147.3" y="95" width="1.9" height="4"/><rect class="sl-pic-bar" x="149.8" y="95" width="1.9" height="2.4"/><rect class="sl-pic-bar" x="152.3" y="95" width="1.9" height="1"/><rect class="sl-pic-bar" x="154.8" y="90.2" width="1.9" height="4.8"/><rect class="sl-pic-bar" x="157.3" y="95" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="159.8" y="93.1" width="1.9" height="1.9"/><rect class="sl-pic-bar" x="162.3" y="94.4" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="164.8" y="95" width="1.9" height="0.7"/><rect class="sl-pic-bar" x="167.3" y="94.1" width="1.9" height="0.9"/><rect class="sl-pic-bar" x="169.8" y="93.9" width="1.9" height="1.1"/><rect class="sl-pic-bar" x="172.3" y="94.3" width="1.9" height="0.7"/><rect class="sl-pic-bar" x="174.8" y="94.2" width="1.9" height="0.8"/><line class="sl-pic-ent" x1="11.5" y1="103" x2="188.5" y2="103"/><text class="sl-pic-kind" x="188.5" y="115" text-anchor="end" style="font-size:11.5px">a person</text></svg>
+      <p>Same numbers, two labels</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="To come to the point: the first to is a particle, since a verb follows it, and the second a preposition, since the follows it"><text class="sl-pic-w" x="29.9" y="70" style="font-size:16px">To</text><text class="sl-pic-w" x="51" y="70" style="font-size:16px">come</text><text class="sl-pic-w" x="90.7" y="70" style="font-size:16px">to</text><text class="sl-pic-w" x="108.1" y="70" style="font-size:16px">the</text><text class="sl-pic-w" x="133.6" y="70" style="font-size:16px">point</text><text class="sl-pic-c" x="38.6" y="48" text-anchor="middle" style="font-size:11.5px">PART</text><path class="sl-pic-hook" d="M69,76 C69,92 38.6,92 38.6,77"/><path class="sl-pic-hook" d="M35.6,82 L38.6,76 L41.6,82"/><text class="sl-pic-c" x="97.6" y="48" text-anchor="middle" style="font-size:11.5px">ADP</text><path class="sl-pic-hook" d="M119,76 C119,92 97.6,92 97.6,77"/><path class="sl-pic-hook" d="M94.6,82 L97.6,76 L100.6,82"/></svg>
+      <p>The next word decides</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="A grid of five possible labels for each of four words, with one path through it: 625 ways to label four words, and 20 boxes"><text class="sl-pic-w" x="34" y="18" text-anchor="middle" style="font-size:12.0px">village</text><text class="sl-pic-w" x="78" y="18" text-anchor="middle" style="font-size:12.0px">of</text><text class="sl-pic-w" x="122" y="18" text-anchor="middle" style="font-size:12.0px">La</text><text class="sl-pic-w" x="166" y="18" text-anchor="middle" style="font-size:11.2px">Mancha</text><rect class="sl-pic-box on" x="19" y="26" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="19" y="41" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="19" y="56" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="19" y="71" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="19" y="86" width="30" height="11" rx="2"/><rect class="sl-pic-box on" x="63" y="26" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="63" y="41" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="63" y="56" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="63" y="71" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="63" y="86" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="107" y="26" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="107" y="41" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="107" y="56" width="30" height="11" rx="2"/><rect class="sl-pic-box on" x="107" y="71" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="107" y="86" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="151" y="26" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="151" y="41" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="151" y="56" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="151" y="71" width="30" height="11" rx="2"/><rect class="sl-pic-box on" x="151" y="86" width="30" height="11" rx="2"/><polyline class="sl-pic-path" points="49,31.5 63,31.5 93,31.5 107,76.5 137,76.5 151,91.5"/><text class="sl-pic-l" x="100" y="112" text-anchor="middle" style="font-size:11.5px">625 ways to label 4 words</text><text class="sl-pic-l" x="100" y="126" text-anchor="middle" style="font-size:11.5px">20 boxes</text></svg>
+      <p>Many labelings, few boxes</p>
+    </li>
+  </ul>
+  <p>Section 1 turns names into one label per token; section 2 puts a head on the word vectors that labels each token by itself, and shows what it gets wrong; section 3 adds a table of which label follows which, and scores a whole labeling; section 4 turns scores into probabilities without listing every labeling; section 5 counts such tables in text tagged by hand instead of learning them, the hidden Markov model; and section 6 finds the best labeling box by box, against choosing one label at a time.</p>
+</div>
+
+<section id="bio">
+  <div class="prose">
+    <h2><span class="n">1</span>A label for every token</h2>
+    <p>Sequence labeling gives every token one label, so the output is as long as the input. Part-of-speech tagging has that shape already, since each token is its own unit. A name can span several tokens, so named-entity recognition marks where each name begins, <span class="sl-code">B-</span> for “beginning”; the tokens that continue it, <span class="sl-code">I-</span> for “inside”; and everything else, <span class="sl-code">O</span> for “outside”. After the dash comes the name's kind. Here there are two kinds, persons and places, so there are <i>K</i> = 2 · 2 + 1 = 5 labels:</p>
+    <div class="disp"><span class="nowrap"><i>y</i><sub><i>i</i></sub> ∈ {<span class="sl-code">O</span>, <span class="sl-code">B-PER</span>,</span> <span class="nowrap"><span class="sl-code">I-PER</span>, <span class="sl-code">B-LOC</span>, <span class="sl-code">I-LOC</span>}</span></div>
+    <p>where a sentence's tokens are <span class="nowrap"><i>x</i> = (<i>x</i><sub>1</sub>, …, <i>x</i><sub><i>N</i></sub>)</span> and its labels <span class="nowrap"><i>y</i> = (<i>y</i><sub>1</sub>, …, <i>y</i><sub><i>N</i></sub>),</span> <i>N</i> its length. A name starts at each <span class="sl-code">B-</span> and runs over the <span class="sl-code">I-</span> of its kind that follow. An <span class="sl-code">I-</span> after an <span class="sl-code">O</span>, at the start, or after a name of the other kind continues nothing and breaks the scheme. Names cannot nest: <i>La Mancha</i> inside the knight's name is <span class="sl-code">I-PER</span>, as the note on words underlined the whole name. In the figure, pick a phrase and click a word to change its label.</p>
+  </div>
+
+  <div class="fig">
+    <div class="sl-panel" id="fig-bio" role="group" aria-label="A phrase with a label on each word, and the names read back from the labels"></div>
+    <div class="ro">
+      <div class="modes" id="fig-bio-mode" role="group" aria-label="Phrase">
+        <button type="button" data-mode="0" aria-pressed="true">The knight's name</button>
+        <button type="button" data-mode="1" aria-pressed="false">Names that touch</button>
+      </div>
+      <div class="sl-ro" id="fig-bio-out" aria-live="polite"></div>
+      <div class="ctl sl-ctl"><button type="button" class="btn" id="fig-bio-reset" hidden>Reset</button></div>
+    </div>
+    <div class="fig-foot">
+      <p>Click a word, or press Enter on it, to change its label; move between words with the arrow keys.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Both readings of the knight's name are valid: one person, or a person and a place. The labels alone cannot choose between them; the model of sections 3 and 4 weighs them. The second phrase shows why the scheme needs <span class="sl-code">B-</span>: with kinds alone, two names that touch read as one. In the puppet show of chapter XXVI of part II, Don Quixote says the puppets seemed real, “Melisendra was Melisendra, Don Gaiferos Don Gaiferos, Marsilio Marsilio”. Ramshaw and Marcus (1995) introduced the three letters for noun phrases, with <span class="sl-code">B-</span> only where two phrases touch; the version used here, and by most taggers, puts it at every start.</p>
+  </div>
+</section>
+
+<section id="heads">
+  <div class="prose">
+    <h2><span class="n">2</span>One encoder, many heads</h2>
+    <p>An <em>encoder</em> is whatever gives each token a vector. The simplest is a trained table of word vectors: here the book's vectors with subwords from the note on subwords, <i>d</i> = 100, which give every token a vector, the same in every sentence. They stay as they were trained; only what sits on top is trained, and that part, the <em>head</em>, decides the task. A head that gives the whole text one label is the classifier of the notes on linear models and word vectors; a head that compares two texts' vectors is the cosine of the note on word vectors; a head that gives every token a label is this note's.</p>
+    <p>The labeling head is a linear layer, the same at every token. It gives each token one score per label, the score <i>w</i><sub><i>k</i></sub><sup class="t">T</sup><i>x</i> of the note on linear models with the token's vector in place of <i>x</i>. The scores stack into a table <i>P</i> with a row per token and a column per label,</p>
+    <div class="disp hero-f"><span class="nowrap"><i>P</i><sub><i>i</i>,<i>k</i></sub> = <i>w</i><sub><i>k</i></sub><sup class="t">T</sup><i>v</i><sub><i>x</i><sub><i>i</i></sub></sub>,</span> <span class="nowrap"><i>P</i> ∈ ℝ<sup><i>N</i>×<i>K</i></sup>,</span></div>
+    <p>where <i>v</i><sub><i>x</i><sub><i>i</i></sub></sub> is token <i>i</i>'s vector with a 1 in front, so that the bias sits in <i>w</i><sub><i>k</i></sub>, row <i>k</i> of the layer's matrix. A softmax per token turns each row into probabilities, and each token takes its highest:</p>
+    <div class="disp"><span class="nowrap"><i>p</i>(<i>y</i><sub><i>i</i></sub> = <i>k</i> | <i>x</i>) = <span class="frac"><span><i>e</i><sup><i>P</i><sub><i>i</i>,<i>k</i></sub></sup></span><span>∑<sub><i>j</i>=1</sub><sup><i>K</i></sup> <i>e</i><sup><i>P</i><sub><i>i</i>,<i>j</i></sub></sup></span></span></span></div>
+    <p>The book has no labeled names, so for this note its people and places were listed, about 90 entries for people and 36 for places, and every occurrence was labeled: <i>Don</i> opens a person's name, while Rocinante and God stay <span class="sl-code">O</span>, as do the few names printed all in capitals. The heads train on the book except chapter I of part I and every tenth chapter, which are held out to measure them. The figure draws <i>P</i> on its side, a column per token and a row per label, each column shaded by its token's probabilities. Pick a phrase and a box, and check that the columns of “of La Mancha” do not change between the two phrases.</p>
+  </div>
+
+  <div class="fig">
+    <div class="sl-panel" id="fig-head" role="group" aria-label="The scores of each token for each label, from the head trained alone"></div>
+    <div class="ro">
+      <div class="modes" id="fig-head-mode" role="group" aria-label="Phrase">
+        <button type="button" data-mode="village" aria-pressed="true">village of La Mancha</button>
+        <button type="button" data-mode="don" aria-pressed="false">Don Quixote of La Mancha</button>
+      </div>
+      <div class="sl-ro" id="fig-head-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Click a box, or move between boxes with the arrow keys.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>The head decides each token alone, and a word's row is the same wherever it stands. <i>Mancha</i> is part of the knight's name in about three of every four of its uses in the book, so the head labels it <span class="sl-code">I-PER</span> even after “a village of”, and nothing stops an <span class="sl-code">I-</span> right after an <span class="sl-code">O</span>: both phrases end in labels the scheme forbids. “El Toboso” alone reads <span class="sl-code">B-LOC I-PER</span>, because <i>Toboso</i> is mostly in “Dulcinea del Toboso”. The vectors were trained on lowercase text, so this head never sees a capital letter, the clue the note on words pointed to. What is missing is a way for one token's label to look at its neighbor's.</p>
+  </div>
+</section>
+
+<section id="score">
+  <div class="prose">
+    <h2><span class="n">3</span>The transition matrix and a labeling's score</h2>
+    <p>A <em>conditional random field</em> (CRF; Lafferty, McCallum and Pereira 2001) adds one table <i>A</i>, the <em>transition matrix</em>, a score for every ordered pair of labels in a row: which label may follow which. The first token has no label before it, so a start label <i>y</i><sub>0</sub> stands before the sentence, and <i>A</i> has one more row, <i>A</i><sub><i>y</i><sub>0</sub>,<i>k</i></sub>, for how a sentence may begin. A labeling's score walks the sentence adding, at each token, what the head says of its label and what the table says of the step into it:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>s</i>(<i>x</i>, <i>y</i>) = ∑<span class="lims"><span><i>N</i></span><span><i>i</i>=1</span></span> <i>P</i><sub><i>i</i>,<i>y</i><sub><i>i</i></sub></sub></span> <span class="nowrap">+ ∑<span class="lims"><span><i>N</i></span><span><i>i</i>=1</span></span> <i>A</i><sub><i>y</i><sub><i>i</i>−1</sub>,<i>y</i><sub><i>i</i></sub></sub></span></div>
+    <p>with <span class="nowrap"><i>A</i> ∈ ℝ<sup><i>K</i>×<i>K</i></sup></span> plus its start row: 30 numbers, against the head's <span class="nowrap"><i>K</i>(<i>d</i> + 1) = 505.</span> The table is learned with the head, as section 4 explains; nobody writes the scheme's rules into it. Lample et al. (2016) put this table on top of a recurrent network's scores, which a later note covers; here it sits on the static vectors and a linear layer. Lample et al. also add an end label, a column of <i>A</i> for how a sentence may end; this tagger has only the start row. From here on, the head is the one trained together with the table, so its scores differ from section 2's: the table now does part of the work. In the figure, pick one label per token and read the labeling's score.</p>
+  </div>
+
+  <div class="fig">
+    <div class="sl-panel" id="fig-score" role="group" aria-label="The scores of each token for each label, a labeling drawn as a path, and the transition table"></div>
+    <div class="ro">
+      <div class="modes" id="fig-score-mode" role="group" aria-label="Phrase">
+        <button type="button" data-mode="village" aria-pressed="true">village of La Mancha</button>
+        <button type="button" data-mode="don" aria-pressed="false">Don Quixote of La Mancha</button>
+      </div>
+      <div class="sl-ro" id="fig-score-out" aria-live="polite"></div>
+      <div class="ctl sl-ctl"><button type="button" class="btn" id="fig-score-reset" hidden>Reset</button></div>
+    </div>
+    <div class="fig-foot">
+      <p>Click a box to label its token, or use the arrow keys: up and down change a token's label, left and right move between tokens.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>The table learned what the labels did. An <span class="sl-code">I-PER</span> right after an <span class="sl-code">O</span> scores −8.66, and at the start −5.93; a place's second word after its first scores +3.67. It learned the data, not the rules: <span class="sl-code">B-PER</span> right after <span class="sl-code">B-PER</span>, two names that touch, is legal but sits at −6.77, since the labeled book has it once, while the illegal <span class="sl-code">I-LOC</span> → <span class="sl-code">I-PER</span> sits at only −2.03. Training pushes a step down only while the model is still tempted to take it, so a legal step almost never seen sinks like an illegal one, and an illegal step that rarely tempts stays mild. Nothing forbids a broken labeling if the head's scores push hard enough.</p>
+  </div>
+</section>
+
+<section id="forward">
+  <div class="prose">
+    <h2><span class="n">4</span><span>The normalizer <i>Z</i> and the forward recursion</span></h2>
+    <p>A score is any number. To make it a probability, exponentiate it and divide by the sum over every labeling, the softmax of the note on linear models with one class per labeling:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>p</i>(<i>y</i> | <i>x</i>) = <span class="frac"><span><i>e</i><sup><i>s</i>(<i>x</i>, <i>y</i>)</sup></span><span><i>Z</i>(<i>x</i>)</span></span>,</span> <span class="nowrap"><i>Z</i>(<i>x</i>) = ∑<sub><i>y</i>′</sub> <i>e</i><sup><i>s</i>(<i>x</i>, <i>y</i>′)</sup></span></div>
+    <p><i>Z</i>(<i>x</i>) depends on the sentence, not on the labels: it is computed once per sentence and shared by all its labelings, and it does not change which is best. But there are <i>K</i><sup><i>N</i></sup> labelings, the note on word2vec's costly normalizer at its worst. The grid avoids listing them. Let α<sub><i>i</i></sub>(<i>k</i>) be the sum of <i>e</i><sup><i>s</i></sup> over every labeling of the first <i>i</i> tokens that ends at label <i>k</i>, the score stopped at token <i>i</i>. Every such path comes through some box of the column before, and <span class="nowrap"><i>e</i><sup><i>a</i>+<i>b</i></sup> = <i>e</i><sup><i>a</i></sup><i>e</i><sup><i>b</i></sup>,</span> so each box is the column before times one step:</p>
+    <div class="disp"><span class="nowrap">α<sub><i>i</i></sub>(<i>k</i>) = ∑<span class="lims"><span><i>K</i></span><span><i>j</i>=1</span></span> α<sub><i>i</i>−1</sub>(<i>j</i>) <i>e</i><sup><i>A</i><sub><i>j</i>,<i>k</i></sub> + <i>P</i><sub><i>i</i>,<i>k</i></sub></sup>,</span> <span class="nowrap">α<sub>1</sub>(<i>k</i>) = <i>e</i><sup><i>A</i><sub><i>y</i><sub>0</sub>,<i>k</i></sub> + <i>P</i><sub>1,<i>k</i></sub></sup>,</span> <span class="nowrap"><i>Z</i>(<i>x</i>) = ∑<span class="lims"><span><i>K</i></span><span><i>k</i>=1</span></span> α<sub><i>N</i></sub>(<i>k</i>)</span></div>
+    <p>This is the <em>forward recursion</em>, often called the forward algorithm (not the forward pass of a network). It takes <i>N</i>·<i>K</i> numbers and about <i>N</i>·<i>K</i><sup>2</sup> multiplications, against <i>K</i><sup><i>N</i></sup> labelings. The softmax per token of section 2 summed one column of the grid; <i>Z</i> sums every path through it. In the figure, pick a box to see what flows into it, or the <i>Z</i> box at the right.</p>
+  </div>
+
+  <div class="fig">
+    <div class="sl-panel" id="fig-forward" role="group" aria-label="The forward sums of each box for village of La Mancha, with the edges that flow into the box picked, and Z"></div>
+    <div class="ro">
+      <div class="sl-ro" id="fig-forward-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Click a box, or move between boxes with the arrow keys.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Adding up <i>e</i><sup><i>s</i></sup> over all 625 labelings gives the same <i>Z</i>, 6,134. Training lowers, over the training sentences, the loss of each labeled sentence (Lample et al. 2016),</p>
+    <div class="disp"><span class="nowrap">ℒ = −log <i>p</i>(<i>y</i> | <i>x</i>) = log <i>Z</i>(<i>x</i>) − <i>s</i>(<i>x</i>, <i>y</i>),</span></div>
+    <p>with logarithms natural on this page. Lowering it raises the right labeling's score and, through <i>Z</i>, lowers all the others; the head and <i>A</i> learn together by a variant of gradient descent. In practice <i>e</i><sup><i>s</i></sup> overflows on long sentences: a sentence of 168 tokens in chapter XLI of part I already has a log <i>Z</i> of 716, while a 64-bit number holds nothing above <i>e</i><sup>709.78</sup>. So programs keep log α and add in logs, by log-sum-exp: <span class="nowrap">log(<i>e</i><sup><i>a</i></sup> + <i>e</i><sup><i>b</i></sup>)</span> <span class="nowrap">= <i>m</i> + log(<i>e</i><sup><i>a</i>−<i>m</i></sup> + <i>e</i><sup><i>b</i>−<i>m</i></sup>),</span> with <i>m</i> the larger of <i>a</i> and <i>b</i>, so that no exponential exceeds 1 (the summary's row “In logs”); the note on word2vec's code subtracts <code>z.max()</code> before its softmax for the same reason. Sizes grow fast: the book's first six words, “In a village of La Mancha”, have 15,625 labelings and 30 boxes, and the book's median sentence, 45 tokens, has about 2.8 × 10<sup>31</sup> labelings and 225 boxes.</p>
+    <p>On “Don Quixote of La Mancha”, the tagger gives one person a probability of 0.89 and a person and a place 0.09: it prefers the name, as the labeled book does. On the held-out chapters, measured against the names list, 95% or 96% of the names it marks match a listed name in span and kind, and it finds 83% or 84% of the listed names, in all five training runs; the head trained alone matches 81% to 83% and finds 74% or 75%. It leaves at most one broken <span class="sl-code">I-</span> in 962 sentences, where the head alone leaves 51 to 64. Forbidden steps sink only with enough training: after 8 readings of the training chapters instead of 30, at a fifth of the learning rate, <i>A</i><sub><span class="sl-code">O</span>,<span class="sl-code">I-PER</span></sub> was −2.13, three broken <span class="sl-code">I-</span> remained, and “In a village of La Mancha” came out <span class="sl-code">O O O O I-PER I-PER</span>.</p>
+  </div>
+</section>
+
+<section id="hmm">
+  <div class="prose">
+    <h2><span class="n">5</span>The hidden Markov model, trained by counting</h2>
+    <p>Could a tagger's tables simply be counted from text that people have tagged? A <em>hidden Markov model</em> (HMM) tells how a sentence could have been produced: a chain of labels, each depending only on the one before it (a Markov chain, not the chain of hypernyms of the note on words), and each label producing its word, which depends only on its label. Its labels are written <i>h</i>, for hidden: in a new sentence only the words arrive. On this page <i>h</i> means this, not the logistic output of earlier notes, and many texts write the hidden chain as <i>q</i> and the words as <i>o</i>; here <i>x</i> is always the input. <i>y</i> and <i>h</i> are the same kind of thing, labels, as the CRF and the HMM write them.</p>
+    <div class="disp"><span class="nowrap">P(<i>h</i><sub><i>i</i></sub> | <i>h</i><sub>1</sub>, …, <i>h</i><sub><i>i</i>−1</sub>) = P(<i>h</i><sub><i>i</i></sub> | <i>h</i><sub><i>i</i>−1</sub>),</span> <span class="nowrap">P(<i>x</i><sub><i>i</i></sub> | <i>h</i><sub>1</sub>, …, <i>h</i><sub><i>N</i></sub>) = P(<i>x</i><sub><i>i</i></sub> | <i>h</i><sub><i>i</i></sub>)</span></div>
+    <p>The second also holds when the other words are known: a word depends on its own label alone. Together they give the probability of words and labels together, the joint, not the labels given the words:</p>
+    <div class="disp hero-f long"><span class="nowrap">P(<i>x</i>, <i>h</i>)</span> <span class="nowrap">= ∏<span class="lims"><span><i>N</i></span><span><i>i</i>=1</span></span> P(<i>h</i><sub><i>i</i></sub> | <i>h</i><sub><i>i</i>−1</sub>)</span> <span class="nowrap">P(<i>x</i><sub><i>i</i></sub> | <i>h</i><sub><i>i</i></sub>)</span></div>
+    <p>with <i>h</i><sub>0</sub> the start. An upright P followed by parentheses, as in P(<i>x</i>, <i>h</i>) or P(<i>h</i><sub><i>i</i></sub> | <i>h</i><sub><i>i</i>−1</sub>), is a probability; the italic <i>P</i> with two indices stays the head's table of scores. The task switches to parts of speech, the tags of Universal Dependencies from the note on words, since text tagged by hand is plentiful for them: the counts come from two <em>treebanks</em>, UD English EWT (14,545 sentences and 226,751 tokens counted; its other 2,077 sentences are kept for testing) and UD Spanish GSD. Training sees words and tags, and each table is counted and divided:</p>
+    <div class="disp"><span class="nowrap">P(<i>h</i><sub><i>i</i></sub> = <i>k</i> | <i>h</i><sub><i>i</i>−1</sub> = <i>j</i>) = <span class="frac"><span><i>c</i>(<i>j</i>, <i>k</i>)</span><span><i>c</i>(<i>j</i>)</span></span>,</span> <span class="nowrap">P(<i>x</i><sub><i>i</i></sub> | <i>h</i><sub><i>i</i></sub> = <i>k</i>) = <span class="frac"><span><i>c</i>(<i>k</i>, <i>x</i><sub><i>i</i></sub>)</span><span><i>c</i>(<i>k</i>)</span></span></span></div>
+    <p>where <i>c</i> counts. <i>c</i>(<i>j</i>) counts every <i>j</i>, a sentence's last tag included, which is followed by the sentence's end, a column of its own, so each row's shares sum to 1 over the tags and the end; a whole sentence's chain ends with that one more step, P(end | <i>h</i><sub><i>N</i></sub>), which the clause in the figures, not ending its sentence, leaves out. These shares make the tagged text most likely, for the reason the note on word2vec's best guess gave each word its share; nothing is iterated, which is needed only when no tags are given. Two tables remain, <em>transitions</em> and <em>emissions</em>, and the chain's log is a sum, <span class="nowrap">log P(<i>x</i>, <i>h</i>)</span> <span class="nowrap">= ∑<sub><i>i</i></sub> [log P(<i>h</i><sub><i>i</i></sub> | <i>h</i><sub><i>i</i>−1</sub>)</span> <span class="nowrap">+ log P(<i>x</i><sub><i>i</i></sub> | <i>h</i><sub><i>i</i></sub>)].</span> In the figure, the clause “To come to the point”, which opens its sentence in chapter XLV of part II, sits on the grid with a box only where the treebank gave a word that tag in at least one of every 50 uses. Pick a tag for each word and watch the chain's log.</p>
+  </div>
+
+  <div class="fig">
+    <div class="sl-panel" id="fig-hmm" role="group" aria-label="The log emissions of each word for its tags, and a chain of tags drawn as a path"></div>
+    <div class="ro">
+      <div class="sl-ro" id="fig-hmm-out" aria-live="polite"></div>
+      <div class="ctl sl-ctl"><button type="button" class="btn" id="fig-hmm-reset" hidden>Reset</button></div>
+    </div>
+    <div class="fig-foot">
+      <p>Click a box to tag its word, or use the arrow keys: up and down change a word's tag, left and right move between words.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>The other tags are possible but rare, and decoding over these boxes gives the same chain as over all 17 tags. The cells that decide: a verb follows a particle with P(<span class="sl-code">VERB</span> | <span class="sl-code">PART</span>) = 3,679 / 4,723 ≈ 0.78, and a determiner follows a preposition with 7,037 / 19,747 ≈ 0.36 but a particle with only 83 / 4,723 ≈ 0.018. The HMM is a CRF with log-probabilities: with <span class="nowrap"><i>A</i><sub><i>j</i>,<i>k</i></sub></span> <span class="nowrap">= log P(<i>h</i><sub><i>i</i></sub> = <i>k</i> | <i>h</i><sub><i>i</i>−1</sub> = <i>j</i>)</span> and <span class="nowrap"><i>P</i><sub><i>i</i>,<i>k</i></sub> = log P(<i>x</i><sub><i>i</i></sub> | <i>h</i><sub><i>i</i></sub> = <i>k</i>),</span> section 3's score is log P(<i>x</i>, <i>h</i>), and section 4's <i>Z</i>(<i>x</i>), with the step into the end, becomes P(<i>x</i>), the probability the model gives the sentence. Both chains run over the labels; the difference is what each models and how it learns. The HMM counts tables that explain how the words were written, the joint; the CRF learns scores that tell labels apart given the words, the conditional. A pair never counted gives log 0 = −∞, a chain the HMM calls impossible, which a learned <i>A</i> never quite does. A word the treebank never saw gets a share guessed from words seen once that, like it, do or do not start with a capital and end in the same three letters; without that, it would have probability 0 under every tag.</p>
+  </div>
+</section>
+
+<section id="viterbi">
+  <div class="prose">
+    <h2><span class="n">6</span>Viterbi: the best labeling without trying them all</h2>
+    <p>With 17 tags per word, how does a tagger find the best chain without trying 17<sup><i>N</i></sup> of them, and why not choose each tag as it goes? Let δ<sub><i>i</i></sub>(<i>k</i>) be the probability of the best chain that reaches tag <i>k</i> at word <i>i</i>, using only the words up to there. It is section 4's grid with a max in place of the sum (Viterbi 1967):</p>
+    <div class="disp hero-f long"><span class="nowrap">δ<sub><i>i</i></sub>(<i>k</i>)</span> <span class="nowrap">= max<sub><i>j</i></sub> δ<sub><i>i</i>−1</sub>(<i>j</i>)</span> <span class="nowrap">P(<i>h</i><sub><i>i</i></sub> = <i>k</i> | <i>h</i><sub><i>i</i>−1</sub> = <i>j</i>)</span> <span class="nowrap">P(<i>x</i><sub><i>i</i></sub> | <i>h</i><sub><i>i</i></sub> = <i>k</i>)</span></div>
+    <p>with <span class="nowrap">δ<sub>1</sub>(<i>k</i>) = P(<i>h</i><sub>1</sub> = <i>k</i> | <i>h</i><sub>0</sub>) P(<i>x</i><sub>1</sub> | <i>h</i><sub>1</sub> = <i>k</i>).</span> Each box keeps only its best incoming chain, and remembers which tag it came from, its <em>back-pointer</em>. The largest δ of the last column is the best chain's probability, <span class="nowrap">P(<i>x</i>, <i>h</i>*) = max<sub><i>k</i></sub> δ<sub><i>N</i></sub>(<i>k</i>);</span> its argmax gives only the last tag, and the chain is read by following the back-pointers from right to left: <span class="nowrap"><i>h</i>*<sub><i>N</i></sub> = argmax<sub><i>k</i></sub> δ<sub><i>N</i></sub>(<i>k</i>),</span> <span class="nowrap"><i>h</i>*<sub><i>i</i>−1</sub> = argmax<sub><i>j</i></sub> δ<sub><i>i</i>−1</sub>(<i>j</i>)</span> <span class="nowrap">P(<i>h</i><sub><i>i</i></sub> = <i>h</i>*<sub><i>i</i></sub> | <i>h</i><sub><i>i</i>−1</sub> = <i>j</i>).</span> δ falls along the sentence, since every step multiplies in one more probability, so boxes are compared within a column, never across, and δ is kept in logs: a product of factors of 0.001 is exactly 0 in 64-bit numbers after 108 factors, and the best chain of a sentence of 100 tokens in chapter III of part I already has a log of −746.4, while a 64-bit number rounds to 0 below about <i>e</i><sup>−745</sup>. Choosing one tag at a time, left to right (“greedy”), commits to each tag before seeing the next word; Viterbi waits for it, at the same cost as the forward recursion, <i>N</i>·<i>K</i><sup>2</sup> steps. In the figure, compare the two.</p>
+  </div>
+
+  <div class="fig">
+    <div class="sl-panel" id="fig-viterbi" role="group" aria-label="The best chain's log probability at each box, with its back-pointer, and the chain read back"></div>
+    <div class="ro">
+      <div class="modes" id="fig-viterbi-mode" role="group" aria-label="Method">
+        <button type="button" data-mode="viterbi" aria-pressed="true">Viterbi</button>
+        <button type="button" data-mode="greedy" aria-pressed="false">One at a time, left to right</button>
+      </div>
+      <div class="sl-ro" id="fig-viterbi-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Click a box, or move between boxes with the arrow keys.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Each word alone, its most frequent tag, gives <span class="sl-code">PART VERB PART DET NOUN</span>, with a log of −25.73. On each treebank's own test sentences, each word alone tags 89.3% of the words right, one at a time 90.0%, and Viterbi 92.4% (Spanish GSD: 93.4%, 93.8%, 94.8%). Over the whole book, Viterbi tags <i>to</i> a particle 7,855 times and a preposition 5,366, where each word alone always says particle. The treebanks are modern and the book is not: 8.2% of its tokens are words the English treebank never saw, such as <i>thee</i> and <i>hast</i>.</p>
+    <p>The CRF decodes the same way on its scores, which add up along a path, so its δ adds where the HMM's multiplies (Lample et al. 2016): <span class="nowrap">δ<sub><i>i</i></sub>(<i>k</i>)</span> <span class="nowrap">= max<sub><i>j</i></sub> [δ<sub><i>i</i>−1</sub>(<i>j</i>) + <i>A</i><sub><i>j</i>,<i>k</i></sub>]</span> <span class="nowrap">+ <i>P</i><sub><i>i</i>,<i>k</i></sub>.</span> On “village of La Mancha” it gives <span class="sl-code">O O B-LOC I-LOC</span>, with a score of 8.40, though at <i>La</i> the best chain so far ended in <span class="sl-code">I-PER</span> (1.95 against 1.20 for <span class="sl-code">B-LOC</span>): the last word changed the answer. Run with the sum instead of the max, the HMM's grid gives P(<i>x</i>), section 4's recursion; both models use both recursions. The head here reads one word's vector at a time. The next note's recurrent networks give each token a vector that depends on its neighbors, and turn the HMM's hidden tag into a hidden vector.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">7</span>Summary</h2>
+    <p>The note's ideas in NumPy. <code>vecs</code> holds the tokens' vectors, one row each with a 1 first; <code>w</code> is the head, a row per label; <code>A</code> has <code>K + 1</code> rows, the last the start label's; <code>trans</code> has <code>K + 1</code> rows (the last the start) and <code>K + 1</code> columns (the last the sentence's end, as section 5 counts it), and <code>emit</code> a row per tag and a column per word; <code>tagged</code> holds the treebank's sentences as pairs of index arrays, and <code>V</code> is the number of different words in it; <code>x</code>, <code>y</code> and <code>h</code> are arrays of indices, <code>N</code> the sentence's length.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Names from labels</div>
+      <div class="f">a name starts at each <span class="sl-code">B-</span> and runs over the <span class="sl-code">I-</span> of its kind</div>
+      <div class="c"><code>names, cur = [], None<br>for i, tag in enumerate(labels):<br>&nbsp;&nbsp;&nbsp;&nbsp;if tag.startswith("I-") and cur and cur[2] == tag[2:]:<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cur[1] = i + 1<br>&nbsp;&nbsp;&nbsp;&nbsp;elif tag.startswith("B-"):<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cur = [i, i + 1, tag[2:]]; names.append(cur)<br>&nbsp;&nbsp;&nbsp;&nbsp;else:<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cur = None</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Scores</div>
+      <div class="f"><i>P</i><sub><i>i</i>,<i>k</i></sub> = <i>w</i><sub><i>k</i></sub><sup class="t">T</sup><i>v</i><sub><i>x</i><sub><i>i</i></sub></sub></div>
+      <div class="c"><code>P = vecs @ w.T&nbsp;&nbsp;# N × K, a row per token</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Softmax per token</div>
+      <div class="f"><i>p</i>(<i>y</i><sub><i>i</i></sub> = <i>k</i> | <i>x</i>)</div>
+      <div class="c"><code>p = np.exp(P - P.max(1, keepdims=True))<br>p /= p.sum(1, keepdims=True)<br>alone = P.argmax(1)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">A labeling's score</div>
+      <div class="f"><i>s</i>(<i>x</i>, <i>y</i>) = ∑<sub><i>i</i></sub> <i>P</i><sub><i>i</i>,<i>y</i><sub><i>i</i></sub></sub> + ∑<sub><i>i</i></sub> <i>A</i><sub><i>y</i><sub><i>i</i>−1</sub>,<i>y</i><sub><i>i</i></sub></sub></div>
+      <div class="c"><code>prev = np.r_[K, y[:-1]]<br>s = P[np.arange(N), y].sum() + A[prev, y].sum()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Forward recursion</div>
+      <div class="f"><i>Z</i>(<i>x</i>) = ∑<sub><i>k</i></sub> α<sub><i>N</i></sub>(<i>k</i>)</div>
+      <div class="c"><code>alpha = np.exp(A[K] + P[0])<br>for i in range(1, N):<br>&nbsp;&nbsp;&nbsp;&nbsp;alpha = alpha @ np.exp(A[:K] + P[i])<br>Z = alpha.sum()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">In logs</div>
+      <div class="f">log α<sub><i>i</i></sub>(<i>k</i>) = log ∑<sub><i>j</i></sub> <i>e</i><sup>log α<sub><i>i</i>−1</sub>(<i>j</i>) + <i>A</i><sub><i>j</i>,<i>k</i></sub> + <i>P</i><sub><i>i</i>,<i>k</i></sub></sup></div>
+      <div class="c"><code>la = A[K] + P[0]<br>for i in range(1, N):<br>&nbsp;&nbsp;&nbsp;&nbsp;la = np.logaddexp.reduce(<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;la[:, None] + A[:K] + P[i], axis=0)<br>log_z = np.logaddexp.reduce(la)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Probability and loss</div>
+      <div class="f"><i>p</i>(<i>y</i> | <i>x</i>) = <i>e</i><sup><i>s</i></sup> / <i>Z</i>, ℒ = log <i>Z</i> − <i>s</i></div>
+      <div class="c"><code>p_y = np.exp(s - log_z)<br>loss = log_z - s</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Counting</div>
+      <div class="f"><i>c</i>(<i>j</i>, <i>k</i>) / <i>c</i>(<i>j</i>), <i>c</i>(<i>k</i>, <i>x</i><sub><i>i</i></sub>) / <i>c</i>(<i>k</i>)</div>
+      <div class="c"><code>c, c_emit = np.zeros((K + 1, K + 1)), np.zeros((K, V))<br>for x, h in tagged:<br>&nbsp;&nbsp;&nbsp;&nbsp;np.add.at(c, (np.r_[K, h], np.r_[h, K]), 1)<br>&nbsp;&nbsp;&nbsp;&nbsp;np.add.at(c_emit, (h, x), 1)<br>trans = c / c.sum(1, keepdims=True)<br>emit = c_emit / c_emit.sum(1, keepdims=True)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">The joint in logs</div>
+      <div class="f">log P(<i>x</i>, <i>h</i>)</div>
+      <div class="c"><code>(np.log(trans[np.r_[K, h[:-1]], h]).sum()<br>&nbsp;+ np.log(emit[h, x]).sum())</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Viterbi</div>
+      <div class="f">δ<sub><i>i</i></sub>(<i>k</i>) and the back-pointers</div>
+      <div class="c"><code>lt, le = np.log(trans), np.log(emit)<br>delta = lt[K, :K] + le[:, x[0]]; back = []<br>for i in range(1, N):<br>&nbsp;&nbsp;&nbsp;&nbsp;cand = delta[:, None] + lt[:K, :K]<br>&nbsp;&nbsp;&nbsp;&nbsp;back.append(cand.argmax(0))<br>&nbsp;&nbsp;&nbsp;&nbsp;delta = cand.max(0) + le[:, x[i]]<br>h = [int(delta.argmax())]<br>for b in reversed(back):<br>&nbsp;&nbsp;&nbsp;&nbsp;h.insert(0, int(b[h[0]]))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">One at a time</div>
+      <div class="f">each tag given the one chosen before it</div>
+      <div class="c"><code>h = [int((lt[K, :K] + le[:, x[0]]).argmax())]<br>for i in range(1, N):<br>&nbsp;&nbsp;&nbsp;&nbsp;h.append(int((lt[h[-1], :K]<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ le[:, x[i]]).argmax()))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Labelings against boxes</div>
+      <div class="f"><i>K</i><sup><i>N</i></sup> against <i>N</i>·<i>K</i></div>
+      <div class="c"><code>K ** N, N * K</code></div>
+    </div>
+  </div>
+  <div class="prose">
+    <p>The note's data: the books are Project Gutenberg's <i>Don Quijote</i> (#2000) and Ormsby's translation (#996). The book's vectors with subwords were trained for these notes, and the list of the book's people and places, its labels and the taggers were made for this note. The counts of the hidden Markov model come from Universal Dependencies' <a href="https://universaldependencies.org/">English EWT and Spanish GSD treebanks</a>, under the <a href="https://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0</a> license; the page shows only counts computed from them, shared under the same license.</p>
+  </div>
+</section>

@@ -1,0 +1,268 @@
+---
+title: "Etiquetado de secuencias: CRF, HMM y Viterbi"
+module: Encoders de texto
+order: 8
+description: "Cómo un modelo le da una etiqueta a cada token de una oración, como el comienzo de un nombre o su categoría gramatical: un cabezal que puntúa cada token, una tabla que puntúa qué etiqueta puede seguir a cuál, la probabilidad de una secuencia de etiquetas entera calculada sin enumerarlas todas, y el modelo oculto de Markov, entrenado contando y decodificado con Viterbi."
+scripts:
+  - /assets/js/notes/natural-language-processing/sequence-labeling.js
+---
+<div class="prose">
+  <p>Los apuntes anteriores le dieron a cada palabra un vector, el mismo dondequiera que esté, y a un texto entero una etiqueta, como quién habla. Muchas tareas piden en cambio una etiqueta por token: su categoría gramatical, o si empieza o continúa el nombre de una persona o de un lugar, las dos tareas del apunte sobre palabras. Ahí, <i>la Mancha</i> era un lugar en «un lugar de la Mancha» y parte del nombre de una persona en «don Quijote de la Mancha», y solo sus vecinas decían cuál. Una tabla de vectores de palabras le da a <i>la</i> y a <i>Mancha</i> los mismos números las dos veces, así que un modelo que etiqueta cada palabra por sí sola tiene que etiquetarlas igual las dos veces. Este apunte etiqueta juntos los tokens de una oración: puntúa cuán bien calza cada etiqueta con su token y cuán bien sigue a la etiqueta anterior, convierte la puntuación de una secuencia de etiquetas entera en una probabilidad, y encuentra la mejor entre cientos o miles sin enumerarlas. Termina con un modelo más antiguo cuyas tablas simplemente se cuentan, el modelo oculto de Markov, y con el algoritmo que encuentra su mejor secuencia, el de Viterbi.</p>
+  <ul class="asks">
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="la Mancha en un lugar de la Mancha y en don Quijote de la Mancha: debajo de cada palabra, los 12 primeros de sus 100 números, los mismos las dos veces; un lugar en la primera y parte del nombre de una persona en la segunda"><text class="sl-pic-w" x="112.6" y="26" text-anchor="end" style="font-size:15px">un lugar de</text><text class="sl-pic-w" x="116" y="26" style="font-size:15px">la</text><text class="sl-pic-w" x="130.8" y="26" style="font-size:15px">Mancha</text><line class="sl-pic-zero" x1="106.3" y1="37" x2="136.3" y2="37"/><rect class="sl-pic-bar" x="106.6" y="37" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="109.1" y="37" width="1.9" height="1.4"/><rect class="sl-pic-bar" x="111.6" y="37" width="1.9" height="2.2"/><rect class="sl-pic-bar" x="114.1" y="37" width="1.9" height="0.9"/><rect class="sl-pic-bar" x="116.6" y="36.1" width="1.9" height="0.9"/><rect class="sl-pic-bar" x="119.1" y="35.2" width="1.9" height="1.8"/><rect class="sl-pic-bar" x="121.6" y="37" width="1.9" height="0.7"/><rect class="sl-pic-bar" x="124.1" y="37" width="1.9" height="1.2"/><rect class="sl-pic-bar" x="126.6" y="35.3" width="1.9" height="1.7"/><rect class="sl-pic-bar" x="129.1" y="37" width="1.9" height="0.8"/><rect class="sl-pic-bar" x="131.6" y="36.4" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="134.1" y="35.1" width="1.9" height="1.9"/><line class="sl-pic-zero" x1="142.3" y1="37" x2="172.3" y2="37"/><rect class="sl-pic-bar" x="142.6" y="36.1" width="1.9" height="0.9"/><rect class="sl-pic-bar" x="145.1" y="37" width="1.9" height="5.2"/><rect class="sl-pic-bar" x="147.6" y="36.4" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="150.1" y="37" width="1.9" height="1.1"/><rect class="sl-pic-bar" x="152.6" y="36.4" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="155.1" y="37" width="1.9" height="2.5"/><rect class="sl-pic-bar" x="157.6" y="35.7" width="1.9" height="1.3"/><rect class="sl-pic-bar" x="160.1" y="35.3" width="1.9" height="1.7"/><rect class="sl-pic-bar" x="162.6" y="37" width="1.9" height="3.7"/><rect class="sl-pic-bar" x="165.1" y="36.4" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="167.6" y="37" width="1.9" height="3.3"/><rect class="sl-pic-bar" x="170.1" y="37" width="1.9" height="0.7"/><text class="sl-pic-c" x="101.3" y="41" text-anchor="end" style="font-size:10.5px">12 primeros de</text><text class="sl-pic-c" x="101.3" y="53" text-anchor="end" style="font-size:10.5px">sus 100 números</text><text class="sl-pic-c" x="174.3" y="40.5" style="font-size:10px">0</text><line class="sl-pic-ent" x1="116" y1="45" x2="183.8" y2="45"/><text class="sl-pic-kind" x="183.8" y="57" text-anchor="end" style="font-size:11.5px">un lugar</text><text class="sl-pic-w" x="112.6" y="84" text-anchor="end" style="font-size:15px">don Quijote de</text><text class="sl-pic-w" x="116" y="84" style="font-size:15px">la</text><text class="sl-pic-w" x="130.8" y="84" style="font-size:15px">Mancha</text><line class="sl-pic-zero" x1="106.3" y1="95" x2="136.3" y2="95"/><rect class="sl-pic-bar" x="106.6" y="95" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="109.1" y="95" width="1.9" height="1.4"/><rect class="sl-pic-bar" x="111.6" y="95" width="1.9" height="2.2"/><rect class="sl-pic-bar" x="114.1" y="95" width="1.9" height="0.9"/><rect class="sl-pic-bar" x="116.6" y="94.1" width="1.9" height="0.9"/><rect class="sl-pic-bar" x="119.1" y="93.2" width="1.9" height="1.8"/><rect class="sl-pic-bar" x="121.6" y="95" width="1.9" height="0.7"/><rect class="sl-pic-bar" x="124.1" y="95" width="1.9" height="1.2"/><rect class="sl-pic-bar" x="126.6" y="93.3" width="1.9" height="1.7"/><rect class="sl-pic-bar" x="129.1" y="95" width="1.9" height="0.8"/><rect class="sl-pic-bar" x="131.6" y="94.4" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="134.1" y="93.1" width="1.9" height="1.9"/><line class="sl-pic-zero" x1="142.3" y1="95" x2="172.3" y2="95"/><rect class="sl-pic-bar" x="142.6" y="94.1" width="1.9" height="0.9"/><rect class="sl-pic-bar" x="145.1" y="95" width="1.9" height="5.2"/><rect class="sl-pic-bar" x="147.6" y="94.4" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="150.1" y="95" width="1.9" height="1.1"/><rect class="sl-pic-bar" x="152.6" y="94.4" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="155.1" y="95" width="1.9" height="2.5"/><rect class="sl-pic-bar" x="157.6" y="93.7" width="1.9" height="1.3"/><rect class="sl-pic-bar" x="160.1" y="93.3" width="1.9" height="1.7"/><rect class="sl-pic-bar" x="162.6" y="95" width="1.9" height="3.7"/><rect class="sl-pic-bar" x="165.1" y="94.4" width="1.9" height="0.6"/><rect class="sl-pic-bar" x="167.6" y="95" width="1.9" height="3.3"/><rect class="sl-pic-bar" x="170.1" y="95" width="1.9" height="0.7"/><line class="sl-pic-ent" x1="16.2" y1="103" x2="183.8" y2="103"/><text class="sl-pic-kind" x="183.8" y="115" text-anchor="end" style="font-size:11.5px">una persona</text></svg>
+      <p>Los mismos números, dos etiquetas</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="la tomó por la mano: la primera la es un pronombre, porque la sigue un verbo, y la segunda un determinante, porque la sigue un sustantivo"><text class="sl-pic-w" x="32.3" y="70" style="font-size:16px">la</text><text class="sl-pic-w" x="47.6" y="70" style="font-size:16px">tomó</text><text class="sl-pic-w" x="86.8" y="70" style="font-size:16px">por</text><text class="sl-pic-w" x="114.2" y="70" style="font-size:16px">la</text><text class="sl-pic-w" x="129.5" y="70" style="font-size:16px">mano</text><text class="sl-pic-c" x="38.1" y="48" text-anchor="middle" style="font-size:11.5px">PRON</text><path class="sl-pic-hook" d="M65.4,76 C65.4,92 38.1,92 38.1,77"/><path class="sl-pic-hook" d="M35.1,82 L38.1,76 L41.1,82"/><text class="sl-pic-c" x="120" y="48" text-anchor="middle" style="font-size:11.5px">DET</text><path class="sl-pic-hook" d="M148.6,76 C148.6,92 120,92 120,77"/><path class="sl-pic-hook" d="M117,82 L120,76 L123,82"/></svg>
+      <p>Decide la palabra siguiente</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Una cuadrícula de cinco etiquetas posibles para cada una de cuatro palabras, con un camino: 625 maneras de etiquetar cuatro palabras, y 20 casillas"><text class="sl-pic-w" x="34" y="18" text-anchor="middle" style="font-size:12.0px">lugar</text><text class="sl-pic-w" x="78" y="18" text-anchor="middle" style="font-size:12.0px">de</text><text class="sl-pic-w" x="122" y="18" text-anchor="middle" style="font-size:12.0px">la</text><text class="sl-pic-w" x="166" y="18" text-anchor="middle" style="font-size:11.2px">Mancha</text><rect class="sl-pic-box on" x="19" y="26" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="19" y="41" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="19" y="56" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="19" y="71" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="19" y="86" width="30" height="11" rx="2"/><rect class="sl-pic-box on" x="63" y="26" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="63" y="41" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="63" y="56" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="63" y="71" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="63" y="86" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="107" y="26" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="107" y="41" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="107" y="56" width="30" height="11" rx="2"/><rect class="sl-pic-box on" x="107" y="71" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="107" y="86" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="151" y="26" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="151" y="41" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="151" y="56" width="30" height="11" rx="2"/><rect class="sl-pic-box" x="151" y="71" width="30" height="11" rx="2"/><rect class="sl-pic-box on" x="151" y="86" width="30" height="11" rx="2"/><polyline class="sl-pic-path" points="49,31.5 63,31.5 93,31.5 107,76.5 137,76.5 151,91.5"/><text class="sl-pic-l" x="100" y="112" text-anchor="middle" style="font-size:11.5px">625 maneras de etiquetar 4 palabras</text><text class="sl-pic-l" x="100" y="126" text-anchor="middle" style="font-size:11.5px">20 casillas</text></svg>
+      <p>Muchas secuencias, pocas casillas</p>
+    </li>
+  </ul>
+  <p>La sección 1 convierte los nombres en una etiqueta por token; la sección 2 pone sobre los vectores de palabras un cabezal que etiqueta cada token por sí solo, y muestra en qué se equivoca; la sección 3 agrega una tabla de qué etiqueta sigue a cuál, y puntúa una secuencia entera; la sección 4 convierte puntuaciones en probabilidades sin enumerar todas las secuencias; la sección 5 cuenta tablas así en texto etiquetado a mano en vez de aprenderlas, el modelo oculto de Markov; y la sección 6 encuentra la mejor secuencia casilla por casilla, frente a elegir las etiquetas una por una.</p>
+</div>
+
+<section id="bio">
+  <div class="prose">
+    <h2><span class="n">1</span>Una etiqueta por token</h2>
+    <p>El etiquetado de secuencias le da a cada token una etiqueta, así que la salida es tan larga como la entrada. El etiquetado POS ya tiene esa forma, porque cada token es su propia unidad. Un nombre puede abarcar varios tokens, así que el reconocimiento de entidades nombradas marca dónde empieza cada nombre, <span class="sl-code">B-</span> por <i>beginning</i> (comienzo); los tokens que lo continúan, <span class="sl-code">I-</span> por <i>inside</i> (dentro); y todo lo demás, <span class="sl-code">O</span> por <i>outside</i> (fuera). Después del guion va el tipo del nombre. Aquí hay dos tipos, personas y lugares, así que hay <i>K</i> = 2 · 2 + 1 = 5 etiquetas:</p>
+    <div class="disp"><span class="nowrap"><i>y</i><sub><i>i</i></sub> ∈ {<span class="sl-code">O</span>, <span class="sl-code">B-PER</span>,</span> <span class="nowrap"><span class="sl-code">I-PER</span>, <span class="sl-code">B-LOC</span>, <span class="sl-code">I-LOC</span>}</span></div>
+    <p>donde los tokens de una oración son <span class="nowrap"><i>x</i> = (<i>x</i><sub>1</sub>, …, <i>x</i><sub><i>N</i></sub>)</span> y sus etiquetas <span class="nowrap"><i>y</i> = (<i>y</i><sub>1</sub>, …, <i>y</i><sub><i>N</i></sub>),</span> con <i>N</i> su largo. Un nombre empieza en cada <span class="sl-code">B-</span> y sigue por las <span class="sl-code">I-</span> de su tipo que vienen después. Una <span class="sl-code">I-</span> después de una <span class="sl-code">O</span>, al comienzo, o después de un nombre del otro tipo no continúa nada y rompe el esquema. Los nombres no se anidan: <i>la Mancha</i> dentro del nombre del caballero es <span class="sl-code">I-PER</span>, como el apunte sobre palabras subrayó el nombre entero. En la figura, elige una frase y haz clic en una palabra para cambiar su etiqueta.</p>
+  </div>
+
+  <div class="fig">
+    <div class="sl-panel" id="fig-bio" role="group" aria-label="Una frase con una etiqueta en cada palabra, y los nombres que se leen de las etiquetas"></div>
+    <div class="ro">
+      <div class="modes" id="fig-bio-mode" role="group" aria-label="Frase">
+        <button type="button" data-mode="0" aria-pressed="true">El nombre del caballero</button>
+        <button type="button" data-mode="1" aria-pressed="false">Nombres que se tocan</button>
+      </div>
+      <div class="sl-ro" id="fig-bio-out" aria-live="polite"></div>
+      <div class="ctl sl-ctl"><button type="button" class="btn" id="fig-bio-reset" hidden>Reiniciar</button></div>
+    </div>
+    <div class="fig-foot">
+      <p>Haz clic en una palabra, o presiona Enter sobre ella, para cambiar su etiqueta; recorre las palabras con las flechas del teclado.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Las dos lecturas del nombre del caballero son válidas: una persona, o una persona y un lugar. Las etiquetas solas no pueden elegir entre ellas; el modelo de las secciones 3 y 4 las sopesa. La segunda frase muestra por qué el esquema necesita la <span class="sl-code">B-</span>: con los tipos solos, dos nombres que se tocan se leen como uno. En el retablo del capítulo XXVI de la segunda parte, don Quijote dice que los títeres parecían de verdad, «que Melisendra era Melisendra, don Gaiferos don Gaiferos, Marsilio Marsilio». Ramshaw y Marcus (1995) introdujeron las tres letras para los sintagmas nominales, con <span class="sl-code">B-</span> solo donde dos sintagmas se tocan; la versión que se usa aquí, y en la mayoría de los etiquetadores, la pone en cada comienzo.</p>
+  </div>
+</section>
+
+<section id="heads">
+  <div class="prose">
+    <h2><span class="n">2</span>Un encoder, muchos cabezales</h2>
+    <p>Un <em>encoder</em> es cualquier cosa que le da a cada token un vector. El más simple es una tabla entrenada de vectores de palabras: aquí los vectores del libro con subwords del apunte sobre subwords, <i>d</i> = 100, que le dan un vector a cada token, el mismo en cada oración. Se quedan como se entrenaron; solo se entrena lo que va encima, y esa parte, el <em>cabezal</em>, decide la tarea. Un cabezal que le da una etiqueta al texto entero es el clasificador de los apuntes de los modelos lineales y de los vectores de palabras; un cabezal que compara los vectores de dos textos es el coseno del apunte de los vectores de palabras; un cabezal que le da una etiqueta a cada token es el de este apunte.</p>
+    <p>El cabezal que etiqueta es una capa lineal, la misma en cada token. Le da a cada token una puntuación por etiqueta, la puntuación <i>w</i><sub><i>k</i></sub><sup class="t">T</sup><i>x</i> del apunte de los modelos lineales con el vector del token en lugar de <i>x</i>. Las puntuaciones se apilan en una tabla <i>P</i> con una fila por token y una columna por etiqueta,</p>
+    <div class="disp hero-f"><span class="nowrap"><i>P</i><sub><i>i</i>,<i>k</i></sub> = <i>w</i><sub><i>k</i></sub><sup class="t">T</sup><i>v</i><sub><i>x</i><sub><i>i</i></sub></sub>,</span> <span class="nowrap"><i>P</i> ∈ ℝ<sup><i>N</i>×<i>K</i></sup>,</span></div>
+    <p>donde <i>v</i><sub><i>x</i><sub><i>i</i></sub></sub> es el vector del token <i>i</i> con un 1 adelante, para que el sesgo quede en <i>w</i><sub><i>k</i></sub>, la fila <i>k</i> de la matriz de la capa. Una softmax por token convierte cada fila en probabilidades, y cada token se queda con la más alta:</p>
+    <div class="disp"><span class="nowrap"><i>p</i>(<i>y</i><sub><i>i</i></sub> = <i>k</i> | <i>x</i>) = <span class="frac"><span><i>e</i><sup><i>P</i><sub><i>i</i>,<i>k</i></sub></sup></span><span>∑<sub><i>j</i>=1</sub><sup><i>K</i></sup> <i>e</i><sup><i>P</i><sub><i>i</i>,<i>j</i></sub></sup></span></span></span></div>
+    <p>El libro no trae los nombres etiquetados, así que para este apunte se hizo una lista de sus personas y lugares, unas 90 entradas de personas y 38 de lugares, y se etiquetó cada aparición, salvo las pocas impresas en mayúsculas, que quedan en <span class="sl-code">O</span>: <i>don</i> abre el nombre de una persona, mientras Rocinante y Dios quedan en <span class="sl-code">O</span>. Los cabezales se entrenan con el libro salvo el capítulo I de la primera parte y uno de cada diez capítulos, que quedan fuera para medirlos. La figura dibuja <i>P</i> de costado, una columna por token y una fila por etiqueta, con cada columna sombreada según las probabilidades de su token. Elige una frase y una casilla, y comprueba que las columnas de «de la Mancha» no cambian entre las dos frases.</p>
+  </div>
+
+  <div class="fig">
+    <div class="sl-panel" id="fig-head" role="group" aria-label="Las puntuaciones de cada token para cada etiqueta, del cabezal entrenado solo"></div>
+    <div class="ro">
+      <div class="modes" id="fig-head-mode" role="group" aria-label="Frase">
+        <button type="button" data-mode="village" aria-pressed="true">lugar de la Mancha</button>
+        <button type="button" data-mode="don" aria-pressed="false">don Quijote de la Mancha</button>
+      </div>
+      <div class="sl-ro" id="fig-head-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Haz clic en una casilla, o recorre las casillas con las flechas del teclado.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>El cabezal decide cada token por separado, y la fila de una palabra es la misma dondequiera que esté. <i>Mancha</i> es parte del nombre del caballero en unas tres de cada cuatro de sus apariciones en el libro, así que el cabezal la etiqueta <span class="sl-code">I-PER</span> incluso después de «un lugar de», y nada impide una <span class="sl-code">I-</span> justo después de una <span class="sl-code">O</span>: las dos frases terminan en etiquetas que el esquema prohíbe. Por sí solo, «el Toboso» se lee <span class="sl-code">O I-PER</span> en cuatro de los cinco entrenamientos, porque <i>Toboso</i> está sobre todo en «Dulcinea del Toboso». Los vectores se entrenaron con el texto en minúsculas, así que este cabezal nunca ve una mayúscula, la pista que señaló el apunte sobre palabras. Lo que falta es una manera de que la etiqueta de un token mire la de su vecina.</p>
+  </div>
+</section>
+
+<section id="score">
+  <div class="prose">
+    <h2><span class="n">3</span>La matriz de transiciones y la puntuación de una secuencia</h2>
+    <p>Un <em>campo aleatorio condicional</em> (CRF; Lafferty, McCallum y Pereira 2001) agrega una tabla <i>A</i>, la <em>matriz de transiciones</em>, una puntuación por cada par ordenado de etiquetas seguidas: qué etiqueta puede seguir a cuál. El primer token no tiene etiqueta antes, así que una etiqueta de inicio <i>y</i><sub>0</sub> va antes de la oración, y <i>A</i> tiene una fila más, <i>A</i><sub><i>y</i><sub>0</sub>,<i>k</i></sub>, para cómo puede empezar una oración. La puntuación de una secuencia recorre la oración sumando, en cada token, lo que el cabezal dice de su etiqueta y lo que la tabla dice del paso hacia ella:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>s</i>(<i>x</i>, <i>y</i>) = ∑<span class="lims"><span><i>N</i></span><span><i>i</i>=1</span></span> <i>P</i><sub><i>i</i>,<i>y</i><sub><i>i</i></sub></sub></span> <span class="nowrap">+ ∑<span class="lims"><span><i>N</i></span><span><i>i</i>=1</span></span> <i>A</i><sub><i>y</i><sub><i>i</i>−1</sub>,<i>y</i><sub><i>i</i></sub></sub></span></div>
+    <p>con <span class="nowrap"><i>A</i> ∈ ℝ<sup><i>K</i>×<i>K</i></sup></span> más su fila de inicio: 30 números, frente a los <span class="nowrap"><i>K</i>(<i>d</i> + 1) = 505</span> del cabezal. La tabla se aprende junto con el cabezal, como explica la sección 4; nadie escribe en ella las reglas del esquema. Lample et al. (2016) pusieron esta tabla sobre las puntuaciones de una red recurrente, que trata un apunte posterior; aquí va sobre los vectores estáticos y una capa lineal. Lample et al. agregaron además una etiqueta de fin, una columna de <i>A</i> para cómo puede terminar una oración; este etiquetador tiene solo la fila de inicio. De aquí en adelante, el cabezal es el que se entrenó junto con la tabla, así que sus puntuaciones difieren de las de la sección 2: ahora la tabla hace parte del trabajo. En la figura, elige una etiqueta por token y lee la puntuación de la secuencia.</p>
+  </div>
+
+  <div class="fig">
+    <div class="sl-panel" id="fig-score" role="group" aria-label="Las puntuaciones de cada token para cada etiqueta, una secuencia de etiquetas dibujada como un camino, y la tabla de transiciones"></div>
+    <div class="ro">
+      <div class="modes" id="fig-score-mode" role="group" aria-label="Frase">
+        <button type="button" data-mode="village" aria-pressed="true">lugar de la Mancha</button>
+        <button type="button" data-mode="don" aria-pressed="false">don Quijote de la Mancha</button>
+      </div>
+      <div class="sl-ro" id="fig-score-out" aria-live="polite"></div>
+      <div class="ctl sl-ctl"><button type="button" class="btn" id="fig-score-reset" hidden>Reiniciar</button></div>
+    </div>
+    <div class="fig-foot">
+      <p>Haz clic en una casilla para etiquetar su token, o usa las flechas del teclado: arriba y abajo cambian la etiqueta de un token, izquierda y derecha recorren los tokens.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>La tabla aprendió lo que hacían las etiquetas. Una <span class="sl-code">I-PER</span> justo después de una <span class="sl-code">O</span> puntúa −8.86, y al comienzo −6.04; la segunda palabra de un lugar después de la primera puntúa +4.55. Aprendió los datos, no las reglas: <span class="sl-code">B-PER</span> justo después de <span class="sl-code">B-PER</span>, dos nombres que se tocan, es válida pero queda en −6.40, porque el libro etiquetado la tiene dos veces, mientras la prohibida <span class="sl-code">I-LOC</span> → <span class="sl-code">I-PER</span> queda en apenas −1.84. El entrenamiento baja un paso solo mientras el modelo todavía siente la tentación de darlo, así que un paso válido que casi nunca se ve se hunde como uno prohibido, y un paso prohibido que rara vez tienta queda suave. Nada impide una secuencia rota si las puntuaciones del cabezal empujan lo bastante.</p>
+  </div>
+</section>
+
+<section id="forward">
+  <div class="prose">
+    <h2><span class="n">4</span><span>El normalizador <i>Z</i> y la recursión hacia adelante</span></h2>
+    <p>Una puntuación es un número cualquiera. Para que sea una probabilidad, se exponencia y se divide por la suma sobre todas las secuencias, la softmax del apunte de los modelos lineales con una clase por secuencia:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>p</i>(<i>y</i> | <i>x</i>) = <span class="frac"><span><i>e</i><sup><i>s</i>(<i>x</i>, <i>y</i>)</sup></span><span><i>Z</i>(<i>x</i>)</span></span>,</span> <span class="nowrap"><i>Z</i>(<i>x</i>) = ∑<sub><i>y</i>′</sub> <i>e</i><sup><i>s</i>(<i>x</i>, <i>y</i>′)</sup></span></div>
+    <p><i>Z</i>(<i>x</i>) depende de la oración, no de las etiquetas: se calcula una vez por oración y lo comparten todas sus secuencias, y no cambia cuál es la mejor. Pero hay <i>K</i><sup><i>N</i></sup> secuencias, el normalizador costoso del apunte de word2vec en su peor versión. La cuadrícula evita enumerarlas. Sea α<sub><i>i</i></sub>(<i>k</i>) la suma de <i>e</i><sup><i>s</i></sup> sobre todas las secuencias de los primeros <i>i</i> tokens que terminan en la etiqueta <i>k</i>, con la puntuación detenida en el token <i>i</i>. Todo camino así pasa por alguna casilla de la columna anterior, y <span class="nowrap"><i>e</i><sup><i>a</i>+<i>b</i></sup> = <i>e</i><sup><i>a</i></sup><i>e</i><sup><i>b</i></sup>,</span> así que cada casilla es la columna anterior por un paso:</p>
+    <div class="disp"><span class="nowrap">α<sub><i>i</i></sub>(<i>k</i>) = ∑<span class="lims"><span><i>K</i></span><span><i>j</i>=1</span></span> α<sub><i>i</i>−1</sub>(<i>j</i>) <i>e</i><sup><i>A</i><sub><i>j</i>,<i>k</i></sub> + <i>P</i><sub><i>i</i>,<i>k</i></sub></sup>,</span> <span class="nowrap">α<sub>1</sub>(<i>k</i>) = <i>e</i><sup><i>A</i><sub><i>y</i><sub>0</sub>,<i>k</i></sub> + <i>P</i><sub>1,<i>k</i></sub></sup>,</span> <span class="nowrap"><i>Z</i>(<i>x</i>) = ∑<span class="lims"><span><i>K</i></span><span><i>k</i>=1</span></span> α<sub><i>N</i></sub>(<i>k</i>)</span></div>
+    <p>Esta es la <em>recursión hacia adelante</em> (no las ecuaciones de transferencia de una red). Usa <i>N</i>·<i>K</i> números y cerca de <i>N</i>·<i>K</i><sup>2</sup> multiplicaciones, frente a <i>K</i><sup><i>N</i></sup> secuencias. La softmax por token de la sección 2 sumaba una columna de la cuadrícula; <i>Z</i> suma todos los caminos que la cruzan. En la figura, elige una casilla para ver lo que entra en ella, o la casilla <i>Z</i> a la derecha.</p>
+  </div>
+
+  <div class="fig">
+    <div class="sl-panel" id="fig-forward" role="group" aria-label="Las sumas hacia adelante de cada casilla para lugar de la Mancha, con las líneas que entran a la casilla elegida, y Z"></div>
+    <div class="ro">
+      <div class="sl-ro" id="fig-forward-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Haz clic en una casilla, o recorre las casillas con las flechas del teclado.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Sumar <i>e</i><sup><i>s</i></sup> sobre las 625 secuencias da el mismo <i>Z</i>, 1484. El entrenamiento baja, sobre las oraciones de entrenamiento, la pérdida de cada oración etiquetada (Lample et al. 2016),</p>
+    <div class="disp"><span class="nowrap">ℒ = −log <i>p</i>(<i>y</i> | <i>x</i>) = log <i>Z</i>(<i>x</i>) − <i>s</i>(<i>x</i>, <i>y</i>),</span></div>
+    <p>con logaritmos naturales en este apunte. Bajarla sube la puntuación de la secuencia correcta y, a través de <i>Z</i>, baja todas las demás; el cabezal y <i>A</i> aprenden juntos con una variante del descenso de gradiente. En la práctica <i>e</i><sup><i>s</i></sup> desborda en oraciones largas: una oración de 165 tokens del capítulo III de la primera parte ya tiene un log <i>Z</i> de 727, mientras un número de 64 bits no guarda nada mayor que <i>e</i><sup>709.78</sup>. Por eso los programas guardan log α y suman en logs, con log-sum-exp: <span class="nowrap">log(<i>e</i><sup><i>a</i></sup> + <i>e</i><sup><i>b</i></sup>)</span> <span class="nowrap">= <i>m</i> + log(<i>e</i><sup><i>a</i>−<i>m</i></sup> + <i>e</i><sup><i>b</i>−<i>m</i></sup>),</span> con <i>m</i> el mayor entre <i>a</i> y <i>b</i>, así que ninguna exponencial pasa de 1 (la fila «En logs» del resumen); el código del apunte de word2vec resta <code>z.max()</code> antes de su softmax por lo mismo. Los tamaños crecen rápido: las seis primeras palabras del libro, «En un lugar de la Mancha», tienen 15&nbsp;625 secuencias y 30 casillas, y la oración mediana del libro, de 35 tokens, tiene unas 2.9 × 10<sup>24</sup> secuencias y 175 casillas.</p>
+    <p>En «don Quijote de la Mancha», el etiquetador le da a una persona una probabilidad de 0.70 y a una persona y un lugar 0.22: prefiere el nombre, como el libro etiquetado. En los capítulos que quedaron fuera, medido contra la lista de nombres, entre el 93% y el 96% de los nombres que marca coinciden con uno de la lista en extensión y tipo, y encuentra entre el 80% y el 84% de los nombres de la lista, en los cinco entrenamientos; el cabezal entrenado por sí solo coincide entre el 80% y el 85% y encuentra entre el 72% y el 82%. Deja a lo más una <span class="sl-code">I-</span> rota en 1101 oraciones, donde el cabezal por sí solo deja entre 33 y 75. Los pasos prohibidos se hunden solo con suficiente entrenamiento: después de 8 lecturas de los capítulos de entrenamiento en vez de 30, con un quinto de la tasa de aprendizaje, <i>A</i><sub><span class="sl-code">O</span>,<span class="sl-code">I-PER</span></sub> valía −2.53, quedaban cuatro <span class="sl-code">I-</span> rotas, y «En un lugar de la Mancha» salía <span class="sl-code">O O O O O I-PER</span>.</p>
+  </div>
+</section>
+
+<section id="hmm">
+  <div class="prose">
+    <h2><span class="n">5</span>El modelo oculto de Markov, entrenado contando</h2>
+    <p>¿Se podrían contar simplemente las tablas de un etiquetador en un texto que alguien etiquetó? Un <em>modelo oculto de Markov</em> (HMM) describe cómo pudo haberse producido una oración: una cadena de etiquetas, cada una dependiente solo de la anterior (una cadena de Markov, no la cadena de hiperónimos del apunte sobre palabras), y cada etiqueta produciendo su palabra, que depende solo de su etiqueta. Sus etiquetas se escriben <i>h</i>, de <i>hidden</i> (oculto): en una oración nueva solo llegan las palabras. En este apunte <i>h</i> significa esto, no la salida logística de apuntes anteriores, y muchos textos escriben la cadena oculta como <i>q</i> y las palabras como <i>o</i>; aquí <i>x</i> es siempre la entrada. <i>y</i> y <i>h</i> son el mismo tipo de cosa, etiquetas, como las escriben el CRF y el HMM.</p>
+    <div class="disp"><span class="nowrap">P(<i>h</i><sub><i>i</i></sub> | <i>h</i><sub>1</sub>, …, <i>h</i><sub><i>i</i>−1</sub>) = P(<i>h</i><sub><i>i</i></sub> | <i>h</i><sub><i>i</i>−1</sub>),</span> <span class="nowrap">P(<i>x</i><sub><i>i</i></sub> | <i>h</i><sub>1</sub>, …, <i>h</i><sub><i>N</i></sub>) = P(<i>x</i><sub><i>i</i></sub> | <i>h</i><sub><i>i</i></sub>)</span></div>
+    <p>La segunda vale también dadas las otras palabras: una palabra depende solo de su propia etiqueta. Juntas dan la probabilidad de las palabras y las etiquetas juntas, la conjunta, no la de las etiquetas dadas las palabras:</p>
+    <div class="disp hero-f long"><span class="nowrap">P(<i>x</i>, <i>h</i>)</span> <span class="nowrap">= ∏<span class="lims"><span><i>N</i></span><span><i>i</i>=1</span></span> P(<i>h</i><sub><i>i</i></sub> | <i>h</i><sub><i>i</i>−1</sub>)</span> <span class="nowrap">P(<i>x</i><sub><i>i</i></sub> | <i>h</i><sub><i>i</i></sub>)</span></div>
+    <p>con <i>h</i><sub>0</sub> el inicio. Una P recta seguida de paréntesis, como P(<i>x</i>, <i>h</i>) o P(<i>h</i><sub><i>i</i></sub> | <i>h</i><sub><i>i</i>−1</sub>), es una probabilidad; la <i>P</i> cursiva con dos índices sigue siendo la tabla de puntuaciones del cabezal. La tarea cambia a categorías gramaticales, las etiquetas de Universal Dependencies del apunte sobre palabras, porque hay mucho texto etiquetado a mano con ellas: los conteos salen de dos <em>treebanks</em>, corpus anotados a mano, UD Spanish GSD (15&nbsp;586 oraciones y 411&nbsp;492 tokens contados; sus otras 427 oraciones se guardan para la prueba) y UD English EWT. El entrenamiento ve palabras y etiquetas, y cada tabla se cuenta y se divide:</p>
+    <div class="disp"><span class="nowrap">P(<i>h</i><sub><i>i</i></sub> = <i>k</i> | <i>h</i><sub><i>i</i>−1</sub> = <i>j</i>) = <span class="frac"><span><i>c</i>(<i>j</i>, <i>k</i>)</span><span><i>c</i>(<i>j</i>)</span></span>,</span> <span class="nowrap">P(<i>x</i><sub><i>i</i></sub> | <i>h</i><sub><i>i</i></sub> = <i>k</i>) = <span class="frac"><span><i>c</i>(<i>k</i>, <i>x</i><sub><i>i</i></sub>)</span><span><i>c</i>(<i>k</i>)</span></span></span></div>
+    <p>donde <i>c</i> cuenta. <i>c</i>(<i>j</i>) cuenta cada <i>j</i>, también la última etiqueta de una oración, a la que sigue el fin de la oración, una columna propia, así que las partes de cada fila suman 1 entre las etiquetas y el fin; la cadena de una oración entera termina con ese paso más, P(fin | <i>h</i><sub><i>N</i></sub>), que la cláusula de las figuras, que no termina su oración, deja fuera. Estas partes son las que hacen más probable el texto etiquetado, por la misma razón por la que, en el apunte de word2vec, la predicción que minimiza ℒ le daba a cada palabra su fracción de los pares; no se itera nada, cosa que solo hace falta cuando no se dan las etiquetas. Quedan dos tablas, las <em>transiciones</em> y las <em>emisiones</em>, y el log de la cadena es una suma, <span class="nowrap">log P(<i>x</i>, <i>h</i>)</span> <span class="nowrap">= ∑<sub><i>i</i></sub> [log P(<i>h</i><sub><i>i</i></sub> | <i>h</i><sub><i>i</i>−1</sub>)</span> <span class="nowrap">+ log P(<i>x</i><sub><i>i</i></sub> | <i>h</i><sub><i>i</i></sub>)].</span> En la figura, la cláusula «la tomó por la mano», del capítulo XLII de la primera parte, tomada como si abriera una oración (dentro de la suya, Viterbi le da las mismas etiquetas), está en la cuadrícula con una casilla solo donde el treebank le dio a una palabra esa etiqueta en al menos uno de cada 50 usos. Elige una etiqueta para cada palabra y mira el log de la cadena.</p>
+  </div>
+
+  <div class="fig">
+    <div class="sl-panel" id="fig-hmm" role="group" aria-label="Las emisiones en log de cada palabra para sus etiquetas, y una cadena de etiquetas dibujada como un camino"></div>
+    <div class="ro">
+      <div class="sl-ro" id="fig-hmm-out" aria-live="polite"></div>
+      <div class="ctl sl-ctl"><button type="button" class="btn" id="fig-hmm-reset" hidden>Reiniciar</button></div>
+    </div>
+    <div class="fig-foot">
+      <p>Haz clic en una casilla para etiquetar su palabra, o usa las flechas del teclado: arriba y abajo cambian la etiqueta de una palabra, izquierda y derecha recorren las palabras.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Las otras etiquetas son posibles pero raras, y decodificar sobre estas casillas da la misma cadena que sobre las 17 etiquetas. Las celdas que deciden: un verbo sigue a un pronombre con P(<span class="sl-code">VERB</span> | <span class="sl-code">PRON</span>) = 6476 / 12&nbsp;312 ≈ 0.53, pero a un determinante con apenas 46 / 52&nbsp;486 ≈ 0.0009. El HMM es un CRF con log-probabilidades: con <span class="nowrap"><i>A</i><sub><i>j</i>,<i>k</i></sub></span> <span class="nowrap">= log P(<i>h</i><sub><i>i</i></sub> = <i>k</i> | <i>h</i><sub><i>i</i>−1</sub> = <i>j</i>)</span> y <span class="nowrap"><i>P</i><sub><i>i</i>,<i>k</i></sub> = log P(<i>x</i><sub><i>i</i></sub> | <i>h</i><sub><i>i</i></sub> = <i>k</i>),</span> la puntuación de la sección 3 es log P(<i>x</i>, <i>h</i>), y el <i>Z</i>(<i>x</i>) de la sección 4, con el paso hacia el fin, se vuelve P(<i>x</i>), la probabilidad que el modelo le da a la oración. Las dos cadenas recorren las etiquetas; la diferencia es qué modela cada uno y cómo aprende. El HMM cuenta tablas que explican cómo se escribieron las palabras, la conjunta; el CRF aprende puntuaciones que distinguen etiquetas dadas las palabras, la condicional. Un par que nunca se contó da log 0 = −∞, una cadena que el HMM declara imposible, cosa que una <i>A</i> aprendida nunca llega a hacer. Una palabra que el treebank nunca vio recibe una parte estimada a partir de las palabras vistas una vez que, como ella, empiezan o no con mayúscula y terminan en las mismas tres letras; sin eso, tendría probabilidad 0 con cualquier etiqueta.</p>
+  </div>
+</section>
+
+<section id="viterbi">
+  <div class="prose">
+    <h2><span class="n">6</span>Viterbi: la mejor secuencia sin probarlas todas</h2>
+    <p>Con 17 etiquetas por palabra, ¿cómo encuentra un etiquetador la mejor cadena sin probar 17<sup><i>N</i></sup>, y por qué no elegir cada etiqueta sobre la marcha? Sea δ<sub><i>i</i></sub>(<i>k</i>) la probabilidad de la mejor cadena que llega a la etiqueta <i>k</i> en la palabra <i>i</i>, usando solo las palabras hasta ahí. Es la cuadrícula de la sección 4 con un máximo en lugar de la suma (Viterbi 1967):</p>
+    <div class="disp hero-f long"><span class="nowrap">δ<sub><i>i</i></sub>(<i>k</i>)</span> <span class="nowrap">= max<sub><i>j</i></sub> δ<sub><i>i</i>−1</sub>(<i>j</i>)</span> <span class="nowrap">P(<i>h</i><sub><i>i</i></sub> = <i>k</i> | <i>h</i><sub><i>i</i>−1</sub> = <i>j</i>)</span> <span class="nowrap">P(<i>x</i><sub><i>i</i></sub> | <i>h</i><sub><i>i</i></sub> = <i>k</i>)</span></div>
+    <p>con <span class="nowrap">δ<sub>1</sub>(<i>k</i>) = P(<i>h</i><sub>1</sub> = <i>k</i> | <i>h</i><sub>0</sub>) P(<i>x</i><sub>1</sub> | <i>h</i><sub>1</sub> = <i>k</i>).</span> Cada casilla guarda solo su mejor cadena entrante, y recuerda de qué etiqueta vino, su <em>puntero hacia atrás</em>. El mayor δ de la última columna es la probabilidad de la mejor cadena, <span class="nowrap">P(<i>x</i>, <i>h</i>*) = max<sub><i>k</i></sub> δ<sub><i>N</i></sub>(<i>k</i>);</span> su argmax da solo la última etiqueta, y la cadena se lee siguiendo los punteros de derecha a izquierda: <span class="nowrap"><i>h</i>*<sub><i>N</i></sub> = argmax<sub><i>k</i></sub> δ<sub><i>N</i></sub>(<i>k</i>),</span> <span class="nowrap"><i>h</i>*<sub><i>i</i>−1</sub> = argmax<sub><i>j</i></sub> δ<sub><i>i</i>−1</sub>(<i>j</i>)</span> <span class="nowrap">P(<i>h</i><sub><i>i</i></sub> = <i>h</i>*<sub><i>i</i></sub> | <i>h</i><sub><i>i</i>−1</sub> = <i>j</i>).</span> δ cae a lo largo de la oración, porque cada paso multiplica una probabilidad más, así que las casillas se comparan dentro de una columna, nunca entre columnas, y δ se guarda en logs: un producto de factores de 0.001 es exactamente 0 en números de 64 bits después de 108 factores, y la mejor cadena de una oración de 101 tokens del capítulo XXVIII de la primera parte ya tiene un log de −748.5, mientras un número de 64 bits se redondea a 0 por debajo de <i>e</i><sup>−745</sup>, aproximadamente. Elegir las etiquetas una por una, de izquierda a derecha (<i>greedy</i>), compromete cada etiqueta antes de ver la palabra siguiente; Viterbi la espera, con el mismo costo que la recursión hacia adelante, <i>N</i>·<i>K</i><sup>2</sup> pasos. En la figura, compara los dos.</p>
+  </div>
+
+  <div class="fig">
+    <div class="sl-panel" id="fig-viterbi" role="group" aria-label="El log de la probabilidad de la mejor cadena en cada casilla, con su puntero hacia atrás, y la cadena leída de vuelta"></div>
+    <div class="ro">
+      <div class="modes" id="fig-viterbi-mode" role="group" aria-label="Método">
+        <button type="button" data-mode="viterbi" aria-pressed="true">Viterbi</button>
+        <button type="button" data-mode="greedy" aria-pressed="false">Una por una, de izquierda a derecha</button>
+      </div>
+      <div class="sl-ro" id="fig-viterbi-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Haz clic en una casilla, o recorre las casillas con las flechas del teclado.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Cada palabra sola, con su etiqueta más frecuente, da <span class="sl-code">DET VERB ADP DET NOUN</span>, con un log de −30.91. En las oraciones de prueba de cada treebank, cada palabra sola etiqueta bien el 93.4% de las palabras, una por una el 93.8%, y Viterbi el 94.8% (en el inglés EWT: 89.3%, 90.0%, 92.4%). En el libro entero, Viterbi etiqueta <i>la</i> como pronombre 885 veces, cosa que ni cada palabra sola ni una por una hacen nunca. Los treebanks son modernos y el libro no: el 9.6% de sus tokens son palabras que el treebank español nunca vio, como <i>dellos</i> y <i>conocióle</i>.</p>
+    <p>El CRF decodifica igual sobre sus puntuaciones, que se suman a lo largo de un camino, así que su δ suma donde el del HMM multiplica (Lample et al. 2016): <span class="nowrap">δ<sub><i>i</i></sub>(<i>k</i>)</span> <span class="nowrap">= max<sub><i>j</i></sub> [δ<sub><i>i</i>−1</sub>(<i>j</i>) + <i>A</i><sub><i>j</i>,<i>k</i></sub>]</span> <span class="nowrap">+ <i>P</i><sub><i>i</i>,<i>k</i></sub>.</span> En «lugar de la Mancha» da <span class="sl-code">O O B-LOC I-LOC</span>, con una puntuación de 7.10, aunque en <i>la</i> la mejor cadena hasta ahí terminaba en <span class="sl-code">O</span> (4.70 frente a −3.08 para <span class="sl-code">B-LOC</span>): la última palabra cambió la respuesta. Corrida con la suma en vez del máximo, la cuadrícula del HMM da P(<i>x</i>), la recursión de la sección 4; los dos modelos usan las dos recursiones. El cabezal de aquí lee el vector de una palabra a la vez. Las redes recurrentes del próximo apunte le dan a cada token un vector que depende de sus vecinas, y convierten la etiqueta oculta del HMM en un vector oculto.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">7</span>Resumen</h2>
+    <p>Las ideas del apunte en NumPy. <code>vecs</code> guarda los vectores de los tokens, una fila cada uno con un 1 al comienzo; <code>w</code> es el cabezal, una fila por etiqueta; <code>A</code> tiene <code>K + 1</code> filas, la última la de la etiqueta de inicio; <code>trans</code> tiene <code>K + 1</code> filas (la última el inicio) y <code>K + 1</code> columnas (la última el fin de la oración, como lo cuenta la sección 5), y <code>emit</code> una fila por etiqueta y una columna por palabra; <code>tagged</code> guarda las oraciones del treebank como pares de arreglos de índices, y <code>V</code> es su número de palabras distintas; <code>x</code>, <code>y</code> y <code>h</code> son arreglos de índices, y <code>N</code> el largo de la oración.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Nombres desde las etiquetas</div>
+      <div class="f">un nombre empieza en cada <span class="sl-code">B-</span> y sigue por las <span class="sl-code">I-</span> de su tipo</div>
+      <div class="c"><code>names, cur = [], None<br>for i, tag in enumerate(labels):<br>&nbsp;&nbsp;&nbsp;&nbsp;if tag.startswith("I-") and cur and cur[2] == tag[2:]:<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cur[1] = i + 1<br>&nbsp;&nbsp;&nbsp;&nbsp;elif tag.startswith("B-"):<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cur = [i, i + 1, tag[2:]]; names.append(cur)<br>&nbsp;&nbsp;&nbsp;&nbsp;else:<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cur = None</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Puntuaciones</div>
+      <div class="f"><i>P</i><sub><i>i</i>,<i>k</i></sub> = <i>w</i><sub><i>k</i></sub><sup class="t">T</sup><i>v</i><sub><i>x</i><sub><i>i</i></sub></sub></div>
+      <div class="c"><code>P = vecs @ w.T&nbsp;&nbsp;# N × K, una fila por token</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Softmax por token</div>
+      <div class="f"><i>p</i>(<i>y</i><sub><i>i</i></sub> = <i>k</i> | <i>x</i>)</div>
+      <div class="c"><code>p = np.exp(P - P.max(1, keepdims=True))<br>p /= p.sum(1, keepdims=True)<br>alone = P.argmax(1)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">La puntuación de una secuencia</div>
+      <div class="f"><i>s</i>(<i>x</i>, <i>y</i>) = ∑<sub><i>i</i></sub> <i>P</i><sub><i>i</i>,<i>y</i><sub><i>i</i></sub></sub> + ∑<sub><i>i</i></sub> <i>A</i><sub><i>y</i><sub><i>i</i>−1</sub>,<i>y</i><sub><i>i</i></sub></sub></div>
+      <div class="c"><code>prev = np.r_[K, y[:-1]]<br>s = P[np.arange(N), y].sum() + A[prev, y].sum()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Recursión hacia adelante</div>
+      <div class="f"><i>Z</i>(<i>x</i>) = ∑<sub><i>k</i></sub> α<sub><i>N</i></sub>(<i>k</i>)</div>
+      <div class="c"><code>alpha = np.exp(A[K] + P[0])<br>for i in range(1, N):<br>&nbsp;&nbsp;&nbsp;&nbsp;alpha = alpha @ np.exp(A[:K] + P[i])<br>Z = alpha.sum()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">En logs</div>
+      <div class="f">log α<sub><i>i</i></sub>(<i>k</i>) = log ∑<sub><i>j</i></sub> <i>e</i><sup>log α<sub><i>i</i>−1</sub>(<i>j</i>) + <i>A</i><sub><i>j</i>,<i>k</i></sub> + <i>P</i><sub><i>i</i>,<i>k</i></sub></sup></div>
+      <div class="c"><code>la = A[K] + P[0]<br>for i in range(1, N):<br>&nbsp;&nbsp;&nbsp;&nbsp;la = np.logaddexp.reduce(<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;la[:, None] + A[:K] + P[i], axis=0)<br>log_z = np.logaddexp.reduce(la)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Probabilidad y pérdida</div>
+      <div class="f"><i>p</i>(<i>y</i> | <i>x</i>) = <i>e</i><sup><i>s</i></sup> / <i>Z</i>, ℒ = log <i>Z</i> − <i>s</i></div>
+      <div class="c"><code>p_y = np.exp(s - log_z)<br>loss = log_z - s</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Contar</div>
+      <div class="f"><i>c</i>(<i>j</i>, <i>k</i>) / <i>c</i>(<i>j</i>), <i>c</i>(<i>k</i>, <i>x</i><sub><i>i</i></sub>) / <i>c</i>(<i>k</i>)</div>
+      <div class="c"><code>c, c_emit = np.zeros((K + 1, K + 1)), np.zeros((K, V))<br>for x, h in tagged:<br>&nbsp;&nbsp;&nbsp;&nbsp;np.add.at(c, (np.r_[K, h], np.r_[h, K]), 1)<br>&nbsp;&nbsp;&nbsp;&nbsp;np.add.at(c_emit, (h, x), 1)<br>trans = c / c.sum(1, keepdims=True)<br>emit = c_emit / c_emit.sum(1, keepdims=True)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">La conjunta en logs</div>
+      <div class="f">log P(<i>x</i>, <i>h</i>)</div>
+      <div class="c"><code>(np.log(trans[np.r_[K, h[:-1]], h]).sum()<br>&nbsp;+ np.log(emit[h, x]).sum())</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Viterbi</div>
+      <div class="f">δ<sub><i>i</i></sub>(<i>k</i>) y los punteros hacia atrás</div>
+      <div class="c"><code>lt, le = np.log(trans), np.log(emit)<br>delta = lt[K, :K] + le[:, x[0]]; back = []<br>for i in range(1, N):<br>&nbsp;&nbsp;&nbsp;&nbsp;cand = delta[:, None] + lt[:K, :K]<br>&nbsp;&nbsp;&nbsp;&nbsp;back.append(cand.argmax(0))<br>&nbsp;&nbsp;&nbsp;&nbsp;delta = cand.max(0) + le[:, x[i]]<br>h = [int(delta.argmax())]<br>for b in reversed(back):<br>&nbsp;&nbsp;&nbsp;&nbsp;h.insert(0, int(b[h[0]]))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Una por una</div>
+      <div class="f">cada etiqueta dada la elegida antes</div>
+      <div class="c"><code>h = [int((lt[K, :K] + le[:, x[0]]).argmax())]<br>for i in range(1, N):<br>&nbsp;&nbsp;&nbsp;&nbsp;h.append(int((lt[h[-1], :K]<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ le[:, x[i]]).argmax()))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Secuencias frente a casillas</div>
+      <div class="f"><i>K</i><sup><i>N</i></sup> frente a <i>N</i>·<i>K</i></div>
+      <div class="c"><code>K ** N, N * K</code></div>
+    </div>
+  </div>
+  <div class="prose">
+    <p>Los datos del apunte: los libros son el <i>Don Quijote</i> de Project Gutenberg (#2000) y la traducción de Ormsby (#996). Los vectores del libro con subwords se entrenaron para estos apuntes, y la lista de personas y lugares del libro, sus etiquetas y los etiquetadores se hicieron para este apunte. Los conteos del modelo oculto de Markov salen de los <a href="https://universaldependencies.org/">treebanks English EWT y Spanish GSD de Universal Dependencies</a>, con la licencia <a href="https://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Atribución-CompartirIgual 4.0</a>; la página solo muestra conteos calculados con ellos, compartidos con la misma licencia.</p>
+  </div>
+</section>
