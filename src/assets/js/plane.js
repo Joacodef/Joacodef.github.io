@@ -509,6 +509,42 @@ export function pixelFrame(svg, { W, H, scale, ox, oy, id, uTicks = [], vTicks =
   return { X, Y, toPixel: (s) => [from[0] + (s.x - ox) / scale, from[1] + (s.y - oy) / scale], inside };
 }
 
+/* ---------- Log–log charts ---------- */
+
+// Log–log axes: x runs from x[0] to x[1] and y from y[0] to y[1], both on logarithmic scales, inside the box
+// [L, R, T, B] of a viewBox `size` wide and tall. Each axis is numbered at the powers of ten from the first one in its
+// range (xLabel and yLabel write a power as a tick label: by default with as many decimals as it needs, 1, 0.1, 0.01),
+// with short ticks at their multiples up to the axis's end.
+// The caller names the axes. Returns the mappings X(x) and Y(y) to SVG units and the box, with toX (SVG x to data)
+// and toLogY (SVG y to log10 of data) for the way back.
+const powerLabel = (p) => localNum(p, Math.max(0, -Math.round(Math.log10(p))));
+export function logChart(svg, { x: [x0, x1], y: [y0, y1], box: [L, R, T, B], size: [w, h], xLabel = powerLabel, yLabel = powerLabel }) {
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  const ax = Math.log10(x0), dx = Math.log10(x1) - ax, ay = Math.log10(y0), dy = Math.log10(y1) - ay;
+  const X = (x) => L + ((R - L) * (Math.log10(x) - ax)) / dx;
+  const Y = (y) => B - ((B - T) * (Math.log10(y) - ay)) / dy;
+  const g = el("g", { class: "axes" }, svg);
+  el("line", { x1: L, y1: B, x2: R, y2: B }, g);
+  el("line", { x1: L, y1: B, x2: L, y2: T }, g);
+  // The powers of ten of both axes in increasing order, each axis's ticks and label drawn at its own powers.
+  const first = (lo) => Math.ceil(Math.log10(lo) - 1e-9), inX = (v) => v >= x0 && v <= x1, inY = (v) => v >= y0 && v <= y1;
+  for (let e = Math.min(first(x0), first(y0)); 10 ** e <= Math.max(x1, y1); e++) {
+    const p = 10 ** e, onX = e >= first(x0) && p <= x1, onY = e >= first(y0) && p <= y1;
+    for (let m = 1; m <= 9; m++) {
+      const v = p * m, len = m === 1 ? 6 : 3.5;
+      if (onX && inX(v)) el("line", { x1: X(v), y1: B, x2: X(v), y2: B + len }, g);
+      if (onY && inY(v)) el("line", { x1: L, y1: Y(v), x2: L - len, y2: Y(v) }, g);
+    }
+    if (onX) el("text", { x: X(p), y: B + 21, "text-anchor": "middle", class: "tick" }, svg).textContent = xLabel(p);
+    if (onY) el("text", { x: L - 10, y: Y(p) + 4.5, "text-anchor": "end", class: "tick" }, svg).textContent = yLabel(p);
+  }
+  return {
+    X, Y, L, R, T, B,
+    toX: (sx) => 10 ** (ax + (dx * (sx - L)) / (R - L)),
+    toLogY: (sy) => ay + (dy * (B - sy)) / (B - T),
+  };
+}
+
 /* ---------- Controls ---------- */
 
 // Toggle buttons with a data-mode attribute inside `group`, one pressed at a time. A click presses its button and

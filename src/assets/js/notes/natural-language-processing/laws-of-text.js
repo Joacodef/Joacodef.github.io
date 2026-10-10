@@ -1,7 +1,7 @@
 // Figures of the laws-of-text note, on the words of Don Quijote: rank times frequency (Zipf's law), the least squares
 // line in log–log, the vocabulary as the book goes on (Heaps' law), and the words seen once. The English page counts
 // John Ormsby's translation and the Spanish page the original; laws-of-text-data.js holds both.
-import { el, tr, lang, makeHandle, makeDraggable } from "../../plane.js";
+import { el, tr, lang, makeHandle, makeDraggable, logChart } from "../../plane.js";
 import { BOOKS } from "./laws-of-text-data.js";
 
 const book = BOOKS[lang];
@@ -46,32 +46,13 @@ function clipTo(svg, id, L, R, T, B) {
   return `url(#${id})`;
 }
 
-// Both axes run from `lo` to `max` on a logarithmic scale, labeled at the powers of ten from 1, with short ticks at
-// their multiples. Starting a little below 1 keeps the words seen once off the axis line.
-function logChart(svg, { lo = 0.6, max, xName, yName }) {
-  svg.setAttribute("viewBox", "0 0 460 440");
-  const L = 64, R = 446, T = 22, B = 390, a = Math.log10(lo), D = Math.log10(max) - a;
-  const X = (x) => L + ((R - L) * (Math.log10(x) - a)) / D;
-  const Y = (y) => B - ((B - T) * (Math.log10(y) - a)) / D;
-  const g = el("g", { class: "axes" }, svg);
-  el("line", { x1: L, y1: B, x2: R, y2: B }, g);
-  el("line", { x1: L, y1: B, x2: L, y2: T }, g);
-  for (let p = 1; p <= max; p *= 10) {
-    for (let m = 1; m <= 9 && p * m <= max; m++) {
-      const v = p * m, len = m === 1 ? 6 : 3.5;
-      el("line", { x1: X(v), y1: B, x2: X(v), y2: B + len }, g);
-      el("line", { x1: L, y1: Y(v), x2: L - len, y2: Y(v) }, g);
-    }
-    el("text", { x: X(p), y: B + 21, "text-anchor": "middle", class: "tick" }, svg).textContent = num(p);
-    el("text", { x: L - 10, y: Y(p) + 4.5, "text-anchor": "end", class: "tick" }, svg).textContent = num(p);
-  }
-  axisName(svg, R, B + 43, "end", xName);
-  axisName(svg, L - 8, T - 6, "start", yName);
-  return {
-    X, Y, L, R, T, B,
-    toX: (sx) => 10 ** (a + (D * (sx - L)) / (R - L)), // SVG x to data
-    toLogY: (sy) => a + (D * (B - sy)) / (B - T), // SVG y to log10 of data
-  };
+// Both axes run from 0.6 to `max` on a logarithmic scale (plane.js's logChart), labeled at the powers of ten from 1,
+// with short ticks at their multiples. Starting a little below 1 keeps the words seen once off the axis line.
+function logAxes(svg, { max, xName, yName }) {
+  const C = logChart(svg, { x: [0.6, max], y: [0.6, max], box: [64, 446, 22, 390], size: [460, 440], xLabel: num, yLabel: num });
+  axisName(svg, C.R, C.B + 43, "end", xName);
+  axisName(svg, C.L - 8, C.T - 6, "start", yName);
+  return C;
 }
 
 // Linear axes from 0 to xMax and yMax, with labeled ticks every xStep and yStep. The top tick sits at the top of the
@@ -105,7 +86,7 @@ function zipfFigure() {
   const svg = document.getElementById("fig-zipf");
   if (!svg) return;
   const out = document.getElementById("fig-zipf-out");
-  const C = logChart(svg, { max: 30000, xName: RANK(), yName: FREQ() });
+  const C = logAxes(svg, { max: 30000, xName: RANK(), yName: FREQ() });
 
   // Every word of the book: one point per rank where words differ, one flat stretch per run of equal frequency.
   const pts = [];
@@ -167,7 +148,7 @@ function fitFigure() {
   const svg = document.getElementById("fig-fit");
   if (!svg) return;
   const out = document.getElementById("fig-fit-out");
-  const C = logChart(svg, { max: 30000, xName: RANK(), yName: FREQ() });
+  const C = logAxes(svg, { max: 30000, xName: RANK(), yName: FREQ() });
   const clip = clipTo(svg, "fig-fit-clip", C.L, C.R, C.T, C.B);
 
   // The points fitted, ranks 1 to 1000, in ink of their own; the rest of the list faint.

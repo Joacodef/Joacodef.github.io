@@ -100,7 +100,8 @@ b, strong { font-weight: 600; }
 img, svg, canvas { max-width: 100%; }
 /* Figures and diagrams keep their labels as they were drawn: Public Sans, and Newsreader at its usual weight. */
 svg { font-weight: 400; font-variation-settings: normal; }
-code { font-family: var(--mono); font-size: 0.84em; background: var(--paper-2); padding: 0.15em 0.45em; border-radius: 6px; }
+/* Code shows what was typed: the mono font's ligatures are off, so "/=" is not drawn as ≠ (Joaquín, 9 Oct 2026). */
+code { font-family: var(--mono); font-size: 0.84em; background: var(--paper-2); padding: 0.15em 0.45em; border-radius: 6px; font-variant-ligatures: none; }
 
 .wrap {
   max-width: var(--wrap);
