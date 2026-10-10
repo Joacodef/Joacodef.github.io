@@ -1,0 +1,267 @@
+---
+title: What word vectors capture
+module: Text encoders
+order: 6
+description: What the vectors that word2vec learns from Don Quixote end up capturing, why related words point the same way even when they never stand together, how sums and differences of vectors pick the odd word out of a list and complete analogies, what vectors trained on far more text know and one book does not, and how pooling gives a whole text one vector.
+scripts:
+  - /assets/js/notes/natural-language-processing/word-vectors.js
+---
+<div class="prose">
+  <p>The note on word2vec left every word with a short row of numbers, learned only by guessing the words around it. Trained the same way on the whole of <i>Don Quixote</i>, the model gives each of the 4,993 words the book uses at least five times a row of 100 numbers. No definition of a helmet or a curate went into the training, yet the numbers put the helmet beside the barber's basin that Don Quixote takes for one, and the curate beside the barber, the friend he goes everywhere with. This note asks what the numbers capture, why they capture it, and what can be done with them.</p>
+  <ul class="asks">
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Two arrows from one point, helmet and basin, 28 degrees apart; a typical word points 74 degrees away from helmet"><path class="wv-pic-arc" d="M76,112 A46,46 0 0 0 70.6,90.4"/><line class="wv-pic-v faint" x1="30" y1="112" x2="55.4" y2="23.4"/><line class="wv-pic-v blue" x1="30" y1="112" x2="141.5" y2="52.7"/><path class="wv-pic-head blue" d="M149.5,48.4 L137.9,49.4 L142.6,58.2 Z"/><line class="wv-pic-v red" x1="30" y1="112" x2="168" y2="112"/><path class="wv-pic-head red" d="M177,112 L166,107 L166,117 Z"/><text class="wv-pic-w red" x="177" y="102" text-anchor="end" style="font-size:16px">helmet</text><text class="wv-pic-w blue" x="152" y="40" text-anchor="middle" style="font-size:16px">basin</text><text class="wv-pic-l" x="64" y="24" style="font-size:13px">a typical word</text><text class="wv-pic-l" x="84" y="104" style="font-size:13px">28°</text></svg>
+      <p>Words used alike point alike</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Four words, rocinante, dapple, mule and island; island is marked as the one that does not belong"><rect class="wv-pic-chip" x="10" y="24" width="86" height="34" rx="6"/><text class="wv-pic-w" x="53" y="46.5" text-anchor="middle" style="font-size:16px">rocinante</text><rect class="wv-pic-chip" x="104" y="24" width="86" height="34" rx="6"/><text class="wv-pic-w" x="147" y="46.5" text-anchor="middle" style="font-size:16px">dapple</text><rect class="wv-pic-chip" x="10" y="70" width="86" height="34" rx="6"/><text class="wv-pic-w" x="53" y="92.5" text-anchor="middle" style="font-size:16px">mule</text><rect class="wv-pic-chip odd" x="104" y="70" width="86" height="34" rx="6"/><text class="wv-pic-w on" x="147" y="92.5" text-anchor="middle" style="font-size:16px">island</text></svg>
+      <p>Which word does not belong?</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="knight goes to knights as squire goes to squires"><text class="wv-pic-w" x="12" y="50" style="font-size:16px">knight</text><line class="wv-pic-step" x1="74" y1="45" x2="108" y2="45"/><path class="wv-pic-head blue" d="M116,45 L106,40.5 L106,49.5 Z"/><text class="wv-pic-w" x="122" y="50" style="font-size:16px">knights</text><text class="wv-pic-w" x="12" y="92" style="font-size:16px">squire</text><line class="wv-pic-step" x1="74" y1="87" x2="108" y2="87"/><path class="wv-pic-head blue" d="M116,87 L106,82.5 L106,91.5 Z"/><text class="wv-pic-w red" x="122" y="92" style="font-size:16px">squires</text></svg>
+      <p>Differences carry relations</p>
+    </li>
+  </ul>
+  <p>Section 1 measures how close two words are by the angle between their vectors, and sets the vectors beside a bag of words; section 2 shows why two words that never stand together end up close; section 3 picks out the word that does not belong in a list, and section 4 completes analogies; section 5 compares the book's vectors with vectors trained on the web, and section 6 gives a whole text one vector, for a classifier to read. Words that no table has a vector for are the subject of the next note.</p>
+</div>
+
+<section id="closest">
+  <div class="prose">
+    <h2><span class="n">1</span>A word's vector and the closest words</h2>
+    <p>The vectors of this note come from the skip-gram with negative sampling of the note on word2vec, trained on the book: <i>d</i> = 100 numbers per word, a radius drawn from 1 to <i>m</i> = 5 for each target, and <i>k</i> = 5 drawn words per pair, with β = ¾. As the original program does, it gives no vector to the words seen fewer than five times, and it skips frequent words such as <i>the</i> at random, more often the more frequent they are, since they stand next to every word and teach little. A book is small next to the corpora word2vec was made for, so training read it 20 times, where the program reads a text 5 times unless told otherwise. Training starts from random numbers, so it was run five times, from five random starts: the figures and the numbers quoted show the first run, and the text claims only what held in at least four of the five.</p>
+    <p>A <em>bag of words</em> describes a text, as in the notes on linear models and on word2vec: <span class="nowrap"><i>x</i> ∈ ℝ<sup><i>V</i></sup>,</span> one coordinate per word of the vocabulary, named by its word and counting how often the text uses it, so almost all of them are 0; a single word alone is a one-hot vector. Here <i>V</i> = 4,993, the words that have a vector. The book has 14,921 different words, and the other 9,928, two thirds of them but only 4.3% of the text, get none.</p>
+    <p>An <em>embedding</em> describes a word: <span class="nowrap"><i>v</i><sub><i>w</i></sub> ∈ ℝ<sup><i>d</i></sup>,</span> its row of <i>W</i><sub>in</sub>, about fifty times shorter. It is <em>dense</em>: the vector of <i>curate</i> has 51 negative numbers, 49 positive ones and no zeros. And it is learned, so none of its numbers has a name. Turning every row of <i>W</i><sub>in</sub> and every column of <i>W</i><sub>out</sub> by the same rotation would change every number and leave every score <i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub> as it was, so training has no reason to prefer one set of axes over another. What the numbers hold is in how the vectors lie against each other, and the cosine of the note on the vector space model measures it, through the angle θ between two vectors:</p>
+    <div class="disp hero-f"><span class="nowrap">cos θ = <span class="frac"><span><i>v</i><sub><i>w</i></sub><sup class="t">T</sup><i>v</i><sub><i>w</i>′</sub></span><span>‖<i>v</i><sub><i>w</i></sub>‖ ‖<i>v</i><sub><i>w</i>′</sub>‖</span></span></span></div>
+    <p>(θ is the angle here; the logistic function has been σ since the note on word2vec). Two vectors that point the same way have cos θ near 1, and two at a right angle have 0. Unlike the tf-idf weights of the note on the vector space model, which are never negative, the numbers of an embedding can be negative, so the cosine runs from −1 to 1, although few words point away: only 16 of the other 4,992 sit more than 90° from <i>curate</i>. The cosine sets length aside, and length is a poor guide here, because it depends largely on how often a word appears: words seen 5 to 9 times have a median length of 1.60, and words seen 50 to 199 times, 2.61.</p>
+    <p>The figure draws the picked word's vector and the vector of its closest word in the plane the two of them span, where their angle is exact, and around them it counts every other word of the vocabulary by its angle from the picked word, degree by degree. Pick a word, and switch from its embedding to its bag of words.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-dial" role="group" aria-label="The angles between a word's vector and every other word's"></svg>
+    <div class="ro">
+      <p class="wv-ctl-name">Word</p>
+      <div class="wv-picks" id="fig-dial-words"></div>
+      <div class="modes" id="fig-dial-mode" role="group" aria-label="Vector">
+        <button type="button" data-mode="emb" aria-pressed="true">Embedding</button>
+        <button type="button" data-mode="bow" aria-pressed="false">Bag of words</button>
+      </div>
+      <div class="wv-ro" id="fig-dial-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Click a word, or move along the words with the arrow keys, and pick the kind of vector.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Two words picked at random are usually far apart: half of all the pairs of the vocabulary sit more than 66° apart, and the closest words of a word are a thin edge of the crowd, ahead of the rest. As bags of words, every word is at 90° from every other, since two different one-hot vectors share no coordinate. The helmet sits by the basin that Don Quixote takes for Mambrino's helmet, and the giants by the windmills he takes for giants.</p>
+    <p>Close means related, not alike. The closest word to <i>bread</i> is <i>cheese</i>, and to <i>summer</i> it is <i>winter</i>, in all five runs: opposites are used in the same places, in summer and in winter. And each spelling has one vector, whatever its senses, like the senses of <i>light</i> in the note on WordNet; section 5 shows what that costs.</p>
+  </div>
+</section>
+
+<section id="blanks">
+  <div class="prose">
+    <h2><span class="n">2</span>Words that fill the same blanks</h2>
+    <p>Training never pulls two targets toward each other. Each pair (<i>o</i>, <i>c</i>) moves <i>v</i><sub><i>o</i></sub> toward <i>u</i><sub><i>c</i></sub>, a row of <i>W</i><sub>in</sub> toward a column of <i>W</i><sub>out</sub>, as in the figure of negative sampling of the note on word2vec. Even <i>curate</i> and <i>barber</i>, which stand within five words of each other 42 times, are each pulled toward the other's context vector <i>u</i>, never toward the other's row. Two rows end up close when they are pulled toward the same context vectors: when the two words fill the same blanks.</p>
+    <p>The book uses <i>quest</i> 46 times and <i>search</i> 45 times, and both in the same frames, such as <i>in quest of adventures</i> and <i>in search of adventures</i>. The two never stand within 20 words of each other, yet <i>quest</i> is the closest word to <i>search</i> in all five runs, about 40° away. Through <i>W</i><sub>out</sub>, the model expects <i>adventures</i> near both: σ(<i>u</i><sub>adventures</sub><sup class="t">T</sup><i>v</i><sub>quest</sub>) is 0.88 and σ(<i>u</i><sub>adventures</sub><sup class="t">T</sup><i>v</i><sub>search</sub>) is 0.75.</p>
+    <p>Why does the direction carry this, and not the length? A score splits into two lengths and an angle,</p>
+    <div class="disp hero-f"><span class="nowrap"><i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub> = ‖<i>u</i><sub><i>c</i></sub>‖ ‖<i>v</i><sub><i>o</i></sub>‖ cos θ,</span></div>
+    <p>so it rises either by turning the two vectors toward each other or by lengthening them. The loss of the note on word2vec makes −log σ(<i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub>) small for an observed pair, which takes a large score. Lengthening <i>v</i><sub><i>o</i></sub> scales all its scores at once, the drawn words' as well, so it pays only once <i>v</i><sub><i>o</i></sub> points toward the words it was seen with and away from the drawn ones. Without drawn words, nothing would stop every vector from growing long in one shared direction, as Goldberg and Levy (2014) point out: the drawn words make the direction matter, and the direction is what section 1's cosine measures. The lengths do grow too, to between 1.18 and 4.48 in the book's vectors.</p>
+    <p>The figure follows a designed example with vectors of two numbers, as in the note on word2vec: two targets, <i>quest</i> and <i>search</i>, both carmine; a context word that both are seen with, <i>adventures</i>, in green; and one word drawn from the book for each target, <i>combat</i> and <i>ought</i>. Take steps of gradient descent with η = 1.2, then switch to a version where <i>search</i> is seen instead with a word of its own, <i>finding</i>.</p>
+  </div>
+
+  <div class="fig steps">
+    <div class="modes" id="fig-blank-mode" role="group" aria-label="Context words">
+      <button type="button" data-mode="shared" aria-pressed="true">Both seen with “adventures”</button>
+      <button type="button" data-mode="own" aria-pressed="false">Each with a word of its own</button>
+    </div>
+    <svg id="fig-blank" role="group" aria-label="The vectors of two targets, the context words they were seen with and two drawn words"></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-blank-back">Back</button><button type="button" class="btn" id="fig-blank-next">Next</button><span class="count" id="fig-blank-count"></span><button type="button" class="btn" id="fig-blank-reset" hidden>Reset</button></div>
+    <div class="ro" id="fig-blank-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Next takes a step of gradient descent, Back goes back. Keys: <span class="nowrap">→ and ←</span>.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Words with similar neighbors end up with similar vectors, as the note on word2vec promised. Synonyms seldom stand side by side, since a writer uses one or the other, so this indirect route, through the words around them, is how they meet. What training asks for is each <i>v</i><sub><i>o</i></sub> aligned with its <i>u</i><sub><i>c</i></sub>; nothing in it asks for two targets to be close, which happens because they share context vectors.</p>
+  </div>
+</section>
+
+<section id="odd-one-out">
+  <div class="prose">
+    <h2><span class="n">3</span>The odd one out</h2>
+    <p>If related words point the same way, a list should show which of its words does not belong. Leave out each word in turn and add up the vectors of the others: the sum is long when the words left in point the same way, so the longest sum is the one without the intruder. Written with argmax, “the <i>w</i> that makes this largest”:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>w</i>* = argmax<sub><i>w</i>∈<i>L</i></sub> ‖∑<span class="lims"><span></span><span><i>w</i>′∈<i>L</i>∖{<i>w</i>}</span></span> <i>v</i><sub><i>w</i>′</sub>‖,</span></div>
+    <p>where <i>L</i> is the list and every vector is first scaled to length 1. For three words <i>w</i>, <i>w</i>′ and <i>w</i>″ with vectors of length 1, the length of their sum depends only on their cosines,</p>
+    <div class="disp"><span class="nowrap">‖<i>v</i><sub><i>w</i></sub> + <i>v</i><sub><i>w</i>′</sub> + <i>v</i><sub><i>w</i>″</sub>‖</span> <span class="nowrap">= √(3 + 2(cos θ<sub><i>ww</i>′</sub> + cos θ<sub><i>ww</i>″</sub> + cos θ<sub><i>w</i>′<i>w</i>″</sub>)),</span></div>
+    <p>so the sum is long only when its words' cosines are all large, and a word at a wide angle from the others brings a small cosine into every pair it forms. The vectors are scaled first because, as trained, a short vector takes little away from the sum when it is left out, and the rarest words have the shortest vectors: the rule would tend to pick the rarest word. On vectors of length 1 it is the rule of the first word2vec paper (Mikolov, Chen, Corrado and Dean 2013), which picks the word farthest from the list's average. Build a list of three to six of the sixteen words below, and compare the vectors scaled to length 1 with the vectors as trained.</p>
+  </div>
+
+  <div class="fig">
+    <div class="wv-panel" id="fig-odd" role="group" aria-label="A list of words and the length of the sum without each"></div>
+    <div class="ro">
+      <div class="modes" id="fig-odd-mode" role="group" aria-label="Vectors">
+        <button type="button" data-mode="unit" aria-pressed="true">Scaled to length 1</button>
+        <button type="button" data-mode="raw" aria-pressed="false">As trained</button>
+      </div>
+      <div class="wv-ro" id="fig-odd-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Click words to add them to the list or take them out; the arrow keys move between the words.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Every list of three words from one of the figure's four groups (the mounts, the foods, the people, the island's government) and one word from another picks the intruder when the vectors are scaled, in all five runs, but only 83% of them do as trained. The rule reads only the angles: cheese and onions end up together because the book uses them in the same places, not because a resource such as WordNet files both under food. It fails where the book uses in the same way words that a reader would set apart: in the list <i>sancho</i>, <i>quixote</i>, <i>dulcinea</i>, <i>teresa</i>, <i>rocinante</i>, four people and a horse, the three longest sums lie within a few hundredths of each other, and which one wins changes from run to run.</p>
+  </div>
+</section>
+
+<section id="analogies">
+  <div class="prose">
+    <h2><span class="n">4</span>Analogies</h2>
+    <p>Do directions mean anything? An analogy <span class="nowrap"><i>a</i> : <i>a</i>* :: <i>b</i> : <i>b</i>*,</span> read “<i>a</i> is to <i>a</i>* as <i>b</i> is to <i>b</i>*”, asks for the word that stands to <i>b</i> as <i>a</i>* stands to <i>a</i>: <i>knight</i> is to <i>knights</i> as <i>squire</i> is to <i>squires</i>. If the step from <i>a</i> to <i>a</i>* is a direction in the space, adding it to <i>b</i> should land near <i>b</i>*:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>b</i>* = argmax<sub><i>w</i>∉{<i>a</i>, <i>a</i>*, <i>b</i>}</sub> cos(<i>v</i><sub><i>w</i></sub>, <i>v</i><sub><i>b</i></sub> − <i>v</i><sub><i>a</i></sub> + <i>v</i><sub><i>a</i>*</sub>),</span></div>
+    <p>again on vectors of length 1. Writing <i>t</i> for <span class="nowrap"><i>v</i><sub><i>b</i></sub> − <i>v</i><sub><i>a</i></sub> + <i>v</i><sub><i>a</i>*</sub>,</span> the cosine splits into the cosines of <i>w</i> with the three given words,</p>
+    <div class="disp"><span class="nowrap">cos(<i>v</i><sub><i>w</i></sub>, <i>t</i>)</span> <span class="nowrap">= <span class="frac"><span>cos θ<sub><i>wb</i></sub> − cos θ<sub><i>wa</i></sub> + cos θ<sub><i>wa</i>*</sub></span><span>‖<i>t</i>‖</span></span>,</span></div>
+    <p>so the answer must be close to <i>b</i> and to <i>a</i>*, and far from <i>a</i>. The three given words are left out of the search, as the first word2vec paper leaves them out: <i>b</i> itself has cos θ<sub><i>bb</i></sub> = 1 in that sum, and over 25 analogies tried on this book, a search over every word puts one of the given words first in 22. Mikolov, Yih and Zweig (2013) found such regularities in the vectors of a recurrent network, a network that reads a text one word at a time, which a later note covers, and word2vec made them widely known.</p>
+    <p>The two steps are only partly the same vector: the cosine between the step from <i>knight</i> to <i>knights</i> and the step from <i>squire</i> to <i>squires</i> is 0.68. Part of every answer comes from staying near <i>b</i>, and the figure's second mode shows how much: the words closest to <i>b</i> alone. Pick an analogy, and compare.</p>
+  </div>
+
+  <div class="fig">
+    <div class="wv-panel" id="fig-analogy" role="group" aria-label="An analogy and the closest words to its target"></div>
+    <div class="ro">
+      <p class="wv-ctl-name">Analogy</p>
+      <div class="wv-picks" id="fig-analogy-picks"></div>
+      <div class="modes" id="fig-analogy-mode" role="group" aria-label="Closest words to">
+        <button type="button" data-mode="diff" aria-pressed="true">Closest to <i>b</i> − <i>a</i> + <i>a</i>*</button>
+        <button type="button" data-mode="b" aria-pressed="false">Closest to <i>b</i></button>
+      </div>
+      <div class="wv-ro" id="fig-analogy-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Click an analogy, or move between them with the arrow keys, and pick what the words are closest to.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>The plural comes first in all five runs, and <i>squires</i>, only the 408th closest word to <i>squire</i>, owes its place to the step. Sancho comes first too, but he was already the closest word to <i>quixote</i>: there the step adds little. What one book gets right is its own world and its grammar. Relations it shows seldom, such as son to daughter and brother to sister, need far more text, which is where section 5 goes.</p>
+  </div>
+</section>
+
+<section id="pretrained">
+  <div class="prose">
+    <h2><span class="n">5</span>Pretrained vectors</h2>
+    <p>Training on billions of words is costly, so a group trains once and publishes the result, and anyone can download it: a file with a line per word, the word and its numbers. fastText's vectors for English and for Spanish (Grave et al. 2018) hold 2,000,000 words each, with 300 numbers per word, trained on the web pages of Common Crawl and on Wikipedia. Their model is CBOW, the word2vec model that guesses a word from its neighbors, with pieces of words added, which the next note explains. The file holds a row per word, taken from the model's input side: for word2vec it would be the word's row of <i>W</i><sub>in</sub>, while fastText averages that row with the rows of the word's pieces. Here <i>V</i> = 2,000,000 and <i>d</i> = 300. Training one's own vectors remains an option, as this note did on the book.</p>
+    <p>The table has 4,839 of the book's 4,993 words in lowercase; the 154 it lacks are mostly names, such as <i>rocinante</i> and <i>cardenio</i>, and words with an apostrophe, such as <i>quixote's</i>. In the figure, the closest words of the web's vectors are searched among the table's 100,000 most frequent lowercase words. Pick a word, and compare its closest words on the book with its closest words on the web.</p>
+  </div>
+
+  <div class="fig">
+    <div class="wv-panel" id="fig-web" role="group" aria-label="A word's closest words in two tables of vectors"></div>
+    <div class="ro">
+      <p class="wv-ctl-name">Word</p>
+      <div class="wv-picks" id="fig-web-words"></div>
+      <div class="modes" id="fig-web-mode" role="group" aria-label="Vectors">
+        <button type="button" data-mode="book" aria-pressed="true">Trained on the book</button>
+        <button type="button" data-mode="web" aria-pressed="false">Trained on the web</button>
+      </div>
+      <div class="wv-ro" id="fig-web-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Click a word, or move along the words with the arrow keys, and pick the vectors.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>On the web, <i>curate</i> is mostly a verb, to select and present, and <i>giants</i> stand with behemoths and titans, far from any windmill. One spelling keeps one vector, and the corpus decides which sense fills it. Relations follow the corpus too. The web's vectors complete <span class="nowrap"><i>son</i> : <i>daughter</i> :: <i>brother</i> : <i>sister</i>,</span> where the book's five runs put <i>sister</i> between 5th and 35th, and <span class="nowrap"><i>son</i> : <i>daughter</i> :: <i>nephew</i> : <i>niece</i>,</span> where the book has no vector for <i>nephew</i> at all. The book completes <span class="nowrap"><i>king</i> : <i>kingdom</i></span> <span class="nowrap">:: <i>governor</i> : <i>island</i>,</span> Sancho's governorship, in four of its five runs, and the web's vectors put <i>island</i> 158th.</p>
+  </div>
+</section>
+
+<section id="pooling">
+  <div class="prose">
+    <h2><span class="n">6</span>Pooling: one vector for a text</h2>
+    <p>A classifier, such as those of the note on linear models, reads one vector per text. With embeddings, a text of <i>N</i> words has <i>N</i> vectors, and <em>pooling</em> combines them into one:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>x</i> = pool(<i>e</i>(<i>w</i><sub>1</sub>), …, <i>e</i>(<i>w</i><sub><i>N</i></sub>)),</span></div>
+    <p>where <i>e</i>(<i>w</i>) = <i>v</i><sub><i>w</i></sub> is the embedding of the word <i>w</i>, its row of <i>W</i><sub>in</sub>, as trained. The usual pools are the mean and the maximum of each of the <i>d</i> numbers:</p>
+    <div class="disp"><span class="nowrap"><i>x</i><sub><i>j</i></sub> = <span class="frac"><span>1</span><span><i>N</i></span></span> ∑<span class="lims"><span><i>N</i></span><span><i>i</i>=1</span></span> <i>e</i>(<i>w</i><sub><i>i</i></sub>)<sub><i>j</i></sub>,</span> <span class="nowrap"><i>x</i><sub><i>j</i></sub> = max<sub><i>i</i></sub> <i>e</i>(<i>w</i><sub><i>i</i></sub>)<sub><i>j</i></sub>.</span></div>
+    <p>The sum works as well: it is <i>N</i> times the mean, so it gives the same cosines; which pool fits depends on the task. <i>x</i> is again the text's vector, as the bag of words of section 1 was, but with <i>d</i> numbers instead of <i>V</i>, and <i>W</i><sub>in</sub> joins the two: the sum of a text's embeddings is <span class="nowrap"><i>W</i><sub>in</sub><sup class="t">T</sup><i>x</i></span> for its bag of words <i>x</i>, the select step of the note on word2vec fed a whole bag of words instead of a one-hot vector. Under the weights of the vector space model, a query and a text with no word in common score 0; their pooled embeddings may still be close. In the figure, pick a pair of short texts, and compare their mean with their maximum.</p>
+  </div>
+
+  <div class="fig">
+    <div class="wv-panel" id="fig-pool" role="group" aria-label="Two short texts, their words' numbers and the vector each pools to"></div>
+    <div class="ro">
+      <p class="wv-ctl-name">Texts</p>
+      <div class="wv-picks" id="fig-pool-picks"></div>
+      <div class="modes" id="fig-pool-mode" role="group" aria-label="Pool">
+        <button type="button" data-mode="mean" aria-pressed="true">Mean</button>
+        <button type="button" data-mode="max" aria-pressed="false">Maximum</button>
+      </div>
+      <div class="wv-ro" id="fig-pool-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Click a pair of texts, or move between them with the arrow keys, and pick the pool.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>A classifier then reads <i>x</i>. One with a hidden layer, which the note on word2vec defined, passes it through a layer of weights <i>W</i> and the logistic function, applied to each number, before a softmax like the one in the note on linear models, here with weights <i>U</i>, a row per class:</p>
+    <div class="disp"><span class="nowrap"><span class="hat lo"><i>y</i></span> = softmax(<i>U</i> σ(<i>W</i><i>x</i>)),</span></div>
+    <p>with a 1 at the start of <i>x</i>, so that the first column of <i>W</i> holds the biases, as in the note on linear models, which had no hidden layer. Pooling loses the order again, as the bag of words did: Sancho's line and Don Quixote's reading pool to the same vector. Frequent words such as <i>the</i> weigh on the mean unless they are dropped, as stopwords were in the note on the vector space model, or weighted down. Later notes keep the order, with recurrent networks and attention, and pool vectors that depend on the sentence.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">7</span>Summary</h2>
+    <p>The note's ideas in NumPy. <code>w_in</code> holds the embeddings, a row per word of the vocabulary, and <code>unit</code> the same rows scaled to length 1, <code>unit = w_in / np.linalg.norm(w_in, axis=1, keepdims=True)</code>; <code>w_out</code> holds the context vectors, a column per word; <code>w</code>, <code>w2</code>, <code>o</code>, <code>c</code>, <code>a</code>, <code>a_star</code> and <code>b</code> are words' positions in the vocabulary, <code>L</code> those of a list's words and <code>ids</code> those of a text's words; <code>W</code> and <code>U</code> are a classifier's weights.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Cosine</div>
+      <div class="f">cos θ = <i>v</i><sub><i>w</i></sub><sup class="t">T</sup><i>v</i><sub><i>w</i>′</sub> / (‖<i>v</i><sub><i>w</i></sub>‖ ‖<i>v</i><sub><i>w</i>′</sub>‖)</div>
+      <div class="c"><code>v_w, v_w2 = w_in[w], w_in[w2]<br>cos = v_w @ v_w2 / (<br>&nbsp;&nbsp;&nbsp;&nbsp;np.linalg.norm(v_w)<br>&nbsp;&nbsp;&nbsp;&nbsp;* np.linalg.norm(v_w2))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">The closest words</div>
+      <div class="f">the largest cos θ</div>
+      <div class="c"><code>sims = unit @ unit[w]<br>sims[w] = -np.inf<br>closest = np.argsort(-sims)[:5]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">A score as lengths and an angle</div>
+      <div class="f"><i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub> = ‖<i>u</i><sub><i>c</i></sub>‖ ‖<i>v</i><sub><i>o</i></sub>‖ cos θ</div>
+      <div class="c"><code>v_o, u_c = w_in[o], w_out[:, c]<br>lengths = (np.linalg.norm(u_c)<br>&nbsp;&nbsp;&nbsp;&nbsp;* np.linalg.norm(v_o))<br>cos_uv = u_c @ v_o / lengths<br>score = lengths * cos_uv&nbsp;&nbsp;# = u_c @ v_o</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">The odd one out</div>
+      <div class="f"><i>w</i>* = argmax<sub><i>w</i>∈<i>L</i></sub> ‖∑<sub><i>w</i>′∈<i>L</i>∖{<i>w</i>}</sub> <i>v</i><sub><i>w</i>′</sub>‖</div>
+      <div class="c"><code>u = unit[L]<br>sums = u.sum(axis=0) - u<br>lengths = np.linalg.norm(sums, axis=1)<br>w_star = L[lengths.argmax()]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Analogy</div>
+      <div class="f"><i>b</i>* = argmax<sub><i>w</i>∉{<i>a</i>, <i>a</i>*, <i>b</i>}</sub> cos(<i>v</i><sub><i>w</i></sub>, <i>v</i><sub><i>b</i></sub> − <i>v</i><sub><i>a</i></sub> + <i>v</i><sub><i>a</i>*</sub>)</div>
+      <div class="c"><code>t = unit[b] - unit[a] + unit[a_star]<br>sims = unit @ t / np.linalg.norm(t)<br>sims[[a, a_star, b]] = -np.inf<br>b_star = sims.argmax()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">A downloaded table</div>
+      <div class="f">a word and its <i>d</i> numbers per line, the most frequent words first</div>
+      <div class="c"><code>import itertools<br>f = open(path, encoding="utf-8")<br>next(f)&nbsp;&nbsp;# V and d<br>rows = [line.rstrip().split(" ")<br>&nbsp;&nbsp;&nbsp;&nbsp;for line in itertools.islice(f, 100_000)]<br>words = [r[0] for r in rows]<br>w_in = np.array([r[1:] for r in rows],<br>&nbsp;&nbsp;&nbsp;&nbsp;dtype=float)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Mean pooling</div>
+      <div class="f"><i>x</i><sub><i>j</i></sub> = (1/<i>N</i>) ∑<sub><i>i</i></sub> <i>e</i>(<i>w</i><sub><i>i</i></sub>)<sub><i>j</i></sub></div>
+      <div class="c"><code>x = w_in[ids].mean(axis=0)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Maximum pooling</div>
+      <div class="f"><i>x</i><sub><i>j</i></sub> = max<sub><i>i</i></sub> <i>e</i>(<i>w</i><sub><i>i</i></sub>)<sub><i>j</i></sub></div>
+      <div class="c"><code>x = w_in[ids].max(axis=0)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">A classifier on top</div>
+      <div class="f"><span class="hat lo"><i>y</i></span> = softmax(<i>U</i> σ(<i>W</i><i>x</i>))</div>
+      <div class="c"><code>x1 = np.r_[1, x]<br>hidden = 1 / (1 + np.exp(-(W @ x1)))<br>z = U @ hidden<br>e = np.exp(z - z.max())<br>y_hat = e / e.sum()</code></div>
+    </div>
+  </div>
+  <div class="prose">
+    <p>The note's data: the web's vectors are fastText's English and Spanish tables, cc.en.300 and cc.es.300 (Grave et al. 2018), under the <a href="https://creativecommons.org/licenses/by-sa/3.0/">Creative Commons Attribution-ShareAlike 3.0</a> license, from <a href="https://fasttext.cc/docs/en/crawl-vectors.html">fasttext.cc</a>; the page shows only what was computed from them, such as closest words, cosines, dot products and lengths, never the vectors themselves. The book's vectors were trained for this note.</p>
+  </div>
+</section>

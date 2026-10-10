@@ -1,0 +1,267 @@
+---
+title: Lo que capturan los vectores de palabras
+module: Encoders de texto
+order: 6
+description: Lo que terminan capturando los vectores que word2vec aprende del Quijote, por qué las palabras relacionadas apuntan igual aunque nunca aparezcan juntas, cómo sumas y diferencias de vectores encuentran la palabra que sobra en una lista y completan analogías, qué no sabe un solo libro y sí saben los vectores entrenados con mucho más texto, y cómo el pooling le da a un texto entero un solo vector.
+scripts:
+  - /assets/js/notes/natural-language-processing/word-vectors.js
+---
+<div class="prose">
+  <p>El apunte de word2vec dejó a cada palabra con una fila corta de números, aprendida solo adivinando las palabras que la rodean. Entrenado de la misma manera con todo el <i>Quijote</i>, el modelo le da a cada una de las 5259 palabras que el libro usa al menos cinco veces una fila de 100 números. En el entrenamiento no entró ninguna definición de yelmo ni de cura, y aun así los números ponen el yelmo junto a la bacía de barbero que don Quijote toma por uno, y al cura junto al barbero, el amigo con el que va a todas partes. Este apunte pregunta qué capturan esos números, por qué lo capturan y qué se puede hacer con ellos.</p>
+  <ul class="asks">
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Dos flechas desde un mismo punto, yelmo y bacía, a 25 grados; una palabra típica apunta a 71 grados de yelmo"><path class="wv-pic-arc" d="M76,112 A46,46 0 0 0 71.6,92.3"/><line class="wv-pic-v faint" x1="30" y1="112" x2="60.6" y2="23.1"/><line class="wv-pic-v blue" x1="30" y1="112" x2="154.6" y2="52.8"/><path class="wv-pic-head blue" d="M162.8,48.9 L153.6,59.9 L148.5,49.1 Z"/><line class="wv-pic-v red" x1="30" y1="112" x2="168" y2="112"/><path class="wv-pic-head red" d="M177,112 L166,107 L166,117 Z"/><text class="wv-pic-w red" x="177" y="102" text-anchor="end" style="font-size:16px">yelmo</text><text class="wv-pic-w blue" x="158" y="39" text-anchor="middle" style="font-size:16px">bacía</text><text class="wv-pic-l" x="68" y="24" style="font-size:13px">una palabra típica</text><text class="wv-pic-l" x="84" y="104" style="font-size:13px">25°</text></svg>
+      <p>Las palabras que se usan igual apuntan igual</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="Cuatro palabras, rocinante, rucio, jumento e ínsula; ínsula está marcada como la que sobra"><rect class="wv-pic-chip" x="10" y="24" width="86" height="34" rx="6"/><text class="wv-pic-w" x="53" y="46.5" text-anchor="middle" style="font-size:16px">rocinante</text><rect class="wv-pic-chip" x="104" y="24" width="86" height="34" rx="6"/><text class="wv-pic-w" x="147" y="46.5" text-anchor="middle" style="font-size:16px">rucio</text><rect class="wv-pic-chip" x="10" y="70" width="86" height="34" rx="6"/><text class="wv-pic-w" x="53" y="92.5" text-anchor="middle" style="font-size:16px">jumento</text><rect class="wv-pic-chip odd" x="104" y="70" width="86" height="34" rx="6"/><text class="wv-pic-w on" x="147" y="92.5" text-anchor="middle" style="font-size:16px">ínsula</text></svg>
+      <p>¿Qué palabra sobra?</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 200 130" role="img" aria-label="caballero va a caballeros como escudero va a escuderos"><text class="wv-pic-w" x="6" y="50" style="font-size:16px">caballero</text><line class="wv-pic-step" x1="80" y1="45" x2="100" y2="45"/><path class="wv-pic-head blue" d="M108,45 L98,40.5 L98,49.5 Z"/><text class="wv-pic-w" x="114" y="50" style="font-size:16px">caballeros</text><text class="wv-pic-w" x="6" y="92" style="font-size:16px">escudero</text><line class="wv-pic-step" x1="80" y1="87" x2="100" y2="87"/><path class="wv-pic-head blue" d="M108,87 L98,82.5 L98,91.5 Z"/><text class="wv-pic-w red" x="114" y="92" style="font-size:16px">escuderos</text></svg>
+      <p>Las diferencias guardan relaciones</p>
+    </li>
+  </ul>
+  <p>La sección 1 mide cuán cerca están dos palabras por el ángulo entre sus vectores, y pone los vectores junto a una bolsa de palabras; la sección 2 muestra por qué dos palabras que nunca aparecen juntas terminan cerca; la sección 3 encuentra la palabra que sobra en una lista, y la sección 4 completa analogías; la sección 5 compara los vectores del libro con vectores entrenados con la web, y la sección 6 le da a un texto entero un solo vector, para que lo lea un clasificador. Las palabras para las que ninguna tabla tiene vector son el tema del próximo apunte.</p>
+</div>
+
+<section id="closest">
+  <div class="prose">
+    <h2><span class="n">1</span>El vector de una palabra y las palabras más cercanas</h2>
+    <p>Los vectores de este apunte vienen del skip-gram con muestreo negativo del apunte de word2vec, entrenado con el libro: <i>d</i> = 100 números por palabra, un radio sorteado entre 1 y <i>m</i> = 5 para cada objetivo, y <i>k</i> = 5 palabras sorteadas por par, con β = ¾. Como hace el programa original, no les da vector a las palabras vistas menos de cinco veces, y se salta al azar las palabras frecuentes como <i>que</i>, tanto más a menudo cuanto más frecuentes son, porque aparecen junto a todas las palabras y enseñan poco. Un libro es pequeño al lado de los corpus para los que se hizo word2vec, así que el entrenamiento lo leyó 20 veces, cuando el programa lee un texto 5 veces si no se le indica otra cosa. El entrenamiento parte de números al azar, así que se hizo cinco veces, desde cinco comienzos al azar: las figuras y los números citados muestran el primero, y el texto afirma solo lo que se cumplió en al menos cuatro de los cinco.</p>
+    <p>Una <em>bolsa de palabras</em> describe un texto, como en los apuntes de los modelos lineales y de word2vec: <span class="nowrap"><i>x</i> ∈ ℝ<sup><i>V</i></sup>,</span> una coordenada por palabra del vocabulario, que lleva el nombre de su palabra y cuenta cuántas veces la usa el texto, así que casi todas valen 0; una sola palabra es un vector one-hot. Aquí <i>V</i> = 5259, las palabras que tienen vector. El libro tiene 22&nbsp;605 palabras distintas, y las otras 17&nbsp;346, tres de cada cuatro pero solo el 7.3% del texto, no reciben ninguno.</p>
+    <p>Un <em>embedding</em> describe una palabra: <span class="nowrap"><i>v</i><sub><i>w</i></sub> ∈ ℝ<sup><i>d</i></sup>,</span> su fila de <i>W</i><sub>in</sub>, unas cincuenta veces más corta. Es <em>denso</em>: el vector de <i>cura</i> tiene 58 números negativos, 42 positivos y ningún cero. Y es aprendido, así que ninguno de sus números tiene nombre. Girar cada fila de <i>W</i><sub>in</sub> y cada columna de <i>W</i><sub>out</sub> con la misma rotación cambiaría todos los números y dejaría cada puntuación <i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub> como estaba, así que el entrenamiento no tiene por qué preferir unos ejes sobre otros. Lo que guardan los números está en cómo quedan los vectores unos respecto de otros, y el coseno del apunte del modelo de espacio vectorial lo mide, por el ángulo θ entre dos vectores:</p>
+    <div class="disp hero-f"><span class="nowrap">cos θ = <span class="frac"><span><i>v</i><sub><i>w</i></sub><sup class="t">T</sup><i>v</i><sub><i>w</i>′</sub></span><span>‖<i>v</i><sub><i>w</i></sub>‖ ‖<i>v</i><sub><i>w</i>′</sub>‖</span></span></span></div>
+    <p>(θ es aquí el ángulo; la función logística es σ desde el apunte de word2vec). Dos vectores que apuntan igual tienen cos θ cerca de 1, y dos en ángulo recto, 0. A diferencia de los pesos tf-idf del apunte del modelo de espacio vectorial, que nunca son negativos, los números de un embedding pueden ser negativos, así que el coseno va de −1 a 1, aunque pocas palabras apuntan en contra: solo 10 de las otras 5258 quedan a más de 90° de <i>cura</i>. El coseno deja el largo de lado, y aquí el largo orienta mal, porque depende sobre todo de cuán a menudo aparece una palabra: las palabras vistas de 5 a 9 veces tienen un largo mediano de 1.57, y las vistas de 50 a 199 veces, de 2.61.</p>
+    <p>La figura dibuja el vector de la palabra elegida y el de su palabra más cercana en el plano que generan los dos, donde su ángulo es exacto, y alrededor cuenta cada una de las demás palabras del vocabulario por su ángulo desde la palabra elegida, grado por grado. Elige una palabra, y pasa de su embedding a su bolsa de palabras.</p>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-dial" role="group" aria-label="Los ángulos entre el vector de una palabra y los de todas las demás"></svg>
+    <div class="ro">
+      <p class="wv-ctl-name">Palabra</p>
+      <div class="wv-picks" id="fig-dial-words"></div>
+      <div class="modes" id="fig-dial-mode" role="group" aria-label="Vector">
+        <button type="button" data-mode="emb" aria-pressed="true">Embedding</button>
+        <button type="button" data-mode="bow" aria-pressed="false">Bolsa de palabras</button>
+      </div>
+      <div class="wv-ro" id="fig-dial-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Haz clic en una palabra, o recorre las palabras con las flechas del teclado, y elige el tipo de vector.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Dos palabras tomadas al azar suelen estar lejos: la mitad de los pares del vocabulario están a más de 64°, y las palabras más cercanas a una palabra son un borde delgado de la multitud, por delante del resto. Como bolsas de palabras, cada palabra está a 90° de todas las demás, porque dos vectores one-hot distintos no comparten ninguna coordenada. El yelmo queda junto a la bacía que don Quijote toma por el yelmo de Mambrino, y los gigantes cerca de los molinos que él toma por gigantes.</p>
+    <p>Cerca quiere decir relacionado, no parecido. Entre las palabras más cercanas a <i>pan</i> están <i>queso</i> y <i>cebolla</i>, y la más cercana a <i>verano</i> es <i>invierno</i> en los cinco entrenamientos: los opuestos se usan en los mismos lugares, en verano y en invierno. Y cada grafía tiene un solo vector, tenga los sentidos que tenga, como los sentidos de <i>real</i> en el apunte de WordNet; la sección 5 muestra lo que eso cuesta.</p>
+  </div>
+</section>
+
+<section id="blanks">
+  <div class="prose">
+    <h2><span class="n">2</span>Palabras que llenan los mismos huecos</h2>
+    <p>El entrenamiento nunca acerca dos objetivos entre sí. Cada par (<i>o</i>, <i>c</i>) mueve <i>v</i><sub><i>o</i></sub> hacia <i>u</i><sub><i>c</i></sub>, una fila de <i>W</i><sub>in</sub> hacia una columna de <i>W</i><sub>out</sub>, como en la figura del muestreo negativo del apunte de word2vec. Incluso <i>cura</i> y <i>barbero</i>, que aparecen a cinco palabras o menos una de otra 45 veces, son atraídas cada una hacia el vector de contexto <i>u</i> de la otra, nunca hacia la fila de la otra. Dos filas terminan cerca cuando son atraídas hacia los mismos vectores de contexto: cuando las dos palabras llenan los mismos huecos.</p>
+    <p>El libro usa <i>asno</i> 86 veces y <i>jumento</i> 73 veces, y las dos en los mismos marcos, como <i>sobre su asno</i> y <i>sobre su jumento</i>. Las dos nunca aparecen a diez palabras o menos una de otra, y aun así cada una es la palabra más cercana a la otra en al menos cuatro de los cinco entrenamientos, a unos 34°. A través de <i>W</i><sub>out</sub>, el modelo espera <i>rocinante</i> cerca de las dos: σ(<i>u</i><sub>rocinante</sub><sup class="t">T</sup><i>v</i><sub>asno</sub>) vale 0.82 y σ(<i>u</i><sub>rocinante</sub><sup class="t">T</sup><i>v</i><sub>jumento</sub>), 0.90.</p>
+    <p>¿Por qué es la dirección la que guarda esto, y no el largo? Una puntuación se separa en dos largos y un ángulo,</p>
+    <div class="disp hero-f"><span class="nowrap"><i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub> = ‖<i>u</i><sub><i>c</i></sub>‖ ‖<i>v</i><sub><i>o</i></sub>‖ cos θ,</span></div>
+    <p>así que sube tanto al girar los dos vectores uno hacia el otro como al alargarlos. La pérdida del apunte de word2vec hace pequeño −log σ(<i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub>) para un par observado, y eso pide una puntuación grande. Alargar <i>v</i><sub><i>o</i></sub> escala todas sus puntuaciones a la vez, también las de las palabras sorteadas, así que solo conviene cuando <i>v</i><sub><i>o</i></sub> ya apunta hacia las palabras con que se vio y lejos de las sorteadas. Sin palabras sorteadas, nada impediría que todos los vectores crecieran en una misma dirección compartida, como señalan Goldberg y Levy (2014): las palabras sorteadas hacen que la dirección importe, y la dirección es lo que mide el coseno de la sección 1. Los largos también crecen, hasta quedar entre 1.19 y 3.73 en los vectores del libro.</p>
+    <p>La figura sigue un ejemplo diseñado con vectores de dos números, como en el apunte de word2vec: dos objetivos, <i>asno</i> y <i>jumento</i>, ambos en carmín; una palabra de contexto con la que aparecen los dos, <i>rocinante</i>, en verde; y una palabra sorteada del libro para cada objetivo, <i>lágrimas</i> y <i>dejando</i>. Da pasos de descenso de gradiente con η = 1.2, y luego pasa a una versión en que <i>jumento</i> aparece en cambio con una palabra propia, <i>costal</i>.</p>
+  </div>
+
+  <div class="fig steps">
+    <div class="modes" id="fig-blank-mode" role="group" aria-label="Palabras de contexto">
+      <button type="button" data-mode="shared" aria-pressed="true">Los dos con «rocinante»</button>
+      <button type="button" data-mode="own" aria-pressed="false">Cada uno con una palabra propia</button>
+    </div>
+    <svg id="fig-blank" role="group" aria-label="Los vectores de dos objetivos, las palabras de contexto con que aparecieron y dos palabras sorteadas"></svg>
+    <div class="ctl"><button type="button" class="btn" id="fig-blank-back">Atrás</button><button type="button" class="btn" id="fig-blank-next">Siguiente</button><span class="count" id="fig-blank-count"></span><button type="button" class="btn" id="fig-blank-reset" hidden>Reiniciar</button></div>
+    <div class="ro" id="fig-blank-out" aria-live="polite"></div>
+    <div class="fig-foot">
+      <p>Siguiente da un paso de descenso de gradiente, Atrás vuelve. Teclas: <span class="nowrap">→ y ←</span>.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Las palabras con vecinas parecidas terminan con vectores parecidos, como prometía el apunte de word2vec. Los sinónimos rara vez van uno al lado del otro, porque quien escribe usa uno u otro, así que este camino indirecto, por las palabras que los rodean, es como se encuentran. Lo que pide el entrenamiento es que cada <i>v</i><sub><i>o</i></sub> se alinee con su <i>u</i><sub><i>c</i></sub>; nada en él pide que dos objetivos estén cerca, y eso ocurre porque comparten vectores de contexto.</p>
+  </div>
+</section>
+
+<section id="odd-one-out">
+  <div class="prose">
+    <h2><span class="n">3</span>El cuarto excluido</h2>
+    <p>Si las palabras relacionadas apuntan igual, una lista debería mostrar cuál de sus palabras sobra. Deja fuera cada palabra por turno y suma los vectores de las demás: la suma es larga cuando las palabras que quedan apuntan igual, así que la suma más larga es la que no tiene a la intrusa. Escrito con argmax, «la <i>w</i> que hace esto máximo»:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>w</i>* = argmax<sub><i>w</i>∈<i>L</i></sub> ‖∑<span class="lims"><span></span><span><i>w</i>′∈<i>L</i>∖{<i>w</i>}</span></span> <i>v</i><sub><i>w</i>′</sub>‖,</span></div>
+    <p>donde <i>L</i> es la lista y cada vector se escala antes a largo 1. Para tres palabras <i>w</i>, <i>w</i>′ y <i>w</i>″ con vectores de largo 1, el largo de su suma depende solo de sus cosenos,</p>
+    <div class="disp"><span class="nowrap">‖<i>v</i><sub><i>w</i></sub> + <i>v</i><sub><i>w</i>′</sub> + <i>v</i><sub><i>w</i>″</sub>‖</span> <span class="nowrap">= √(3 + 2(cos θ<sub><i>ww</i>′</sub> + cos θ<sub><i>ww</i>″</sub> + cos θ<sub><i>w</i>′<i>w</i>″</sub>)),</span></div>
+    <p>así que la suma es larga solo cuando los cosenos de sus palabras son todos grandes, y una palabra muy apartada de las demás aporta un coseno pequeño a cada par que forma. Los vectores se escalan antes porque, tal como salieron, un vector corto le resta poco a la suma cuando queda fuera, y las palabras menos frecuentes tienen los vectores más cortos: la regla tendería a elegir la palabra menos frecuente. Con vectores de largo 1 es la regla del primer artículo de word2vec (Mikolov, Chen, Corrado y Dean 2013), que elige la palabra más alejada del promedio de la lista. Arma una lista de tres a seis de las dieciséis palabras de abajo, y compara los vectores escalados a largo 1 con los vectores como salieron del entrenamiento.</p>
+  </div>
+
+  <div class="fig">
+    <div class="wv-panel" id="fig-odd" role="group" aria-label="Una lista de palabras y el largo de la suma sin cada una"></div>
+    <div class="ro">
+      <div class="modes" id="fig-odd-mode" role="group" aria-label="Vectores">
+        <button type="button" data-mode="unit" aria-pressed="true">Escalados a largo 1</button>
+        <button type="button" data-mode="raw" aria-pressed="false">Como salieron</button>
+      </div>
+      <div class="wv-ro" id="fig-odd-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Haz clic en las palabras para agregarlas a la lista o sacarlas; las flechas del teclado recorren las palabras.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Toda lista de tres palabras de uno de los cuatro grupos de la figura (las cabalgaduras, la comida, las personas y el gobierno de la ínsula) y una de otro encuentra a la intrusa cuando los vectores se escalan, en los cinco entrenamientos, pero solo el 79% de ellas lo logra con los vectores como salieron. La regla solo lee ángulos: el queso y la cebolla quedan juntos porque el libro los usa en los mismos lugares, no porque un recurso como WordNet ponga a los dos bajo los alimentos. Falla donde el libro usa igual palabras que un lector separaría: en la lista <i>sancho</i>, <i>quijote</i>, <i>dulcinea</i>, <i>teresa</i>, <i>rocinante</i>, cuatro personas y un caballo, las tres sumas más largas quedan a unas pocas centésimas unas de otras, y cuál gana cambia de un entrenamiento a otro.</p>
+  </div>
+</section>
+
+<section id="analogies">
+  <div class="prose">
+    <h2><span class="n">4</span>Analogías</h2>
+    <p>¿Significan algo las direcciones? Una analogía <span class="nowrap"><i>a</i> : <i>a</i>* :: <i>b</i> : <i>b</i>*,</span> que se lee «<i>a</i> es a <i>a</i>* como <i>b</i> es a <i>b</i>*», pide la palabra que es a <i>b</i> lo que <i>a</i>* es a <i>a</i>: <i>caballero</i> es a <i>caballeros</i> como <i>escudero</i> es a <i>escuderos</i>. Si el paso de <i>a</i> a <i>a</i>* es una dirección del espacio, sumarlo a <i>b</i> debería caer cerca de <i>b</i>*:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>b</i>* = argmax<sub><i>w</i>∉{<i>a</i>, <i>a</i>*, <i>b</i>}</sub> cos(<i>v</i><sub><i>w</i></sub>, <i>v</i><sub><i>b</i></sub> − <i>v</i><sub><i>a</i></sub> + <i>v</i><sub><i>a</i>*</sub>),</span></div>
+    <p>de nuevo con vectores de largo 1. Si se escribe <i>t</i> para <span class="nowrap"><i>v</i><sub><i>b</i></sub> − <i>v</i><sub><i>a</i></sub> + <i>v</i><sub><i>a</i>*</sub>,</span> el coseno se separa en los cosenos de <i>w</i> con las tres palabras dadas,</p>
+    <div class="disp"><span class="nowrap">cos(<i>v</i><sub><i>w</i></sub>, <i>t</i>)</span> <span class="nowrap">= <span class="frac"><span>cos θ<sub><i>wb</i></sub> − cos θ<sub><i>wa</i></sub> + cos θ<sub><i>wa</i>*</sub></span><span>‖<i>t</i>‖</span></span>,</span></div>
+    <p>así que la respuesta tiene que estar cerca de <i>b</i> y de <i>a</i>*, y lejos de <i>a</i>. Las tres palabras dadas quedan fuera de la búsqueda, como las deja fuera el primer artículo de word2vec: la propia <i>b</i> tiene cos θ<sub><i>bb</i></sub> = 1 en esa suma, y en 25 analogías probadas en este libro, una búsqueda entre todas las palabras pone primera a una de las palabras dadas en 24. Mikolov, Yih y Zweig (2013) encontraron estas regularidades en los vectores de una red recurrente, una red que lee un texto palabra por palabra (la explica un apunte posterior), y word2vec las hizo conocidas.</p>
+    <p>Los dos pasos son solo en parte el mismo vector: el coseno entre el paso de <i>caballero</i> a <i>caballeros</i> y el paso de <i>escudero</i> a <i>escuderos</i> es 0.69. Parte de cada respuesta viene de quedarse cerca de <i>b</i>, y el segundo modo de la figura muestra cuánto: las palabras más cercanas a <i>b</i> sola. Elige una analogía, y compara.</p>
+  </div>
+
+  <div class="fig">
+    <div class="wv-panel" id="fig-analogy" role="group" aria-label="Una analogía y las palabras más cercanas a su objetivo"></div>
+    <div class="ro">
+      <p class="wv-ctl-name">Analogía</p>
+      <div class="wv-picks" id="fig-analogy-picks"></div>
+      <div class="modes" id="fig-analogy-mode" role="group" aria-label="Palabras más cercanas a">
+        <button type="button" data-mode="diff" aria-pressed="true">Más cercanas a <i>b</i> − <i>a</i> + <i>a</i>*</button>
+        <button type="button" data-mode="b" aria-pressed="false">Más cercanas a <i>b</i></button>
+      </div>
+      <div class="wv-ro" id="fig-analogy-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Haz clic en una analogía, o recórrelas con las flechas del teclado, y elige a qué se acercan las palabras.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>El plural llega primero en los cinco entrenamientos, y <i>escuderos</i>, apenas la 1610.ª palabra más cercana a <i>escudero</i>, le debe su lugar al paso. Sancho también llega primero en los cinco entrenamientos, pero ya estaba entre las tres palabras más cercanas a <i>quijote</i>: ahí el paso agrega poco. Lo que un solo libro acierta es su propio mundo y su gramática. Las relaciones que muestra poco, como la de hijo a hija y la de hermano a hermana, necesitan mucho más texto, y a eso va la sección 5.</p>
+  </div>
+</section>
+
+<section id="pretrained">
+  <div class="prose">
+    <h2><span class="n">5</span>Vectores preentrenados</h2>
+    <p>Entrenar con miles de millones de palabras es caro, así que un grupo entrena una vez y publica el resultado, y cualquiera puede descargarlo: un archivo con una línea por palabra, la palabra y sus números. Los vectores de fastText para el inglés y el español (Grave et al. 2018) tienen dos millones de palabras cada uno, con 300 números por palabra, entrenados con las páginas web de Common Crawl y con Wikipedia. Su modelo es CBOW, el modelo de word2vec que adivina una palabra a partir de sus vecinas, con pedazos de palabras agregados, que explica el próximo apunte. El archivo guarda una fila por palabra, sacada del lado de entrada del modelo: en word2vec sería la fila de la palabra en <i>W</i><sub>in</sub>, mientras que fastText promedia esa fila con las filas de los pedazos de la palabra. Aquí <i>V</i> = 2&nbsp;000&nbsp;000 y <i>d</i> = 300. Entrenar los propios vectores sigue siendo una opción, como hizo este apunte con el libro.</p>
+    <p>La tabla tiene 5157 de las 5259 palabras del libro en minúsculas; las 102 que le faltan son sobre todo nombres, como <i>cardenio</i> y <i>lotario</i>, y formas antiguas, como <i>mochachos</i> y <i>juridición</i>. En la figura, las palabras más cercanas de los vectores de la web se buscan entre las 100&nbsp;000 palabras en minúsculas más frecuentes de la tabla. Elige una palabra, y compara sus palabras más cercanas en el libro con las de la web.</p>
+  </div>
+
+  <div class="fig">
+    <div class="wv-panel" id="fig-web" role="group" aria-label="Las palabras más cercanas a una palabra en dos tablas de vectores"></div>
+    <div class="ro">
+      <p class="wv-ctl-name">Palabra</p>
+      <div class="wv-picks" id="fig-web-words"></div>
+      <div class="modes" id="fig-web-mode" role="group" aria-label="Vectores">
+        <button type="button" data-mode="book" aria-pressed="true">Entrenados con el libro</button>
+        <button type="button" data-mode="web" aria-pressed="false">Entrenados con la web</button>
+      </div>
+      <div class="wv-ro" id="fig-web-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Haz clic en una palabra, o recorre las palabras con las flechas del teclado, y elige los vectores.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>En la web, <i>cura</i> es sobre todo el verbo curar, y <i>lanza</i>, el verbo lanzar. Una grafía guarda un solo vector, y el corpus decide qué sentido lo llena. Las relaciones también siguen al corpus. Los vectores de la web completan <span class="nowrap"><i>hijo</i> : <i>hija</i> :: <i>hermano</i> : <i>hermana</i>,</span> donde los cinco entrenamientos del libro ponen <i>hermana</i> entre el lugar 25 y el 148, y <span class="nowrap"><i>hijo</i> : <i>hija</i> :: <i>sobrino</i> : <i>sobrina</i>,</span> donde el libro la pone más allá del lugar 3500. Para <span class="nowrap"><i>rey</i> : <i>reino</i> :: <i>gobernador</i> : ?,</span> el libro pone <i>ínsula</i>, el gobierno de Sancho, primera o segunda en los cinco entrenamientos, y los vectores de la web, en el lugar 211.</p>
+  </div>
+</section>
+
+<section id="pooling">
+  <div class="prose">
+    <h2><span class="n">6</span>Pooling: un vector para un texto</h2>
+    <p>Un clasificador, como los del apunte de los modelos lineales, lee un vector por texto. Con embeddings, un texto de <i>N</i> palabras tiene <i>N</i> vectores, y el <em>pooling</em> los combina en uno:</p>
+    <div class="disp hero-f"><span class="nowrap"><i>x</i> = pool(<i>e</i>(<i>w</i><sub>1</sub>), …, <i>e</i>(<i>w</i><sub><i>N</i></sub>)),</span></div>
+    <p>donde <i>e</i>(<i>w</i>) = <i>v</i><sub><i>w</i></sub> es el embedding de la palabra <i>w</i>, su fila de <i>W</i><sub>in</sub>, como salió del entrenamiento. Las formas de pooling más usadas son la media y el máximo de cada uno de los <i>d</i> números:</p>
+    <div class="disp"><span class="nowrap"><i>x</i><sub><i>j</i></sub> = <span class="frac"><span>1</span><span><i>N</i></span></span> ∑<span class="lims"><span><i>N</i></span><span><i>i</i>=1</span></span> <i>e</i>(<i>w</i><sub><i>i</i></sub>)<sub><i>j</i></sub>,</span> <span class="nowrap"><i>x</i><sub><i>j</i></sub> = max<sub><i>i</i></sub> <i>e</i>(<i>w</i><sub><i>i</i></sub>)<sub><i>j</i></sub>.</span></div>
+    <p>La suma sirve igual: es <i>N</i> veces la media, así que da los mismos cosenos; qué pooling conviene depende de la tarea. <i>x</i> vuelve a ser el vector del texto, como lo era la bolsa de palabras de la sección 1, pero con <i>d</i> números en vez de <i>V</i>, y <i>W</i><sub>in</sub> une a los dos: la suma de los embeddings de un texto es <span class="nowrap"><i>W</i><sub>in</sub><sup class="t">T</sup><i>x</i></span> para su bolsa de palabras <i>x</i>, el paso de selección del apunte de word2vec alimentado con una bolsa de palabras entera en vez de un vector one-hot. Con los pesos del modelo de espacio vectorial, una consulta y un texto sin palabras en común puntúan 0; sus embeddings con pooling pueden quedar cerca de todos modos. En la figura, elige un par de textos cortos, y compara su media con su máximo.</p>
+  </div>
+
+  <div class="fig">
+    <div class="wv-panel" id="fig-pool" role="group" aria-label="Dos textos cortos, los números de sus palabras y el vector que da cada uno"></div>
+    <div class="ro">
+      <p class="wv-ctl-name">Textos</p>
+      <div class="wv-picks" id="fig-pool-picks"></div>
+      <div class="modes" id="fig-pool-mode" role="group" aria-label="Pooling">
+        <button type="button" data-mode="mean" aria-pressed="true">Media</button>
+        <button type="button" data-mode="max" aria-pressed="false">Máximo</button>
+      </div>
+      <div class="wv-ro" id="fig-pool-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Haz clic en un par de textos, o recórrelos con las flechas del teclado, y elige el pooling.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Después, un clasificador lee <i>x</i>. Uno con una capa oculta, que definió el apunte de word2vec, lo pasa por una capa de pesos <i>W</i> y por la función logística, aplicada a cada número, antes de una softmax como la del apunte de los modelos lineales, aquí con pesos <i>U</i>, una fila por clase:</p>
+    <div class="disp"><span class="nowrap"><span class="hat lo"><i>y</i></span> = softmax(<i>U</i> σ(<i>W</i><i>x</i>)),</span></div>
+    <p>con un 1 al comienzo de <i>x</i>, para que la primera columna de <i>W</i> guarde los sesgos, como en el apunte de los modelos lineales, que no tenía capa oculta. El pooling vuelve a perder el orden, como lo perdía la bolsa de palabras: la línea de Sancho y la lectura de don Quijote dan el mismo vector. Las palabras frecuentes como <i>el</i> pesan en la media salvo que se quiten, como se quitaban las stopwords en el apunte del modelo de espacio vectorial, o se les dé menos peso. Apuntes posteriores conservan el orden, con redes recurrentes y atención, y aplican pooling a vectores que dependen de la oración.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">7</span>Resumen</h2>
+    <p>Las ideas del apunte en NumPy. <code>w_in</code> guarda los embeddings, una fila por palabra del vocabulario, y <code>unit</code> las mismas filas escaladas a largo 1, <code>unit = w_in / np.linalg.norm(w_in, axis=1, keepdims=True)</code>; <code>w_out</code> guarda los vectores de contexto, una columna por palabra; <code>w</code>, <code>w2</code>, <code>o</code>, <code>c</code>, <code>a</code>, <code>a_star</code> y <code>b</code> son posiciones de palabras en el vocabulario, <code>L</code> las de las palabras de una lista e <code>ids</code> las de las palabras de un texto; <code>W</code> y <code>U</code> son los pesos de un clasificador.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Coseno</div>
+      <div class="f">cos θ = <i>v</i><sub><i>w</i></sub><sup class="t">T</sup><i>v</i><sub><i>w</i>′</sub> / (‖<i>v</i><sub><i>w</i></sub>‖ ‖<i>v</i><sub><i>w</i>′</sub>‖)</div>
+      <div class="c"><code>v_w, v_w2 = w_in[w], w_in[w2]<br>cos = v_w @ v_w2 / (<br>&nbsp;&nbsp;&nbsp;&nbsp;np.linalg.norm(v_w)<br>&nbsp;&nbsp;&nbsp;&nbsp;* np.linalg.norm(v_w2))</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Las palabras más cercanas</div>
+      <div class="f">el mayor cos θ</div>
+      <div class="c"><code>sims = unit @ unit[w]<br>sims[w] = -np.inf<br>closest = np.argsort(-sims)[:5]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Una puntuación como largos y un ángulo</div>
+      <div class="f"><i>u</i><sub><i>c</i></sub><sup class="t">T</sup><i>v</i><sub><i>o</i></sub> = ‖<i>u</i><sub><i>c</i></sub>‖ ‖<i>v</i><sub><i>o</i></sub>‖ cos θ</div>
+      <div class="c"><code>v_o, u_c = w_in[o], w_out[:, c]<br>lengths = (np.linalg.norm(u_c)<br>&nbsp;&nbsp;&nbsp;&nbsp;* np.linalg.norm(v_o))<br>cos_uv = u_c @ v_o / lengths<br>score = lengths * cos_uv&nbsp;&nbsp;# = u_c @ v_o</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">El cuarto excluido</div>
+      <div class="f"><i>w</i>* = argmax<sub><i>w</i>∈<i>L</i></sub> ‖∑<sub><i>w</i>′∈<i>L</i>∖{<i>w</i>}</sub> <i>v</i><sub><i>w</i>′</sub>‖</div>
+      <div class="c"><code>u = unit[L]<br>sums = u.sum(axis=0) - u<br>lengths = np.linalg.norm(sums, axis=1)<br>w_star = L[lengths.argmax()]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Analogía</div>
+      <div class="f"><i>b</i>* = argmax<sub><i>w</i>∉{<i>a</i>, <i>a</i>*, <i>b</i>}</sub> cos(<i>v</i><sub><i>w</i></sub>, <i>v</i><sub><i>b</i></sub> − <i>v</i><sub><i>a</i></sub> + <i>v</i><sub><i>a</i>*</sub>)</div>
+      <div class="c"><code>t = unit[b] - unit[a] + unit[a_star]<br>sims = unit @ t / np.linalg.norm(t)<br>sims[[a, a_star, b]] = -np.inf<br>b_star = sims.argmax()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Una tabla descargada</div>
+      <div class="f">una palabra y sus <i>d</i> números por línea, primero las más frecuentes</div>
+      <div class="c"><code>import itertools<br>f = open(path, encoding="utf-8")<br>next(f)&nbsp;&nbsp;# V y d<br>rows = [line.rstrip().split(" ")<br>&nbsp;&nbsp;&nbsp;&nbsp;for line in itertools.islice(f, 100_000)]<br>words = [r[0] for r in rows]<br>w_in = np.array([r[1:] for r in rows],<br>&nbsp;&nbsp;&nbsp;&nbsp;dtype=float)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Pooling con la media</div>
+      <div class="f"><i>x</i><sub><i>j</i></sub> = (1/<i>N</i>) ∑<sub><i>i</i></sub> <i>e</i>(<i>w</i><sub><i>i</i></sub>)<sub><i>j</i></sub></div>
+      <div class="c"><code>x = w_in[ids].mean(axis=0)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Pooling con el máximo</div>
+      <div class="f"><i>x</i><sub><i>j</i></sub> = max<sub><i>i</i></sub> <i>e</i>(<i>w</i><sub><i>i</i></sub>)<sub><i>j</i></sub></div>
+      <div class="c"><code>x = w_in[ids].max(axis=0)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Un clasificador encima</div>
+      <div class="f"><span class="hat lo"><i>y</i></span> = softmax(<i>U</i> σ(<i>W</i><i>x</i>))</div>
+      <div class="c"><code>x1 = np.r_[1, x]<br>hidden = 1 / (1 + np.exp(-(W @ x1)))<br>z = U @ hidden<br>e = np.exp(z - z.max())<br>y_hat = e / e.sum()</code></div>
+    </div>
+  </div>
+  <div class="prose">
+    <p>Los datos del apunte: los vectores de la web son las tablas de fastText para el inglés y el español, cc.en.300 y cc.es.300 (Grave et al. 2018), bajo la licencia <a href="https://creativecommons.org/licenses/by-sa/3.0/deed.es">Creative Commons Atribución-CompartirIgual 3.0</a>, de <a href="https://fasttext.cc/docs/en/crawl-vectors.html">fasttext.cc</a>; la página muestra solo lo que se calculó a partir de ellas, como palabras más cercanas, cosenos, productos punto y largos, nunca los vectores mismos. Los vectores del libro se entrenaron para este apunte.</p>
+  </div>
+</section>

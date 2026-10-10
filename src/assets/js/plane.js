@@ -840,6 +840,79 @@ export function placeBeside(S, t, p, clear, line, obstacles, memo) {
   t.setAttribute("y", r.cy - (b.y + b.height / 2));
 }
 
+// Labels for a plane of vectors stepped through with Back and Next (the word2vec note's negative sampling, the shared
+// context of the note on word vectors): every step's place for every label is chosen at once, so that a label keeps
+// its side, and when its mark is about to cross an axis it turns around it over several steps instead of jumping.
+// items: one per label, { el, text(j), at(j), dot }: its text element, its text and where its mark is at step j, and
+//   whether the mark is a point (dot: true, drawn about 14 units wide) or an arrow's tip;
+// steps: the number of steps; frame [L, R, T, B]: the box every label stays inside, 3 units in; zero [x0, y0]: the
+//   origin, out of which a label prefers to point and whose two axes it avoids lying across;
+// arrows(j): points sampled along the arrows at step j (a tip's own label ignores those within 14 units of it);
+// lines(j): points along lines that a label may cross at a small cost, such as a boundary.
+// A place beside its mark (16 directions, 4 distances) costs much for covering a label already placed, a point or an
+// arrow, for lying across one of the axes, for being nearer another mark than its own (it would read as that mark's),
+// and for stretching over another mark; a little for crossing a line and for being far from its mark or turned away
+// from the direction out of the origin. Each label's places over all the steps are the cheapest path through them,
+// where turning the label around its mark by up to a quarter turn between two steps costs a little and more than that
+// costs much. The labels are placed one after another, each clear of those already placed, then each again, clear of
+// all the others, a few times over, so that an early label also makes room for later ones. Returns, for each step,
+// the middle and baseline of each label ({ x, y }, for text-anchor middle).
+export function stepLabels({ items, steps, frame: [L, R, T, B], zero: [X0, Y0], arrows, lines, rounds = 4 }) {
+  const overlap = (a, b, pad) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) + pad) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) + pad);
+  function candidates(t, [px, py], placed, pts, arrowPts, linePts, marks) {
+    const bb0 = t.getBBox(), w = bb0.width, hgt = bb0.height, a0 = Math.atan2(py - Y0, px - X0), out = [];
+    for (const dist of [9, 14, 22, 32]) for (let k = 0; k < 16; k++) {
+      const turn = (k % 2 ? 1 : -1) * Math.ceil(k / 2), a = a0 + turn * (Math.PI / 8), ca = Math.cos(a), sa = Math.sin(a);
+      const reach = Math.min(Math.abs(ca) > 1e-6 ? (w / 2 + dist) / Math.abs(ca) : Infinity, Math.abs(sa) > 1e-6 ? (hgt / 2 + dist) / Math.abs(sa) : Infinity);
+      const box = { x: px + ca * reach - w / 2, y: py + sa * reach - hgt / 2, w, h: hgt };
+      if (box.x < L + 3 || box.x + w > R - 3 || box.y < T + 3 || box.y + hgt > B - 3) continue;
+      let cost = dist * 0.4 + Math.abs(turn) * 1.5;
+      for (const b of placed) cost += overlap(box, b, 3) * 5;
+      for (const [qx, qy] of pts) cost += overlap(box, { x: qx - 7, y: qy - 7, w: 14, h: 14 }, 1) * 5;
+      for (const [qx, qy] of arrowPts) if (qx > box.x - 3 && qx < box.x + w + 3 && qy > box.y - 3 && qy < box.y + hgt + 3) cost += 60;
+      for (const [qx, qy] of linePts) if (qx > box.x && qx < box.x + w && qy > box.y && qy < box.y + hgt) cost += 4;
+      if (box.x - 2 < X0 && box.x + w + 2 > X0) cost += 50;
+      if (box.y - 2 < Y0 && box.y + hgt + 2 > Y0) cost += 50;
+      // Within 20 units above or below another mark, a label stretched over it would read as that mark's too.
+      const gap = (qx, qy) => Math.hypot(Math.max(box.x - qx, 0, qx - box.x - w), Math.max(box.y - qy, 0, qy - box.y - hgt));
+      const own = gap(px, py);
+      for (const [qx, qy] of marks) {
+        const g = gap(qx, qy);
+        if (g < own) cost += 400;
+        else if (g < own + 6) cost += 25 * (own + 6 - g);
+        if (qx > box.x - 4 && qx < box.x + w + 4 && Math.max(box.y - qy, qy - box.y - hgt) < 20) cost += 150;
+      }
+      out.push({ box, a, cost });
+    }
+    return out.length ? out : [{ box: { x: Math.min(R - 3 - w, px + 10), y: py - hgt / 2, w, h: hgt }, a: 0, cost: 0 }];
+  }
+  const boxes = items.map(() => Array.from({ length: steps }, () => null));
+  const turnCost = (a, b) => { const d = Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))); return d > Math.PI / 2 ? 400 : d * 8; };
+  const placeOne = (li) => {
+    const it = items[li];
+    const C = Array.from({ length: steps }, (_, j) => {
+      const others = boxes.flatMap((bs, q) => (q !== li && bs[j] ? [bs[j]] : []));
+      const at = it.at(j), dots = items.flatMap((o, q) => (q !== li && o.dot ? [o.at(j)] : [])), tips = items.flatMap((o, q) => (q !== li && !o.dot ? [o.at(j)] : []));
+      const arrowPts = it.dot ? arrows(j) : arrows(j).filter(([ax, ay]) => Math.hypot(ax - at[0], ay - at[1]) > 14);
+      it.el.textContent = it.text(j);
+      return candidates(it.el, at, others, dots, arrowPts, lines(j), [...dots, ...tips]);
+    });
+    const total = [C[0].map((c) => c.cost)], from = [[]];
+    for (let j = 1; j < C.length; j++) {
+      total.push([]); from.push([]);
+      C[j].forEach((c) => {
+        let best = Infinity, arg = 0;
+        C[j - 1].forEach((p, pi) => { const v = total[j - 1][pi] + turnCost(p.a, c.a); if (v < best) { best = v; arg = pi; } });
+        total[j].push(best + c.cost); from[j].push(arg);
+      });
+    }
+    let pick = total[C.length - 1].indexOf(Math.min(...total[C.length - 1]));
+    for (let j = C.length - 1; j >= 0; j--) { boxes[li][j] = C[j][pick].box; if (j) pick = from[j][pick]; }
+  };
+  for (let round = 0; round < rounds; round++) items.forEach((_, li) => placeOne(li));
+  return Array.from({ length: steps }, (_, j) => boxes.map((bs) => { const b = bs[j]; return { x: b.x + b.w / 2, y: b.y + b.h / 2 + b.h * 0.32 }; }));
+}
+
 // The multiples of `step` for which t·v stays inside the figure of space S, within [lo, hi].
 export function stepRange(S, v, step, lo, hi) {
   const s = S.span([0, 0, 0], v, 26) ?? [0, 0];

@@ -3,7 +3,7 @@
 // of it; the skip-gram pairs of a target; the forward pass of a skip-gram model trained on the line's pairs; one
 // example of negative sampling in two dimensions; and the distribution the negatives are drawn from, over the book.
 // The target is carmine, the context words it was seen with green and the drawn words ink; lines and curves are blue.
-import { el, tr, lang, modeButtons, roving, steadyHeight, logChart, localNum as fmt } from "../../plane.js";
+import { el, tr, lang, modeButtons, roving, steadyHeight, logChart, stepLabels, localNum as fmt } from "../../plane.js";
 import { DATA } from "./word2vec-data.js";
 
 const D = DATA[lang];
@@ -292,74 +292,17 @@ function nsFigure() {
     return { tx, ty, cx, cy, pts: s.us.map((x) => [X(x[0]), Y(x[1])]), arrowPts, linePts };
   }
 
-  // The places a label can take beside its point: 64 of them (16 directions, 4 distances) inside the frame, each with
-  // a cost that is high for covering a label already placed, a point or the arrow, or for lying across one of the axes
-  // through the origin, and low for crossing the blue line and for being far from the point or away from the direction
-  // out of the origin.
-  const overlap = (a, b, pad) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) + pad) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) + pad);
-  function candidates(t, [px, py], placed, pts, arrowPts, linePts, marks = pts) {
-    const bb0 = t.getBBox(), w = bb0.width, hgt = bb0.height, a0 = Math.atan2(py - Y(0), px - X(0)), out = [];
-    for (const dist of [9, 14, 22, 32]) for (let k = 0; k < 16; k++) {
-      const turn = (k % 2 ? 1 : -1) * Math.ceil(k / 2), a = a0 + turn * (Math.PI / 8), ca = Math.cos(a), sa = Math.sin(a);
-      const reach = Math.min(Math.abs(ca) > 1e-6 ? (w / 2 + dist) / Math.abs(ca) : Infinity, Math.abs(sa) > 1e-6 ? (hgt / 2 + dist) / Math.abs(sa) : Infinity);
-      const box = { x: px + ca * reach - w / 2, y: py + sa * reach - hgt / 2, w, h: hgt };
-      if (box.x < L + 3 || box.x + w > R - 3 || box.y < T + 3 || box.y + hgt > B - 3) continue;
-      let cost = dist * 0.4 + Math.abs(turn) * 1.5;
-      for (const b of placed) cost += overlap(box, b, 3) * 5;
-      for (const [qx, qy] of pts) cost += overlap(box, { x: qx - 7, y: qy - 7, w: 14, h: 14 }, 1) * 5;
-      for (const [qx, qy] of arrowPts) if (qx > box.x - 3 && qx < box.x + w + 3 && qy > box.y - 3 && qy < box.y + hgt + 3) cost += 60;
-      for (const [qx, qy] of linePts) if (qx > box.x && qx < box.x + w && qy > box.y && qy < box.y + hgt) cost += 4;
-      if (box.x - 2 < X(0) && box.x + w + 2 > X(0)) cost += 50;
-      if (box.y - 2 < Y(0) && box.y + hgt + 2 > Y(0)) cost += 50;
-      // A label nearer another mark (a point or the arrow's tip) than its own would read as that mark's, and so would
-      // one nearly as near another mark, or stretched over another mark within 20 units above or below it.
-      const gap = (qx, qy) => Math.hypot(Math.max(box.x - qx, 0, qx - box.x - w), Math.max(box.y - qy, 0, qy - box.y - hgt));
-      const own = gap(px, py);
-      for (const [qx, qy] of marks) {
-        const g = gap(qx, qy);
-        if (g < own) cost += 400;
-        else if (g < own + 6) cost += 25 * (own + 6 - g);
-        if (qx > box.x - 4 && qx < box.x + w + 4 && Math.max(box.y - qy, qy - box.y - hgt) < 20) cost += 150;
-      }
-      out.push({ box, a, cost });
-    }
-    return out.length ? out : [{ box: { x: Math.min(R - 3 - w, px + 10), y: py - hgt / 2, w, h: hgt }, a: 0, cost: 0 }];
-  }
-  // Every step's label places, chosen together for each label in turn (the target's first): the places that cost least
-  // over all the steps, where turning a label around its point by up to a quarter turn between two steps costs a
-  // little and more than that costs much. So a label keeps its side, and when its point is about to cross an axis it
-  // turns around it over several steps instead of jumping. Back and Next show the same places; they are worked out
-  // again when the fonts or the labels' size change.
-  // The labels are placed one after another (the target's first), each clear of those already placed; then each is
-  // placed again, clear of all the others, a few times over, so that an early label also makes room for later ones.
+  // Every step's label places, chosen together for all the steps by stepLabels (the target's label first), so that a
+  // label keeps its side; Back and Next show the same places. They are worked out again when the fonts or the labels'
+  // size change.
   let spots = [];
   function layoutLabels() {
-    const scenes = hist.map(scene), items = [vLab, ...labels];
-    const boxes = items.map(() => hist.map(() => null));
-    const turnCost = (a, b) => { const d = Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))); return d > Math.PI / 2 ? 400 : d * 8; };
-    const placeOne = (li) => {
-      const t = items[li];
-      const C = hist.map((s, j) => {
-        const g = scenes[j], others = boxes.flatMap((bs, q) => (q !== li && bs[j] ? [bs[j]] : []));
-        t.textContent = texts(s)[li];
-        return li === 0
-          ? candidates(t, [g.tx, g.ty], others, g.pts, g.arrowPts.filter(([ax, ay]) => Math.hypot(ax - g.tx, ay - g.ty) > 14), g.linePts)
-          : candidates(t, g.pts[li - 1], others, g.pts.filter((_, q) => q !== li - 1), g.arrowPts, g.linePts, [...g.pts.filter((_, q) => q !== li - 1), [g.tx, g.ty]]);
-      });
-      const total = [C[0].map((c) => c.cost)], from = [[]];
-      for (let j = 1; j < C.length; j++) {
-        total.push([]); from.push([]);
-        C[j].forEach((c) => {
-          let best = Infinity, arg = 0;
-          C[j - 1].forEach((p, pi) => { const v = total[j - 1][pi] + turnCost(p.a, c.a); if (v < best) { best = v; arg = pi; } });
-          total[j].push(best + c.cost); from[j].push(arg);
-        });
-      }
-      let pick = total[C.length - 1].indexOf(Math.min(...total[C.length - 1]));
-      for (let j = C.length - 1; j >= 0; j--) { boxes[li][j] = C[j][pick].box; if (j) pick = from[j][pick]; }
-    };
-    for (let round = 0; round < 4; round++) items.forEach((_, li) => placeOne(li));
-    spots = hist.map((_, j) => boxes.map((bs) => { const b = bs[j]; return { x: b.x + b.w / 2, y: b.y + b.h / 2 + b.h * 0.32 }; }));
+    const scenes = hist.map(scene);
+    spots = stepLabels({
+      items: [{ el: vLab, text: (j) => texts(hist[j])[0], at: (j) => [scenes[j].tx, scenes[j].ty], dot: false },
+        ...labels.map((t, i) => ({ el: t, text: (j) => texts(hist[j])[i + 1], at: (j) => scenes[j].pts[i], dot: true }))],
+      steps: hist.length, frame: [L, R, T, B], zero: [X(0), Y(0)], arrows: (j) => scenes[j].arrowPts, lines: (j) => scenes[j].linePts,
+    });
   }
 
   let k = 0, measuring = false;
