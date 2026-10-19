@@ -188,15 +188,15 @@ export function valueBars(parent, { decimals = 2 } = {}) {
   const frame = el("g", {}, g), axes = el("g", { class: "axes" }, frame);
   el("line", { x1: AX0, y1: AXIS_Y, x2: AX1, y2: AXIS_Y }, axes);
   for (let v = VMIN; v <= 2; v++) {
-    el("line", { x1: vx(v), y1: AXIS_Y, x2: vx(v), y2: AXIS_Y + 4 }, axes);
-    text(frame, { class: "pg-lab", x: vx(v), y: AXIS_Y + 17.5, "text-anchor": "middle" }, localNum(v));
+    el("line", { x1: vx(v), y1: AXIS_Y, x2: vx(v), y2: AXIS_Y + 3 }, axes);
+    text(frame, { class: "pg-lab", x: vx(v), y: AXIS_Y + 16.5, "text-anchor": "middle" }, localNum(v));
     // Within each row, a short faint line at each tick, and a stronger one at 0, where the bars start.
     for (let k = 0; k < 3; k++) el("line", { class: v === 0 ? "cp-zero" : "cp-grid", x1: vx(v), y1: TT(k) - 3, x2: vx(v), y2: TT(k) + TH + 3 }, frame);
   }
   // The two ways along the axis, each at its end and on a line of its own (on one line, "← a miss ahead hits ahead →"
   // read as one phrase on phones, and the Spanish ones do not fit), then the axis's name.
-  text(frame, { class: "pg-ax", x: AX0, y: AXIS_Y + 32.5 }, tr("← a miss ahead", "← la pelota se escapará"));
-  text(frame, { class: "pg-ax", x: AX1, y: AXIS_Y + 49.5, "text-anchor": "end" }, tr("hits ahead →", "vienen devoluciones →"));
+  text(frame, { class: "pg-ax", x: AX0, y: AXIS_Y + 34.5 }, tr("← a miss ahead", "← la pelota se escapará"));
+  text(frame, { class: "pg-ax", x: AX1, y: AXIS_Y + 50.5, "text-anchor": "end" }, tr("hits ahead →", "vienen devoluciones →"));
   const name = text(frame, { class: "pg-ax", x: 333, y: AXIS_Y + 65, "text-anchor": "middle" }, tr("value of the move, ", "valor del movimiento, "));
   mathText(el("tspan", { class: "m" }, name), [["Q", true], ["(φ, ", false], ["a", true], ["; θ)", false]]);
   const marks = el("g", {}, g), bars = el("g", {}, g), exactG = el("g", {}, g), labels = el("g", {}, g);
