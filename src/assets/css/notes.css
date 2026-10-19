@@ -392,6 +392,56 @@ ol.steps b { font-weight: 600; }
 /* Over the heatmap, a small blue triangle at the middle of a cell points toward its best move; a thin outline of the same
    blue rounds its corners. */
 .gw-arrow { fill: var(--blue); stroke: var(--blue); stroke-width: 1; stroke-linejoin: round; pointer-events: none; }
+/* The DQN note's game (pong.js): a screen of gray pixels between --img-lo and --img-hi, with faint lines between the
+   pixels and the top, bottom and left walls in a stronger ink just outside it. In the light theme an unlit pixel is the
+   ink itself, so marks on the screen (the dashed ball a one-screen network cannot see, a handle's focus ring) are drawn
+   in --img-hi. Beside it, the values of the three moves as the cart-pole's blue bars (cp-bar), the best one in bold and
+   pointed to by a small blue arrow beside the paddle; below, the replay memory (cells, then a strip, the draws in
+   green) and one transition learned from, with a gauge from its value (blue) to its target (red). */
+.handle.on-screen .ring { stroke: var(--img-hi); }
+.pg-grid line { stroke: color-mix(in srgb, var(--img-hi) 14%, var(--img-lo)); stroke-width: 1; }
+.pg-wall { fill: none; stroke: var(--ink-2); stroke-width: 3; }
+.pg-wall.sm { stroke-width: 2; }
+.pg-unseen { fill: none; stroke: color-mix(in srgb, var(--img-hi) 75%, var(--img-lo)); stroke-width: 2; stroke-dasharray: 4 3; }
+.pg-best { fill: var(--blue); }
+.pg-lab { fill: var(--ink-2); font-family: var(--sans); font-size: 13px; }
+.pg-lab.ink { fill: var(--ink); }
+.pg-lab.faint { fill: var(--ink-3); }
+.pg-lab.ln { fill: var(--blue); }
+.pg-lab.tg { fill: var(--red); }
+.pg-val { fill: var(--blue); font-family: var(--sans); font-size: 13px; font-variant-numeric: tabular-nums; }
+.pg-val.best { font-weight: 600; }
+.pg-ax { fill: var(--ink-2); font-family: var(--sans); font-size: 12px; }
+.pg-ax .m, .pg-cal { font-family: var(--serif); }
+.pg-math { fill: var(--ink-2); font-family: var(--serif); font-size: 15px; }
+.pg-sub { font-size: 72%; }
+.pg-end { fill: var(--ink-2); font-family: var(--sans); font-size: 16px; }
+.pg-end-line { fill: none; stroke-linejoin: round; }
+.pg-cell { fill: var(--card); stroke: var(--ink-3); stroke-width: 1.2; }
+.pg-cell.empty { fill: none; stroke: var(--rule); stroke-dasharray: 3 3; }
+.pg-glyph { fill: var(--ink-2); }
+.pg-count { fill: var(--ok); font-family: var(--sans); font-size: 13px; font-weight: 600; }
+.pg-strip { fill: color-mix(in srgb, var(--ink-3) 22%, var(--card)); stroke: var(--ink-3); stroke-width: 1; }
+.pg-draw { stroke: var(--ok); stroke-width: 2; stroke-linecap: round; }
+.pg-step { stroke: var(--ink-2); stroke-width: 1.6; }
+.pg-step-head { fill: var(--ink-2); }
+.pg-gauge { stroke: var(--ink-3); stroke-width: 1.2; }
+.pg-gv { stroke: var(--blue); stroke-width: 2.6; stroke-linecap: round; }
+.pg-gt { stroke: var(--red); stroke-width: 2.4; stroke-linecap: round; }
+.pg-marker { fill: none; stroke: var(--ok); stroke-width: 2.4; }
+/* On phones the figures are drawn at 0.71 (390 px) to 0.55 (320 px) of their size: labels and values at 17 units,
+   axis names at 15. */
+@media (max-width: 560px) {
+  .pg-lab, .pg-val, .pg-count { font-size: 17px; }
+  .pg-ax { font-size: 15px; }
+  .pg-math { font-size: 19px; }
+  .pg-end { font-size: 20px; }
+  /* The DQN note's static charts (figure.diagram) render a little larger than a .fig's drawing, at 0.62 of their size
+     on a 320 px screen, and have room for their axis names at the labels' size. */
+  .diagram .pg-ax { font-size: 17px; }
+}
+/* A readout equation of the DQN figures too wide for a 320 px screen at the readout's size is set smaller there only. */
+@media (max-width: 360px) { .ro .eq .eq-xs { font-size: 0.82rem; } }
 
 /* The laws of text (natural language processing): what is counted in a book is carmine, the laws fitted to it blue.
    On log–log axes the counts by rank are one carmine line, a flat stretch for each run of words with the same
@@ -1295,6 +1345,15 @@ button.sl-w:hover { border-color: var(--rule); }
 .tbl tbody th { font-weight: 400; color: var(--ink); }
 .tbl.left td { text-align: left; }
 .tbl td i, .tbl th i { font-family: var(--serif); }
+/* The DQN note's tables. Its settings, the paper against the figures, align their headers with their left-aligned
+   cells; its five columns of the paper's results fit a 320 px screen with less padding and smaller type there. */
+.tbl.dqn-settings thead th { text-align: left; }
+@media (max-width: 380px) {
+  .tbl.dqn-results :is(th, td) { padding-left: 0.25rem; padding-right: 0.25rem; }
+  .tbl.dqn-results :is(th, td):first-child { padding-left: 0; }
+  .tbl.dqn-results td { font-size: 0.88rem; }
+  .tbl.dqn-results th { font-size: 0.8rem; }
+}
 
 /* Summary */
 .sum { max-width: 860px; margin: 2rem auto 1rem; background: var(--paper-2); border-radius: 18px; padding: clamp(16px, 3.2vw, 30px) clamp(16px, 3.6vw, 34px); }

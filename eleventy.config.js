@@ -54,15 +54,21 @@ export default function (eleventyConfig) {
   eleventyConfig.addFilter("courses", courseNames);
   // The notes of one course, in reading order.
   eleventyConfig.addFilter("byCourse", (notes, course) => notes.filter((n) => n.data.course === course));
-  // The notes of one course in runs that share a module, for the notes index: each run with its module and the number
-  // of its first note in the course.
+  // What a note is within its course: "note" for the chapter notes, or the `kind` its front matter sets ("paper" for
+  // the notes on papers). Each kind is numbered on its own: Note 1, 2, … and Paper 1, 2, …
+  const kindOf = (note) => note.data.kind ?? "note";
+  // The notes of one course in runs that share a module and a kind, for the notes index: each run with its module and
+  // the number of its first note among the course's notes of that kind.
   eleventyConfig.addFilter("moduleGroups", (notes) => {
     const groups = [];
-    notes.forEach((note, i) => {
+    const counts = new Map();
+    for (const note of notes) {
+      const kind = kindOf(note);
+      counts.set(kind, (counts.get(kind) ?? 0) + 1);
       const last = groups.at(-1);
-      if (last && last.module === note.data.module) last.notes.push(note);
-      else groups.push({ module: note.data.module, start: i + 1, notes: [note] });
-    });
+      if (last && last.module === note.data.module && last.kind === kind) last.notes.push(note);
+      else groups.push({ module: note.data.module, kind, start: counts.get(kind), notes: [note] });
+    }
     return groups;
   });
   // Up to `count` notes for the homepage: the first note of each course, then the second of each, and so on.
@@ -73,13 +79,22 @@ export default function (eleventyConfig) {
       for (const c of courses) if (i < c.length && out.length < count) out.push(c[i]);
     return out;
   });
-  // Where the note at `url` sits in its course: its number, how many notes the course has, and the notes before and after it.
+  // Where the note at `url` sits in its course: its kind, its number among the course's notes of that kind and how many
+  // they are, and the notes before and after it in the whole course, so that the last chapter note leads to Paper 1.
   eleventyConfig.addFilter("noteSequence", (notes, url) => {
     const note = notes.find((n) => n.url === url);
     if (!note) return null;
     const course = notes.filter((n) => n.data.course === note.data.course);
+    const kind = kindOf(note);
+    const same = course.filter((n) => kindOf(n) === kind);
     const i = course.indexOf(note);
-    return { number: i + 1, total: course.length, prev: course[i - 1] ?? null, next: course[i + 1] ?? null };
+    return {
+      kind,
+      number: same.indexOf(note) + 1,
+      total: same.length,
+      prev: course[i - 1] ?? null,
+      next: course[i + 1] ?? null,
+    };
   });
 
   // The URL of the same page in the other language (/es/notes/… for /notes/…, and back), or null when it has none.

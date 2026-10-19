@@ -13,7 +13,7 @@ styles:
   <div class="wrap">
     <header class="note-head prose">
       <div class="note-top">
-        <p class="crumbs"><a href="{{ t.notesUrl }}">{{ t.notes }}</a> / {{ course }}{% if seq %} / <span class="nowrap">{{ t.note }} {{ seq.number }} {{ t.of }} {{ seq.total }}</span>{% endif %}</p>
+        <p class="crumbs"><a href="{{ t.notesUrl }}">{{ t.notes }}</a> / {{ course }}{% if seq %} / <span class="nowrap">{{ t[seq.kind] }} {{ seq.number }} {{ t.of }} {{ seq.total }}</span>{% endif %}</p>
         {%- if other %}
         {{ langSwitch(other, L) }}
         {%- endif %}

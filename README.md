@@ -46,10 +46,12 @@ npm run build    # production build into _site/
    order: 2
    description: One sentence that appears on the notes cards.
    scripts:
-     - /assets/js/notes/2d-transformations.js
+     - /assets/js/notes/computer-vision/2d-transformations.js
    ---
    ```
 
-3. For a new course, add a folder with a `<folder-name>.json` file like `src/notes/computer-vision/computer-vision.json`, setting `layout`, `course` and a `source` credit for the course materials.
+   A note on a paper rather than a chapter of the course adds `kind: paper`: papers are numbered on their own ("Paper 1 of 2" rather than "Note 7 of 9"), and an `order` after the chapter notes keeps them at the end of the course.
+3. Write its Spanish version at the same path under `src/es/notes/`, for example `src/es/notes/computer-vision/2d-transformations.html`, with the same `order` and `scripts` and a translated `title`, `module` and `description`. The two pages link to each other.
+4. For a new course, add a folder with a `<folder-name>.json` file like `src/notes/computer-vision/computer-vision.json`, setting `layout`, `course`, `courseOrder` (its place on the notes page and the homepage) and a `source` credit for the course materials, and its Spanish twin in `src/es/notes/` with the Spanish course name and credit.
 
-Notes appear automatically on the notes index, and the first three by `order` also appear on the homepage. Interactive figures can import helpers from `/assets/js/plane.js`, as `src/assets/js/notes/homogeneous-coordinates.js` does.
+Notes appear automatically on the notes index. The homepage shows three of them: the first note of each course, then the second of each, and so on. Interactive figures go in `src/assets/js/notes/<course>/` and import helpers from `src/assets/js/plane.js`, as `src/assets/js/notes/computer-vision/homogeneous-coordinates.js` does.

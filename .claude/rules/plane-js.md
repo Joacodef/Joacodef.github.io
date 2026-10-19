@@ -20,6 +20,7 @@ The helpers the notes' figures share. Before changing one, take snapshots of eve
 - `wholeNumberInput` makes the number inputs of an editable vector accept whole numbers only, leaving the figure unchanged while a field holds something else.
 - `localNum(x, d)` writes a number as the notes' text does in the page's language (`notes.md`, "Spanish version"). `fmt(n, d)` with `col(arr, cls, f)` and `mat(rows, cls, f)` write vectors and matrices with more decimals (`mat()` writes a `.mat`), and `fmtSig` writes matrix entries far below 1.
 - Matrices: `apply` for any matrix times a vector, `matMul`, `transpose`, `inverse` for 3×3, `solve` for square linear systems and `lstsq` for least squares.
+- `shade(v)` is the fill of a gray value v from 0 to 255, `--img-hi` mixed into `--img-lo` by v/255, so that bright pixels look bright in both themes. Moved there from the 2D transformations note for the DQN note's screens (`pong.js`), the same formula; the press-by-press snapshots of every published figure (`course-materials/tools/snapall.mjs`, its list extended to every published note) were unchanged, and so were they for the classes added to `notes.css` with it (`.handle.on-screen`, the `pg-` classes of `pong.js` and their sizes on phones). Expect a few differences in the sequence labeling note's `fig-head` and `fig-score` even with nothing changed: their underlines are placed from measurements taken at a moment that varies from run to run (`x1="0"` in one run, measured in the next), with no visible difference in the screenshots.
 
 ## 3D
 

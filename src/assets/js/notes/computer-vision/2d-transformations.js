@@ -1,4 +1,4 @@
-import { el, createPlane, createSpace, makeHandle, makeDraggable, apply, inverse, homography, cross, fmt, fmtSig, sym, col, mat, modeButtons, mathLabel, placeBeside, clipLine, tr } from "../../plane.js";
+import { el, createPlane, createSpace, makeHandle, makeDraggable, apply, inverse, homography, cross, fmt, fmtSig, sym, col, mat, modeButtons, mathLabel, placeBeside, clipLine, shade, tr } from "../../plane.js";
 
 const rad = (d) => (d * Math.PI) / 180, deg = (r) => (r * 180) / Math.PI;
 const show = (els, on) => [].concat(els).forEach((e) => e.setAttribute("visibility", on ? "visible" : "hidden"));
@@ -9,7 +9,6 @@ const approx = (n) => (rounded(n) ? "≈ " : "= ") + fmt(n);
 const pointText = (x, y) => `${rounded(x) || rounded(y) ? "≈ " : ""}<span class="pt nowrap">(${fmt(x)}, ${fmt(y)})</span>`;
 const mp = (i = "") => `<span class="pt"><i>m</i>′${i === "" ? "" : `<sub>${i}</sub>`}</span>`;
 const mv = sym("m", "", "pt");
-const shade = (v) => `color-mix(in srgb, var(--img-hi) ${Math.round((v / 255) * 1000) / 10}%, var(--img-lo))`;
 // Empties label memories, so a Reset puts the labels back where they first were.
 const forget = (...memos) => memos.forEach((m) => { for (const k in m) delete m[k]; });
 

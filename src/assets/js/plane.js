@@ -481,6 +481,10 @@ export function createPlane(svg, { max = 40, tick = 5, labelStep = 10, grid = fa
 
 /* ---------- Images in pixels ---------- */
 
+// The fill of a gray value v from 0 to 255: --img-hi mixed into --img-lo by v/255, so that bright pixels look bright in
+// both themes. Moved here from the 2D transformations note for the screens of the DQN note.
+export const shade = (v) => `color-mix(in srgb, var(--img-hi) ${Math.round((v / 255) * 1000) / 10}%, var(--img-lo))`;
+
 // Draws an image of W × H pixels into svg at `scale` SVG units per pixel, with its top left corner at [ox, oy] and,
 // as an image is read, u to the right and v down: the frame, ticks with their values along the top and left edges,
 // and the axis names u and v. `id` names the clip path of the group `inside`, which keeps drawings within the image.
