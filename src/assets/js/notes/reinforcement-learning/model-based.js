@@ -68,7 +68,7 @@ function route(Q) {
   // the model says the move leads (a wall hit nudges it).
   const play = (i) => { const x = X(i); return { ghost: x.s2, ghostFrom: x.s, ghostBump: x.s2 === x.s ? x.a : undefined, taken: [x.s, x.a] }; };
   // Step i in one press: the move picked in green, the best moves where the model says it leads in red.
-  const stepBuild = (i, line) => { const x = X(i); return { ...base(i), ...play(i), Q: x.Q, marks: [...tgOf(x.before, x.s2, x.done), { c: x.s, a: x.a, kind: "upd" }], line, eq: updEq(i) }; };
+  const stepBuild = (i, line) => { const x = X(i); return { ...base(i), ...play(i), code: [1, 2, 3], Q: x.Q, marks: [...tgOf(x.before, x.s2, x.done), { c: x.s, a: x.a, kind: "upd" }], line, eq: updEq(i) }; };
 
   /* ---------- Slides ---------- */
 
@@ -79,13 +79,13 @@ function route(Q) {
   {
     const x = X(1);
     slides.push({ title: tr("Planning step 1", "Paso de planning 1"), builds: [
-      { ...base(1), Q: x.before, pick: [x.s, x.a], ghost: x.s, line: tr(
+      { ...base(1), code: [1], Q: x.before, pick: [x.s, x.a], ghost: x.s, line: tr(
         `It picks a state and a move at random: <span class="nowrap"><i>S</i> = ${cellName(x.s)}</span> and <span class="nowrap"><i>A</i> = ${NAME[x.a]}</span>.`,
         `Elige al azar un estado y un movimiento: <span class="nowrap"><i>S</i> = ${cellName(x.s)}</span> y <span class="nowrap"><i>A</i> = ${NAME[x.a]}</span>.`) },
-      { ...base(1), Q: x.before, taken: [x.s, x.a], ghost: x.s2, ghostBump: x.s2 === x.s ? x.a : undefined, line: tr(
+      { ...base(1), code: [2], Q: x.before, taken: [x.s, x.a], ghost: x.s2, ghostBump: x.s2 === x.s ? x.a : undefined, line: tr(
         `The model answers as the grid would: ${NAME[x.a]} from ${cellName(x.s)} ${into(x)}, so <span class="nowrap"><i>R</i> = ${num(x.r)}</span> and <span class="nowrap"><i>S</i>′ = ${cellName(x.s2)}</span>.`,
         `El modelo responde como lo haría la grilla: ${NAME[x.a]} desde ${cellName(x.s)} ${into(x)}, así que <span class="nowrap"><i>R</i> = ${num(x.r)}</span> y <span class="nowrap"><i>S</i>′ = ${cellName(x.s2)}</span>.`) },
-      { ...base(1), Q: x.Q, ghost: x.s2, marks: [...tgOf(x.before, x.s2, x.done), { c: x.s, a: x.a, kind: "upd" }], line: tr(
+      { ...base(1), code: [3], Q: x.Q, ghost: x.s2, marks: [...tgOf(x.before, x.s2, x.done), { c: x.s, a: x.a, kind: "upd" }], line: tr(
         `The update sets <i>Q</i>(${nm(x.s, x.a)}) to its target: <i>R</i> plus 0.9 times the best value in ${cellName(x.s2)}, outlined in red. Every value there is still 0, so nothing changes.`,
         `La actualización le da a <i>Q</i>(${nm(x.s, x.a)}) el valor de su objetivo: <i>R</i> más 0.9 veces el mejor valor en ${cellName(x.s2)}, con borde rojo. Ahí todos los valores siguen en 0, así que nada cambia.`), eq: updEq(1, true) },
     ] });
@@ -149,9 +149,18 @@ function route(Q) {
   slideshow({
     svg: document.getElementById("fig-qplan"),
     slides,
+    code: {
+      title: tr("Random-sample one-step tabular Q-planning", "Q-planning tabular de un paso, con muestras al azar"),
+      lines: [
+        { head: true, html: tr("Repeat:", "Repetir:") },
+        { kind: "pick", html: tr(`<i>S</i> ← a random state, <i>A</i> ← a random action`, `<i>S</i> ← un estado al azar, <i>A</i> ← una acción al azar`) },
+        { kind: "model", html: `<span class="nowrap"><i>R</i>, <i>S</i>′ ← <i>Model</i>(<i>S</i>, <i>A</i>)</span>` },
+        { kind: "update", html: `<span class="nowrap"><span class="upd"><i>Q</i>(<i>S</i>, <i>A</i>)</span> ← <i>Q</i>(<i>S</i>, <i>A</i>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i> + γ max<sub><i>a</i></sub> <i>Q</i>(<i>S</i>′, <i>a</i>)</span></span> <span class="nowrap">− <i>Q</i>(<i>S</i>, <i>A</i>)]</span>` },
+      ],
+    },
     world: cookie,
     // The values after step m, for the frames of a skip: the move just updated in green, the next one picked in yellow.
-    frame: (m) => ({ label: label(m), Q: X(m).Q, agent: START, ghost: X(m).s2, shown: ALL, marks: [{ c: X(m).s, a: X(m).a, kind: "upd" }], pick: m < n ? [X(m + 1).s, X(m + 1).a] : undefined }),
+    frame: (m) => ({ code: [1, 2, 3], label: label(m), Q: X(m).Q, agent: START, ghost: X(m).s2, shown: ALL, marks: [{ c: X(m).s, a: X(m).a, kind: "upd" }], pick: m < n ? [X(m + 1).s, X(m + 1).a] : undefined }),
   });
 }
 
@@ -228,6 +237,41 @@ function route(Q) {
   makeDraggable(door, { move: ({ x }) => setD(Math.round((x - P(0)[0]) / STEP)), step: ([dx, dy]) => setD(d + dx + dy) });
   render();
 }
+
+/* ---------- The pseudocode beside the runs ---------- */
+
+// R-Max's, shared by the R-Max figure and the wall figure's R-Max run. Value iteration (line 2) heads the loop, as in the
+// note's steps, so the value iteration press after a count lights it as the next move's first line; a whole move in one
+// press plays 3, 4, 5, then 2.
+const RMAX_CODE = {
+  title: tr("R-Max", "R-Max"),
+  lines: [
+    { kind: "plain", html: tr(`Every count <i>N</i> ← 0`, `Todo conteo <i>N</i> ← 0`) },
+    { head: true, html: tr("Repeat, for each move:", "Repetir, en cada movimiento:") },
+    { kind: "update", ind: 1, html: tr(`<i>Q</i> ← value iteration on the model, with <i>R</i><sub>max</sub> for unknown pairs`, `<i>Q</i> ← value iteration sobre el modelo, con <i>R</i><sub>max</sub> para los pares <i>unknown</i>`) },
+    { kind: "pick", ind: 1, html: tr(`<i>S</i> ← the current state, <span class="nowrap"><i>A</i> ← greedy</span> from <i>Q</i>`, `<i>S</i> ← el estado actual, <span class="nowrap"><i>A</i> ← greedy</span> según <i>Q</i>`) },
+    { kind: "take", ind: 1, html: tr(`Take <i>A</i>; observe <i>R</i>, <i>S</i>′`, `Tomar <i>A</i>; observar <i>R</i>, <i>S</i>′`) },
+    { kind: "update", ind: 1, html: tr(`<span class="nowrap"><i>N</i>(<i>S</i>, <i>A</i>) ← <i>N</i>(<i>S</i>, <i>A</i>) + 1</span>, and the same for <span class="nowrap"><i>N</i>(<i>S</i>, <i>A</i>, <i>S</i>′, <i>R</i>)</span>`, `<span class="nowrap"><i>N</i>(<i>S</i>, <i>A</i>) ← <i>N</i>(<i>S</i>, <i>A</i>) + 1</span>, y lo mismo para <span class="nowrap"><i>N</i>(<i>S</i>, <i>A</i>, <i>S</i>′, <i>R</i>)</span>`) },
+  ],
+};
+const RMAX_MOVE = [3, 4, 5, 2];
+// Dyna-Q's, shared by the Dyna-Q figure and the wall figure's Dyna-Q run: lines 1 to 4 are the real move, 6 to 8 a
+// planning step.
+const DYNA_CODE = {
+  title: tr("Tabular Dyna-Q", "Dyna-Q tabular"),
+  lines: [
+    { head: true, html: tr("Repeat, for each move:", "Repetir, en cada movimiento:") },
+    { kind: "pick", ind: 1, html: tr(`<i>S</i> ← the current state, <span class="nowrap"><i>A</i> ← ε-greedy</span> from <i>Q</i>`, `<i>S</i> ← el estado actual, <span class="nowrap"><i>A</i> ← ε-greedy</span> según <i>Q</i>`) },
+    { kind: "take", ind: 1, html: tr(`Take <i>A</i>; observe <i>R</i>, <i>S</i>′`, `Tomar <i>A</i>; observar <i>R</i>, <i>S</i>′`) },
+    { kind: "update", ind: 1, html: `<span class="nowrap"><span class="upd"><i>Q</i>(<i>S</i>, <i>A</i>)</span> ← <i>Q</i>(<i>S</i>, <i>A</i>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i> + γ max<sub><i>a</i></sub> <i>Q</i>(<i>S</i>′, <i>a</i>)</span></span> <span class="nowrap">− <i>Q</i>(<i>S</i>, <i>A</i>)]</span>` },
+    { kind: "model", ind: 1, html: `<span class="nowrap"><i>Model</i>(<i>S</i>, <i>A</i>) ← <i>R</i>, <i>S</i>′</span>` },
+    { head: true, ind: 1, html: tr(`Repeat <i>n</i> times:`, `Repetir <i>n</i> veces:`) },
+    { kind: "pick", ind: 2, html: tr(`<i>S</i>, <i>A</i> ← a pair tried before, at random`, `<i>S</i>, <i>A</i> ← un par ya probado, al azar`) },
+    { kind: "model", ind: 2, html: `<span class="nowrap"><i>R</i>, <i>S</i>′ ← <i>Model</i>(<i>S</i>, <i>A</i>)</span>` },
+    { kind: "update", ind: 2, html: `<span class="nowrap"><span class="upd"><i>Q</i>(<i>S</i>, <i>A</i>)</span> ← <i>Q</i>(<i>S</i>, <i>A</i>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i> + γ max<sub><i>a</i></sub> <i>Q</i>(<i>S</i>′, <i>a</i>)</span></span> <span class="nowrap">− <i>Q</i>(<i>S</i>, <i>A</i>)]</span>` },
+  ],
+};
+const D_PLAN1 = [6, 7, 8], D_PLANS = Array.from({ length: 10 }, () => D_PLAN1).flat(), D_MOVE = [1, 2, 3, 4, ...D_PLANS], D_FF = [1, 2, 3, 4, ...D_PLAN1];
 
 /* ---------- Section 2: R-Max on the cookie grid ---------- */
 
@@ -310,21 +354,27 @@ function route(Q) {
   /* ---------- Builds: one line of the algorithm per press ---------- */
 
   // Choose A greedily from the values: the move turns yellow before the agent moves.
-  const chooseBuild = (i, lead) => { const x = X(i); return { ...pos(i), time: x.t, Q: x.Q, agent: x.s, jump: x.t === 0, pick: [x.s, x.a], unknown: x.unknown, line: `${lead} ${reason(x.Q[x.s], false, x.s, x.a, x.t)}` }; };
+  const chooseBuild = (i, lead) => { const x = X(i); return { code: [3], ...pos(i), time: x.t, Q: x.Q, agent: x.s, jump: x.t === 0, pick: [x.s, x.a], unknown: x.unknown, line: `${lead} ${reason(x.Q[x.s], false, x.s, x.a, x.t)}`.trim() }; };
   // Take A, and see R and S′.
-  const takeBuild = (i) => { const x = X(i), bump = x.s2 === x.s ? x.a : null; return { ...pos(i), time: x.t, Q: x.Q, agent: x.s2, taken: [x.s, x.a], bump, sound: bump !== null ? "wall" : undefined, unknown: x.unknown, line: takeText(x) }; };
+  const takeBuild = (i) => { const x = X(i), bump = x.s2 === x.s ? x.a : null; return { code: [4], ...pos(i), time: x.t, Q: x.Q, agent: x.s2, taken: [x.s, x.a], bump, sound: bump !== null ? "wall" : undefined, unknown: x.unknown, line: takeText(x) }; };
   // Count it: the move is outlined in green, still shaded until value iteration runs on the new model.
-  const countBuild = (i, line, eq) => { const x = X(i); return { ...pos(i), time: x.t + 1, Q: x.Q, agent: x.s2, unknown: x.unknown, marks: [{ c: x.s, a: x.a, kind: "upd" }], line, eq }; };
+  const countBuild = (i, line, eq) => { const x = X(i); return { code: [5], ...pos(i), time: x.t + 1, Q: x.Q, agent: x.s2, unknown: x.unknown, marks: [{ c: x.s, a: x.a, kind: "upd" }], line, eq }; };
   // Value iteration on the new model: the shade lifts from the move, and what changed is outlined in green.
-  const viBuild = (i, line, eq) => { const x = X(i); return { ...pos(i), time: x.t + 1, Q: x.Q2, agent: x.s2, unknown: x.unknown2, marks: [...usedBy(i), ...changed(i)], line, eq: eq ?? viEq(x) }; };
+  const viBuild = (i, line, eq) => { const x = X(i); return { code: [2], ...pos(i), time: x.t + 1, Q: x.Q2, agent: x.s2, unknown: x.unknown2, marks: [...usedBy(i), ...changed(i)], line, eq: eq ?? viEq(x) }; };
+  // The phases of a press that plays a whole move, drawn in time with the pseudocode, as moves 1 to 3 draw them line by
+  // line: chosen, taken, counted, valued by value iteration; from = 1 starts at the take.
+  const movePhases = (i, from = 0) => [
+    { slow: true, lines: [3], draw: chooseBuild(i, "") }, { slow: true, lines: [4], draw: takeBuild(i) },
+    { slow: true, lines: [5], draw: countBuild(i, "") }, { slow: true, lines: [2], draw: viBuild(i, "") },
+  ].slice(from);
   // A whole move in one press: chosen, taken, counted, and valued by value iteration.
-  const moveBuild = (i, extra = "") => { const x = X(i), tk = takeBuild(i); return { ...viBuild(i, ""), taken: tk.taken, bump: tk.bump, sound: tk.sound, line: `${chooseTakeText(x.Q[x.s], false, x)} ${valueText(x)}${extra}` }; };
+  const moveBuild = (i, extra = "") => { const x = X(i), tk = takeBuild(i); return { ...viBuild(i, ""), code: RMAX_MOVE, phases: movePhases(i), taken: tk.taken, bump: tk.bump, sound: tk.sound, line: `${chooseTakeText(x.Q[x.s], false, x)} ${valueText(x)}${extra}` }; };
   const pEq = (x) => `<i>P</i>(${cellName(x.s2)}, ${num(x.r)} | ${nm(x)}) <span class="nowrap">= <span class="frac"><span><i>N</i>(${nm(x)}, ${cellName(x.s2)}, ${num(x.r)})</span><span><i>N</i>(${nm(x)})</span></span></span> <span class="nowrap">= <span class="frac"><span>1</span><span>1</span></span> = 1</span>`;
 
   /* ---------- Slides ---------- */
 
   const slides = [];
-  slides.push({ title: tr("R-Max on the cookie grid", "R-Max en la grilla de la galleta"), builds: [{ ep: 1, move: null, at: -1, time: 0, Q: X(0).Q, agent: START, unknown: X(0).unknown, line: tr(
+  slides.push({ title: tr("R-Max on the cookie grid", "R-Max en la grilla de la galleta"), builds: [{ code: [0], ep: 1, move: null, at: -1, time: 0, Q: X(0).Q, agent: START, unknown: X(0).unknown, line: tr(
     `Every count starts at 0, so every move is unknown, shaded, and value iteration gives each one <i>R</i><sub>max</sub> = 1, as much as the cookie. The agent stands at ${sym("S", 0)} = A1.`,
     `Todos los conteos parten en 0, así que todo movimiento es <i>unknown</i>, sombreado, y value iteration le da a cada uno <i>R</i><sub>max</sub> = 1, tanto como la galleta. El agente está en ${sym("S", 0)} = A1.`),
     eq: tr(`<i>Q</i>(<i>s</i>, <i>a</i>) = <i>R</i><sub>max</sub> = 1 for every move`, `<i>Q</i>(<i>s</i>, <i>a</i>) = <i>R</i><sub>max</sub> = 1 para todo movimiento`) }] });
@@ -349,6 +399,17 @@ function route(Q) {
       viBuild(i, tr(`Value iteration runs again. ${valueText(x)}`, `Value iteration corre de nuevo. ${valueText(x)}`)),
     ] });
   }
+  // With the pseudocode beside the run, the readout shows one press: short texts for the presses of moves 1 to 3 that
+  // lean on the line they light.
+  for (const k of [1, 2, 3]) {
+    const bs = slides[k].builds, x = X(k - 1);
+    bs[0].short = reason(x.Q[x.s], false, x.s, x.a, x.t);
+    bs[2].short = k === 1
+      ? tr(`One visit to ${moveName(x.s, x.a)}, which led to ${cellName(x.s2)} with reward ${num(x.r)}. One visit is <i>k</i>, so the move is known now, and the model says where it leads, with probability 1.`,
+        `Una visita a ${moveName(x.s, x.a)}, que llevó a ${cellName(x.s2)} con recompensa ${num(x.r)}. Una visita es <i>k</i>, así que el movimiento ya es <i>known</i>, y el modelo dice adónde lleva, con probabilidad 1.`)
+      : tr(`The move is known now: the model says it leads to ${cellName(x.s2)}, with reward ${num(x.r)}.`, `El movimiento ya es <i>known</i>: el modelo dice que lleva a ${cellName(x.s2)}, con recompensa ${num(x.r)}.`);
+    bs[3].short = valueText(x);
+  }
   // The rest of episode 1, one press per move.
   for (let i = 3; i < T1 - 1; i++) slides.push({ title: tr(`Move ${i + 1}`, `Movimiento ${i + 1}`), builds: [moveBuild(i)] });
   slides.push({ title: tr("Episode 1 ends", "Termina el episodio 1"), builds: [moveBuild(T1 - 1, tr(` The episode ends at <i>T</i> = ${T1}.`, ` El episodio termina en <i>T</i> = ${T1}.`))] });
@@ -366,7 +427,7 @@ function route(Q) {
     slides.push({ title: tr("The cookie can wait", "La galleta puede esperar"), builds: [
       chooseBuild(i, tr(`A new episode starts at A1. Through moves it already knows, the cookie is ${d} moves away, worth 0.9<sup>${d - 1}</sup> ${eqv(kv)}.${why}`,
         `Un nuevo episodio parte en A1. Por movimientos que ya conoce, la galleta está a ${d} movimientos, y vale 0.9<sup>${d - 1}</sup> ${eqv(kv)}.${why}`)),
-      { ...moveBuild(i), line: `${takeText(x)} ${valueText(x)}` },
+      { ...moveBuild(i), code: RMAX_MOVE.slice(1), phases: movePhases(i, 1), line: `${takeText(x)} ${valueText(x)}` },
     ] });
   }
   {
@@ -391,11 +452,12 @@ function route(Q) {
   slideshow({
     svg: document.getElementById("fig-rmax"),
     slides,
+    code: RMAX_CODE,
     world: cookie,
     // The state after move m, for the frames of a skip: the move just counted in green, the next one in yellow.
     frame: (m) => {
       const x = X(m), y = m < last ? X(m + 1) : null;
-      return { Q: x.Q2, agent: x.done ? GOAL : x.s2, ep: x.ep, move: x.t + 1, time: x.t + 1, unknown: x.unknown2, bumpPose: shake(x, m), marks: [{ c: x.s, a: x.a, kind: "upd" }], pick: y && y.ep === x.ep ? [y.s, y.a] : undefined };
+      return { code: RMAX_MOVE, Q: x.Q2, agent: x.done ? GOAL : x.s2, ep: x.ep, move: x.t + 1, time: x.t + 1, unknown: x.unknown2, bumpPose: shake(x, m), marks: [{ c: x.s, a: x.a, kind: "upd" }], pick: y && y.ep === x.ep ? [y.s, y.a] : undefined };
     },
   });
 }
@@ -407,6 +469,7 @@ function route(Q) {
 // after its last move already give a shortest route from A1, which the best moves keep to the end of the run.
 {
   const ALPHA = 0.5, EPS = 0.1, NPLAN = 10, SEED = 6350, EPISODES = 30;
+  const PLAN1 = [6, 7, 8], PLANS = Array.from({ length: NPLAN }, () => PLAN1).flat(), MOVE = [1, 2, 3, 4, ...PLANS], FF = [1, 2, 3, 4, ...PLAN1];
   // The whole run: for each move, the values before it, after its direct update and after each planning step, and the
   // moves the model holds after it.
   const steps = [];
@@ -449,21 +512,40 @@ function route(Q) {
 
   /* ---------- Builds: one line of the algorithm per press ---------- */
 
-  const chooseBuild = (i, lead) => { const x = X(i); return { ...pos(i), time: x.t, Q: x.pre, agent: x.s, jump: x.t === 0, pick: [x.s, x.a], shown: shownBefore(i), line: `${lead} ${reason(x.pre[x.s], x.explored, x.s, x.a, x.t)}`.trim() }; };
-  const takeBuild = (i) => { const x = X(i), bump = x.s2 === x.s ? x.a : null; return { ...pos(i), time: x.t, Q: x.pre, agent: x.s2, taken: [x.s, x.a], bump, sound: bump !== null ? "wall" : undefined, shown: shownBefore(i), line: takeText(x) }; };
+  const chooseBuild = (i, lead) => { const x = X(i); return { code: [1], ...pos(i), time: x.t, Q: x.pre, agent: x.s, jump: x.t === 0, pick: [x.s, x.a], shown: shownBefore(i), line: `${lead} ${reason(x.pre[x.s], x.explored, x.s, x.a, x.t)}`.trim() }; };
+  const takeBuild = (i) => { const x = X(i), bump = x.s2 === x.s ? x.a : null; return { code: [2], ...pos(i), time: x.t, Q: x.pre, agent: x.s2, taken: [x.s, x.a], bump, sound: bump !== null ? "wall" : undefined, shown: shownBefore(i), line: takeText(x) }; };
   // The direct RL update, as in Q-learning: the best moves of S′ in red, the pair in green, its value shown even at 0.
-  const updateBuild = (i, line) => { const x = X(i); return { ...pos(i), time: x.t + 1, Q: x.direct.Q, agent: agentAfter(x), shown: x.inModel, marks: [...tgOf(x.pre, x.s2, x.done), { c: x.s, a: x.a, kind: "upd" }], line, eq: directEq(x) }; };
+  const updateBuild = (i, line) => { const x = X(i); return { code: [3], ...pos(i), time: x.t + 1, Q: x.direct.Q, agent: agentAfter(x), shown: x.inModel, marks: [...tgOf(x.pre, x.s2, x.done), { c: x.s, a: x.a, kind: "upd" }], line, eq: directEq(x) }; };
   // The model remembers the move, outlined in blue.
-  const modelBuild = (i, line) => { const x = X(i); return { ...pos(i), time: x.t + 1, Q: x.direct.Q, agent: agentAfter(x), shown: x.inModel, marks: [{ c: x.s, a: x.a, kind: "step" }], line,
+  const modelBuild = (i, line) => { const x = X(i); return { code: [4], ...pos(i), time: x.t + 1, Q: x.direct.Q, agent: agentAfter(x), shown: x.inModel, marks: [{ c: x.s, a: x.a, kind: "step" }], line,
     eq: `<i>Model</i>(${sym("S", x.t)}, ${sym("A", x.t)}) ← ${sym("R", x.t + 1)}, ${sym("S", x.t + 1)} <span class="nowrap">= ${num(x.r)}, ${cellName(x.s2)}</span>` }; };
   // Planning step k after move i: the move replayed in green, the best moves of where the model says it leads in red.
-  const planBuild = (i, k, line, withRoute) => { const x = X(i), p = x.plans[k]; return { ...pos(i), time: x.t + 1, Q: p.Q, agent: agentAfter(x), shown: x.inModel, ghost: p.s2, ghostFrom: p.s, ghostBump: p.s2 === p.s ? p.a : undefined, taken: [p.s, p.a], marks: [...tgOf(p.before, p.s2, p.done), { c: p.s, a: p.a, kind: "upd" }], line, eq: planEq(p), route: withRoute ? route(p.Q) : undefined }; };
+  const planBuild = (i, k, line, withRoute) => { const x = X(i), p = x.plans[k]; return { code: PLAN1, ...pos(i), time: x.t + 1, Q: p.Q, agent: agentAfter(x), shown: x.inModel, ghost: p.s2, ghostFrom: p.s, ghostBump: p.s2 === p.s ? p.a : undefined, taken: [p.s, p.a], marks: [...tgOf(p.before, p.s2, p.done), { c: p.s, a: p.a, kind: "upd" }], line, eq: planEq(p), route: withRoute ? route(p.Q) : undefined }; };
   // All the planning steps after move i in one press, the moves they replayed in green.
-  const plansBuild = (i, line) => { const x = X(i); return { ...pos(i), time: x.t + 1, Q: x.post, agent: agentAfter(x), shown: x.inModel, marks: uniq(x.plans.map((p) => [p.s, p.a])).map(([c, a]) => ({ c, a, kind: "upd" })), line, eq: planEq(x.plans[0]) }; };
+  const plansBuild = (i, line) => { const x = X(i); return { code: PLANS, phases: x.plans.flatMap((p) => planPhase(i, p)), ...pos(i), time: x.t + 1, Q: x.post, agent: agentAfter(x), shown: x.inModel, marks: uniq(x.plans.map((p) => [p.s, p.a])).map(([c, a]) => ({ c, a, kind: "upd" })), line, eq: planEq(x.plans[0]) }; };
   // A whole move in one press: chosen, taken, updated, remembered, and followed by its planning steps.
-  const moveBuild = (i, rest, withRoute = false) => { const x = X(i), tk = takeBuild(i); return { ...pos(i), time: x.t + 1, Q: x.post, agent: agentAfter(x), taken: tk.taken, bump: tk.bump, sound: tk.sound, shown: x.inModel,
+  const moveBuild = (i, rest, withRoute = false) => { const x = X(i), tk = takeBuild(i); return { code: MOVE, phases: movePhases(i), ...pos(i), time: x.t + 1, Q: x.post, agent: agentAfter(x), taken: tk.taken, bump: tk.bump, sound: tk.sound, shown: x.inModel,
     marks: uniq([[x.s, x.a], ...x.plans.map((p) => [p.s, p.a])]).map(([c, a]) => ({ c, a, kind: "upd" })), route: withRoute ? route(x.post) : undefined, line: `${chooseTakeText(x.pre[x.s], x.explored, x)} ${rest}` }; };
 
+  // The phases of a press that plays a whole move, drawn in time with the pseudocode: the move and its direct update
+  // (lines 1 to 4), then each planning step (its three lines), the move it replays in green and the moves its target
+  // uses in red.
+  // A planning step, one phase a line: the pair picked in yellow (old values), the moves the model's answer makes the
+  // target use in red, then the update, the value in green taking its new number.
+  const planPhase = (i, p) => {
+    const base = { ...pos(i), time: X(i).t + 1, agent: agentAfter(X(i)), shown: X(i).inModel }, tg = tgOf(p.before, p.s2, p.done);
+    return [
+      { lines: [PLAN1[0]], draw: { ...base, Q: p.before, pick: [p.s, p.a] } },
+      { lines: [PLAN1[1]], draw: { ...base, Q: p.before, marks: tg } },
+      { lines: [PLAN1[2]], draw: { ...base, Q: p.Q, marks: [...tg, { c: p.s, a: p.a, kind: "upd" }] } },
+    ];
+  };
+  // The real move, as move 1's presses draw it line by line, then its planning steps.
+  const movePhases = (i) => [
+    { slow: true, lines: [1], draw: chooseBuild(i, "") }, { slow: true, lines: [2], draw: takeBuild(i) },
+    { slow: true, lines: [3], draw: updateBuild(i, "") }, { slow: true, lines: [4], draw: modelBuild(i, "") },
+    ...X(i).plans.flatMap((p) => planPhase(i, p)),
+  ];
   /* ---------- Slides ---------- */
 
   const slides = [];
@@ -520,7 +602,7 @@ function route(Q) {
       const r = k >= first ? route(p.Q) : null;
       const extra = k === first ? tr(` Now the best moves lead from A1 to the cookie, in ${r.length - 1} moves: a route the agent never walked straight through.`, ` Ahora los mejores movimientos llevan de A1 a la galleta, en ${r.length - 1} movimientos: una ruta que el agente nunca recorrió de una vez.`)
         : k === NPLAN - 1 ? tr(` After one episode, Q-learning alone would have a value for ${moveName(x.s, x.a)} only; ${NPLAN} planning steps have carried the cookie's value back to A1.`, ` Después de un episodio, Q-learning solo tendría un valor para ${moveName(x.s, x.a)}; ${NPLAN} pasos de planning llevaron el valor de la galleta de vuelta hasta A1.`) : "";
-      slides.push({ title: tr(`Planning step ${k + 1} of ${NPLAN}`, `Paso de planning ${k + 1} de ${NPLAN}`), builds: [planBuild(i, k, pick + what + extra, k >= first)] });
+      slides.push({ title: tr(`Planning step ${k + 1} of ${NPLAN}`, `Paso de planning ${k + 1} de ${NPLAN}`), builds: [{ ...planBuild(i, k, pick + what + extra, k >= first), short: tr(`${moveName(p.s, p.a)}: the model says it ${into}.`, `${moveName(p.s, p.a)}: según el modelo, ${into}.`) + what + extra }] });
     });
   }
   {
@@ -555,16 +637,26 @@ function route(Q) {
       `Along the route the values are ${vals}, the returns of the shortest trip. In ${steps.length} moves the agent tried only ${seenPairs.size} of the ${CELLS.length * 4} moves. Planning replays only moves already made, and after episode 1 every new move came from a random move, one time in ten, or from a cell a random move had led to.`,
       `A lo largo de la ruta, los valores son ${vals}, los retornos del viaje más corto. En ${steps.length} movimientos, el agente probó solo ${seenPairs.size} de los ${CELLS.length * 4} movimientos. El planning solo repite movimientos ya hechos, y después del episodio 1 cada movimiento nuevo vino de un movimiento al azar, una vez de cada diez, o de una celda adonde lo había llevado uno.`) }] });
   }
+  {
+    const m1 = slides[1].builds, x0 = X(0), ck = slides.find((s) => s.title === tr("The cookie", "La galleta")).builds, xc = X(T1 - 1);
+    m1[0].short = reason(x0.pre[x0.s], x0.explored, x0.s, x0.a, x0.t);
+    m1[2].short = tr(`Every move in ${cellName(x0.s2)} is still worth 0, so the target is 0 and the value stays at 0. The 0 now shows: the move has been tried.`, `Todos los movimientos en ${cellName(x0.s2)} aún valen 0, así que el objetivo es 0 y el valor se queda en 0. Ese 0 ahora se muestra: el movimiento ya se probó.`);
+    m1[3].short = tr(`From ${cellName(x0.s)}, ${NAME[x0.a]} leads to ${cellName(x0.s2)} with reward ${num(x0.r)}, outlined in blue. A value on the grid, 0 included, marks a move the model holds.`, `Desde ${cellName(x0.s)}, ${NAME[x0.a]} lleva a ${cellName(x0.s2)} con recompensa ${num(x0.r)}, con borde azul. Un valor en la grilla, 0 incluido, marca un movimiento que el modelo guarda.`);
+    m1[4].short = tr(`The model holds only ${moveName(x0.s, x0.a)}, so all ${NPLAN} planning steps replay it, and every target is 0: nothing changes.`, `El modelo guarda solo ${moveName(x0.s, x0.a)}, así que los ${NPLAN} pasos de planning lo repiten, y todo objetivo es 0: nada cambia.`);
+    ck[2].short = tr(`Nothing follows the cookie: the target is ${num(xc.r)}, and the value moves halfway, to ${num(xc.direct.nu)}. Q-learning would stop here, with this one value.`, `Después de la galleta no viene nada: el objetivo es ${num(xc.r)}, y el valor avanza la mitad, a ${num(xc.direct.nu)}. Q-learning se detendría aquí, con este único valor.`);
+    ck[3].short = tr(`It now holds ${xc.inModel.size} moves, every move of the episode.`, `Ahora guarda ${xc.inModel.size} movimientos, todos los del episodio.`);
+  }
   addSkips(slides, X);
 
   slideshow({
     svg: document.getElementById("fig-dyna"),
     slides,
+    code: DYNA_CODE,
     world: cookie,
     // The state after move m, for the frames of a skip: the move just made in green, the next one in yellow.
     frame: (m) => {
       const x = X(m), y = m < last ? X(m + 1) : null;
-      return { Q: x.post, agent: agentAfter(x), ep: x.ep, move: x.t + 1, time: x.t + 1, shown: x.inModel, bumpPose: shake(x, m), marks: [{ c: x.s, a: x.a, kind: "upd" }], pick: y && y.ep === x.ep ? [y.s, y.a] : undefined };
+      return { code: FF, Q: x.post, agent: agentAfter(x), ep: x.ep, move: x.t + 1, time: x.t + 1, shown: x.inModel, bumpPose: shake(x, m), marks: [{ c: x.s, a: x.a, kind: "upd" }], pick: y && y.ep === x.ep ? [y.s, y.a] : undefined };
     },
   });
 }
@@ -639,7 +731,7 @@ function route(Q) {
   const rSlides = [], rX = (i) => R[i], rLast = R.length - 1;
   const rFrame = (m) => {
     const x = rX(m), y = m < rLast ? rX(m + 1) : null;
-    return { Q: x.Q2, agent: after(x), ring: x.fell, ep: x.ep, move: x.t + 1, time: x.t + 1, walls: wallsAt(x.ep), unknown: x.unknown2, bumpPose: shake(x, m), marks: [{ c: x.s, a: x.a, kind: "upd" }], pick: y && y.ep === x.ep ? [y.s, y.a] : undefined };
+    return { code: RMAX_MOVE, Q: x.Q2, agent: after(x), ring: x.fell, ep: x.ep, move: x.t + 1, time: x.t + 1, walls: wallsAt(x.ep), unknown: x.unknown2, bumpPose: shake(x, m), marks: [{ c: x.s, a: x.a, kind: "upd" }], pick: y && y.ep === x.ep ? [y.s, y.a] : undefined };
   };
   {
     const X = rX, pos = (i) => ({ ep: X(i).ep, move: X(i).t + 1, at: i }), L = lens(R);
@@ -648,15 +740,18 @@ function route(Q) {
     const bumps = R.flatMap((x, i) => (x.ep === UP_EP && x.s === A2 && x.a === RIGHT && x.s2 === A2 ? [i] : []));
     const passes = R.filter((x, i) => i <= e10 && x.s === A2 && x.a === RIGHT).length;
     // Choose A greedily from the values: the move turns yellow before the agent moves.
-    const chooseB = (i) => { const x = X(i); return { ...pos(i), time: x.t, Q: x.Q, agent: x.s, jump: x.t === 0, pick: [x.s, x.a], walls: wallsAt(x.ep), line: cliff.reason(x.Q[x.s], false, x.s, x.a, x.t) }; };
-    const takeB = (i) => { const x = X(i), bump = x.s2 === x.s ? x.a : null; return { ...pos(i), time: x.t, Q: x.Q, agent: after(x), taken: [x.s, x.a], bump, sound: bump !== null ? "wall" : undefined, walls: wallsAt(x.ep), line: cliff.takeText(x) }; };
-    const countB = (i, line, eq) => { const x = X(i); return { ...pos(i), time: x.t + 1, Q: x.Q, agent: after(x), walls: wallsAt(x.ep), marks: [{ c: x.s, a: x.a, kind: "upd" }], line, eq }; };
+    const chooseB = (i) => { const x = X(i); return { code: [3], ...pos(i), time: x.t, Q: x.Q, agent: x.s, jump: x.t === 0, pick: [x.s, x.a], walls: wallsAt(x.ep), line: cliff.reason(x.Q[x.s], false, x.s, x.a, x.t) }; };
+    const takeB = (i) => { const x = X(i), bump = x.s2 === x.s ? x.a : null; return { code: [4], ...pos(i), time: x.t, Q: x.Q, agent: after(x), taken: [x.s, x.a], bump, sound: bump !== null ? "wall" : undefined, walls: wallsAt(x.ep), line: cliff.takeText(x) }; };
+    const countB = (i, line, eq) => { const x = X(i); return { code: [5], ...pos(i), time: x.t + 1, Q: x.Q, agent: after(x), walls: wallsAt(x.ep), marks: [{ c: x.s, a: x.a, kind: "upd" }], line, eq }; };
     // Value iteration on the new model: the move counted and every value that changed in green, the best moves of the
     // cells the move leads to in red.
     const moved = (i) => { const x = X(i); return STATES.flatMap((s) => [0, 1, 2, 3].filter((a) => x.Q2[s][a] !== x.Q[s][a]).map((a) => ({ c: s, a, kind: "upd" }))); };
-    const viB = (i, line, eq) => { const x = X(i); return { ...pos(i), time: x.t + 1, Q: x.Q2, agent: after(x), walls: wallsAt(x.ep), marks: [...x.outs.flatMap((o) => tgOf(x.Q2, o.s2, o.s2 === G)), ...moved(i), { c: x.s, a: x.a, kind: "upd" }], line, eq, fit: true }; };
+    const viB = (i, line, eq) => { const x = X(i); return { code: [2], ...pos(i), time: x.t + 1, Q: x.Q2, agent: after(x), walls: wallsAt(x.ep), marks: [...x.outs.flatMap((o) => tgOf(x.Q2, o.s2, o.s2 === G)), ...moved(i), { c: x.s, a: x.a, kind: "upd" }], line, eq, fit: true }; };
     // A whole move in one press: chosen, taken, counted, and valued by value iteration.
-    const moveB = (i, extra, eq) => { const x = X(i), tk = takeB(i); return { ...viB(i, "", eq), taken: tk.taken, bump: tk.bump, sound: tk.sound, line: `${cliff.chooseTakeText(x.Q[x.s], false, x)}${extra}` }; };
+    // Its phases play it in time with the pseudocode, line by line, as the first bump is played.
+    const moveB = (i, extra, eq) => { const x = X(i), tk = takeB(i); return { ...viB(i, "", eq), code: RMAX_MOVE, phases: [
+      { slow: true, lines: [3], draw: chooseB(i) }, { slow: true, lines: [4], draw: takeB(i) }, { slow: true, lines: [5], draw: countB(i, "") }, { slow: true, lines: [2], draw: viB(i, "") },
+    ], taken: tk.taken, bump: tk.bump, sound: tk.sound, line: `${cliff.chooseTakeText(x.Q[x.s], false, x)}${extra}` }; };
     // What the model says right from A2 does, and the value value iteration gives it.
     const pEq = (i) => X(i).outs.map((o) => `<i>P</i>(${cn(o.s2)}, ${num(o.r)} | ${nm(A2, RIGHT)}) <span class="nowrap">= ${frac(o.c, X(i).n)}</span>`).join("<br>");
     const rightEq = (i) => {
@@ -667,7 +762,7 @@ function route(Q) {
     if (known.length !== STATES.length * 4 || knownEp >= UP_EP) console.warn("Wall figure: R-Max does not know every move before the wall");
     if (Object.entries(L).some(([e, l]) => +e > knownEp && +e < UP_EP && l !== 7)) console.warn("Wall figure: R-Max's trips before the wall do not all take the edge");
     const x0 = X(e10);
-    rSlides.push({ title: tr("R-Max on the cliff", "R-Max en el acantilado"), builds: [{ label: before(1), ep: 1, at: -1, Q: X(0).Q, agent: S0, unknown: X(0).unknown, line: tr(
+    rSlides.push({ title: tr("R-Max on the cliff", "R-Max en el acantilado"), builds: [{ code: [0], label: before(1), ep: 1, at: -1, Q: X(0).Q, agent: S0, unknown: X(0).unknown, line: tr(
       `Every move starts unknown, shaded and worth <i>R</i><sub>max</sub> = −1, the largest reward on the cliff. Before the wall goes up, R-Max learns the cliff for ${UP_EP - 1} episodes.`,
       `Todo movimiento parte <i>unknown</i>, sombreado y con valor <i>R</i><sub>max</sub> = −1, la mayor recompensa en el acantilado. Antes de que se levante la pared, R-Max aprende el acantilado durante ${UP_EP - 1} episodios.`) }] });
     rSlides.push({ title: tr(`R-Max after ${UP_EP - 1} episodes`, `R-Max después de ${UP_EP - 1} episodios`), builds: [{ label: before(UP_EP), ep: UP_EP, at: e10, Q: x0.Q2, agent: S0, route: trip(R, UP_EP - 1), line: tr(
@@ -689,10 +784,13 @@ function route(Q) {
       rSlides.push({ title: tr("Into the wall", "Contra la pared"), builds: [
         chooseB(i),
         takeB(i),
-        countB(i, tr(`It counts what happened: <i>N</i>(${nm(A2, RIGHT)}) = ${x.n}, and ${x.n - passes} of those ${x.n} tries led back to A2.`,
+        { ...countB(i, tr(`It counts what happened: <i>N</i>(${nm(A2, RIGHT)}) = ${x.n}, and ${x.n - passes} of those ${x.n} tries led back to A2.`,
           `Cuenta lo que pasó: <i>N</i>(${nm(A2, RIGHT)}) = ${x.n}, y ${x.n - passes} de esos ${x.n} intentos llevó de vuelta a A2.`), pEq(i)),
-        viB(i, tr(`Value iteration runs on the new model. Right still gets through ${passes} times in ${x.n}, so it loses only ${num(loss)}: it is worth ${num(x.Q2[A2][RIGHT])}, still the best move in A2. Every move that leads into A2, or back to A1, loses as much: the values outlined in green.`,
+          short: tr(`Now <i>N</i>(${nm(A2, RIGHT)}) = ${x.n}, and ${x.n - passes} of those ${x.n} tries led back to A2.`, `Ahora <i>N</i>(${nm(A2, RIGHT)}) = ${x.n}, y ${x.n - passes} de esos ${x.n} intentos llevó de vuelta a A2.`) },
+        { ...viB(i, tr(`Value iteration runs on the new model. Right still gets through ${passes} times in ${x.n}, so it loses only ${num(loss)}: it is worth ${num(x.Q2[A2][RIGHT])}, still the best move in A2. Every move that leads into A2, or back to A1, loses as much: the values outlined in green.`,
           `Value iteration corre sobre el nuevo modelo. Derecha todavía pasa ${passes} veces de ${x.n}, así que pierde solo ${num(loss)}: vale ${num(x.Q2[A2][RIGHT])}, y sigue siendo el mejor movimiento en A2. Todo movimiento que lleva a A2, o de vuelta a A1, pierde lo mismo: los valores con borde verde.`), rightEq(i)),
+          short: tr(`Right still gets through ${passes} times in ${x.n}, so it loses only ${num(loss)}: it is worth ${num(x.Q2[A2][RIGHT])}, still the best move in A2. Every move that leads into A2, or back to A1, loses as much: the values outlined in green.`,
+            `Derecha todavía pasa ${passes} veces de ${x.n}, así que pierde solo ${num(loss)}: vale ${num(x.Q2[A2][RIGHT])}, y sigue siendo el mejor movimiento en A2. Todo movimiento que lleva a A2, o de vuelta a A1, pierde lo mismo: los valores con borde verde.`) },
       ] });
     }
     {
@@ -771,9 +869,10 @@ function route(Q) {
         const plans = [];
         for (let k = 0; k < NPLAN; k++) {
           const ps = seen[Math.floor(rnd() * seen.length)], acts = taken.get(ps), pa = acts[Math.floor(rnd() * acts.length)];
-          const m = model.get(ps * 4 + pa), mx = m.done ? 0 : Math.max(...Q[m.s2]), po = Q[ps][pa];
+          const m = model.get(ps * 4 + pa), mx = m.done ? 0 : Math.max(...Q[m.s2]), po = Q[ps][pa], before = copy(Q);
           Q[ps][pa] = po + ALPHA * (m.r + mx - po);
-          plans.push({ s: ps, a: pa, old: po, nu: Q[ps][pa] });
+          // The values before and after, and the model's answer, for the phases that play the step beside the pseudocode.
+          plans.push({ s: ps, a: pa, old: po, nu: Q[ps][pa], s2: m.s2, done: m.done, before, Q: copy(Q) });
         }
         D.push({ ep, t, s, a: c.a, explored: c.explored, ...o, pre, direct, plans, inModel: new Set(model.keys()), post: copy(Q) });
         if (o.done) break;
@@ -784,7 +883,7 @@ function route(Q) {
   const dSlides = [], dX = (i) => D[i], dLast = D.length - 1;
   const dFrame = (m) => {
     const x = dX(m), y = m < dLast ? dX(m + 1) : null;
-    return { Q: x.post, agent: after(x), ring: x.fell, ep: x.ep, move: x.t + 1, time: x.t + 1, walls: wallsAt(x.ep), bumpPose: shake(x, m), shown: x.inModel, marks: [{ c: x.s, a: x.a, kind: "upd" }], pick: y && y.ep === x.ep ? [y.s, y.a] : undefined };
+    return { code: D_FF, Q: x.post, agent: after(x), ring: x.fell, ep: x.ep, move: x.t + 1, time: x.t + 1, walls: wallsAt(x.ep), bumpPose: shake(x, m), shown: x.inModel, marks: [{ c: x.s, a: x.a, kind: "upd" }], pick: y && y.ep === x.ep ? [y.s, y.a] : undefined };
   };
   {
     const X = dX, pos = (i) => ({ ep: X(i).ep, move: X(i).t + 1, at: i }), L = lens(D);
@@ -794,17 +893,30 @@ function route(Q) {
     const back = D.findIndex((x) => x.ep >= DOWN_EP && x.s === A2 && x.a === RIGHT);
     const shownBefore = (i) => (i > 0 ? X(i - 1).inModel : new Set());
     const directEq = (x) => `<span class="upd"><i>Q</i>(${sym("S", x.t)}, ${sym("A", x.t)})</span> <span class="nowrap">← ${num(x.direct.old)} + 0.5[<span class="pt">${num(x.r)}${x.done ? "" : ` + ${par(x.direct.maxNext)}`}</span></span> <span class="nowrap">− ${par(x.direct.old)}]</span> <span class="nowrap">${eqv(x.direct.nu)}</span>`;
-    const chooseB = (i) => { const x = X(i); return { ...pos(i), time: x.t, Q: x.pre, agent: x.s, jump: x.t === 0, pick: [x.s, x.a], shown: shownBefore(i), walls: wallsAt(x.ep), line: cliff.reason(x.pre[x.s], x.explored, x.s, x.a, x.t) }; };
-    const takeB = (i) => { const x = X(i), bump = x.s2 === x.s ? x.a : null; return { ...pos(i), time: x.t, Q: x.pre, agent: after(x), taken: [x.s, x.a], bump, sound: bump !== null ? "wall" : undefined, shown: shownBefore(i), walls: wallsAt(x.ep), line: cliff.takeText(x) }; };
+    const chooseB = (i) => { const x = X(i); return { code: [1], ...pos(i), time: x.t, Q: x.pre, agent: x.s, jump: x.t === 0, pick: [x.s, x.a], shown: shownBefore(i), walls: wallsAt(x.ep), line: cliff.reason(x.pre[x.s], x.explored, x.s, x.a, x.t) }; };
+    const takeB = (i) => { const x = X(i), bump = x.s2 === x.s ? x.a : null; return { code: [2], ...pos(i), time: x.t, Q: x.pre, agent: after(x), taken: [x.s, x.a], bump, sound: bump !== null ? "wall" : undefined, shown: shownBefore(i), walls: wallsAt(x.ep), line: cliff.takeText(x) }; };
     // The direct update, as in Q-learning: the best moves of S′ in red, the pair in green.
-    const updateB = (i, line) => { const x = X(i); return { ...pos(i), time: x.t + 1, Q: x.direct.Q, agent: after(x), shown: x.inModel, walls: wallsAt(x.ep), marks: [...tgOf(x.pre, x.s2, x.done), { c: x.s, a: x.a, kind: "upd" }], line, eq: directEq(x), fit: true }; };
+    const updateB = (i, line) => { const x = X(i); return { code: [3], ...pos(i), time: x.t + 1, Q: x.direct.Q, agent: after(x), shown: x.inModel, walls: wallsAt(x.ep), marks: [...tgOf(x.pre, x.s2, x.done), { c: x.s, a: x.a, kind: "upd" }], line, eq: directEq(x), fit: true }; };
     // The model remembers the move, outlined in blue.
-    const modelB = (i, line) => { const x = X(i); return { ...pos(i), time: x.t + 1, Q: x.direct.Q, agent: after(x), shown: x.inModel, walls: wallsAt(x.ep), marks: [{ c: x.s, a: x.a, kind: "step" }], line,
+    const modelB = (i, line) => { const x = X(i); return { code: [4], ...pos(i), time: x.t + 1, Q: x.direct.Q, agent: after(x), shown: x.inModel, walls: wallsAt(x.ep), marks: [{ c: x.s, a: x.a, kind: "step" }], line,
       eq: `<i>Model</i>(${sym("S", x.t)}, ${sym("A", x.t)}) ← ${sym("R", x.t + 1)}, ${sym("S", x.t + 1)} <span class="nowrap">= ${num(x.r)}, ${cn(x.s2)}</span>` }; };
     // The planning steps after move i, the moves they replayed in green.
-    const plansB = (i, line) => { const x = X(i); return { ...pos(i), time: x.t + 1, Q: x.post, agent: after(x), shown: x.inModel, walls: wallsAt(x.ep), marks: uniq(x.plans.map((p) => [p.s, p.a])).map(([c, a]) => ({ c, a, kind: "upd" })), line }; };
+    // A planning step, one phase a line, as in the Dyna-Q figure: the pair picked in yellow, the moves the model's answer
+    // makes the target use in red, then the update, the value in green taking its new number.
+    const planPhase = (i, p) => {
+      const x = X(i), base = { ...pos(i), time: x.t + 1, agent: after(x), shown: x.inModel, walls: wallsAt(x.ep) }, tg = tgOf(p.before, p.s2, p.done);
+      return [
+        { lines: [D_PLAN1[0]], draw: { ...base, Q: p.before, pick: [p.s, p.a] } },
+        { lines: [D_PLAN1[1]], draw: { ...base, Q: p.before, marks: tg } },
+        { lines: [D_PLAN1[2]], draw: { ...base, Q: p.Q, marks: [...tg, { c: p.s, a: p.a, kind: "upd" }] } },
+      ];
+    };
+    const plansB = (i, line) => { const x = X(i); return { code: D_PLANS, phases: x.plans.flatMap((p) => planPhase(i, p)), ...pos(i), time: x.t + 1, Q: x.post, agent: after(x), shown: x.inModel, walls: wallsAt(x.ep), marks: uniq(x.plans.map((p) => [p.s, p.a])).map(([c, a]) => ({ c, a, kind: "upd" })), line }; };
     // A whole move in one press: chosen, taken, updated, remembered, and followed by its planning steps.
-    const moveB = (i, rest) => { const x = X(i), tk = takeB(i); return { ...pos(i), time: x.t + 1, Q: x.post, agent: after(x), taken: tk.taken, bump: tk.bump, sound: tk.sound, shown: x.inModel, walls: wallsAt(x.ep),
+    const moveB = (i, rest) => { const x = X(i), tk = takeB(i); return { code: D_MOVE, phases: [
+      { slow: true, lines: [1], draw: chooseB(i) }, { slow: true, lines: [2], draw: takeB(i) }, { slow: true, lines: [3], draw: updateB(i, "") }, { slow: true, lines: [4], draw: modelB(i, "") },
+      ...x.plans.flatMap((p) => planPhase(i, p)),
+    ], ...pos(i), time: x.t + 1, Q: x.post, agent: after(x), taken: tk.taken, bump: tk.bump, sound: tk.sound, shown: x.inModel, walls: wallsAt(x.ep),
       marks: uniq([[x.s, x.a], ...x.plans.map((p) => [p.s, p.a])]).map(([c, a]) => ({ c, a, kind: "upd" })), line: `${cliff.chooseTakeText(x.pre[x.s], x.explored, x)}${rest}` }; };
     const replays = (i) => X(i).plans.filter((p) => p.s === A2 && p.a === RIGHT).length;
     const x0 = X(e10), edge = cliff.greedyPath(x0.post);
@@ -820,7 +932,7 @@ function route(Q) {
       { label: before(UP_EP), ep: UP_EP, at: e10, Q: x0.post, agent: S0, shown: x0.inModel, walls: WALL, line: tr(
         `Before episode ${UP_EP}, a wall goes up between A2 and B2, across the edge. Nothing in Dyna-Q's model says so.`,
         `Antes del episodio ${UP_EP}, se levanta una pared entre A2 y B2, cruzando el borde. Nada en el modelo de Dyna-Q lo dice.`) },
-      moveB(i11, tr(` Then its update, the model and ${NPLAN} planning steps.`, ` Luego su actualización, el modelo y ${NPLAN} pasos de planning.`)),
+      { ...moveB(i11, tr(` Then its update, the model and ${NPLAN} planning steps.`, ` Luego su actualización, el modelo y ${NPLAN} pasos de planning.`)), short: cliff.chooseTakeText(X(i11).pre[X(i11).s], X(i11).explored, X(i11)) + tr(` Then ${NPLAN} planning steps.`, ` Luego ${NPLAN} pasos de planning.`) },
     ] });
     {
       const i = bumps[0], x = X(i), k = replays(i);
@@ -831,8 +943,10 @@ function route(Q) {
           `El objetivo es −1 más el mejor valor en A2, donde el agente sigue, con borde rojo: derecha misma, ${num(x.direct.maxNext)}. <i>Q</i>(${sym("S", x.t)}, ${sym("A", x.t)}) avanza la mitad del camino hacia ${num(x.r + x.direct.maxNext)}: ${num(x.direct.nu)}.`)),
         modelB(i, tr(`The model keeps only the last outcome: from now on it says right from A2 hits the wall, outlined in blue, and every planning step that replays the move replays a bump.`,
           `El modelo guarda solo el último resultado: desde ahora dice que derecha desde A2 choca con la pared, con borde azul, y cada paso de planning que repite el movimiento repite un choque.`)),
-        plansB(i, tr(`Then ${NPLAN} planning steps, on moves picked at random, in green${k ? `; ${k === 1 ? "one replays" : `${k} replay`} right from A2` : ""}.`,
+        { ...plansB(i, tr(`Then ${NPLAN} planning steps, on moves picked at random, in green${k ? `; ${k === 1 ? "one replays" : `${k} replay`} right from A2` : ""}.`,
           `Luego ${NPLAN} pasos de planning, en movimientos elegidos al azar, en verde${k ? `; ${k === 1 ? "uno repite" : `${k} repiten`} derecha desde A2` : ""}.`)),
+          short: tr(`The moves its ${NPLAN} planning steps picked at random are outlined in green${k ? `; ${k === 1 ? "one replays" : `${k} replay`} right from A2` : ""}.`,
+            `Los movimientos que sus ${NPLAN} pasos de planning eligieron al azar tienen borde verde${k ? `; ${k === 1 ? "uno repite" : `${k} repiten`} derecha desde A2` : ""}.`) },
       ] });
     }
     for (const [j, i] of bumps.slice(1).entries()) {
@@ -856,7 +970,7 @@ function route(Q) {
         { label: before(DOWN_EP), ep: DOWN_EP, at: e20, Q: x.post, agent: S0, shown: x.inModel, line: tr(
           `Before episode ${DOWN_EP}, the wall comes down: the edge is open again. Nothing in Dyna-Q's model says so.`,
           `Antes del episodio ${DOWN_EP}, cae la pared: el borde vuelve a estar abierto. Nada en el modelo de Dyna-Q lo dice.`) },
-        moveB(i21, tr(` Then its update, the model and ${NPLAN} planning steps.`, ` Luego su actualización, el modelo y ${NPLAN} pasos de planning.`)),
+        { ...moveB(i21, tr(` Then its update, the model and ${NPLAN} planning steps.`, ` Luego su actualización, el modelo y ${NPLAN} pasos de planning.`)), short: cliff.chooseTakeText(X(i21).pre[X(i21).s], X(i21).explored, X(i21)) + tr(` Then ${NPLAN} planning steps.`, ` Luego ${NPLAN} pasos de planning.`) },
         { ...chooseB(i21 + 1), line: `${cliff.reason(o, false, y.s, y.a, y.t)} ${tr(`Right is worth ${num(o[RIGHT])}: the model says it hits the wall.`, `Derecha vale ${num(o[RIGHT])}: el modelo dice que choca con la pared.`)}`,
           eq: `<i>Model</i>(${nm(A2, RIGHT)}) = −1, A2` },
       ] });
@@ -871,7 +985,7 @@ function route(Q) {
         updateB(i, tr(`The target is −1 plus the best value in B2, outlined in red, ${num(x.direct.maxNext)}. <i>Q</i>(${sym("S", x.t)}, ${sym("A", x.t)}) moves halfway from ${num(x.direct.old)} toward ${num(x.r + x.direct.maxNext)}: ${num(x.direct.nu)}, above up's ${num(x.direct.Q[A2][UP])}.`,
           `El objetivo es −1 más el mejor valor en B2, con borde rojo, ${num(x.direct.maxNext)}. <i>Q</i>(${sym("S", x.t)}, ${sym("A", x.t)}) avanza la mitad del camino de ${num(x.direct.old)} hacia ${num(x.r + x.direct.maxNext)}: ${num(x.direct.nu)}, más que los ${num(x.direct.Q[A2][UP])} de arriba.`)),
         modelB(i, tr(`The model is rewritten: right from A2 leads to B2 again, outlined in blue.`, `El modelo se reescribe: derecha desde A2 vuelve a llevar a B2, con borde azul.`)),
-        plansB(i, tr(`Then ${NPLAN} planning steps, in green.`, `Luego ${NPLAN} pasos de planning, en verde.`)),
+        { ...plansB(i, tr(`Then ${NPLAN} planning steps, in green.`, `Luego ${NPLAN} pasos de planning, en verde.`)), short: tr(`The moves its ${NPLAN} planning steps replayed are outlined in green.`, `Los movimientos que repitieron sus ${NPLAN} pasos de planning tienen borde verde.`) },
       ] });
     }
     {
@@ -888,6 +1002,6 @@ function route(Q) {
   }
   downSkip(rSlides[rSlides.findIndex((s) => s.builds[0].label === before(DOWN_EP))]);
 
-  const fig = slideshow({ svg: document.getElementById("fig-wall"), slides: rSlides, frame: rFrame, world: cliff });
-  modeButtons(document.getElementById("fig-wall-modes"), (mode) => (mode === "dyna" ? fig.show(dSlides, dFrame) : fig.show(rSlides, rFrame)));
+  const fig = slideshow({ svg: document.getElementById("fig-wall"), slides: rSlides, frame: rFrame, world: cliff, code: RMAX_CODE });
+  modeButtons(document.getElementById("fig-wall-modes"), (mode) => (mode === "dyna" ? fig.show(dSlides, dFrame, DYNA_CODE) : fig.show(rSlides, rFrame, RMAX_CODE)));
 }

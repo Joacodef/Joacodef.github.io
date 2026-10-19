@@ -51,15 +51,54 @@ import { cookie, START, GOAL, NAME, cellName, moveName, stepEnv, rngFrom, freshQ
 
   /* Builds: one line of the algorithm per press */
 
-  // Choose: the policy's random pick turns yellow before the agent moves.
-  function chooseBuild(i) {
-    const x = X(i);
-    return { ...pos(i), time: x.t, V: x.pre, agent: x.s, jump: x.t === 0, pick: [x.s, x.a], line: randomPick(x) };
+  // The pseudocode beside the grid (line numbers as the builds' code lists them; heads are not lit): the start (0), a new
+  // episode (2), choose (4), take (5), the TD error (6), the update (7), and S ← S′ (8), which starts every press that
+  // goes on to the next move of an episode.
+  const INIT = 0, NEW = 2, CHOOSE = 4, TAKE = 5, DELTA = 6, UPDATE = 7, NEXT = 8;
+  const CODE = {
+    title: tr("Tabular TD(0)", "TD(0) tabular"),
+    lines: [
+      { kind: "plain", html: tr("<i>V</i>(<i>s</i>) ← 0, for every <i>s</i>", "<i>V</i>(<i>s</i>) ← 0, en cada <i>s</i>") },
+      { head: true, html: tr("Repeat, for each episode:", "Repetir, en cada episodio:") },
+      { kind: "plain", ind: 1, html: tr("<i>S</i> ← the first state", "<i>S</i> ← el primer estado") },
+      { head: true, ind: 1, html: tr("Repeat, until <i>S</i> is terminal:", "Repetir, hasta que <i>S</i> sea terminal:") },
+      { kind: "pick", ind: 2, html: tr("<i>A</i> ← the action π gives for <i>S</i>", "<i>A</i> ← la acción que π da para <i>S</i>") },
+      { kind: "take", ind: 2, html: tr("Take <i>A</i>; observe <i>R</i>, <i>S</i>′", "Tomar <i>A</i>; observar <i>R</i>, <i>S</i>′") },
+      { kind: "target", ind: 2, html: `<span class="nowrap">δ ← <span class="pt"><i>R</i> + γ<i>V</i>(<i>S</i>′)</span></span> <span class="nowrap">− <i>V</i>(<i>S</i>)</span>` },
+      { kind: "update", ind: 2, html: `<span class="nowrap"><span class="upd"><i>V</i>(<i>S</i>)</span> ← <i>V</i>(<i>S</i>) + αδ</span>` },
+      { kind: "plain", ind: 2, html: "<i>S</i> ← <i>S</i>′" },
+    ],
+  };
+  // A press that plays several lines draws each on the grid as it lights, as the one-line presses of move 1 draw it:
+  // choosing and taking animate, the others change at once. The take holds its line for the agent's 300 ms glide (onto
+  // the cookie, also for the cookie eaten, 460 ms), since the next draw, or the press's last one, stops the glide. With
+  // quiet (a move with a TD error of 0), the TD error is drawn without its red outline, as the press ends.
+  const phasesOf = (i, lines, quiet = false) => lines.map((l) => ({ lines: l === TAKE ? Array(X(i).done ? 4 : 2).fill(TAKE) : [l], slow: l === CHOOSE || l === TAKE, draw: drawOf(i, l, quiet) }));
+  function drawOf(i, l, quiet) {
+    const x = X(i), bump = x.s2 === x.s ? x.a : null;
+    if (l === NEW) return { ...pos(i), time: 0, V: x.pre, agent: START, jump: true };
+    if (l === NEXT) return { ...pos(i), time: x.t, V: x.pre, agent: x.s };
+    if (l === CHOOSE) return chooseBuild(i);
+    if (l === TAKE) return takeBuild(i);
+    // After a wall hit, the wall stays marked (drawn without animation, so with no second nudge).
+    return { ...(l === DELTA ? deltaBuild(i, "") : updateBuild(i, "")), bump, ...(quiet ? { marks: [] } : {}) };
+  }
+  // The line played before choosing: a new episode, or S ← S′.
+  const before = (i) => (X(i).t === 0 ? NEW : NEXT);
+  // With the pseudocode beside the grid, the readout shows only the current press: an update that says "Still at t = …"
+  // after its TD error's press says "At t = …" there.
+  const alone = (line) => line.replace(tr("Still at", "Todavía en"), tr("At", "En"));
+
+  // Choose: the policy's random pick turns yellow before the agent moves. With fresh, a new episode starts first.
+  function chooseBuild(i, fresh = false) {
+    const x = X(i), b = { ...pos(i), time: x.t, V: x.pre, agent: x.s, jump: x.t === 0, pick: [x.s, x.a], code: [CHOOSE], line: randomPick(x) };
+    return fresh ? { ...b, code: [NEW, CHOOSE], phases: phasesOf(i, [NEW, CHOOSE]) } : b;
   }
   // Take: the agent moves along the yellow move. After the first move, choosing and taking share one press.
   function takeBuild(i, withChoice) {
-    const x = X(i), bump = x.s2 === x.s ? x.a : null;
-    return { ...pos(i), time: x.t, V: x.pre, agent: x.s2, taken: [x.s, x.a], bump, sound: bump !== null ? "wall" : undefined, line: withChoice ? randomTake(x) : takeText(x) };
+    const x = X(i), bump = x.s2 === x.s ? x.a : null, code = withChoice ? [before(i), CHOOSE, TAKE] : [TAKE];
+    return { ...pos(i), time: x.t, V: x.pre, agent: x.s2, taken: [x.s, x.a], bump, sound: bump !== null ? "wall" : undefined, line: withChoice ? randomTake(x) : takeText(x),
+      code, phases: withChoice ? phasesOf(i, code) : undefined };
   }
   // The estimate the target borrows, outlined in red; none at the cookie, whose estimate is 0.
   const tgMark = (x) => (x.done ? [] : [{ c: x.s2, kind: "tg" }]);
@@ -67,13 +106,13 @@ import { cookie, START, GOAL, NAME, cellName, moveName, stepEnv, rngFrom, freshQ
   function deltaBuild(i, line) {
     const x = X(i), t = x.t;
     const eq = `δ<sub>${t}</sub> ${nw(`= <span class="pt">${sym("R", t + 1)} + γ${Vof(t + 1)}</span> − ${Vof(t)}`)} ${nw(`= <span class="pt">${num(x.r)} + 0.9 · ${num(x.boot)}</span> − ${num(x.old)}`)} <span class="nowrap pt">${eqv(x.delta)}</span>`;
-    return { ...pos(i), time: t + 1, V: x.pre, agent: x.s2, marks: tgMark(x), line, eq };
+    return { ...pos(i), time: t + 1, V: x.pre, agent: x.s2, marks: tgMark(x), code: [DELTA], line, eq };
   }
   // The update of the cell just left, in green.
   function updateBuild(i, line) {
     const x = X(i), t = x.t;
     const eq = `<span class="upd">${Vof(t)}</span> ${nw(`← ${num(x.old)} + ${ALPHA} · <span class="pt">${par(x.delta)}</span>`)} ${nw(eqv(x.nu))}`;
-    return { ...pos(i), time: t + 1, V: x.post, agent: x.s2, marks: [...tgMark(x), { c: x.s, kind: "upd" }], line, eq };
+    return { ...pos(i), time: t + 1, V: x.post, agent: x.s2, marks: [...tgMark(x), { c: x.s, kind: "upd" }], code: [UPDATE], line, short: alone(line) !== line ? alone(line) : undefined, eq };
   }
 
   /* Moments of the run */
@@ -90,9 +129,9 @@ import { cookie, START, GOAL, NAME, cellName, moveName, stepEnv, rngFrom, freshQ
   const slides = [];
   slides.push({ title: tr("TD(0) on the cookie grid", "TD(0) en la grilla de la galleta"), builds: [{ ep: 1, move: null, at: -1, time: 0, V: Array(9).fill(0), agent: START, line: tr(
     `All estimates start at 0, with the agent at ${sym("S", 0)} = A1.`,
-    `Todas las estimaciones parten en 0, con el agente en ${sym("S", 0)} = A1.`) }] });
+    `Todas las estimaciones parten en 0, con el agente en ${sym("S", 0)} = A1.`), code: [INIT] }] });
   slides.push({ title: tr("Move 1", "Movimiento 1"), builds: [
-    chooseBuild(0),
+    chooseBuild(0, true),
     takeBuild(0),
     deltaBuild(0, tr(
       `${sym("R", 1)} and ${sym("S", 1)} are known at <i>t</i> = 1, so the TD error can be computed. Its target uses the estimate of ${sym("S", 1)}, outlined in red.`,
@@ -102,9 +141,10 @@ import { cookie, START, GOAL, NAME, cellName, moveName, stepEnv, rngFrom, freshQ
       `Todavía en <i>t</i> = 1, ${Vof(0)} se mueve α veces el TD error, o sea, nada: sin recompensa todavía y con todas las estimaciones en 0, no hay nada que aprender.`)),
   ] });
   // A move and its TD error of 0 in one press: nothing changes. With withChoice, the line also says how it was chosen.
+  // It plays the move's lines up to its TD error, which its readout shows, and ends with no marks.
   function quietBuild(i, again, withChoice = true) {
-    const x = X(i), b = takeBuild(i, withChoice);
-    return { ...b, time: x.t + 1, eq: deltaBuild(i, "").eq, line: b.line + (again
+    const x = X(i), b = takeBuild(i, withChoice), code = [...(withChoice ? [before(i), CHOOSE] : []), TAKE, DELTA];
+    return { ...b, time: x.t + 1, code, phases: phasesOf(i, code, true), eq: deltaBuild(i, "").eq, line: b.line + (again
       ? tr(` The TD error is 0 again, so ${Vof(x.t)} stays at ${num(x.old)}.`, ` El TD error vuelve a ser 0, así que ${Vof(x.t)} sigue en ${num(x.old)}.`)
       : tr(` The TD error is 0, so ${Vof(x.t)} stays at ${num(x.old)}.`, ` El TD error es 0, así que ${Vof(x.t)} sigue en ${num(x.old)}.`)) };
   }
@@ -125,7 +165,7 @@ import { cookie, START, GOAL, NAME, cellName, moveName, stepEnv, rngFrom, freshQ
   }
   // Episode 2 up to that moment, one press per move: a skip of a few moves would land in the middle of this short episode.
   {
-    const first = news + 1, c = chooseBuild(first);
+    const first = news + 1, c = chooseBuild(first, true);
     slides.push({ title: tr("Episode 2", "Episodio 2"), builds: [{ ...c, line: tr("A new episode starts at A1. ", "Un nuevo episodio parte en A1. ") + c.line }, quietBuild(first, false, false)] });
     for (let i = first + 1; i < spread; i++) slides.push({ title: tr(`Move ${X(i).t + 1}`, `Movimiento ${X(i).t + 1}`), builds: [quietBuild(i, true)] });
   }
@@ -184,12 +224,14 @@ import { cookie, START, GOAL, NAME, cellName, moveName, stepEnv, rngFrom, freshQ
   slideshow({
     svg: document.getElementById("fig-td0"),
     slides,
+    code: CODE,
     world: cookie,
     perCell: true,
-    // The state after move m of the whole run, for the frames of a skip: the cell just updated in green, the next move in yellow.
+    // The state after move m of the whole run, for the frames of a skip: the cell just updated in green, the next move in
+    // yellow; the pseudocode runs one pass of the loop over moves.
     frame: (m) => {
       const x = X(m), y = X(m + 1);
-      return { V: x.post, agent: x.s2, ep: x.ep, move: x.t + 1, time: x.t + 1, bumpPose: shake(x, m), marks: [{ c: x.s, kind: "upd" }], pick: y && y.ep === x.ep ? [y.s, y.a] : undefined };
+      return { code: [CHOOSE, TAKE, DELTA, UPDATE, NEXT], V: x.post, agent: x.s2, ep: x.ep, move: x.t + 1, time: x.t + 1, bumpPose: shake(x, m), marks: [{ c: x.s, kind: "upd" }], pick: y && y.ep === x.ep ? [y.s, y.a] : undefined };
     },
   });
 }
@@ -250,9 +292,28 @@ import { cookie, START, GOAL, NAME, cellName, moveName, stepEnv, rngFrom, freshQ
   const Vof = (c) => `<i>V</i>(${c})`, St = `<i>S</i><sub><i>t</i></sub>`;
   const label = (p) => (p ? tr(`Pass ${p}`, `Pasada ${p}`) : tr("Before the first pass", "Antes de la primera pasada"));
   const greens = (R, p) => CELLS.filter((s) => R.V[p][s] !== R.V[p - 1][s]).map((c) => ({ c, kind: "upd" }));
+  // The pseudocode of each run, beside the grid: the start (0), the increments of a pass, with the table held fixed (3),
+  // and the update (4); heads are not lit. A frame of a skip runs one pass.
+  const INIT = 0, SUMS = 3, STEP = 4;
+  const passCode = (title, inc, sum) => ({
+    title,
+    lines: [
+      { kind: "plain", html: tr("<i>V</i>(<i>s</i>) ← 0, for every <i>s</i>", "<i>V</i>(<i>s</i>) ← 0, en cada <i>s</i>") },
+      { head: true, html: tr("Repeat, for each pass, until <i>V</i> stops changing:", "Repetir, en cada pasada, hasta que <i>V</i> deje de cambiar:") },
+      { head: true, ind: 1, html: tr("With <i>V</i> held fixed, for each step <i>t</i> of the batch:", "Con <i>V</i> fija, en cada paso <i>t</i> del lote:") },
+      { kind: "target", ind: 2, html: inc },
+      { kind: "update", ind: 1, html: tr(`For each <i>s</i>: <span class="nowrap"><span class="upd"><i>V</i>(<i>s</i>)</span> ← <i>V</i>(<i>s</i>)</span> <span class="nowrap">+ α Σ ${sum}</span>, over the steps from <i>s</i>`,
+        `En cada <i>s</i>: <span class="nowrap"><span class="upd"><i>V</i>(<i>s</i>)</span> ← <i>V</i>(<i>s</i>)</span> <span class="nowrap">+ α Σ ${sum}</span>, sobre los pasos desde <i>s</i>`) },
+    ],
+  });
+  const tdCode = passCode(tr("Batch TD(0)", "TD(0) por lotes"),
+    `<span class="nowrap">δ<sub><i>t</i></sub> ← <span class="pt"><i>R</i><sub><i>t</i>+1</sub></span></span> <span class="nowrap pt">+ γ<i>V</i>(<i>S</i><sub><i>t</i>+1</sub>)</span> <span class="nowrap">− <i>V</i>(<i>S</i><sub><i>t</i></sub>)</span>`, "δ<sub><i>t</i></sub>");
+  const mcCode = passCode(tr("Batch Monte Carlo", "Monte Carlo por lotes"),
+    tr(`The increment <span class="nowrap"><span class="pt"><i>G</i><sub><i>t</i></sub></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)</span>`, `El incremento <span class="nowrap"><span class="pt"><i>G</i><sub><i>t</i></sub></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)</span>`),
+    "(<i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>))");
   // The table after pass p, with the agent in A1; a frame of a skip outlines what its pass changed.
   const at = (R, p, rest) => ({ V: R.V[p], agent: START, label: label(p), ...rest });
-  const frameOf = (R) => (p) => at(R, p, { marks: greens(R, p) });
+  const frameOf = (R) => (p) => at(R, p, { marks: greens(R, p), code: [SUMS, STEP] });
   const skipTo = (p, q) => ({ from: p, to: q, moves: q - p, text: tr(`${q - p} passes later`, `${q - p} pasadas después`),
     note: tr(`${q - p} passes go by, and the estimates keep rising.`, `Se hacen ${q - p} pasadas más, y las estimaciones siguen subiendo.`) });
 
@@ -260,18 +321,19 @@ import { cookie, START, GOAL, NAME, cellName, moveName, stepEnv, rngFrom, freshQ
 
   const tdSlides = [];
   const toCookie = (s) => from(s).filter((m) => m.done).length, nC2 = from(C2).length;
-  tdSlides.push({ title: tr("Batch TD(0)", "TD(0) por lotes"), builds: [at(td, 0, { line: tr("All estimates start at 0.", "Todas las estimaciones parten en 0.") })] });
+  tdSlides.push({ title: tr("Batch TD(0)", "TD(0) por lotes"), builds: [at(td, 0, { code: [INIT], line: tr("All estimates start at 0.", "Todas las estimaciones parten en 0.") })] });
   {
     // Pass 1: with the table at 0, only the moves into the cookie have a TD error that is not 0, and it is 1.
     const k = toCookie(C2), k3 = toCookie(B3);
     tdSlides.push({ title: tr("The first pass", "La primera pasada"), builds: [
-      at(td, 0, { label: label(1), line: tr(
+      at(td, 0, { label: label(1), code: [SUMS], line: tr(
         `With the table held at 0, each TD error is just the move's reward: 0, except for the ${k + k3} moves into the cookie, ${k3} from B3 and ${k} from C2. The TD errors of the ${nC2} moves from C2 add up to ${k}.`,
         `Con la tabla fija en 0, cada TD error es solo la recompensa del movimiento: 0, salvo en los ${k + k3} movimientos que llegan a la galleta, ${k3} desde B3 y ${k} desde C2. Los TD errors de los ${nC2} movimientos desde C2 suman ${k}.`),
         eq: `Σ δ<sub><i>t</i></sub> ${nw(`= ${k} · (${pt("1 + 0.9 · 0")} − 0)`)} ${nw(`= ${pt(num(td.sum[1][C2]))}`)}` }),
-      at(td, 1, { marks: greens(td, 1), line: tr(
+      at(td, 1, { marks: greens(td, 1), code: [STEP], line: tr(
         "Each estimate changes once, by α times the sum of its TD errors: those of B3 and C2 rise, and every other one stays at 0.",
         "Cada estimación cambia una sola vez, α veces la suma de sus TD errors: suben las de B3 y C2, y las demás siguen en 0."),
+        short: tr("Each estimate changes once: those of B3 and C2 rise, and every other one stays at 0.", "Cada estimación cambia una sola vez: suben las de B3 y C2, y las demás siguen en 0."),
         eq: `<span class="upd">${Vof("C2")}</span> ${nw(`← 0 + ${ALPHA} · ${pt(num(td.sum[1][C2]))}`)} ${nw(`= ${n3(td.V[1][C2])}`)}` }),
     ] });
   }
@@ -279,11 +341,11 @@ import { cookie, START, GOAL, NAME, cellName, moveName, stepEnv, rngFrom, freshQ
     // Pass 2: the targets of the moves into B3 and C2 borrow their estimates, and the cells one move from them rise.
     const n = from(B2).filter((m) => m.s2 === B3 || m.s2 === C2).length, red = [{ c: B3, kind: "tg" }, { c: C2, kind: "tg" }];
     tdSlides.push({ title: tr("One move further back", "Un movimiento más atrás"), builds: [
-      at(td, 1, { label: label(2), marks: red, line: tr(
+      at(td, 1, { label: label(2), marks: red, code: [SUMS], line: tr(
         `The batch is replayed with the new table. The targets of the moves into B3 and C2 now borrow their estimates, outlined in red: ${n} of the ${from(B2).length} moves from B2 go there, and the others still have a TD error of 0.`,
         `El lote se repasa con la tabla nueva. Los objetivos de los movimientos hacia B3 y C2 ahora toman prestadas sus estimaciones, con borde rojo: ${n} de los ${from(B2).length} movimientos desde B2 van ahí, y los demás siguen con un TD error de 0.`),
         eq: `Σ δ<sub><i>t</i></sub> ${nw(`= ${n} · (${pt(`0 + 0.9 · ${n3(td.V[1][C2])}`)} − 0)`)} ${nw(`= ${pt(num(td.sum[2][B2]))}`)}` }),
-      at(td, 2, { marks: [...red, ...greens(td, 2)], line: tr(
+      at(td, 2, { marks: [...red, ...greens(td, 2)], code: [STEP], line: tr(
         "B2 rises above 0, and so do A3 and C1, the other cells one move from B3 or C2: the cookie's reward has moved back one more move, and each pass carries it one move further. B3 and C2 rise again.",
         "B2 sube de 0, y también A3 y C1, las otras celdas a un movimiento de B3 o C2: la recompensa de la galleta retrocedió un movimiento más, y cada pasada la lleva un movimiento más allá. B3 y C2 vuelven a subir."),
         eq: `<span class="upd">${Vof("B2")}</span> ${nw(`← 0 + ${ALPHA} · ${pt(num(td.sum[2][B2]))}`)} ${nw(eqv(td.V[2][B2]))}` }),
@@ -302,7 +364,7 @@ import { cookie, START, GOAL, NAME, cellName, moveName, stepEnv, rngFrom, freshQ
     // The average written out, in pieces that break before a plus sign: the moves into the cookie, then the others.
     const terms = ends.map((x) => `${x.n} · ${num(V[x.o.s2])}`);
     const sum = `${nw(`= (${pt(`${dest.find((x) => x.o.done).n} · 1`)}`)} ${nw(pt(`+ 0.9 · (${terms[0]}`))} ${terms.slice(1, -1).map((x) => nw(pt(`+ ${x}`))).join(" ")} ${nw(`${pt(`+ ${terms.at(-1)})`)})/${nC2}`)}`;
-    tdSlides.push({ title: tr(`After ${tdEnd} passes`, `Después de ${tdEnd} pasadas`), skip: skipTo(2, tdEnd), builds: [at(td, tdEnd, { marks: ends.map((x) => ({ c: x.o.s2, kind: "tg" })), fit: true, line: tr(
+    tdSlides.push({ title: tr(`After ${tdEnd} passes`, `Después de ${tdEnd} pasadas`), skip: skipTo(2, tdEnd), builds: [at(td, tdEnd, { marks: ends.map((x) => ({ c: x.o.s2, kind: "tg" })), fit: true, code: [STEP], line: tr(
       `From this pass on, replaying the batch changes no estimate at two decimals. Each one has settled where the TD errors of its cell's moves add up to about 0, which makes it the average target of those moves: from C2, ${listAnd(where)}.`,
       `Desde esta pasada, repasar el lote ya no cambia ninguna estimación en dos decimales. Cada una se asentó donde los TD errors de los movimientos de su celda suman cerca de 0, así que es el promedio de los objetivos de esos movimientos: desde C2, ${listAnd(where)}.`),
       eq: `${Vof("C2")} ${sum} ${nw(eqv(avg))}` })] });
@@ -318,18 +380,18 @@ import { cookie, START, GOAL, NAME, cellName, moveName, stepEnv, rngFrom, freshQ
   /* Batch Monte Carlo */
 
   const mcSlides = [];
-  mcSlides.push({ title: tr("Batch Monte Carlo", "Monte Carlo por lotes"), builds: [at(mc, 0, { line: tr(
+  mcSlides.push({ title: tr("Batch Monte Carlo", "Monte Carlo por lotes"), builds: [at(mc, 0, { code: [INIT], line: tr(
     "All estimates start at 0 again. The increment of each visit is now its return minus the estimate, and the returns are the same at every pass.",
     "Todas las estimaciones vuelven a partir en 0. El incremento de cada visita es ahora su retorno menos la estimación, y los retornos son los mismos en cada pasada.") })] });
   {
     const n = from(START).length;
     if (CELLS.some((s) => from(s).length > n)) console.warn("Batch figure: A1 should be the cell visited most");
     mcSlides.push({ title: tr("The first pass", "La primera pasada"), builds: [
-      at(mc, 0, { label: label(1), line: tr(
+      at(mc, 0, { label: label(1), code: [SUMS], line: tr(
         `With the table at 0, each increment is just a return. A1, the cell visited most, has ${n} returns, which add up to ${num(sumG(START))}.`,
         `Con la tabla en 0, cada incremento es solo un retorno. A1, la celda más visitada, tiene ${n} retornos, que suman ${num(sumG(START))}.`),
         eq: `Σ (${pt(`<i>G</i><sub><i>t</i></sub>`)} − <i>V</i>(${St})) ${nw(`= ${pt(num(sumG(START)))} − ${n} · 0`)} ${nw(`= ${pt(num(mc.sum[1][START]))}`)}` }),
-      at(mc, 1, { marks: greens(mc, 1), line: tr(
+      at(mc, 1, { marks: greens(mc, 1), code: [STEP], line: tr(
         "Every estimate changes at once, none waiting for another: a return does not depend on any estimate.",
         "Todas las estimaciones cambian a la vez, sin esperar a ninguna otra: un retorno no depende de ninguna estimación."),
         eq: `<span class="upd">${Vof("A1")}</span> ${nw(`← 0 + ${ALPHA} · ${pt(num(mc.sum[1][START]))}`)} ${nw(eqv(mc.V[1][START]))}` }),
@@ -337,7 +399,7 @@ import { cookie, START, GOAL, NAME, cellName, moveName, stepEnv, rngFrom, freshQ
   }
   {
     const g = sumG(C2);
-    mcSlides.push({ title: tr(`After ${mcEnd} passes`, `Después de ${mcEnd} pasadas`), skip: skipTo(1, mcEnd), builds: [at(mc, mcEnd, { line: tr(
+    mcSlides.push({ title: tr(`After ${mcEnd} passes`, `Después de ${mcEnd} pasadas`), skip: skipTo(1, mcEnd), builds: [at(mc, mcEnd, { code: [STEP], line: tr(
       `From this pass on, nothing changes at two decimals: each estimate has settled on the average return of all the visits to its cell, ${nC2} for C2. The Monte Carlo note's figure averaged only the first visit in each episode.`,
       `Desde esta pasada, nada cambia en dos decimales: cada estimación se asentó en el retorno promedio de todas las visitas a su celda, ${nC2} en C2. La figura del apunte de Monte Carlo promediaba solo la primera visita de cada episodio.`),
       eq: `${Vof("C2")} ${nw(`≈ ${pt(num(g))}/${nC2}`)} ${nw(eqv(g / nC2))}` })] });
@@ -361,8 +423,8 @@ import { cookie, START, GOAL, NAME, cellName, moveName, stepEnv, rngFrom, freshQ
   if (!CELLS.every((s) => td.V.findIndex((V) => V[s] > 0) === dist(s))) console.warn("Batch figure: a cell should leave 0 at the pass of its distance from the cookie");
   for (const R of [td, mc]) if (!R.V.every((V, p) => !p || CELLS.every((s) => V[s] >= R.V[p - 1][s] - 1e-12 && V[s] <= R.V[PASSES][s] + 1e-9))) console.warn("Batch figure: an estimate drops or overshoots");
 
-  const fig = slideshow({ svg: document.getElementById("fig-batch"), slides: tdSlides, frame: frameOf(td), world: cookie, perCell: true });
-  modeButtons(document.getElementById("fig-batch-modes"), (mode) => (mode === "mc" ? fig.show(mcSlides, frameOf(mc)) : fig.show(tdSlides, frameOf(td))));
+  const fig = slideshow({ svg: document.getElementById("fig-batch"), slides: tdSlides, frame: frameOf(td), world: cookie, perCell: true, code: tdCode });
+  modeButtons(document.getElementById("fig-batch-modes"), (mode) => (mode === "mc" ? fig.show(mcSlides, frameOf(mc), mcCode) : fig.show(tdSlides, frameOf(td), tdCode)));
 }
 
 /* ---------- Section 5: Sarsa on the cliff, one line of the algorithm per press ---------- */
@@ -401,35 +463,75 @@ const pairOf = (t) => `<i>Q</i>(${sym("S", t)}, ${sym("A", t)})`;
 // The move A′ whose value the target uses, outlined in red; none after the goal.
 const tgMark = (x) => (x.next ? [{ c: x.s2, a: x.next.a, kind: "tg" }] : []);
 
-// Choose A: the move turns yellow before the agent moves.
-function chooseBuild(i, lead) {
+// The pseudocode beside the grid (line numbers as the builds' code lists them; heads are not lit): the start (0), a new
+// episode (2), choose A (3), take it (5), choose A′ (6), the target (7), the update (8), and S ← S′, A ← A′ (9), which
+// starts every press that goes on to the next move of an episode.
+const INIT = 0, NEW = 2, CHOOSE = 3, TAKE = 5, CHOOSE_NEXT = 6, TARGET = 7, UPDATE = 8, SHIFT = 9;
+const CODE = {
+  title: tr("Sarsa", "Sarsa"),
+  lines: [
+    { kind: "plain", html: tr("<i>Q</i>(<i>s</i>, <i>a</i>) ← 0, for every <i>s</i>, <i>a</i>", "<i>Q</i>(<i>s</i>, <i>a</i>) ← 0, en cada <i>s</i>, <i>a</i>") },
+    { head: true, html: tr("Repeat, for each episode:", "Repetir, en cada episodio:") },
+    { kind: "plain", ind: 1, html: tr("<i>S</i> ← the first state", "<i>S</i> ← el primer estado") },
+    { kind: "pick", ind: 1, html: tr(`<span class="nowrap"><i>A</i> ← ε-greedy</span> in <i>S</i>, from <i>Q</i>`, `<span class="nowrap"><i>A</i> ← ε-greedy</span> en <i>S</i>, según <i>Q</i>`) },
+    { head: true, ind: 1, html: tr("Repeat, until <i>S</i> is terminal:", "Repetir, hasta que <i>S</i> sea terminal:") },
+    { kind: "take", ind: 2, html: tr("Take <i>A</i>; observe <i>R</i>, <i>S</i>′", "Tomar <i>A</i>; observar <i>R</i>, <i>S</i>′") },
+    { kind: "pick", ind: 2, html: tr(`<span class="nowrap"><i>A</i>′ ← ε-greedy</span> in <i>S</i>′, from <i>Q</i>`, `<span class="nowrap"><i>A</i>′ ← ε-greedy</span> en <i>S</i>′, según <i>Q</i>`) },
+    { kind: "target", ind: 2, html: `${tr("target", "objetivo")} <span class="nowrap">← <span class="pt"><i>R</i> + γ<i>Q</i>(<i>S</i>′, <i>A</i>′)</span></span>` },
+    { kind: "update", ind: 2, html: `<span class="nowrap"><span class="upd"><i>Q</i>(<i>S</i>, <i>A</i>)</span> ← <i>Q</i>(<i>S</i>, <i>A</i>)</span> <span class="nowrap">+ α[${tr("target", "objetivo")} − <i>Q</i>(<i>S</i>, <i>A</i>)]</span>` },
+    { kind: "plain", ind: 2, html: `<span class="nowrap"><i>S</i> ← <i>S</i>′,</span> <span class="nowrap"><i>A</i> ← <i>A</i>′</span>` },
+  ],
+};
+// A press that plays several lines draws each on the grid as it lights, as the one-line presses of move 1 draw it:
+// taking and choosing A′ animate (the glide, a fall), the others change at once. The take holds its line for the
+// agent's 300 ms glide, since the next draw that does not animate, or the press's last one, stops it. At S ← S′,
+// A ← A′ the move A′ chose is the yellow A, from the table the last update left. After a wall hit, the lines after the
+// take keep the wall marked and draw without animation, so that the agent is not nudged twice.
+const bumpOf = (x) => (x.fell === null && x.s2 === x.s ? x.a : null);
+const phasesOf = (i, lines) => lines.map((l) => ({ lines: l === TAKE ? [TAKE, TAKE] : [l], slow: l === TAKE || (l === CHOOSE_NEXT && bumpOf(X(i)) === null), draw: drawOf(i, l) }));
+function drawOf(i, l) {
   const x = X(i);
-  return { ...pos(i), time: x.t, Q: x.qAt, agent: x.s, pick: [x.s, x.a], line: `${lead} ${reason(x.qAt[x.s], x.explored, x.s, x.a, x.t)}` };
+  if (l === NEW) return { ...pos(i), time: 0, Q: x.qAt, agent: START, jump: true };
+  if (l === CHOOSE) return chooseBuild(i, "");
+  if (l === SHIFT) return { ...pos(i), time: x.t, Q: x.pre, agent: x.s, pick: [x.s, x.a] };
+  if (l === TAKE) return takeBuild(i, true);
+  return { ...(l === CHOOSE_NEXT ? chooseNextBuild(i) : l === TARGET ? targetBuild(i, "") : updateBuild(i, "")), bump: bumpOf(x) };
 }
-// Take A: the agent moves along the yellow move and sees R and S′.
-function takeBuild(i) {
-  const x = X(i), bump = x.fell === null && x.s2 === x.s ? x.a : null;
+// With the pseudocode beside the grid, the readout shows only the current press: an update that says "Still at t = …"
+// after its target's press says "At t = …" there.
+const alone = (line) => line.replace(tr("Still at", "Todavía en"), tr("At", "En"));
+
+// Choose A: the move turns yellow before the agent moves.
+// At the first move, the press starts the episode first (S ← the first state).
+function chooseBuild(i, lead) {
+  const x = X(i), b = { ...pos(i), time: x.t, Q: x.qAt, agent: x.s, pick: [x.s, x.a], code: [CHOOSE], line: `${lead} ${reason(x.qAt[x.s], x.explored, x.s, x.a, x.t)}` };
+  return i === 0 && lead ? { ...b, code: [NEW, CHOOSE], phases: phasesOf(i, [NEW, CHOOSE]) } : b;
+}
+// Take A: the agent moves along the yellow move and sees R and S′. After move 1, the press starts with S ← S′, A ← A′,
+// unless the press before played it (played).
+function takeBuild(i, played = false) {
+  const x = X(i), bump = bumpOf(x), code = played || i === 0 ? [TAKE] : [SHIFT, TAKE];
   return { ...pos(i), time: x.t, Q: x.pre, agent: x.fell !== null ? x.fell : x.s2, ring: x.fell, taken: [x.s, x.a], bump, sound: x.fell !== null ? "fall" : bump !== null ? "wall" : undefined,
-    line: takeText({ s: x.s, a: x.a, t: x.t, s2: x.s2, fell: x.fell }) };
+    line: takeText({ s: x.s, a: x.a, t: x.t, s2: x.s2, fell: x.fell }), code, phases: code.length > 1 ? phasesOf(i, code) : undefined };
 }
 // Choose A′ in S′, before any update, from the table as it stands.
 const nextLead = tr("Before any update, it chooses its next move.", "Antes de cualquier actualización, elige su siguiente movimiento.");
 function chooseNextBuild(i, extra = "", lead = nextLead) {
   const x = X(i);
-  return { ...pos(i), time: x.t + 1, Q: x.pre, agent: x.s2, jump: x.fell !== null, ring: x.fell, pick: [x.s2, x.next.a],
+  return { ...pos(i), time: x.t + 1, Q: x.pre, agent: x.s2, jump: x.fell !== null, ring: x.fell, pick: [x.s2, x.next.a], code: [CHOOSE_NEXT],
     line: `${lead} ${reason(x.pre[x.s2], x.next.explored, x.s2, x.next.a, x.t + 1)}${extra}` };
 }
 // The target: R plus the value of A′, in red.
 function targetBuild(i, line) {
   const x = X(i), t = x.t;
   const eq = `${tr("target", "objetivo")} = <span class="pt">${sym("R", t + 1)} + γ${pairOf(t + 1)} <span class="nowrap">= ${num(x.r)} + ${par(x.boot)}</span> <span class="nowrap">= ${num(x.target)}</span></span>`;
-  return { ...pos(i), time: t + 1, Q: x.pre, agent: x.s2, ring: x.fell, marks: tgMark(x), line, eq };
+  return { ...pos(i), time: t + 1, Q: x.pre, agent: x.s2, ring: x.fell, marks: tgMark(x), code: [TARGET], line, eq };
 }
 // The update of the pair just left, in green.
 function updateBuild(i, line) {
   const x = X(i), t = x.t;
   const eq = `<span class="upd">${pairOf(t)}</span> <span class="nowrap">← ${num(x.old)} + ${ALPHA}[<span class="pt">${num(x.target)}</span> − ${par(x.old)}]</span> <span class="nowrap">${eqv(x.nu)}</span>`;
-  return { ...pos(i), time: t + 1, Q: x.post, agent: x.s2, ring: x.fell, marks: [...tgMark(x), { c: x.s, a: x.a, kind: "upd" }], line, eq };
+  return { ...pos(i), time: t + 1, Q: x.post, agent: x.s2, ring: x.fell, marks: [...tgMark(x), { c: x.s, a: x.a, kind: "upd" }], code: [UPDATE], line, short: alone(line) !== line ? alone(line) : undefined, eq };
 }
 const targetLine = (i) => {
   const x = X(i), t = x.t + 1, R = sym("R", t), S = sym("S", t), A = sym("A", t);
@@ -449,11 +551,12 @@ function wholeBuild(i, line, withEq) {
 // The other moves of episode 1, one press each: why the move was chosen and where it led, then its update, with A′ in
 // yellow and outlined in red, and the pair updated in green.
 // When the slide before already explained why this move was chosen (chosen), the press says only where it led.
+// The press plays the move's lines in turn, without choosing A′ after the goal.
 function moveBuild(i, extra, chosen = false) {
-  const x = X(i), t = x.t, bump = x.fell === null && x.s2 === x.s ? x.a : null;
+  const x = X(i), t = x.t, bump = bumpOf(x), code = [SHIFT, TAKE, ...(x.next ? [CHOOSE_NEXT] : []), TARGET, UPDATE];
   const rest = extra ?? tr(`It chooses its next move, in yellow, and ${pairOf(t)} moves halfway toward the target.`, `Elige su siguiente movimiento, en amarillo, y ${pairOf(t)} avanza la mitad del camino hacia el objetivo.`);
   return { ...wholeBuild(i, `${chosen ? takeText(x) : chooseTakeText(x.qAt[x.s], x.explored, x)} ${rest}`, true), marks: [...tgMark(x), { c: x.s, a: x.a, kind: "upd" }], taken: [x.s, x.a], ring: x.fell, jump: x.fell !== null, bump,
-    sound: x.fell !== null ? "fall" : bump !== null ? "wall" : undefined };
+    sound: x.fell !== null ? "fall" : bump !== null ? "wall" : undefined, code, phases: phasesOf(i, code) };
 }
 
 /* ---------- Moments of the run ---------- */
@@ -476,7 +579,7 @@ steps.forEach((x, i) => { const below = x.post[A2][RIGHT] < x.post[A2][UP], was 
 const slides = [];
 slides.push({ title: tr("Sarsa on the cliff", "Sarsa en el acantilado"), builds: [{ ep: 1, move: null, at: -1, time: 0, Q: freshQ(), agent: START, line: tr(
   `All values start at 0 again, with the agent at ${sym("S", 0)} = A1.`,
-  `Todos los valores vuelven a partir en 0, con el agente en ${sym("S", 0)} = A1.`) }] });
+  `Todos los valores vuelven a partir en 0, con el agente en ${sym("S", 0)} = A1.`), code: [INIT] }] });
 // Moves 1 to 3: every line of the algorithm.
 for (let i = 0; i < 3; i++) {
   const b = [];
@@ -492,8 +595,8 @@ for (let i = 0; i < 3; i++) {
 for (let i = 3; i < firstFall; i++) slides.push({ title: tr(`Move ${i + 1}`, `Movimiento ${i + 1}`), builds: [moveBuild(i)] });
 {
   const i = firstFall, x = X(i), t = x.t, m = NAME[x.a], c = cellName(x.s);
-  const b = [takeBuild(i)];
-  if (i > 3) b.unshift(chooseBuild(i, tr("Its move from here was chosen at the end of the last step.", "Su movimiento desde aquí se eligió al final del paso anterior.")));
+  const b = [takeBuild(i, i > 3)];
+  if (i > 3) b.unshift({ ...chooseBuild(i, tr("Its move from here was chosen at the end of the last step.", "Su movimiento desde aquí se eligió al final del paso anterior.")), code: [SHIFT] });
   b.push(
     chooseNextBuild(i, again ? tr(` ${m[0].toUpperCase() + m.slice(1)} is still worth 0: the update that counts the fall comes after this choice.`, ` ${m[0].toUpperCase() + m.slice(1)} todavía vale 0: la actualización que cuenta la caída viene después de esta elección.`) : ""),
     targetBuild(i, again
@@ -529,20 +632,23 @@ for (let i = firstFall + (again ? 2 : 1); i < ep1End; i++) slides.push({ title: 
     `In episode ${X(firstRoute).ep}, the best moves first lead from A1 to the goal: along the edge, ${len} moves, the shortest route. ${here}`,
     `En el episodio ${X(firstRoute).ep}, los mejores movimientos llevan por primera vez de A1 a la meta: por el borde, ${len} movimientos, la ruta más corta. ${here}`) : tr(
     `The best moves first led from A1 to the goal in episode ${X(firstRoute).ep}, in ${firstLen} moves, and have kept changing since. In episode ${X(firstEdge).ep} they first ran along the edge, ${len} moves, the shortest route, and they do now. ${here}`,
-    `Los mejores movimientos llevaron por primera vez de A1 a la meta en el episodio ${X(firstRoute).ep}, en ${firstLen} movimientos, y han seguido cambiando. En el episodio ${X(firstEdge).ep} fueron por primera vez por el borde, ${len} movimientos, la ruta más corta, y ahora van por ahí. ${here}`)), route }] });
+    `Los mejores movimientos llevaron por primera vez de A1 a la meta en el episodio ${X(firstRoute).ep}, en ${firstLen} movimientos, y han seguido cambiando. En el episodio ${X(firstEdge).ep} fueron por primera vez por el borde, ${len} movimientos, la ruta más corta, y ahora van por ahí. ${here}`)), route, code: [SHIFT] }] });
 }
 {
   const i = pull, x = X(i), t = x.t, c = cellName(x.s);
+  // Alone in the readout, the update names what it drops toward.
+  const toTarget = (b) => ({ ...b, short: b.short.replace(tr("toward it", "hacia él"), tr("toward the target", "hacia el objetivo")) });
   // How many times that step into the cliff was taken before, which gave it its value.
   const before = steps.slice(0, i).filter((y) => y.s === x.s2 && y.a === x.next.a).length;
   slides.push({ title: tr("The edge pays for exploring", "El borde paga por explorar"), builds: [
-    takeBuild(i),
+    takeBuild(i, true),
     chooseNextBuild(i, before === 1 ? tr(` That is a step into the cliff, worth ${num(x.boot)} after an earlier fall from ${cellName(x.s2)}.`, ` Es un paso al acantilado, que vale ${num(x.boot)} después de una caída anterior desde ${cellName(x.s2)}.`)
       : tr(` That is a step into the cliff, worth ${num(x.boot)} after ${before} earlier falls from ${cellName(x.s2)}.`, ` Es un paso al acantilado, que vale ${num(x.boot)} después de ${before} caídas anteriores desde ${cellName(x.s2)}.`)),
-    targetBuild(i, tr(`The target adds ${sym("R", t + 1)} to the value of that move, outlined in red: ${num(x.boot)}.`, `El objetivo suma ${sym("R", t + 1)} al valor de ese movimiento, con borde rojo: ${num(x.boot)}.`)),
-    updateBuild(i, tr(
+    { ...targetBuild(i, tr(`The target adds ${sym("R", t + 1)} to the value of that move, outlined in red: ${num(x.boot)}.`, `El objetivo suma ${sym("R", t + 1)} al valor de ese movimiento, con borde rojo: ${num(x.boot)}.`)),
+      short: tr(`The target adds ${sym("R", t + 1)} to the value of ${moveName(x.s2, x.next.a)}, the step into the cliff, outlined in red: ${num(x.boot)}.`, `El objetivo suma ${sym("R", t + 1)} al valor de ${moveName(x.s2, x.next.a)}, el paso al acantilado, con borde rojo: ${num(x.boot)}.`) },
+    toTarget(updateBuild(i, tr(
       `Still at <i>t</i> = ${t + 1}, ${pairOf(t)}, ${NAME[x.a]} in ${c}, drops halfway toward it, from ${num(x.old)} to ${num(x.nu)}, far below ${NAME[UP]} in ${c}, at ${num(x.post[x.s][UP])}. The route along the edge is gone: Sarsa's target uses the move actually made next, and next to the edge, that is sometimes a fall.`,
-      `Todavía en <i>t</i> = ${t + 1}, ${pairOf(t)}, ${NAME[x.a]} en ${c}, baja la mitad del camino hacia él, de ${num(x.old)} a ${num(x.nu)}, muy por debajo de ${NAME[UP]} en ${c}, que vale ${num(x.post[x.s][UP])}. La ruta por el borde desaparece: el objetivo de Sarsa usa el movimiento que de verdad se hace después, y junto al borde, a veces es una caída.`)),
+      `Todavía en <i>t</i> = ${t + 1}, ${pairOf(t)}, ${NAME[x.a]} en ${c}, baja la mitad del camino hacia él, de ${num(x.old)} a ${num(x.nu)}, muy por debajo de ${NAME[UP]} en ${c}, que vale ${num(x.post[x.s][UP])}. La ruta por el borde desaparece: el objetivo de Sarsa usa el movimiento que de verdad se hace después, y junto al borde, a veces es una caída.`))),
     takeBuild(i + 1),
   ] });
 }
@@ -563,9 +669,11 @@ for (let i = 1; i < slides.length; i++) {
 slideshow({
   svg: document.getElementById("fig-sarsa"),
   slides,
-  // The state after move m of the whole run, for the frames of a skip: the move just updated in green, A′ in yellow.
+  code: CODE,
+  // The state after move m of the whole run, for the frames of a skip: the move just updated in green, A′ in yellow; the
+  // pseudocode runs one pass of the loop over moves.
   frame: (m) => {
     const x = X(m);
-    return { Q: x.post, agent: x.done ? GOAL : x.s2, ring: x.fell, ep: x.ep, move: x.t + 1, time: x.t + 1, bumpPose: shake(x, m), marks: [{ c: x.s, a: x.a, kind: "upd" }], pick: x.next ? [x.s2, x.next.a] : undefined };
+    return { code: [TAKE, CHOOSE_NEXT, TARGET, UPDATE, SHIFT], Q: x.post, agent: x.done ? GOAL : x.s2, ring: x.fell, ep: x.ep, move: x.t + 1, time: x.t + 1, bumpPose: shake(x, m), marks: [{ c: x.s, a: x.a, kind: "upd" }], pick: x.next ? [x.s2, x.next.a] : undefined };
   },
 });

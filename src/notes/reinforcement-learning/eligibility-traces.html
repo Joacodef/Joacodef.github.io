@@ -8,7 +8,7 @@ scripts:
 ---
 <div class="prose">
   <p>An <i>n</i>-step method trusts its estimates after a fixed number of steps, <i>n</i>, and a good <i>n</i> depends on the task. Nothing forces a single choice. A target can average several <i>n</i>-step returns, say half of a short one and half of a long one, and still be a sound target.</p>
-  <p>The λ-return averages all of them. It gives the one-step return the largest weight and each longer return a little less, by a factor λ per extra step, so one number, λ, moves the target smoothly from one-step TD (λ = 0) to Monte Carlo (λ = 1). The catch is that this average reaches to the end of the episode, so it can only be computed once the episode is over. Eligibility traces remove the wait. The agent keeps a fading memory of the pairs it has visited, and each time it computes a TD error it passes that error back to them, more to recent pairs and less to old ones.</p>
+  <p>The λ-return averages all of them. It gives the one-step return the largest weight and each longer return a little less, by a factor λ per extra step, so one number, λ, moves the target smoothly from one-step TD (λ = 0) to Monte Carlo (λ = 1).</p>
   <figure class="diagram">
     <svg viewBox="0 0 440 176" role="img" aria-label="Bar chart of the weights the λ-return gives, with λ = 0.5, to each return from a state four steps before the end of the episode: 0.5 for the one-step return, 0.25 for the two-step return, 0.125 for the three-step return, and 0.125 for the full return.">
       <line class="guide" x1="40" y1="140" x2="410" y2="140"/>
@@ -27,19 +27,37 @@ scripts:
     </svg>
     <figcaption>The weights of the λ-return with λ = 0.5, for a state four steps before the end: the one-, two- and three-step returns, then the full return <i>G</i><sub><i>t</i></sub>. Each longer return gets half the weight of the one before, and the full return takes all the weight that is left.</figcaption>
   </figure>
+  <p>The catch is that this average reaches to the end of the episode, so it can only be computed once the episode is over. Eligibility traces remove the wait. The agent keeps a fading memory of the pairs it has visited, and each time it computes a TD error it passes that error back to them, more to recent pairs and less to old ones.</p>
   <p class="legend">Throughout this page, <span class="bar" aria-hidden="true"></span>the steps of an episode are drawn in blue ink, and <span class="dot" aria-hidden="true"></span>targets and the TD errors that carry them in red ink.</p>
 </div>
 
 <section id="compound">
   <div class="prose">
     <h2><span class="n">1</span><span>Averaging <i>n</i>-step returns</span></h2>
+    <aside class="hl-back">From the <i>n</i>-step bootstrapping note: the <a href="/notes/reinforcement-learning/n-step-bootstrapping/#return"><i>n</i>-step return</a> and <a href="/notes/reinforcement-learning/n-step-bootstrapping/#n-step-sarsa"><i>n</i>-step Sarsa</a>, whose best <i>n</i> depends on the task.</aside>
     <p>The <i>n</i>-step return keeps <i>n</i> rewards and then trusts the estimate of the state or pair it reaches:</p>
     <div class="disp"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub> ≐ <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub> + γ<i>R</i><sub><i>t</i>+2</sub> + ⋯</span> <span class="nowrap">+ γ<sup><i>n</i>−1</sup><i>R</i><sub><i>t</i>+<i>n</i></sub></span> <span class="nowrap">+ γ<sup><i>n</i></sup><span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i>+<i>n</i></sub>, <b class="vec">w</b><sub><i>t</i>+<i>n</i>−1</sub>)</span></div>
-    <p>This is the general form, for any way of estimating values: <span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>) is the estimated value of state <i>s</i> given a vector of weights <b class="vec">w</b>. A table is the simplest case, with one weight per state, so that <span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>) is just the table's entry <i>V</i>(<i>s</i>). With action values, the last term is the estimate of the pair (<i>S</i><sub><i>t</i>+<i>n</i></sub>, <i>A</i><sub><i>t</i>+<i>n</i></sub>) instead, as in <i>n</i>-step Sarsa.</p>
-    <p>Any <i>n</i>-step return is a valid target, and so is any average of them, as long as the weights are positive and add up to 1. Such an average keeps the error reduction property of the <i>n</i>-step returns, so it leads to sound learning too. An update toward an average of simpler targets is a compound update. For example, half of a two-step return and half of a four-step return:</p>
+    <p>This is the general form, for any way of estimating values: <span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>) is the estimated value of state <i>s</i> given a vector of weights <b class="vec">w</b>.</p>
+    <ul>
+      <li>A table is the simplest case, with one weight per state, so that <span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>) is just the table's entry <i>V</i>(<i>s</i>).</li>
+      <li>With action values, the last term is the estimate of the pair (<i>S</i><sub><i>t</i>+<i>n</i></sub>, <i>A</i><sub><i>t</i>+<i>n</i></sub>) instead, as in <i>n</i>-step Sarsa.</li>
+    </ul>
+    <p>Any <i>n</i>-step return is a valid target, and so is any average of them, as long as the weights are positive and add up to 1. Such an average keeps the error reduction property of the <i>n</i>-step returns, so it leads to sound learning too.</p>
+    <div class="hl-def"><p><dfn>Compound update</dfn>: an update toward an average of simpler targets. It can only be made once its longest part is complete.</p></div>
+    <p>For example, an update toward half of a two-step return and half of a four-step return must wait four steps:</p>
     <div class="disp">½<i>G</i><sub><i>t</i>:<i>t</i>+2</sub> + ½<i>G</i><sub><i>t</i>:<i>t</i>+4</sub></div>
-    <p>A compound update can only be made once its longest part is complete: this one must wait four steps.</p>
-    <p>An example. A robot drives home to its charger from the kitchen, through the hallway and the study. Reaching the charger gives +10, every other step 0, and γ = 0.9, so the true values are 8.1, 9 and 10. The robot's table is still poor: 2 for the kitchen, 4 for the hallway and 6 for the study. From the kitchen, the one-step return is <span class="nowrap">0 + 0.9 · 4 = 3.6</span>, the two-step return <span class="nowrap">0.81 · 6 = 4.86</span>, and the three-step return reaches the charger, <span class="nowrap">0.81 · 10 = 8.1</span>. Half of the first and half of the last is 5.85.</p>
+    <p>An example. A robot drives home to its charger from the kitchen, through the hallway and the study. Reaching the charger gives +10, every other step 0, and γ = 0.9, which sets the true values. The robot's table is still poor:</p>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col">Room</th><th scope="col">True value</th><th scope="col">Robot's table</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Kitchen</th><td>8.1</td><td>2</td></tr>
+          <tr><th scope="row">Hallway</th><td>9</td><td>4</td></tr>
+          <tr><th scope="row">Study</th><td>10</td><td>6</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>From the kitchen, the one-step return is <span class="nowrap">0 + 0.9 · 4 = 3.6</span>, the two-step return <span class="nowrap">0.81 · 6 = 4.86</span>, and the three-step return reaches the charger, <span class="nowrap">0.81 · 10 = 8.1</span>. Half of the first and half of the last is 5.85.</p>
   </div>
 </section>
 
@@ -65,7 +83,7 @@ scripts:
         </tbody>
       </table>
     </div>
-    <p>The larger λ, the more the target relies on real rewards and the less on the poor estimates.</p>
+    <p>From 3.6 at λ = 0 to the full return, 8.1, at λ = 1, the target climbs with λ: <mark class="hl-key">the larger λ, the more the target relies on real rewards and the less on the poor estimates.</mark></p>
   </div>
 </section>
 
@@ -77,11 +95,26 @@ scripts:
     <p>and the same holds for state values. <i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span> needs every reward until the end, so the simplest algorithm waits. The off-line λ-return algorithm changes nothing during the episode; when it ends, it makes one update per step, toward that step's λ-return:</p>
     <div class="disp"><b class="vec">w</b><sub><i>t</i>+1</sub> <span class="nowrap">≐ <b class="vec">w</b><sub><i>t</i></sub> + α[<span class="pt"><i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span></span></span> <span class="nowrap">− <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)] ∇<span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>),</span> <span class="nowrap"><i>t</i> = 0, …, <i>T</i> − 1</span></div>
     <p>The gradient ∇<span class="hat lo"><i>v</i></span> says which weights produced the estimate of <i>S</i><sub><i>t</i></sub>, and how much. In a table it is 1 for the entry of <i>S</i><sub><i>t</i></sub> and 0 for every other, so the update is the familiar <span class="nowrap"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + α[<span class="pt"><i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span>.</p>
-    <p>In the example with λ = 0.5 and α = 0.5, the λ-returns are 5.04 for the kitchen, 7.2 for the hallway and 10 for the study, so at the end of the episode the table moves from 2, 4 and 6 to 3.52, 5.6 and 8.</p>
-    <p>How well does it learn? About as well as <i>n</i>-step TD at its best <i>n</i>, and slightly better at their best settings. As with <i>n</i>, an intermediate λ usually works best, and averaging over all horizons tends to be more robust than betting on a single <i>n</i>.</p>
+    <p>In the example with λ = 0.5 and α = 0.5, the table moves at the end of the episode:</p>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col">Room</th><th scope="col">λ-return</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Kitchen</th><td>5.04</td><td>2</td><td>3.52</td></tr>
+          <tr><th scope="row">Hallway</th><td>7.2</td><td>4</td><td>5.6</td></tr>
+          <tr><th scope="row">Study</th><td>10</td><td>6</td><td>8</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>How well does it learn? About as well as <i>n</i>-step TD at its best <i>n</i>, and slightly better at their best settings. <mark class="hl-key">As with <i>n</i>, an intermediate λ usually works best, and averaging over all horizons tends to be more robust than betting on <span class="nowrap">a single <i>n</i>.</span></mark></p>
 
     <h3>Forward and backward views</h3>
-    <p>The λ-return is a forward view: each state's update looks forward in time, to all the rewards and states that follow it. That is why it has to wait, like Monte Carlo, and why it cannot be used in tasks without an end. A backward view turns this around. At each step it computes the current TD error and sends it back to the states or pairs visited recently, so every estimate is updated a little at every step, from information that already exists. The next section shows why the two views can agree.</p>
+    <p>The λ-return is a forward view: each state's update looks forward in time. A backward view turns this around:</p>
+    <ul>
+      <li><b>Forward view</b>: uses all the rewards and states that follow the state, so it updates only after the end, like Monte Carlo, and never in tasks without an end.</li>
+      <li><b>Backward view</b>: sends the current TD error back to the states or pairs visited recently, so every estimate is updated a little at every step, from information that already exists.</li>
+    </ul>
+    <p>The next section shows why the two views can agree.</p>
   </div>
 </section>
 
@@ -93,7 +126,8 @@ scripts:
     <p>Write the λ-return out term by term, collect the rewards and the estimates step by step, and the estimates cancel in pairs. What is left is a discounted sum of the TD errors from time <i>t</i> on:</p>
     <div class="disp"><span class="pt"><i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span></span> − <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">= δ<sub><i>t</i></sub> + γλδ<sub><i>t</i>+1</sub></span> <span class="nowrap">+ (γλ)<sup>2</sup>δ<sub><i>t</i>+2</sub> + ⋯</span> <span class="nowrap">= Σ<span class="lims"><span><i>T</i>−1</span><span><i>k</i>=<i>t</i></span></span>(γλ)<sup><i>k</i>−<i>t</i></sup>δ<sub><i>k</i></sub></span></div>
     <p>For the kitchen, the TD errors are <span class="nowrap">δ<sub>0</sub> = 0 + 0.9 · 4 − 2 = 1.6</span>, <span class="nowrap">δ<sub>1</sub> = 0.9 · 6 − 4 = 1.4</span> and <span class="nowrap">δ<sub>2</sub> = 10 − 6 = 4</span>, and with γλ = 0.45 the sum is <span class="nowrap">1.6 + 0.45 · 1.4 + 0.2025 · 4 = 3.04</span>, which is <span class="nowrap">5.04 − 2</span>.</p>
-    <p>Now read the sum the other way. The TD error δ<sub><i>k</i></sub> appears in the update of every pair visited before or at time <i>k</i>, with weight (γλ)<sup><i>k</i>−<i>t</i></sup>, where <span class="nowrap"><i>k</i> − <i>t</i></span> is how many steps ago that pair was visited. So there is no need to wait: as soon as δ<sub><i>k</i></sub> is known, it can be passed back to every earlier pair, weighted by (γλ) raised to the time since its visit. The eligibility trace of a pair keeps exactly that weight.</p>
+    <p>Now read the sum the other way. The TD error δ<sub><i>k</i></sub> appears in the update of every pair visited before or at time <i>k</i>, with weight (γλ)<sup><i>k</i>−<i>t</i></sup>, where <span class="nowrap"><i>k</i> − <i>t</i></span> is how many steps ago that pair was visited. So there is no need to wait: as soon as δ<sub><i>k</i></sub> is known, it can be passed back to every earlier pair.</p>
+    <div class="hl-def"><p><dfn>Eligibility trace</dfn> of a pair: the weight with which each new TD error reaches it, (γλ) raised to the time since its visit.</p></div>
     <figure class="diagram">
       <svg viewBox="0 0 440 196" role="img" aria-label="The last five pairs visited, from t − 4 to t, each with a bar for its trace: 0.41, 0.51, 0.64, 0.8 and 1. A red arrow carries the TD error δ t from the current pair back over all of them.">
         <defs><marker id="t-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head-tg" d="M0 0 L10 5 L0 10 z"/></marker></defs>
@@ -154,7 +188,7 @@ scripts:
         </tbody>
       </table>
     </div>
-    <p>At <i>t</i> = 2, for example, the kitchen moves by <span class="nowrap">0.5 · 4 · 0.2025 = 0.405</span>. The final table, 3.52, 5.6 and 8, is exactly what the off-line λ-return algorithm gives. Here that is because every TD error was computed from values that had not changed yet. In general they do change during the episode, since Sarsa(λ) updates as it goes, so a later TD error already reflects earlier updates. Sarsa(λ) is then not equivalent to the λ-return, but it is a close approximation, and it learns at every step instead of at the end.</p>
+    <p>At <i>t</i> = 2, for example, the kitchen moves by <span class="nowrap">0.5 · 4 · 0.2025 = 0.405</span>. The final table, 3.52, 5.6 and 8, is exactly what the off-line λ-return algorithm gives, because every TD error was computed from values that had not changed yet. In general they do change during the episode, since Sarsa(λ) updates as it goes, so a later TD error already reflects earlier updates. <mark class="hl-key">Sarsa(λ) is then not equivalent to the λ-return, but it is a close approximation, and it learns at every step instead of at the end.</mark></p>
 
     <h3>Credit for a whole path</h3>
     <p>The traces spread each TD error over the whole recent path. Take a robot crossing an open room to its charger, with reward 0 on every move except +1 on arrival, all values 0 at first, γ = 1 and α = 0.5, and λ = 0.9. Its first episode wanders for nine moves. Every TD error is 0 until the last move, whose TD error is 1, and at that moment the trace of the move <i>k</i> steps before the end is 0.9<sup><i>k</i></sup>.</p>
@@ -182,7 +216,13 @@ scripts:
       <figcaption>After one episode of Sarsa(λ) with λ = 0.9, every move of the path has a higher value, from 0.5 for the last to 0.22 for the first; thicker arrows rose more. One-step Sarsa would have raised only the last move, and 4-step Sarsa the last four.</figcaption>
     </figure>
     <p>The traces do not remember which moves were useful, only which were recent, so the detour in the middle of the path gets credit too. Later episodes sort this out, as paths that go straight collect their reward sooner.</p>
-    <p>The figure runs Sarsa(λ) on the cliff of the <a href="/notes/reinforcement-learning/td-learning/#sarsa">TD note</a>, with λ = 0.9 as in the room, γ = 1, ε = 0.1 and a smaller step size, α = 0.1: a move visited again and again adds 1 to its trace each time, so its trace can grow well above 1, and a large α would overshoot. Each press is one line of the algorithm above. Every move with a trace is outlined in green, as strongly as its trace, and the value the TD error uses in red.</p>
+    <aside class="hl-back">From the TD note: <a href="/notes/reinforcement-learning/td-learning/#sarsa">the cliff</a>, a grid 6 cells wide and 4 tall, with the start at the bottom left, the goal at the bottom right and the cliff between them along the bottom row.</aside>
+    <p>The figure runs Sarsa(λ) on the cliff of the TD note, with λ = 0.9 as in the room, γ = 1, ε = 0.1 and a smaller step size, α = 0.1: a move visited again and again adds 1 to its trace each time, so its trace can grow well above 1, and a large α would overshoot.</p>
+    <ul>
+      <li>Each press is one line of the algorithm above.</li>
+      <li>Every move with a trace is outlined in green, as strongly as its trace.</li>
+      <li>The value the TD error uses is outlined in red.</li>
+    </ul>
   </div>
 
   <div class="fig steps">

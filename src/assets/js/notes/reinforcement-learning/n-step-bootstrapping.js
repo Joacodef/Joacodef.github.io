@@ -73,6 +73,10 @@ if (luckU < 0) {
 
 /* ---------- Builds: one line of the algorithm per press ---------- */
 
+// The pseudocode's lines that the presses light, by their place in CODE below (its loop headers are never lit): the
+// episode's first choice, taking a move, the end of the episode, choosing the next move, the target and the update.
+const L = { first: 0, take: 2, end: 3, pick: 4, target: 6, update: 7 };
+
 const Gsym = (a, b) => `<i>G</i><sub>${a}:${b}</sub>`;
 const pairOf = (t) => `<i>Q</i>(${sym("S", t)}, ${sym("A", t)})`;
 // A sum of rewards as it reads: −1 − 1 − 100 − 1.
@@ -87,18 +91,19 @@ const winStart = (x) => Math.max(0, x.t - N + 1);
 // Choose A_t: the move turns yellow before the agent moves. The episode's first choice, or one recalled after a skip.
 function chooseBuild(i, lead) {
   const x = moves[i], e = epOf(i), Qc = qAfter(x.qAt);
-  return { ...at(i), time: x.t, Q: Qc, agent: x.s, pick: [x.s, x.a], marks: steps(e, winStart(x), x.t), line: `${lead} ${reason(Qc[x.s], x.explored, x.s, x.a, x.t)}` };
+  return { ...at(i), code: x.t === 0 ? [L.first] : [L.pick], time: x.t, Q: Qc, agent: x.s, pick: [x.s, x.a], marks: steps(e, winStart(x), x.t), line: `${lead} ${reason(Qc[x.s], x.explored, x.s, x.a, x.t)}` };
 }
 // Take A_t: the agent moves along the yellow move; the window so far is outlined in blue.
 function takeBuild(i, extra = "") {
   const x = moves[i], e = epOf(i), bump = x.fell === null && x.s2 === x.s ? x.a : null;
-  return { ...at(i), time: x.t, Q: qAfter(doneBefore(i)), agent: x.fell !== null ? x.fell : x.s2, ring: x.fell, taken: [x.s, x.a], bump, sound: x.fell !== null ? "fall" : bump !== null ? "wall" : undefined,
+  return { ...at(i), code: x.done ? [L.take, L.end] : [L.take], time: x.t, Q: qAfter(doneBefore(i)), agent: x.fell !== null ? x.fell : x.s2, ring: x.fell, taken: [x.s, x.a], bump, sound: x.fell !== null ? "fall" : bump !== null ? "wall" : undefined,
     marks: steps(e, winStart(x), x.t), rings: ringsOf(e, winStart(x), x.t), line: takeText({ s: x.s, a: x.a, t: x.t, s2: x.s2, fell: x.fell }) + extra };
 }
-// Choose A_t+1 in S_t+1, before any update, from the table as it stands.
-function chooseNextBuild(i, extra = "") {
+// Choose A_t+1 in S_t+1, before any update, from the table as it stands. With alone, the readout beside the pseudocode
+// gives only the reason and extra, which says that no update comes yet.
+function chooseNextBuild(i, extra = "", alone = false) {
   const x = moves[i], e = epOf(i), y = moves[i + 1], Qc = qAfter(y.qAt);
-  return { ...at(i), time: x.t + 1, Q: Qc, agent: x.s2, jump: x.fell !== null, ring: x.fell, pick: [x.s2, y.a], marks: steps(e, winStart(x), x.t + 1), rings: ringsOf(e, winStart(x), x.t),
+  return { ...at(i), code: [L.pick], ...(alone ? { short: reason(Qc[x.s2], y.explored, x.s2, y.a, x.t + 1) + extra } : {}), time: x.t + 1, Q: Qc, agent: x.s2, jump: x.fell !== null, ring: x.fell, pick: [x.s2, y.a], marks: steps(e, winStart(x), x.t + 1), rings: ringsOf(e, winStart(x), x.t),
     line: tr("Before any update, it chooses its next move.", "Antes de cualquier actualización, elige su siguiente movimiento.") + " " + reason(Qc[x.s2], y.explored, x.s2, y.a, x.t + 1) + extra };
 }
 // What update u draws: the moves of its window in blue, the one it updates in green once updated, and in red the move
@@ -111,13 +116,17 @@ function windowMarks(u, updated) {
 }
 function targetBuild(u, line, eq) {
   const i = moveOf(u), mv = moves[i];
-  return { ...at(i), time: mv.t + 1, Q: qAfter(u), agent: mv.s2, ...windowMarks(u, false), line, eq };
+  return { ...at(i), code: [L.target], time: mv.t + 1, Q: qAfter(u), agent: mv.s2, ...windowMarks(u, false), line, eq };
 }
 // fit sets a long equation, one with the rewards written out, smaller on phones.
 function updateBuild(u, line, eq, fit = false) {
   const i = moveOf(u), mv = moves[i];
-  return { ...at(i), time: mv.t + 1, Q: qAfter(u + 1), agent: mv.s2, ...windowMarks(u, true), line, eq, fit };
+  return { ...at(i), code: [L.update], time: mv.t + 1, Q: qAfter(u + 1), agent: mv.s2, ...windowMarks(u, true), line, eq, fit };
 }
+// An update whose press plays the target and the update in turn (its readout gives both): the window and the move the
+// target ends on as the target's line lights, then the pair in green with its new value.
+const updPhases = (u) => [{ lines: [L.target], draw: targetBuild(u, "") }, { lines: [L.update], draw: updateBuild(u, "") }];
+const withTarget = (bd, us) => ({ ...bd, code: us.flatMap(() => [L.target, L.update]), phases: us.flatMap(updPhases) });
 // A later move of episode 1 in one press: why it was chosen (unless the slide before said so, chosen) and where it led,
 // the next move in yellow, and the update its move completes, if any: its window in blue, the pair in green, and the
 // move the target ends on in red. more follows the first sentence.
@@ -125,8 +134,10 @@ function moveBuild(i, more = "", chosen = false) {
   const x = moves[i], tk = takeBuild(i), y = moves[i + 1], u = x.upd.length ? x.upd[0] : null;
   const w = u !== null ? windowMarks(u, true) : { marks: tk.marks, rings: tk.rings };
   const first = chosen ? tk.line : chooseTakeText(qAfter(x.qAt)[x.s], x.explored, { s: x.s, a: x.a, t: x.t, s2: x.s2, fell: x.fell });
-  return { ...at(i), time: x.t + 1, Q: qAfter(doneAt[i]), agent: x.s2, jump: x.fell !== null, ring: x.fell, taken: [x.s, x.a], bump: tk.bump, sound: tk.sound,
-    pick: y && y.ep === x.ep ? [y.s, y.a] : undefined, marks: w.marks, rings: w.rings, line: `${first}${more ? " " + more : ""}`, eq: u !== null ? updateEq(u, true) : null, fit: true };
+  const next = y && y.ep === x.ep, ph = [{ slow: true, lines: x.done ? [L.take, L.end] : [L.take], draw: tk }, ...(next ? [{ slow: true, lines: [L.pick], draw: chooseNextBuild(i) }] : []),
+    ...(u !== null ? updPhases(u).map((p) => ({ ...p, slow: true, draw: next ? { ...p.draw, pick: [y.s, y.a] } : p.draw })) : [])];
+  return { ...at(i), code: ph.flatMap((p) => p.lines), phases: ph, time: x.t + 1, Q: qAfter(doneAt[i]), agent: x.s2, jump: x.fell !== null, ring: x.fell, taken: [x.s, x.a], bump: tk.bump, sound: tk.sound,
+    pick: next ? [y.s, y.a] : undefined, marks: w.marks, rings: w.rings, line: `${first}${more ? " " + more : ""}`, eq: u !== null ? updateEq(u, true) : null, fit: true };
 }
 const targetEq = (u) => { const x = updates[u]; return `${Gsym(x.tau, x.tau + N)} = <span class="pt">${x.rs.map((_, j) => sym("R", x.tau + 1 + j)).join(" + ")}${x.boot === null ? "" : ` + ${pairOf(x.tau + N)}`} <span class="nowrap">= ${sumText(x.rs)}${x.boot === null ? "" : ` + ${par(x.boot)}`}</span> <span class="nowrap">${eqv(x.G)}</span></span>`; };
 // The update, with the target as a number, or with inline its rewards and the value it ends on. On a phone the line can
@@ -144,8 +155,8 @@ for (let i = 0; i < N - 1; i++) {
   const wait = i === 0
     ? tr(` No update yet: the target of the first move needs ${N} rewards, ${sym("R", 1)} to ${sym("R", N)}.`, ` Aún no hay actualización: el objetivo del primer movimiento necesita ${N} recompensas, de ${sym("R", 1)} a ${sym("R", N)}.`)
     : tr(` Still no update: ${i + 1} of the ${N} rewards are in.`, ` Todavía no hay actualización: van ${i + 1} de las ${N} recompensas.`);
-  const b = [takeBuild(i), chooseNextBuild(i, wait)];
-  if (i === 0) b.unshift(chooseBuild(0, tr("The agent chooses its first move.", "El agente elige su primer movimiento.")));
+  const b = [takeBuild(i), chooseNextBuild(i, wait, true)];
+  if (i === 0) { const c = chooseBuild(0, tr("The agent chooses its first move.", "El agente elige su primer movimiento.")), x = moves[0]; b.unshift({ ...c, short: reason(c.Q[x.s], x.explored, x.s, x.a, x.t) }); }
   slides.push({ title: tr(`Move ${i + 1}`, `Movimiento ${i + 1}`), builds: b });
 }
 {
@@ -156,9 +167,11 @@ for (let i = 0; i < N - 1; i++) {
     targetBuild(u0, tr(
       `The target of the first move is now complete: its ${N} rewards, outlined in blue, plus the value of the move just chosen, outlined in red.`,
       `El objetivo del primer movimiento ya está completo: sus ${N} recompensas, con borde azul, más el valor del movimiento recién elegido, con borde rojo.`), targetEq(u0)),
-    updateBuild(u0, tr(
+    { ...updateBuild(u0, tr(
       `Still at <i>t</i> = ${N}, the value of the first move, ${pairOf(0)}, moves halfway toward the target, from ${num(updates[u0].old)} to ${num(updates[u0].nu)}. It had to wait ${N} moves.`,
-      `Todavía en <i>t</i> = ${N}, el valor del primer movimiento, ${pairOf(0)}, avanza la mitad del camino hacia el objetivo, de ${num(updates[u0].old)} a ${num(updates[u0].nu)}. Tuvo que esperar ${N} movimientos.`), updateEq(u0)),
+      `Todavía en <i>t</i> = ${N}, el valor del primer movimiento, ${pairOf(0)}, avanza la mitad del camino hacia el objetivo, de ${num(updates[u0].old)} a ${num(updates[u0].nu)}. Tuvo que esperar ${N} movimientos.`), updateEq(u0)), short: tr(
+      `At <i>t</i> = ${N}, the value of the first move, ${pairOf(0)}, moves halfway toward its target, from ${num(updates[u0].old)} to ${num(updates[u0].nu)}. It had to wait ${N} moves.`,
+      `En <i>t</i> = ${N}, el valor del primer movimiento, ${pairOf(0)}, avanza la mitad del camino hacia su objetivo, de ${num(updates[u0].old)} a ${num(updates[u0].nu)}. Tuvo que esperar ${N} movimientos.`) },
   ] });
   // Moves 5 to 8, up to the first fall: take, choose, and the update of the move made N moves before.
   for (let i = N; i < Math.min(2 * N, firstFall); i++) {
@@ -166,9 +179,9 @@ for (let i = 0; i < N - 1; i++) {
     slides.push({ title: tr(`Move ${t}`, `Movimiento ${t}`), builds: [
       takeBuild(i),
       chooseNextBuild(i),
-      updateBuild(u, tr(
+      withTarget(updateBuild(u, tr(
         `${sym("R", t)} is the fourth reward after the move from τ = ${x.tau}, ${name}, so that move's target is complete: its four rewards plus the value of the move just chosen, outlined in red: ${num(x.boot)}. Its value moves halfway toward ${num(x.G)}, from ${num(x.old)} to ${num(x.nu)}.${more ? ` From now on, each move completes one window and updates the move made ${N} moves before it.` : ""}`,
-        `${sym("R", t)} es la cuarta recompensa después del movimiento de τ = ${x.tau}, ${name}, así que el objetivo de ese movimiento está completo: sus cuatro recompensas más el valor del movimiento recién elegido, con borde rojo: ${num(x.boot)}. Su valor avanza la mitad del camino hacia ${num(x.G)}, de ${num(x.old)} a ${num(x.nu)}.${more ? ` Desde ahora, cada movimiento completa una ventana y actualiza el movimiento hecho ${N} movimientos antes.` : ""}`), updateEq(u, true), true),
+        `${sym("R", t)} es la cuarta recompensa después del movimiento de τ = ${x.tau}, ${name}, así que el objetivo de ese movimiento está completo: sus cuatro recompensas más el valor del movimiento recién elegido, con borde rojo: ${num(x.boot)}. Su valor avanza la mitad del camino hacia ${num(x.G)}, de ${num(x.old)} a ${num(x.nu)}.${more ? ` Desde ahora, cada movimiento completa una ventana y actualiza el movimiento hecho ${N} movimientos antes.` : ""}`), updateEq(u, true), true), [u]),
     ] });
   }
 }
@@ -182,9 +195,11 @@ for (let i = 0; i < N - 1; i++) {
     targetBuild(u, tr(
       `${sym("R", f.t + 1)} is the last of the ${N} rewards of the move from ${N} moves back, τ = ${tau}: ${first}. So the fall enters that move's target, although it came ${N - 1} moves later. The target ends on the value of the move just chosen, outlined in red.`,
       `${sym("R", f.t + 1)} es la última de las ${N} recompensas del movimiento de ${N} movimientos atrás, τ = ${tau}: ${first}. Así, la caída entra en el objetivo de ese movimiento, aunque llegó ${N - 1} movimientos después. El objetivo termina en el valor del movimiento recién elegido, con borde rojo.`), targetEq(u)),
-    updateBuild(u, tr(
+    { ...updateBuild(u, tr(
       `${pairOf(tau)}, ${first}, drops halfway toward it, from ${num(updates[u].old)} to ${num(updates[u].nu)}.`,
-      `${pairOf(tau)}, ${first}, baja la mitad del camino hacia él, de ${num(updates[u].old)} a ${num(updates[u].nu)}.`), updateEq(u)),
+      `${pairOf(tau)}, ${first}, baja la mitad del camino hacia él, de ${num(updates[u].old)} a ${num(updates[u].nu)}.`), updateEq(u)), short: tr(
+      `${pairOf(tau)}, ${first}, drops halfway toward its target, from ${num(updates[u].old)} to ${num(updates[u].nu)}.`,
+      `${pairOf(tau)}, ${first}, baja la mitad del camino hacia su objetivo, de ${num(updates[u].old)} a ${num(updates[u].nu)}.`) },
   ] });
   // Over the next moves, one press each, the fall enters the targets of the other moves before it, down to the one that
   // stepped off.
@@ -209,12 +224,12 @@ for (let i = 0; i < N - 1; i++) {
   const nFalls = falls.filter((m) => m.ep === 1).length;
   slides.push({ title: tr("Episode 1 ends", "Termina el episodio 1"), builds: [
     { ...takeBuild(last), line: chooseTakeText(qAfter(moves[last].qAt)[moves[last].s], moves[last].explored, { s: moves[last].s, a: moves[last].a, t: moves[last].t, s2: moves[last].s2, fell: moves[last].fell }) + tr(` The episode ends: <i>T</i> = ${T}.`, ` El episodio termina: <i>T</i> = ${T}.`) },
-    updateBuild(uEnd, tr(
+    withTarget(updateBuild(uEnd, tr(
       `The agent reached the goal after ${T} moves and ${count(nFalls, "fall", "falls")}. The window of the move from τ = ${T - N} ends at the goal, and nothing after the goal needs estimating, so its target is just its ${N} rewards.`,
-      `El agente llegó a la meta después de ${T} movimientos y ${count(nFalls, "caída", "caídas")}. La ventana del movimiento de τ = ${T - N} termina en la meta, y después de la meta no hay nada que estimar, así que su objetivo son solo sus ${N} recompensas.`), updateEq(uEnd, true), true),
-    { ...updateBuild(flush[0], tr(
+      `El agente llegó a la meta después de ${T} movimientos y ${count(nFalls, "caída", "caídas")}. La ventana del movimiento de τ = ${T - N} termina en la meta, y después de la meta no hay nada que estimar, así que su objetivo son solo sus ${N} recompensas.`), updateEq(uEnd, true), true), [uEnd]),
+    { ...withTarget(updateBuild(flush[0], tr(
       `The last ${N - 1} moves are still waiting, and no more rewards will come, so they are updated right away, each toward the rewards left until the goal: ${listAnd(flush.map((u) => num(updates[u].G)))}. Halfway, that gives ${listAnd(flush.map((u) => num(updates[u].nu)))}.`,
-      `Los últimos ${N - 1} movimientos siguen esperando, y no vendrán más recompensas, así que se actualizan de inmediato, cada uno hacia las recompensas que quedan hasta la meta: ${listAnd(flush.map((u) => num(updates[u].G)))}. A mitad de camino, quedan en ${listAnd(flush.map((u) => num(updates[u].nu)))}.`), updateEq(flush[0], true), true),
+      `Los últimos ${N - 1} movimientos siguen esperando, y no vendrán más recompensas, así que se actualizan de inmediato, cada uno hacia las recompensas que quedan hasta la meta: ${listAnd(flush.map((u) => num(updates[u].G)))}. A mitad de camino, quedan en ${listAnd(flush.map((u) => num(updates[u].nu)))}.`), updateEq(flush[0], true), true), flush),
       Q: qAfter(flush[flush.length - 1] + 1), marks: flush.map((u) => ({ c: updates[u].s, a: updates[u].a, kind: "upd" })), time: T },
   ] });
 }
@@ -245,14 +260,19 @@ if (luckU > settleU) slides.push(settleSlide);
     : tr(`In episode ${u.ep} the agent makes a random move.`, `En el episodio ${u.ep}, el agente hace un movimiento al azar.`);
   slides.push({ title: tr("A good move pays for a fall", "Un buen movimiento paga por una caída"), builds: [
     { ...takeBuild(fi), line: `${lead} ${takeBuild(fi).line}` },
-    ...(i > fi ? [takeBuild(i), chooseNextBuild(i)] : []),
+    // After the fall, the next move is chosen, then taken, in one press: the yellow move appears before the agent moves.
+    ...(i > fi ? [i === fi + 1 ? { ...takeBuild(i), code: [L.pick, L.take], phases: [{ slow: true, lines: [L.pick], draw: chooseNextBuild(fi) }, { slow: true, lines: [L.take], draw: takeBuild(i) }] } : takeBuild(i), chooseNextBuild(i)] : []),
     { ...targetBuild(luckU, tr(
       `The target of the episode's move from τ = ${u.tau} is now complete: ${path}, ${whose}. The fall is one of its ${N} rewards, and the target ends on the value outlined in red.`,
       `Ahora se completa el objetivo del movimiento de τ = ${u.tau} del episodio: ${path}, ${whose}. La caída es una de sus ${N} recompensas, y el objetivo termina en el valor con borde rojo.`),
-      `${Gsym(u.tau, u.tau + N)} = <span class="pt">${sumText(u.rs)} + ${par(u.boot)} <span class="nowrap">${eqv(u.G)}</span></span>`), ...(early && routeThen ? { route: routeThen } : {}) },
-    updateBuild(luckU, tr(
+      `${Gsym(u.tau, u.tau + N)} = <span class="pt">${sumText(u.rs)} + ${par(u.boot)} <span class="nowrap">${eqv(u.G)}</span></span>`), ...(early && routeThen ? { route: routeThen } : {}), short: tr(
+      `The target of the episode's move from τ = ${u.tau} is now complete: ${path}, ${whose}. The fall at move ${fallT + 1} is one of its ${N} rewards, and the target ends on the value outlined in red.`,
+      `Ahora se completa el objetivo del movimiento de τ = ${u.tau} del episodio: ${path}, ${whose}. La caída del movimiento ${fallT + 1} es una de sus ${N} recompensas, y el objetivo termina en el valor con borde rojo.`) },
+    { ...updateBuild(luckU, tr(
       `So ${path} drops halfway toward it, from ${num(u.old)} to ${num(u.nu)}, although it was the right move: a long return carries the luck of every move in it.${then}`,
-      `Así, ${path} baja la mitad del camino hacia él, de ${num(u.old)} a ${num(u.nu)}, aunque era el movimiento correcto: un retorno largo arrastra la suerte de cada movimiento que contiene.${then}`), updateEq(luckU)),
+      `Así, ${path} baja la mitad del camino hacia él, de ${num(u.old)} a ${num(u.nu)}, aunque era el movimiento correcto: un retorno largo arrastra la suerte de cada movimiento que contiene.${then}`), updateEq(luckU)), short: tr(
+      `${path} drops halfway toward its target, from ${num(u.old)} to ${num(u.nu)}, although it was the right move: a long return carries the luck of every move in it.${then}`,
+      `${path} baja la mitad del camino hacia su objetivo, de ${num(u.old)} a ${num(u.nu)}, aunque era el movimiento correcto: un retorno largo arrastra la suerte de cada movimiento que contiene.${then}`) },
   ] });
 }
 if (luckU < settleU) slides.push(settleSlide);
@@ -276,14 +296,34 @@ for (let i = 1; i < slides.length; i++) {
   slides[i].skip = { from, to, moves: gap, text: tr(`${gap} moves later`, `${gap} movimientos después`) + (epTo !== epFrom ? tr(`, in episode ${epTo}`, `, en el episodio ${epTo}`) : "") };
 }
 
+// The pseudocode beside the run: n-step Sarsa as the note writes the n-step TD steps, with action values.
+const Qp = (s, a) => `<i>Q</i>(<i>S</i><sub>${s}</sub>, <i>A</i><sub>${a}</sub>)`;
+const CODE = {
+  title: tr("<i>n</i>-step Sarsa, in each episode", "<i>n</i>-step Sarsa, en cada episodio"),
+  lines: [
+    { kind: "pick", html: tr(`<span class="nowrap"><i>S</i><sub>0</sub> ← the start</span>, <span class="nowrap"><i>A</i><sub>0</sub> ← ε-greedy</span> from <i>Q</i>, <span class="nowrap"><i>T</i> ← ∞</span>`, `<span class="nowrap"><i>S</i><sub>0</sub> ← el inicio</span>, <span class="nowrap"><i>A</i><sub>0</sub> ← ε-greedy</span> según <i>Q</i>, <span class="nowrap"><i>T</i> ← ∞</span>`) },
+    { head: true, html: tr(`For <span class="nowrap"><i>t</i> = 0, 1, 2, …,</span> until <span class="nowrap">τ = <i>T</i> − 1</span>:`, `Para <span class="nowrap"><i>t</i> = 0, 1, 2, …,</span> hasta <span class="nowrap">τ = <i>T</i> − 1</span>:`) },
+    { kind: "take", ind: 1, html: tr(`If <span class="nowrap"><i>t</i> &lt; <i>T</i></span>: take <i>A</i><sub><i>t</i></sub>; observe <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub>, <i>S</i><sub><i>t</i>+1</sub></span>`, `Si <span class="nowrap"><i>t</i> &lt; <i>T</i></span>: tomar <i>A</i><sub><i>t</i></sub>; observar <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub>, <i>S</i><sub><i>t</i>+1</sub></span>`) },
+    { kind: "plain", ind: 2, html: tr(`If <i>S</i><sub><i>t</i>+1</sub> is terminal: <span class="nowrap"><i>T</i> ← <i>t</i> + 1</span>`, `Si <i>S</i><sub><i>t</i>+1</sub> es terminal: <span class="nowrap"><i>T</i> ← <i>t</i> + 1</span>`) },
+    { kind: "pick", ind: 2, html: tr(`Else: <span class="nowrap"><i>A</i><sub><i>t</i>+1</sub> ← ε-greedy</span> <span class="nowrap">from <i>Q</i></span>`, `Si no: <span class="nowrap"><i>A</i><sub><i>t</i>+1</sub> ← ε-greedy</span> <span class="nowrap">según <i>Q</i></span>`) },
+    { head: true, ind: 1, html: tr(`<span class="nowrap">τ ← <i>t</i> − <i>n</i> + 1</span>; if <span class="nowrap">τ ≥ 0</span>:`, `<span class="nowrap">τ ← <i>t</i> − <i>n</i> + 1</span>; si <span class="nowrap">τ ≥ 0</span>:`) },
+    { kind: "target", ind: 2, html: tr(
+      `<span class="nowrap"><i>G</i> ← Σ<span class="lims"><span>min(τ+<i>n</i>, <i>T</i>)</span><span><i>i</i>=τ+1</span></span>γ<sup><i>i</i>−τ−1</sup><i>R</i><sub><i>i</i></sub></span>, plus <span class="nowrap">γ<sup><i>n</i></sup>${Qp("τ+<i>n</i>", "τ+<i>n</i>")}</span> if <span class="nowrap">τ + <i>n</i> &lt; <i>T</i></span>`,
+      `<span class="nowrap"><i>G</i> ← Σ<span class="lims"><span>min(τ+<i>n</i>, <i>T</i>)</span><span><i>i</i>=τ+1</span></span>γ<sup><i>i</i>−τ−1</sup><i>R</i><sub><i>i</i></sub></span>, más <span class="nowrap">γ<sup><i>n</i></sup>${Qp("τ+<i>n</i>", "τ+<i>n</i>")}</span> si <span class="nowrap">τ + <i>n</i> &lt; <i>T</i></span>`) },
+    { kind: "update", ind: 2, html: `<span class="nowrap"><span class="upd">${Qp("τ", "τ")}</span> ← ${Qp("τ", "τ")}</span> <span class="nowrap">+ α[<span class="pt"><i>G</i></span> − ${Qp("τ", "τ")}]</span>` },
+  ],
+};
+
 slideshow({
   svg: document.getElementById("fig-nstep"),
   slides,
+  code: CODE,
   // The state after move m of the whole run, for the frames of a skip: the move updated after it in green, four moves
-  // behind the agent, and the next move in yellow.
+  // behind the agent, and the next move in yellow. Its pass of the pseudocode is that move's: the episode's first choice
+  // at t = 0, the take, the end or the next choice, and a target and an update for each update it makes.
   frame: (m) => {
     const x = moves[m], y = moves[m + 1];
-    return { Q: qAfter(doneAt[m]), agent: x.s2, ring: x.fell, ep: x.ep, move: x.t + 1, time: x.t + 1, bumpPose: shake(x, m),
+    return { code: [...(x.t === 0 ? [L.first] : []), L.take, ...(x.done ? [L.end] : [L.pick]), ...x.upd.flatMap(() => [L.target, L.update])], Q: qAfter(doneAt[m]), agent: x.s2, ring: x.fell, ep: x.ep, move: x.t + 1, time: x.t + 1, bumpPose: shake(x, m),
       marks: x.upd.map((u) => ({ c: updates[u].s, a: updates[u].a, kind: "upd" })), pick: y && y.ep === x.ep ? [y.s, y.a] : undefined };
   },
 });

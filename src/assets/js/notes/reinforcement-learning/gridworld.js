@@ -172,12 +172,16 @@ const qText = (v, decimals) => {
 };
 const pts = (p) => p.map((q) => q.join(",")).join(" ");
 // A triangle shrunk toward its middle, so that outlines of neighboring triangles do not touch.
-const shrink = (p, k) => { const gx = (p[0][0] + p[1][0] + p[2][0]) / 3, gy = (p[0][1] + p[1][1] + p[2][1]) / 3; return p.map(([x, y]) => `${gx + (x - gx) * k},${gy + (y - gy) * k}`).join(" "); };
+const shrink = (p, k) => { const gx = p.reduce((s, q) => s + q[0], 0) / p.length, gy = p.reduce((s, q) => s + q[1], 0) / p.length; return p.map(([x, y]) => `${gx + (x - gx) * k},${gy + (y - gy) * k}`).join(" "); };
 
 function createGrid(svg, world, perCell) {
   const { W, H, START, GOAL, isCliff, cell: C, decimals } = world, k = C / 60;
   const x0 = (s) => ML + (s % W) * C, y0 = (s) => MT + Math.floor(s / W) * C, mid = (s) => [x0(s) + C / 2, y0(s) + C / 2];
   const triPts = (c) => { const X0 = x0(c), Y0 = y0(c), [cx, cy] = mid(c); return [[[X0, Y0], [X0 + C, Y0], [cx, cy]], [[X0 + C, Y0], [X0 + C, Y0 + C], [cx, cy]], [[X0 + C, Y0 + C], [X0, Y0 + C], [cx, cy]], [[X0, Y0 + C], [X0, Y0], [cx, cy]]]; };
+  // A move's area without the inner tip of its triangle: a trapezoid. The tip of move a is the arrow of the opposite move.
+  const inward = (c, p) => { const [cx, cy] = mid(c); return [cx + ARROW * (p[0] - cx), cy + ARROW * (p[1] - cy)]; };
+  const trapPts = (c) => (perCell ? triPts(c) : triPts(c).map(([p0, p1]) => [p0, p1, inward(c, p1), inward(c, p0)]));
+  const tipPts = (c, a) => { const [p0, p1] = triPts(c)[a]; return [inward(c, p0), mid(c), inward(c, p1)]; };
   // A cell's outline, inset so that it clears the cell's sides; a second mark on the same cell goes inside the first.
   const square = (c, n) => { const d = C * (0.06 + 0.06 * n), X0 = x0(c) + d, Y0 = y0(c) + d, L = C - 2 * d; return pts([[X0, Y0], [X0 + L, Y0], [X0 + L, Y0 + L], [X0, Y0 + L]]); };
   const triText = (c, a) => { const [cx, cy] = mid(c); return [[cx, y0(c) + 12 * k], [x0(c) + C - 13 * k, cy + 3.5], [cx, y0(c) + C - 4 * k], [x0(c) + 13 * k, cy + 3.5]][a]; };
@@ -197,6 +201,7 @@ function createGrid(svg, world, perCell) {
     el("line", { class: "gw-diag", x1: x0(s), y1: y0(s), x2: x0(s) + C, y2: y0(s) + C }, svg);
     el("line", { class: "gw-diag", x1: x0(s) + C, y1: y0(s), x2: x0(s), y2: y0(s) + C }, svg);
   }
+  for (let s = 0; s < W * H; s++) if (!isCliff(s) && s !== GOAL && !perCell) for (let a = 0; a < 4; a++) el("polygon", { class: "gw-tip", points: pts(tipPts(s, a)) }, svg);
   el("rect", { class: "gw-frame", x: ML, y: MT, width: W * C, height: H * C }, svg);
   if (cliffCells.length) {
     const cx = cliffCells.reduce((acc, s) => acc + mid(s)[0], 0) / cliffCells.length;
@@ -266,16 +271,16 @@ function createGrid(svg, world, perCell) {
   // of a simulated wall hit), walls ([[cell, cell]] that a wall stands between) and bumpPose (in the frames of a skip,
   // the action of a wall hit, which shows the agent pressed against the wall).
   function draw(g, animate) {
-    const { Q, V, agent, jump, pick, taken, marks, maxOf, ring, rings, bump, route, unknown, shown, ghost, ghostFrom, ghostBump, walls, bumpPose } = g;
+    const { Q, V, agent, jump, pick, taken, marks, maxOf, ring, rings, bump, route, unknown, shown, ghost, ghostFrom, ghostBump, walls, bumpPose, bestQ } = g;
     const hot = heat !== "off";
     dyn.replaceChildren();
     for (const [a, b] of walls || []) el("line", { class: "gw-barrier", ...side(a, b) }, dyn);
     if (unknown && !under) { under = el("g", {}); (heatG ?? floorEnd).after(under); }
-    under?.replaceChildren(...(unknown || []).map(([c, a]) => el("polygon", { class: "gw-unknown", points: pts(triPts(c)[a]) })));
+    under?.replaceChildren(...(unknown || []).map(([c, a]) => el("polygon", { class: "gw-unknown", points: pts(trapPts(c)[a]) })));
     const unk = new Set((unknown || []).map(([c, a]) => c * 4 + a));
     if (taken && animate && !reducedMotion.matches)
-      el("polygon", { class: "gw-pick", points: pts(triPts(taken[0])[taken[1]]) }, dyn).animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: "ease-in", fill: "forwards" });
-    if (pick) el("polygon", { class: "gw-pick", points: pts(triPts(pick[0])[pick[1]]) }, dyn);
+      el("polygon", { class: "gw-pick", points: pts(trapPts(taken[0])[taken[1]]) }, dyn).animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: "ease-in", fill: "forwards" });
+    if (pick) el("polygon", { class: "gw-pick", points: pts(trapPts(pick[0])[pick[1]]) }, dyn);
     // A route: a light blue band through the middles of its cells, under the values (translucent over the heatmap), its
     // arrowhead stopping short of the goal's middle, where the agent may stand; on the cookie grid, just inside the goal,
     // clear of its name and reward.
@@ -300,7 +305,7 @@ function createGrid(svg, world, perCell) {
       if (kinds.has(kind)) continue;
       const k = kinds.size; kinds.add(kind); kindsAt.set(key, kinds);
       const style = w === undefined ? {} : { style: `opacity: ${Math.max(0.15, Math.min(1, w))}; stroke-width: ${2.4 * Math.min(2, Math.max(1, w))}px` };
-      el("polygon", { class: `gw-mark ${kind}`, points: a === undefined ? square(c, k) : shrink(triPts(c)[a], 0.8 - 0.22 * k), ...style }, dyn);
+      el("polygon", { class: `gw-mark ${kind}`, points: a === undefined ? square(c, k) : shrink(trapPts(c)[a], 0.8 - 0.22 * k), ...style }, dyn);
     }
     for (const { c, a, kind } of all) if (kind === "tg") red.add(c * 4 + a);
     // The heatmap: a fill for each value shown (by move; a whole cell for one value per cell), or one for each cell by
@@ -318,7 +323,7 @@ function createGrid(svg, world, perCell) {
         if (!vis.length) continue;
         cellV[c] = Math.max(...vis.map((a) => Q[c][a]));
         if (heat === "cell") el("rect", { class: "gw-heat", x: x0(c), y: y0(c), width: C, height: C, style: shares(cellV[c], "--tp", "--tn") }, heatG);
-        else for (const a of vis) el("polygon", { class: "gw-heat", points: pts(triPts(c)[a]), style: shares(Q[c][a], "--tp", "--tn") }, heatG);
+        else for (const a of vis) el("polygon", { class: "gw-heat", points: pts(trapPts(c)[a]), style: shares(Q[c][a], "--tp", "--tn") }, heatG);
       }
     } else heatG?.replaceChildren();
     const halo = (v, cv) => (hot ? { style: `${shares(v, "--tp", "--tn")}; ${shares(cv, "--tpc", "--tnc")}` } : {});
@@ -332,13 +337,15 @@ function createGrid(svg, world, perCell) {
         if (on && !hot) { const bb = t.getBBox(); dyn.insertBefore(el("rect", { class: "gw-qback", x: bb.x - 3, y: bb.y - 0.5, width: bb.width + 6, height: bb.height + 1, rx: 3 }), t); }
         continue;
       }
-      const q = Q[c], m = Math.max(...q), best = q.filter((v) => v === m).length === 1 ? q.indexOf(m) : -1;
+      // bestQ, when given, is the table the bold best value and the arrow come from (a phase that shows a new value before
+      // the policy is improved in the pseudocode); the values drawn are Q's.
+      const q = Q[c], bq = (bestQ ?? Q)[c], m = Math.max(...bq), best = bq.filter((v) => v === m).length === 1 ? bq.indexOf(m) : -1;
       // Over the heatmap, a small blue triangle points from the middle of the cell toward its best move, when one move is
       // best and its value shows (the bold one): it lies along the two half-diagonals of the opposite triangle, out to
       // ARROW of their length, so that its point sits at the middle. A filled triangle of the heatmap points toward the
       // middle, against its move, and this one turns it around. None where the agent or its copy stands, whose dot would
       // cover it.
-      if (hot && best >= 0 && c !== agent && c !== ghost && !(q[best] === 0 && !red.has(c * 4 + best) && !shown?.has(c * 4 + best))) {
+      if (hot && best >= 0 && c !== agent && c !== ghost && !(bq[best] === 0 && !red.has(c * 4 + best) && !shown?.has(c * 4 + best))) {
         const [cx, cy] = mid(c), [p0, p1] = triPts(c)[(best + 2) % 4], out = ([x, y]) => [cx + ARROW * (x - cx), cy + ARROW * (y - cy)];
         el("polygon", { class: "gw-arrow", points: pts([out(p0), [cx, cy], out(p1)]) }, dyn);
       }
@@ -479,10 +486,72 @@ const GEAR = (() => {
 // A figure that is not a grid world, such as the cart-pole, passes its own view, an object with draw(build, animate)
 // and setHeat(mode) that takes the grid's place: its builds and frames carry whatever that view draws, and its settings
 // turn the heatmap on or off.
-export function slideshow({ svg, slides, frame, world = cliff, perCell = false, view = null }) {
+export function slideshow({ svg, slides, frame, world = cliff, perCell = false, view = null, code = null }) {
   const id = svg.id, $ = (s) => document.getElementById(`${id}-${s}`);
   const out = $("out"), live = $("live"), nextBtn = $("next"), backBtn = $("back"), resetBtn = $("reset"), countEl = $("count");
   const fig = svg.closest(".fig");
+  // The pseudocode beside the run, when given: code = { title, lines: [{ html, kind, head }] }. Each build lights the
+  // lines it plays (its code, a list of line numbers), each in the color of its mark on the grid (kind: pick, model,
+  // update). A press that plays a whole step (several lines) lights them one after another, LINE_MS each, and stays on
+  // the last; a skip runs through the lines once per step it plays, in time with the grid. With reduced motion, or
+  // when the press does not animate (Back), the last line is lit at once.
+  // A figure with two runs behind mode buttons (two methods) gives each its pseudocode through show(slides, frame, code).
+  let codeEl = null;
+  const setCode = (c) => {
+    codeEl?.remove();
+    codeEl = null;
+    fig.classList.toggle("with-code", !!c);
+    if (!c) return;
+    codeEl = document.createElement("div");
+    codeEl.className = "pcode";
+    codeEl.id = `${id}-code`;
+    codeEl.innerHTML = `<p class="pc-title">${c.title}</p><ol class="pc">${c.lines.map((l, i) => `<li data-line="${i}" class="${l.head ? "head" : "k-" + l.kind}${l.ind ? " ind" + l.ind : ""}">${l.html}</li>`).join("")}</ol>`;
+    out.before(codeEl);
+  };
+  setCode(code);
+  const lightCode = (lines) => {
+    if (!codeEl) return;
+    const on = new Set(lines ?? []);
+    for (const li of codeEl.querySelectorAll("li[data-line]")) {
+      const lit = on.has(Number(li.dataset.line));
+      li.classList.toggle("on", lit);
+      if (lit) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current");
+    }
+  };
+  const LINE_MS = 150, FF_LINE_MS = 45, PHASE_MS = 2000;
+  // A press made of phases (bd.phases: [{ lines, draw, slow }]) draws each phase on the grid when its first line
+  // lights, so that the grid changes with the pseudocode. Slow phases (the real move: choose, take, update, model) get
+  // LINE_MS a line and animate, so the move plays out; the others (the planning steps) share what is left of PHASE_MS;
+  // at the end the build itself is drawn. Not with reduced motion or Back.
+  const playPhases = (bd, animate) => {
+    if (!bd.phases || !animate || reducedMotion.matches || !codeEl) return false;
+    clearTimeout(codeTimer);
+    const lines = (f) => bd.phases.filter(f).reduce((n, ph) => n + ph.lines.length, 0);
+    const per = Math.max(FF_LINE_MS, Math.min(LINE_MS, (PHASE_MS - lines((ph) => ph.slow) * LINE_MS) / Math.max(1, lines((ph) => !ph.slow))));
+    let pi = 0, li = 0;
+    const tick = () => {
+      const ph = bd.phases[pi];
+      if (li === 0) grid.draw(ph.draw, !!ph.slow);
+      lightCode([ph.lines[li]]);
+      const wait = ph.slow ? LINE_MS : per;
+      if (++li >= ph.lines.length) { li = 0; pi++; }
+      codeTimer = setTimeout(pi < bd.phases.length ? tick : () => grid.draw(bd, false), wait);
+    };
+    tick();
+    return true;
+  };
+  let codeTimer = null;
+  const playCode = (lines, animate) => {
+    clearTimeout(codeTimer);
+    if (!codeEl) return;
+    if (!lines || !lines.length) { lightCode([]); return; }
+    if (!animate || reducedMotion.matches || lines.length === 1) { lightCode([lines.at(-1)]); return; }
+    // A long sequence (a move with its planning loop) runs faster, so that a press lasts under about two seconds.
+    const per = lines.length <= 4 ? LINE_MS : Math.max(FF_LINE_MS, Math.min(LINE_MS, 1800 / lines.length));
+    let i = 0;
+    const next = () => { lightCode([lines[i]]); if (++i < lines.length) codeTimer = setTimeout(next, per); };
+    next();
+  };
   let k = 0, b = 0, ff = null, soundOn = choice.get("gw-sound", "on") !== "off";
   let heat = choice.get("gw-heat", "move");
   if (!["move", "cell", "off"].includes(heat)) heat = "move";
@@ -492,12 +561,13 @@ export function slideshow({ svg, slides, frame, world = cliff, perCell = false, 
 
   function render(animate) {
     const sl = slides[k], bd = sl.builds[b];
-    grid.draw(bd, animate);
+    if (!playPhases(bd, animate)) { grid.draw(bd, animate); playCode(bd.code, animate); }
     // Readout: status and title, then one block per press so far, each a sentence with its calculation below it.
     // New blocks only ever appear at the bottom; earlier ones stay above, dimmed.
-    const shown = sl.builds.slice(0, b + 1), enter = animate && b === 0 ? " enter" : "";
+    // With pseudocode beside the run, the readout shows only the current press, in its short text when it has one.
+    const short = !!codeEl, shown = short ? [sl.builds[b]] : sl.builds.slice(0, b + 1), enter = animate && b === 0 ? " enter" : "";
     let html = `<p class="lbl">${bd.label ?? status(bd.ep, bd.move, bd.time, bd.stage)}</p>${sl.skip ? `<p class="later${enter}">${sl.skip.text}</p>` : ""}<p class="slide${enter}">${sl.title}</p>`;
-    html += `<div class="lines">${shown.map((d, i) => `<div class="${i < shown.length - 1 ? "old" : animate ? (b === 0 ? "enter after-title" : "enter") : ""}"><p>${d.line}</p>${d.eq ? `<div class="eq${d.fit ? " fit" : ""}">${d.eq}</div>` : ""}</div>`).join("")}</div>`;
+    html += `<div class="lines">${shown.map((d, i) => `<div class="${i < shown.length - 1 ? "old" : animate ? (b === 0 ? "enter after-title" : "enter") : ""}"><p>${short && d.short ? d.short : d.line}</p>${d.eq ? `<div class="eq${d.fit ? " fit" : ""}">${d.eq}</div>` : ""}</div>`).join("")}</div>`;
     out.innerHTML = html;
     if (animate) live.textContent = shown[shown.length - 1].line.replace(/<[^>]+>/g, "");
     countEl.textContent = tr(`${k + 1} of ${slides.length}`, `${k + 1} de ${slides.length}`);
@@ -528,14 +598,26 @@ export function slideshow({ svg, slides, frame, world = cliff, perCell = false, 
   // is none, and the skip note says how far it went.
   function fastForward(skip, prevAgent) {
     const dur = Math.min(2400, Math.max(900, skip.moves * 150)), start = performance.now();
-    let shown = -1;
+    let shown = -1, ffCode = null, passCode = null, pass = -1;
     const step = (now) => {
       const m = Math.min(skip.to - 1, skip.from + Math.max(1, Math.floor((skip.moves * (now - start)) / dur)));
       if (m !== shown) {
         shown = m;
         const f = frame(m);
+        ffCode = f.code;
         grid.draw(view ? { ...f, jump: true } : { Q: f.Q, V: f.V, agent: f.agent, ring: f.ring, jump: true, pick: f.pick, marks: f.marks, unknown: f.unknown, shown: f.shown, walls: f.walls, ghost: f.ghost, bumpPose: f.bumpPose }, false);
         out.innerHTML = `<p class="lbl">${f.label ?? status(f.ep, f.move, f.time, f.stage)}</p><p class="slide ff">${tr("Skipping ahead", "Adelantando")}</p><p class="muted">${skip.note ?? tr(`${skip.moves} moves go by.`, `Pasan ${skip.moves} movimientos.`)}</p>`;
+      }
+      if (ffCode && ffCode.length) {
+        clearTimeout(codeTimer);
+        // One pass per step while a line gets at least FF_LINE_MS (about three frames); a faster skip keeps cycling at
+        // that pace, so it shows fewer passes than the steps it plays rather than lines too brief to see.
+        // A pass keeps the lines of the frame it started on, so that a frame changing partway through it (an episode
+        // ending) does not mix two passes.
+        const passMs = Math.max(dur / skip.moves, (passCode ?? ffCode).length * FF_LINE_MS), into = (now - start) / passMs;
+        if (Math.floor(into) !== pass) { pass = Math.floor(into); passCode = ffCode; }
+        const part = into - pass;
+        lightCode([passCode[Math.min(passCode.length - 1, Math.floor(part * passCode.length))]]);
       }
       if (now - start >= dur) finishFF(true, prevAgent);
       else ff.raf = requestAnimationFrame(step);
@@ -611,5 +693,5 @@ export function slideshow({ svg, slides, frame, world = cliff, perCell = false, 
   sync();
 
   render(false);
-  return { show(s, f) { finishFF(false); slides = s; frame = f; k = 0; b = 0; render(false); } };
+  return { show(s, f, c) { finishFF(false); slides = s; frame = f; k = 0; b = 0; if (c !== undefined) setCode(c); render(false); } };
 }

@@ -133,16 +133,48 @@ const CTL = (() => {
     const updEq = (x) => `<span class="nowrap"><span class="upd">${wi(x.i)}</span> ← ${num(x.from)} + 0.1 · ${x.target - x.from < 0 ? `(${num(x.target - x.from)})` : num(x.target - x.from)}</span> <span class="nowrap">${eqv(x.to)}</span>`;
     const lbl = (t) => tr(`Episode 1, step ${t}`, `Episodio 1, paso ${t}`);
     const x0 = S1[0], s0 = x0.s0;
+    // The pseudocode beside the run: the steps of section 2 as the note writes them, the update split into the TD
+    // error and the step, as the readouts write it. Line numbers count the loop heads.
+    const L_S = 1, L_A = 2, L_TAKE = 4, L_END = 5, L_A1 = 6, L_TD = 7, L_UPD = 8, L_NEXT = 9;
+    const qSA = `${qh}(<i>S</i>, <i>A</i>, ${wv})`, grad = `∇${qh}(<i>S</i>, <i>A</i>, ${wv})`;
+    const code = {
+      title: tr("Episodic semi-gradient Sarsa", "Semi-gradient Sarsa para tareas episódicas"),
+      lines: [
+        { head: true, html: tr("Repeat, for each episode:", "Repetir, en cada episodio:") },
+        { kind: "plain", ind: 1, html: tr(`<i>S</i> ← the first state`, `<i>S</i> ← el primer estado`) },
+        { kind: "pick", ind: 1, html: `<span class="nowrap"><i>A</i> ← ε-greedy</span> ${tr("from", "a partir de")} <span class="nowrap">${qh}(<i>S</i>, ·, ${wv})</span>` },
+        { head: true, ind: 1, html: tr("Repeat, for each step:", "Repetir, en cada paso:") },
+        { kind: "take", ind: 2, html: tr(`Take <i>A</i>; observe <i>R</i>, <i>S</i>′`, `Tomar <i>A</i>; observar <i>R</i>, <i>S</i>′`) },
+        { kind: "update", ind: 2, html: `${tr("If <i>S</i>′ is terminal:", "Si <i>S</i>′ es terminal:")} <span class="nowrap"><span class="upd">${wv}</span> ← ${wv} + α[<span class="pt"><i>R</i></span></span> <span class="nowrap">− ${qSA}]</span> <span class="nowrap">${grad}${tr("; next episode", "; episodio siguiente")}</span>` },
+        { kind: "pick", ind: 2, html: `<span class="nowrap"><i>A</i>′ ← ε-greedy</span> ${tr("from", "a partir de")} <span class="nowrap">${qh}(<i>S</i>′, ·, ${wv})</span>` },
+        { kind: "target", ind: 2, html: `<span class="nowrap">δ ← <span class="pt"><i>R</i> + γ${qh}(<i>S</i>′, <i>A</i>′, ${wv})</span></span> <span class="nowrap">− ${qSA}</span>` },
+        { kind: "update", ind: 2, html: `<span class="nowrap"><span class="upd">${wv}</span> ← ${wv} + αδ${grad}</span>` },
+        { kind: "plain", ind: 2, html: `<i>S</i> ← <i>S</i>′; <i>A</i> ← <i>A</i>′` },
+      ],
+    };
     const slides = [
       { title: tr("Every push worth 300", "Todo empujón vale 300"), builds: [
-        { s: s0, w: W0s, agent: -1, label: lbl(0), line: tr(`Every weight starts at 300: the agent expects any push to keep the pole up for 300 more steps, longer than any episode it will play. The pole starts ${ang(s0)}° to the right of upright, swinging ${turnSide(s0)}.`, `Todos los pesos parten en 300: el agente espera que cualquier empujón mantenga el péndulo 300 pasos más, más que cualquier episodio que jugará. El péndulo parte ${ang(s0)}° a la derecha de la vertical, girando hacia la ${turnSide(s0)}.`) },
-        { s: s0, w: W0s, agent: -1, label: lbl(0), push: x0.a, pick: p(x0.k, x0.a), line: tr(`Both pushes are worth 300, a tie, broken at random: ${pushName(x0.a)}.`, `Los dos empujones valen 300, un empate, que se rompe al azar: hacia la ${pushName(x0.a)}.`) },
-        { s: x0.s1, w: W0s, agent: 0, label: lbl(1), line: tr(`Pushed ${pushName(x0.a)}, the cart rolls ${pushName(x0.a)}, and the pole starts swinging ${turnSide(x0.s1)}: a new situation, in the lower row.`, `Empujado hacia la ${pushName(x0.a)}, el carro rueda hacia la ${pushName(x0.a)} y el péndulo empieza a girar hacia la ${turnSide(x0.s1)}: una situación nueva, en la fila de abajo.`) },
-        { s: x0.s1, w: W0s, agent: 0, label: lbl(1), push: x0.a1, pick: x0.j, line: tr(`Before updating, the agent chooses its next push, A′, from the weights as they stand: a tie again, broken ${pushName(x0.a1)}.`, `Antes de actualizar, el agente elige su próximo empujón, A′, con los pesos tal como están: otro empate, que se rompe hacia la ${pushName(x0.a1)}.`) },
-        { s: x0.s1, w: W0s, agent: 0, label: lbl(1), push: x0.a1, pick: x0.j, tg: x0.j, line: tr(`The target is the reward, 1, plus the value of that push, outlined in red: 301, one step more than expected.`, `El objetivo es la recompensa, 1, más el valor de ese empujón, con borde rojo: 301, un paso más de lo esperado.`), eq: tdEq(x0) },
-        { s: x0.s1, w: x0.after, agent: 0, label: lbl(1), push: x0.a1, tg: x0.j, upd: x0.i, line: tr(`The weight of the push just made rises to ${num(x0.to)}: in its situation, the bar of a push to the ${pushName(x0.a)} is now the taller one.`, `El peso del empujón recién hecho sube a ${num(x0.to)}: en su situación, la barra de un empujón a la ${pushName(x0.a)} es ahora la más alta.`), eq: updEq(x0) },
+        { code: [L_S], s: s0, w: W0s, agent: -1, label: lbl(0), line: tr(`Every weight starts at 300: the agent expects any push to keep the pole up for 300 more steps, longer than any episode it will play. The pole starts ${ang(s0)}° to the right of upright, swinging ${turnSide(s0)}.`, `Todos los pesos parten en 300: el agente espera que cualquier empujón mantenga el péndulo 300 pasos más, más que cualquier episodio que jugará. El péndulo parte ${ang(s0)}° a la derecha de la vertical, girando hacia la ${turnSide(s0)}.`) },
+        { code: [L_A], s: s0, w: W0s, agent: -1, label: lbl(0), push: x0.a, pick: p(x0.k, x0.a), line: tr(`Both pushes are worth 300, a tie, broken at random: ${pushName(x0.a)}.`, `Los dos empujones valen 300, un empate, que se rompe al azar: hacia la ${pushName(x0.a)}.`) },
+        { code: [L_TAKE], s: x0.s1, w: W0s, agent: 0, label: lbl(1), line: tr(`Pushed ${pushName(x0.a)}, the cart rolls ${pushName(x0.a)}, and the pole starts swinging ${turnSide(x0.s1)}: a new situation, in the lower row.`, `Empujado hacia la ${pushName(x0.a)}, el carro rueda hacia la ${pushName(x0.a)} y el péndulo empieza a girar hacia la ${turnSide(x0.s1)}: una situación nueva, en la fila de abajo.`) },
+        { code: [L_A1], s: x0.s1, w: W0s, agent: 0, label: lbl(1), push: x0.a1, pick: x0.j, line: tr(`Before updating, the agent chooses its next push, A′, from the weights as they stand: a tie again, broken ${pushName(x0.a1)}.`, `Antes de actualizar, el agente elige su próximo empujón, A′, con los pesos tal como están: otro empate, que se rompe hacia la ${pushName(x0.a1)}.`),
+          short: tr(`Before any update, from the weights as they stand: in the new situation both pushes are worth 300 too, a tie, broken ${pushName(x0.a1)}.`, `Antes de actualizar, con los pesos tal como están: en la situación nueva los dos empujones también valen 300, un empate, que se rompe hacia la ${pushName(x0.a1)}.`) },
+        { code: [L_TD], s: x0.s1, w: W0s, agent: 0, label: lbl(1), push: x0.a1, pick: x0.j, tg: x0.j, line: tr(`The target is the reward, 1, plus the value of that push, outlined in red: 301, one step more than expected.`, `El objetivo es la recompensa, 1, más el valor de ese empujón, con borde rojo: 301, un paso más de lo esperado.`), eq: tdEq(x0),
+          short: tr(`The target is the reward, 1, plus the value of the push just chosen, outlined in red: 301, one step more than expected.`, `El objetivo es la recompensa, 1, más el valor del empujón recién elegido, con borde rojo: 301, un paso más de lo esperado.`) },
+        { code: [L_UPD], s: x0.s1, w: x0.after, agent: 0, label: lbl(1), push: x0.a1, tg: x0.j, upd: x0.i, line: tr(`The weight of the push just made rises to ${num(x0.to)}: in its situation, the bar of a push to the ${pushName(x0.a)} is now the taller one.`, `El peso del empujón recién hecho sube a ${num(x0.to)}: en su situación, la barra de un empujón a la ${pushName(x0.a)} es ahora la más alta.`), eq: updEq(x0) },
       ] },
     ];
+    // A press that plays a whole step, drawn in time with its lines: S ← S′ (the push about to be taken in yellow), the
+    // push taken, then, unless the pole has fallen, A′ chosen in yellow and the target's push outlined in red, and the
+    // update, the build itself.
+    const stepPhases = (t, bd) => {
+      const x = S1[t], base = { s: x.s0, w: x.before, push: x.a, pick: p(x.k, x.a) }, taken = { s: x.s1, w: x.before };
+      if (x.done) return [{ slow: true, lines: [L_NEXT], draw: base }, { slow: true, lines: [L_TAKE], draw: taken }, { slow: true, lines: [L_END], draw: bd }];
+      return [{ slow: true, lines: [L_NEXT], draw: base }, { slow: true, lines: [L_TAKE], draw: taken },
+        { slow: true, lines: [L_A1], draw: { ...taken, push: x.a1, pick: x.j } }, { slow: true, lines: [L_TD], draw: { ...taken, push: x.a1, pick: x.j, tg: x.j } },
+        { slow: true, lines: [L_UPD], draw: bd }];
+    };
+    const withSteps = (t, bd) => { const phases = stepPhases(t, bd); return { ...bd, code: phases.flatMap((ph) => ph.lines), phases }; };
     // Steps 2 to 8: take the push chosen, choose the next one, update.
     const stepLine = (t) => {
       const x = S1[t], into = x.k1 !== x.k;
@@ -152,16 +184,23 @@ const CTL = (() => {
       if (t === 2) return tr(`Left again. Now left is the taller bar, so the agent picks it without a tie, and its weight rises again, to ${num(x.to)}: a push that is raised gets repeated.`, `Otra vez a la izquierda. Ahora la izquierda es la barra más alta, así que el agente la elige sin empate, y su peso sube de nuevo, a ${num(x.to)}: un empujón que sube se repite.`);
       return tr(`Left again, the pole ${ang(x.s1)}° to the right and turning faster: ${num(x.to)}.`, `Otra vez a la izquierda, el péndulo a ${ang(x.s1)}° a la derecha y girando más rápido: ${num(x.to)}.`);
     };
-    slides.push({ title: tr("A push that is raised gets repeated", "Un empujón que sube se repite"), builds: [1, 2, 3, 4, 5, 6, 7].map((t) => {
+    // The plain greedy steps, whose text leaned on the press before: the new weight, said in full.
+    const stepShort = (t) => {
       const x = S1[t];
-      return { s: x.s1, w: x.after, agent: t, label: lbl(t + 1), push: x.a1, pick: x.j, tg: x.j, upd: x.i, line: stepLine(t), eq: `${tdEq(x)}; ${updEq(x)}` };
+      if (t === 7 || x.k1 !== x.k || x.tie1 || t === 2) return undefined;
+      return tr(`Left again, the pole ${ang(x.s1)}° to the right and turning faster: the weight of the push just made rises to ${num(x.to)}.`, `Otra vez a la izquierda, el péndulo a ${ang(x.s1)}° a la derecha y girando más rápido: el peso del empujón recién hecho sube a ${num(x.to)}.`);
+    };
+    slides.push({ title: tr("A push that is raised gets repeated", "Un empujón que sube se repite"), builds: [1, 2, 3, 4, 5, 6, 7].map((t) => {
+      const x = S1[t], sh = stepShort(t);
+      return withSteps(t, { s: x.s1, w: x.after, agent: t, label: lbl(t + 1), push: x.a1, pick: x.j, tg: x.j, upd: x.i, line: stepLine(t), ...(sh ? { short: sh } : {}), eq: `${tdEq(x)}; ${updEq(x)}` });
     }) });
     const xf = S1[8];
-    slides.push({ title: tr("The fall", "La caída"), builds: [{ s: xf.s1, w: xf.after, agent: 8, label: lbl(9), upd: xf.i, sound: "fall", line: tr(`Right, too late: the pole passes 12° and the episode ends after ${E1.T} steps. A fall has no next push, so the target is the reward alone, 1, far below 300, and the weight of that last push drops by about 30 at once.`, `Hacia la derecha, demasiado tarde: el péndulo pasa los 12° y el episodio termina tras ${E1.T} pasos. Una caída no tiene próximo empujón, así que el objetivo es solo la recompensa, 1, muy por debajo de 300, y el peso de ese último empujón baja de una vez cerca de 30.`), eq: `${tdEq(xf)}; ${updEq(xf)}` }] });
+    slides.push({ title: tr("The fall", "La caída"), builds: [withSteps(8, { s: xf.s1, w: xf.after, agent: 8, label: lbl(9), upd: xf.i, sound: "fall", line: tr(`Right, too late: the pole passes 12° and the episode ends after ${E1.T} steps. A fall has no next push, so the target is the reward alone, 1, far below 300, and the weight of that last push drops by about 30 at once.`, `Hacia la derecha, demasiado tarde: el péndulo pasa los 12° y el episodio termina tras ${E1.T} pasos. Una caída no tiene próximo empujón, así que el objetivo es solo la recompensa, 1, muy por debajo de 300, y el peso de ese último empujón baja de una vez cerca de 30.`),
+      short: tr(`Right, too late: the pole passes 12° and the episode ends after ${E1.T} steps. With no next push, the target is 1, far below 300, and the weight of that last push drops by about 30 at once.`, `Hacia la derecha, demasiado tarde: el péndulo pasa los 12° y el episodio termina tras ${E1.T} pasos. Sin próximo empujón, el objetivo es 1, muy por debajo de 300, y el peso de ese último empujón baja de una vez cerca de 30.`), eq: `${tdEq(xf)}; ${updEq(xf)}` })] });
     // Later episodes.
     const E2 = R.eps[1], last2 = E2.steps.at(-1), w2 = R.after[1];
     warn(E2.T === 9 && E2.end === "pole" && last2.a === 0 && last2.k === xf.k && Math.abs(w2[xf.i] - xf.to) < 1e-9 && w2[last2.i] < R.W0, "episode 2 is not the one the slide describes");
-    const sum = (e, extra) => ({ ...R.frame(R.endOf(e)), push: undefined, hideDot: true, label: tr(`Episode ${kn(e)}, after it ends`, `Episodio ${kn(e)}, después del final`), ...extra });
+    const sum = (e, extra) => ({ ...R.frame(R.endOf(e)), code: [L_END], push: undefined, hideDot: true, label: tr(`Episode ${kn(e)}, after it ends`, `Episodio ${kn(e)}, después del final`), ...extra });
     const shows = (a, b) => tr(`Episodes ${a} to ${kn(b)} play, with an update at every step; the drawing shows the last of them.`, `Se juegan los episodios ${a} a ${b}, con una actualización en cada paso; el dibujo muestra el último.`);
     const skip = (from, to, text, note) => ({ from: R.endOf(from), to: R.endOf(to), moves: Math.max(1, R.endOf(to) - R.endOf(from)), text, note });
     slides.push({ title: tr("The other push", "El otro empujón"), skip: skip(1, 2, tr(`Episode 2: ${E2.T} steps`, `Episodio 2: ${E2.T} pasos`), tr("Episode 2 plays, with an update at every step.", "Se juega el episodio 2, con una actualización en cada paso.")),
@@ -196,9 +235,16 @@ const CTL = (() => {
     slides.push({ title: tr("What the agent learned", "Lo que aprendió el agente"), skip: skip(settled, R.EPISODES, tr(`Episodes ${settled + 1} to ${R.EPISODES}`, `Episodios ${settled + 1} a ${R.EPISODES}`), shows(settled + 1, R.EPISODES)),
       builds: [
         { ...fin, line: tr(`In the six situations where the pole is falling, leaning and swinging the same way, the agent pushes the way it falls, and the other push is worth ${Math.round(Math.min(...gaps))} to ${Math.round(Math.max(...gaps))} steps less: a push that way brings the cart back under the pole.`, `En las seis situaciones en que el péndulo cae, inclinado y girando hacia el mismo lado, el agente empuja hacia donde cae, y el otro empujón vale entre ${Math.round(Math.min(...gaps))} y ${Math.round(Math.max(...gaps))} pasos menos: un empujón hacia ese lado devuelve el carro bajo el péndulo.`) },
-        { ...fin, line: tr(`Where the pole swings back, the two pushes are closer. Nothing in what the agent sees tells it where the cart is or how fast it moves, so it cannot stop the drift: the cart runs off the track after ${Math.round(mean)} steps on average. That it always goes right is an accident of this run: its pushes near upright are not mirror images of each other.`, `Donde el péndulo vuelve, los dos empujones están más cerca. Nada de lo que ve el agente le dice dónde está el carro ni qué tan rápido se mueve, así que no puede frenar la deriva: el carro sale del riel tras ${Math.round(mean)} pasos en promedio. Que siempre se vaya a la derecha es un accidente de esta corrida: sus empujones cerca de la vertical no son el reflejo unos de otros.`) },
+        { ...fin, short: tr(`Where the pole swings back, the two pushes are closer in value than where it falls. Nothing in what the agent sees tells it where the cart is or how fast it moves, so it cannot stop the drift: the cart runs off the track after ${Math.round(mean)} steps on average. That it always goes right is an accident of this run: its pushes near upright are not mirror images of each other.`, `Donde el péndulo vuelve, los dos empujones están más cerca en valor que donde cae. Nada de lo que ve el agente le dice dónde está el carro ni qué tan rápido se mueve, así que no puede frenar la deriva: el carro sale del riel tras ${Math.round(mean)} pasos en promedio. Que siempre se vaya a la derecha es un accidente de esta corrida: sus empujones cerca de la vertical no son el reflejo unos de otros.`),
+          line: tr(`Where the pole swings back, the two pushes are closer. Nothing in what the agent sees tells it where the cart is or how fast it moves, so it cannot stop the drift: the cart runs off the track after ${Math.round(mean)} steps on average. That it always goes right is an accident of this run: its pushes near upright are not mirror images of each other.`, `Donde el péndulo vuelve, los dos empujones están más cerca. Nada de lo que ve el agente le dice dónde está el carro ni qué tan rápido se mueve, así que no puede frenar la deriva: el carro sale del riel tras ${Math.round(mean)} pasos en promedio. Que siempre se vaya a la derecha es un accidente de esta corrida: sus empujones cerca de la vertical no son el reflejo unos de otros.`) },
       ] });
-    slideshow({ svg, slides, frame: R.frame, view: createPushView(svg, { vmax: 300, step: 100, axisName: tr("steps until the episode ends", "pasos hasta que termina el episodio") }) });
+    // A skip runs one pass of the loop per step: a step that ends the episode (the terminal update, then a new
+    // episode's first state), or one that goes on (A′, the TD error, the update, S ← S′). Both passes have five slots,
+    // the terminal update holding three: the skip picks the lit line by its place in the pass and can switch passes
+    // partway, and this way a new episode's line never lights in the middle of a step.
+    const ended = (f) => f.t === R.eps[f.e - 1].T;
+    const frame = (m) => { const f = R.frame(m); return { ...f, code: ended(f) ? [L_TAKE, L_END, L_END, L_END, L_S] : [L_TAKE, L_A1, L_TD, L_UPD, L_NEXT] }; };
+    slideshow({ svg, slides, frame, code, view: createPushView(svg, { vmax: 300, step: 100, axisName: tr("steps until the episode ends", "pasos hasta que termina el episodio") }) });
   }
 }
 
@@ -387,25 +433,52 @@ const STRETCH = { steps: 1100, fails: [173, 335, 509, 671, 882, 1050] };
     };
     const uEq = (u) => `${dEq(u)}; <span class="nowrap"><span class="ovl"><i>R</i></span> ← ${fmt(u.rb1, 4)}</span>, <span class="nowrap"><span class="upd">${wi(u.iu)}</span> ← ${num(u.from)} + 0.1 · ${u.d < 0 ? `(${num(u.d)})` : num(u.d)} ${eqv(u.to)}</span>`;
     const s0 = D.S0;
+    // The pseudocode beside the run: the steps of section 5 as the note writes them. Line numbers count the loop heads.
+    const tt = (k) => (k ? `<i>t</i>+${k}` : "<i>t</i>");
+    const M_S0 = 0, M_A0 = 1, M_TAKE = 3, M_A1 = 4, M_TD = 6, M_UPD = 7;
+    const code = {
+      title: "Differential semi-gradient <i>n</i>-step Sarsa",
+      lines: [
+        { kind: "plain", html: tr(`<i>S</i><sub>0</sub> ← the first state`, `<i>S</i><sub>0</sub> ← el primer estado`) },
+        { kind: "pick", html: `<span class="nowrap"><i>A</i><sub>0</sub> ← ε-greedy</span> ${tr("from", "a partir de")} <span class="nowrap">${qh}(<i>S</i><sub>0</sub>, ·, ${wv})</span>` },
+        { head: true, html: tr(`For <span class="nowrap"><i>t</i> = 0, 1, 2, …</span>:`, `Para <span class="nowrap"><i>t</i> = 0, 1, 2, …</span>:`) },
+        { kind: "take", ind: 1, html: tr(`Take <i>A</i><sub><i>t</i></sub>; observe <i>R</i><sub>${tt(1)}</sub>, <i>S</i><sub>${tt(1)}</sub>`, `Tomar <i>A</i><sub><i>t</i></sub>; observar <i>R</i><sub>${tt(1)}</sub>, <i>S</i><sub>${tt(1)}</sub>`) },
+        { kind: "pick", ind: 1, html: `<span class="nowrap"><i>A</i><sub>${tt(1)}</sub> ← ε-greedy</span> ${tr("from", "a partir de")} <span class="nowrap">${qh}(<i>S</i><sub>${tt(1)}</sub>, ·, ${wv})</span>` },
+        { head: true, ind: 1, html: tr(`If <span class="nowrap">τ = <i>t</i> − <i>n</i> + 1 ≥ 0</span>:`, `Si <span class="nowrap">τ = <i>t</i> − <i>n</i> + 1 ≥ 0</span>:`) },
+        { kind: "target", ind: 2, html: `<span class="nowrap">δ ← <span class="pt">Σ<span class="lims"><span>τ+<i>n</i></span><span><i>i</i>=τ+1</span></span>(<i>R</i><sub><i>i</i></sub> − ${RB})</span></span> <span class="nowrap"><span class="pt">+ ${qh}(<i>S</i><sub>τ+<i>n</i></sub>, <i>A</i><sub>τ+<i>n</i></sub>, ${wv})</span></span> <span class="nowrap">− ${qh}(<i>S</i><sub>τ</sub>, <i>A</i><sub>τ</sub>, ${wv})</span>` },
+        { kind: "update", ind: 2, html: `<span class="nowrap"><span class="upd">${RB}</span> ← ${RB} + βδ;</span> <span class="nowrap"><span class="upd">${wv}</span> ← ${wv} + αδ∇${qh}(<i>S</i><sub>τ</sub>, <i>A</i><sub>τ</sub>, ${wv})</span>` },
+      ],
+    };
     const slides = [
       { title: tr("Expecting no failures", "Sin esperar fallas"), builds: [
-        { s: s0, w: zero, agent: -1, label: lbl0, line: tr(`Every weight starts at 0, and so does ${RB}, the estimate of the average reward: the agent expects no failures at all. The pole starts ${ang(s0)}° to the ${side(s0)}, swinging ${turnSide(s0)}.`, `Todos los pesos parten en 0, y también ${RB}, la estimación de la recompensa promedio: el agente no espera ninguna falla. El péndulo parte ${ang(s0)}° a la ${side(s0)}, girando hacia la ${turnSide(s0)}.`) },
-        { s: s0, w: zero, agent: -1, label: lbl0, push: D.a0.a, pick: 2 * sitOf(s0) + D.a0.a, line: tr(`Both pushes are worth 0, a tie, broken at random: ${pushName(D.a0.a)}.`, `Los dos empujones valen 0, un empate, que se rompe al azar: hacia la ${pushName(D.a0.a)}.`) },
+        { code: [M_S0], s: s0, w: zero, agent: -1, label: lbl0, line: tr(`Every weight starts at 0, and so does ${RB}, the estimate of the average reward: the agent expects no failures at all. The pole starts ${ang(s0)}° to the ${side(s0)}, swinging ${turnSide(s0)}.`, `Todos los pesos parten en 0, y también ${RB}, la estimación de la recompensa promedio: el agente no espera ninguna falla. El péndulo parte ${ang(s0)}° a la ${side(s0)}, girando hacia la ${turnSide(s0)}.`) },
+        { code: [M_A0], s: s0, w: zero, agent: -1, label: lbl0, push: D.a0.a, pick: 2 * sitOf(s0) + D.a0.a, line: tr(`Both pushes are worth 0, a tie, broken at random: ${pushName(D.a0.a)}.`, `Los dos empujones valen 0, un empate, que se rompe al azar: hacia la ${pushName(D.a0.a)}.`) },
       ] },
     ];
+    // A press that plays a step, drawn in time with its lines: the push taken (the weights before the step), A_t+1 chosen
+    // in yellow (after a failure, from the fresh start, drawn on the fallen cart without its push arrow), and,
+    // once four rewards are in, the window in dashed blue with the target's push in red, then the update, the build itself.
+    const before = (t) => (t ? St[t - 1].w : zero);
+    const withStep = (x, bd) => {
+      const taken = { s: x.s1, w: before(x.t), jump: bd.jump }, picked = { ...taken, jump: false, push: x.a1, pick: x.p1 };
+      const phases = [{ slow: true, lines: [M_TAKE], draw: taken }];
+      phases.push({ slow: true, lines: [M_A1], draw: x.fell ? (x.up ? { ...taken, pick: x.p1 } : bd) : x.up ? picked : bd });
+      if (x.up) phases.push({ slow: true, lines: [M_TD], draw: { ...(x.fell ? taken : picked), jump: false, win: x.up.win, tg: x.up.ib } }, { slow: true, lines: [M_UPD], draw: bd });
+      return { ...bd, code: phases.flatMap((ph) => ph.lines), phases };
+    };
     // Steps 1 to 9: no reward but 0; the first update waits for four rewards, then each has δ = 0.
     const quietBuilds = St.slice(0, 9).map((x) => {
       const b = { s: x.s1, w: x.w, agent: x.t, label: x.label, push: x.a1, pick: x.p1 };
-      if (!x.up) return { ...b, line: x.t === 0 ? tr(`Taken: the reward is 0. With n = 4, the first update waits until four rewards have come in.`, `Hecho: la recompensa es 0. Con n = 4, la primera actualización espera a que lleguen cuatro recompensas.`) : tr(`Step ${x.t + 1}: reward 0, and still no update.`, `Paso ${x.t + 1}: recompensa 0, y todavía ninguna actualización.`) };
+      if (!x.up) return withStep(x, { ...b, line: x.t === 0 ? tr(`Taken: the reward is 0. With n = 4, the first update waits until four rewards have come in.`, `Hecho: la recompensa es 0. Con n = 4, la primera actualización espera a que lleguen cuatro recompensas.`) : tr(`Step ${x.t + 1}: reward 0, and still no update.`, `Paso ${x.t + 1}: recompensa 0, y todavía ninguna actualización.`) });
       const u = x.up;
-      return { ...b, win: u.win, tg: u.ib, upd: u.iu, line: x.t === 3 ? tr(`The first update, for the push of step 1, with the four steps of its window in dashed blue. The four rewards are 0, as ${RB} expected, and both weights are 0: δ = 0, and nothing changes.`, `La primera actualización, para el empujón del paso 1, con los cuatro pasos de su ventana en azul punteado. Las cuatro recompensas son 0, como esperaba ${RB}, y los dos pesos valen 0: δ = 0, y nada cambia.`) : tr(`Step ${x.t + 1}: no failure, and δ = 0 again.`, `Paso ${x.t + 1}: ninguna falla, y δ = 0 otra vez.`), eq: dEq(u) };
+      return withStep(x, { ...b, win: u.win, tg: u.ib, upd: u.iu, line: x.t === 3 ? tr(`The first update, for the push of step 1, with the four steps of its window in dashed blue. The four rewards are 0, as ${RB} expected, and both weights are 0: δ = 0, and nothing changes.`, `La primera actualización, para el empujón del paso 1, con los cuatro pasos de su ventana en azul punteado. Las cuatro recompensas son 0, como esperaba ${RB}, y los dos pesos valen 0: δ = 0, y nada cambia.`) : tr(`Step ${x.t + 1}: no failure, and δ = 0 again.`, `Paso ${x.t + 1}: ninguna falla, y δ = 0 otra vez.`), eq: dEq(u) });
     });
     slides[0].builds.push(...quietBuilds);
     const fBuilds = St.slice(9, 13).map((x, i) => {
       const u = x.up, b = { s: x.s1, w: x.w, agent: x.t, label: x.label, win: u.win, tg: u.ib, upd: u.iu, push: x.a1, pick: x.p1, eq: uEq(u), fit: true };
-      if (i === 0) return { ...b, sound: "fall", push: undefined, pick: undefined, line: tr(`The pole passes 12° to the ${side(x.s1)}: a failure, and a reward of −1. It enters the window of the push of step ${u.tau + 1}: δ = −1, so ${RB} drops a little and that push's weight by 0.1.`, `El péndulo pasa los 12° a la ${side(x.s1)}: una falla, y una recompensa de −1. Entra en la ventana del empujón del paso ${u.tau + 1}: δ = −1, así que ${RB} baja un poco y el peso de ese empujón, 0.1.`) };
-      if (i === 1) return { ...b, jump: true, line: tr(`The cart and pole start afresh, and the task goes on. The next update, for step ${u.tau + 1}, still has the −1 in its window.`, `El carro y el péndulo parten de nuevo, y la tarea sigue. La siguiente actualización, del paso ${u.tau + 1}, todavía tiene el −1 en su ventana.`) };
-      return { ...b, line: tr(`The −1 is still in the window of step ${u.tau + 1}${i === 3 ? ", the last it reaches: four pushes before the failure have each dropped by 0.1" : ""}.`, `El −1 sigue en la ventana del paso ${u.tau + 1}${i === 3 ? ", la última que alcanza: cuatro empujones antes de la falla bajaron 0.1 cada uno" : ""}.`) };
+      if (i === 0) return withStep(x, { ...b, sound: "fall", push: undefined, pick: undefined, line: tr(`The pole passes 12° to the ${side(x.s1)}: a failure, and a reward of −1. It enters the window of the push of step ${u.tau + 1}: δ = −1, so ${RB} drops a little and that push's weight by 0.1.`, `El péndulo pasa los 12° a la ${side(x.s1)}: una falla, y una recompensa de −1. Entra en la ventana del empujón del paso ${u.tau + 1}: δ = −1, así que ${RB} baja un poco y el peso de ese empujón, 0.1.`) });
+      if (i === 1) return withStep(x, { ...b, jump: true, short: tr(`The cart and pole start afresh, and the task goes on. The update for step ${u.tau + 1} has the failure's −1 in its window too.`, `El carro y el péndulo parten de nuevo, y la tarea sigue. La actualización del paso ${u.tau + 1} también tiene el −1 de la falla en su ventana.`), line: tr(`The cart and pole start afresh, and the task goes on. The next update, for step ${u.tau + 1}, still has the −1 in its window.`, `El carro y el péndulo parten de nuevo, y la tarea sigue. La siguiente actualización, del paso ${u.tau + 1}, todavía tiene el −1 en su ventana.`) });
+      return withStep(x, { ...b, short: tr(`The failure's −1 is in the window of step ${u.tau + 1} too${i === 3 ? ", the last it reaches: four pushes before the failure have each dropped by 0.1" : ""}.`, `El −1 de la falla también está en la ventana del paso ${u.tau + 1}${i === 3 ? ", la última que alcanza: cuatro empujones antes de la falla bajaron 0.1 cada uno" : ""}.`), line: tr(`The −1 is still in the window of step ${u.tau + 1}${i === 3 ? ", the last it reaches: four pushes before the failure have each dropped by 0.1" : ""}.`, `El −1 sigue en la ventana del paso ${u.tau + 1}${i === 3 ? ", la última que alcanza: cuatro empujones antes de la falla bajaron 0.1 cada uno" : ""}.`) });
     });
     slides.push({ title: tr("A failure", "Una falla"), builds: fBuilds });
     // Later stops.
@@ -413,7 +486,7 @@ const STRETCH = { steps: 1100, fails: [173, 335, 509, 671, 882, 1050] };
     const sk = (a, b, text, note) => ({ from: a, to: b, moves: Math.max(1, b - a), text, note });
     const lastN = (t) => { const w = D.windows.find(([, e]) => e === t); return w[1] - w[0] + 1; };
     const showsSteps = (a, b) => tr(`Steps ${kn(a)} to ${kn(b)} play, with an update at each; the drawing shows the last ${lastN(b)}.`, `Se juegan los pasos ${a} a ${b}, con una actualización en cada uno; el dibujo muestra los últimos ${lastN(b)}.`);
-    const sumF = (m) => ({ ...F[m], hideDot: true });
+    const sumF = (m) => ({ ...F[m], code: [M_UPD], hideDot: true });
     const f1k = sumF(stop(1000)), fLP = sumF(stop(lastPole.t)), f10k = sumF(stop(10000)), fEnd = sumF(stop(100000));
     warn(lastPole.t === 1509 && D.failAt.filter((f) => f.t > lastPole.t).every((f) => f.by === "cart" && f.side > 0), "the pole's last fall is not at step 1,509, or a later failure is not the cart leaving at the right end");
     slides.push({ title: tr("Failures come often", "Las fallas son frecuentes"), skip: sk(-1, stop(1000), tr("Steps 14 to 1,000", "Pasos 14 a 1000"), showsSteps(14, 1000)),
@@ -430,6 +503,7 @@ const STRETCH = { steps: 1100, fails: [173, 335, 509, 671, 882, 1050] };
         { ...fEnd, line: tr(`After 100,000 steps, ${fEnd.fails} failures, ${late} of them in the last 20,000 steps: one every ${Math.round(20000 / late)} steps on average, a reward of −1/${Math.round(20000 / late)} ≈ ${fmt(-1 / Math.round(20000 / late), 4)} per step. ${RB} is ${fmt(fEnd.rbar, 4)}.`, `Tras 100000 pasos, ${fEnd.fails} fallas, ${late} de ellas en los últimos 20000 pasos: una cada ${Math.round(20000 / late)} pasos en promedio, una recompensa de −1/${Math.round(20000 / late)} ≈ ${fmt(-1 / Math.round(20000 / late), 4)} por paso. ${RB} vale ${fmt(fEnd.rbar, 4)}.`) },
         { ...fEnd, line: tr(`Where the pole is falling, the push the way it falls is worth more, by ${fmt(Math.min(...gaps), 1)} to ${fmt(Math.max(...gaps), 1)}: that many failures fewer in the long run. Only such differences mean something: adding the same number to every weight would change no TD error, so where the bars sit as a whole comes from where they started.`, `Donde el péndulo cae, el empujón hacia donde cae vale más, por ${fmt(Math.min(...gaps), 1)} a ${fmt(Math.max(...gaps), 1)}: esas fallas menos a la larga. Solo esas diferencias significan algo: sumar el mismo número a todos los pesos no cambiaría ningún TD error, así que dónde quedan las barras en conjunto depende de dónde partieron.`) },
       ] });
-    slideshow({ svg, slides, frame: D.frame, view: createPushView(svg, { vmin: -1, vmax: 0.5, step: 0.5, decimals: 2, axisName: tr("value of a push, against the average", "valor de un empujón, frente al promedio") }) });
+    // A skip runs one pass of the loop per step: take, choose, the TD error, the update.
+    slideshow({ svg, slides, frame: (m) => ({ ...D.frame(m), code: [M_TAKE, M_A1, M_TD, M_UPD] }), code, view: createPushView(svg, { vmin: -1, vmax: 0.5, step: 0.5, decimals: 2, axisName: tr("value of a push, against the average", "valor de un empujón, frente al promedio") }) });
   }
 }

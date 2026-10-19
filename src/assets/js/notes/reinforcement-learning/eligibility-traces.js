@@ -49,33 +49,54 @@ const n3 = (v) => String(Math.round(v * 1000) / 1000).replace("-", "−");
 
 /* ---------- Builds: one line of the algorithm per press ---------- */
 
-// Choose A: the move turns yellow before the agent moves.
-function chooseBuild(i, lead) {
+// The pseudocode beside the run, numbered as its lines are indexed (the loop heads included): 1 the traces reset and the
+// first state, 2 the first choice, 4 take, 5 choose A′, 6 the TD error, 7 the trace's +1, 8 the update of every pair,
+// 9 the traces fading, 10 S ← S′ and A ← A′.
+const L = { init: 1, first: 2, take: 4, next: 5, delta: 6, mark: 7, upd: 8, fade: 9, shift: 10 };
+
+// Choose A: the move turns yellow before the agent moves. code: line 2 for the episode's first move, line 10 (A ← A′)
+// for a move chosen at the end of the step before, whose grid is then the table after that step's update (atS); the
+// reason always reads the table the choice was made from.
+function chooseBuild(i, lead, code = [L.first]) {
+  const x = X(i), { marks, rings } = traced(i, false), line = `${lead} ${reason(x.qAt[x.s], x.explored, x.s, x.a, x.t)}`;
+  if (code.includes(L.shift)) return { ...atS(i), code, line };
+  return { code, ...pos(i), time: x.t, Q: x.qAt, agent: x.s, pick: [x.s, x.a], marks, rings, line };
+}
+// The grid when S ← S′ and A ← A′ (line 10): the agent in S, the move chosen there in yellow, the traces as they faded.
+function atS(i) {
   const x = X(i), { marks, rings } = traced(i, false);
-  return { ...pos(i), time: x.t, Q: x.qAt, agent: x.s, pick: [x.s, x.a], marks, rings, line: `${lead} ${reason(x.qAt[x.s], x.explored, x.s, x.a, x.t)}` };
+  return { ...pos(i), time: x.t, Q: x.pre, agent: x.s, pick: [x.s, x.a], marks, rings };
 }
 // Take A: the agent moves along the yellow move and sees R and S′.
 function takeBuild(i) {
   const x = X(i), bump = x.fell === null && x.s2 === x.s ? x.a : null, { marks, rings } = traced(i, false);
-  return { ...pos(i), time: x.t, Q: x.pre, agent: x.fell !== null ? x.fell : x.s2, ring: x.fell, taken: [x.s, x.a], bump, sound: x.fell !== null ? "fall" : bump !== null ? "wall" : undefined, marks, rings,
+  return { code: [L.take], ...pos(i), time: x.t, Q: x.pre, agent: x.fell !== null ? x.fell : x.s2, ring: x.fell, taken: [x.s, x.a], bump, sound: x.fell !== null ? "fall" : bump !== null ? "wall" : undefined, marks, rings,
     line: takeText({ s: x.s, a: x.a, t: x.t, s2: x.s2, fell: x.fell }) };
 }
 // Choose A′ in S′, before any update, from the table as it stands.
 function chooseNextBuild(i) {
   const x = X(i), { marks, rings } = traced(i, false);
-  return { ...pos(i), time: x.t + 1, Q: x.pre, agent: x.s2, jump: x.fell !== null, ring: x.fell, pick: [x.s2, x.next.a], marks, rings,
+  return { code: [L.next], ...pos(i), time: x.t + 1, Q: x.pre, agent: x.s2, jump: x.fell !== null, ring: x.fell, pick: [x.s2, x.next.a], marks, rings,
     line: tr("Before any update, it chooses its next move.", "Antes de cualquier actualización, elige su siguiente movimiento.") + " " + reason(x.pre[x.s2], x.next.explored, x.s2, x.next.a, x.t + 1) };
 }
-// The TD error, in red on the value it uses, and the trace of the move just made goes up by 1.
+// The red mark on the value the TD error uses: that of A′, none after the last move.
+const bootMark = (i) => { const x = X(i); return x.next ? [{ c: x.s2, a: x.next.a, kind: "tg" }] : []; };
+// The TD error, in red on the value it uses (line 6, the traces as they stood), and the trace of the move just made goes
+// up by 1 (line 7).
 function deltaBuild(i, line) {
-  const x = X(i), { marks, rings } = traced(i, true), boot = x.next ? [x.s2, x.next.a] : null;
-  return { ...pos(i), time: x.t + 1, Q: x.pre, agent: x.s2, marks: [...marks, ...(boot ? [{ c: boot[0], a: boot[1], kind: "tg" }] : [])], rings, line, eq: deltaEq(i) };
+  const x = X(i), { marks, rings } = traced(i, true), before = traced(i, false).marks;
+  const bd = { code: [L.delta, L.mark], ...pos(i), time: x.t + 1, Q: x.pre, agent: x.s2, marks: [...marks, ...bootMark(i)], rings, line, eq: deltaEq(i) };
+  return { ...bd, phases: [{ slow: true, lines: [L.delta], draw: { ...bd, marks: [...before, ...bootMark(i)] } }, { slow: true, lines: [L.mark], draw: bd }] };
 }
-// Every pair moves by αδz; then the traces fade.
+// Every pair moves by αδz (line 8, with the traces it used); then the traces fade by γλ (line 9), as the press ends.
 function updateBuild(i, line) {
-  const x = X(i), { marks, rings } = traced(i, true), boot = x.next ? [x.s2, x.next.a] : null;
-  return { ...pos(i), time: x.t + 1, Q: x.post, agent: x.s2, marks: [...marks, ...(boot ? [{ c: boot[0], a: boot[1], kind: "tg" }] : [])], rings, line, eq: updEq(i) };
+  const x = X(i), { marks, rings } = traced(i, true), faded = marks.map((m) => ({ ...m, w: m.w * LAM }));
+  const bd = { code: [L.upd, L.fade], ...pos(i), time: x.t + 1, Q: x.post, agent: x.s2, marks: [...faded, ...bootMark(i)], rings, line, eq: updEq(i) };
+  return { ...bd, phases: [{ slow: true, lines: [L.upd], draw: { ...bd, marks: [...marks, ...bootMark(i)] } }, { slow: true, lines: [L.fade], draw: bd }] };
 }
+// The take as a phase: its line twice (300 ms), so that the glide, or the step into the cliff, plays out before the
+// next line draws.
+const takePhase = (i) => ({ slow: true, lines: [L.take, L.take], draw: takeBuild(i) });
 const deltaEq = (i) => { const x = X(i), t = x.t; return `δ<sub>${t}</sub> = <span class="pt">${sym("R", t + 1)}${x.next ? ` + γ<i>Q</i>(${sym("S", t + 1)}, ${sym("A", t + 1)})` : ""} − <i>Q</i>(${sym("S", t)}, ${sym("A", t)})</span> <span class="nowrap pt">= ${num(x.r)}${x.next ? ` + ${par(x.pre[x.s2][x.next.a])}` : ""} − ${par(x.pre[x.s][x.a])}</span> <span class="nowrap pt">= ${num(x.delta)}</span>`; };
 const updEq = (i) => `<span class="upd"><i>Q</i>(<i>s</i>, <i>a</i>)</span> <span class="nowrap">← <i>Q</i>(<i>s</i>, <i>a</i>)</span> <span class="nowrap">+ ${ALPHA} · <span class="pt">${par(X(i).delta)}</span> · <i>z</i>(<i>s</i>, <i>a</i>)</span>`;
 const zNow = (i) => { const x = X(i); return x.z[x.s][x.a]; };
@@ -89,9 +110,10 @@ const shares = (i, k) => { const x = X(i); return traced(i, true).list.slice().r
 const amounts = (i) => { const x = X(i); return traced(i, true).list.slice().reverse().map((y) => n3(ALPHA * x.delta * x.z[y.s][y.a])); };
 // What red marks at the TD error.
 const usesRed = tr("The TD error uses the value of the move just chosen, outlined in red. ", "El TD error usa el valor del movimiento recién elegido, con borde rojo. ");
-// The presses of a detailed move: take, choose the next move, the TD error, the update.
-function moveBuilds(i, deltaLine, updateLine) {
-  const x = X(i), b = [takeBuild(i)];
+// The presses of a detailed move: take (after S ← S′ and A ← A′, unless the press before played that line or this is the
+// episode's first move), choose the next move, the TD error, the update.
+function moveBuilds(i, deltaLine, updateLine, shifted = i === firstOf[X(i).ep - 1]) {
+  const x = X(i), b = [shifted ? takeBuild(i) : { ...takeBuild(i), code: [L.shift, L.take], phases: [{ slow: true, lines: [L.shift], draw: atS(i) }, takePhase(i)] }];
   if (x.next) b.push(chooseNextBuild(i));
   b.push(deltaBuild(i, deltaLine), updateBuild(i, updateLine));
   return b;
@@ -100,27 +122,38 @@ function moveBuilds(i, deltaLine, updateLine) {
 // A later move of episode 1 in one press: why it was chosen (unless the slide before said so, chosen) and where it led,
 // the next move in yellow, and its TD error moving every traced move by its trace, in green. extra follows the first
 // sentences, end closes the line.
+// It plays lines 10, 4, 5 (unless the move ends the episode), 6, 7, 8 and 9, the grid drawn as each line lights by the
+// builds that play them one at a time, with A′ in yellow from line 5 on, so that the last phase is the build itself
+// (which therefore has no wall mark: that shows only while the take plays). The short text leaves to the pseudocode what
+// the TD error does.
 function oneBuild(i, extra = "", chosen = false, end = "") {
-  const x = X(i), tk = takeBuild(i), up = updateBuild(i, "");
+  const x = X(i), tk = takeBuild(i), dl = deltaBuild(i, ""), up = updateBuild(i, "");
   const first = chosen ? tk.line : chooseTakeText(x.qAt[x.s], x.explored, { s: x.s, a: x.a, t: x.t, s2: x.s2, fell: x.fell });
   const rest = tr(`Its TD error, ${num(x.delta)}, moves every traced move by α · δ · <i>z</i>.`, `Su TD error, ${num(x.delta)}, mueve cada movimiento con traza en α · δ · <i>z</i>.`);
-  return { ...up, taken: [x.s, x.a], bump: tk.bump, sound: tk.sound, jump: x.fell !== null, ring: x.fell, pick: x.next ? [x.s2, x.next.a] : undefined, line: `${first}${extra} ${rest}${end}` };
+  const pick = x.next ? [x.s2, x.next.a] : undefined, keep = (ph) => ({ ...ph, draw: { ...ph.draw, pick, ring: x.fell } });
+  const phases = [{ slow: true, lines: [L.shift], draw: atS(i) }, takePhase(i), ...(x.next ? [{ slow: true, lines: [L.next], draw: chooseNextBuild(i) }] : []), ...[...dl.phases, ...up.phases].map(keep)];
+  return { ...up, code: phases.flatMap((p) => p.lines).filter((l, k, a) => l !== a[k - 1]), phases, sound: tk.sound, jump: x.fell !== null, ring: x.fell, pick,
+    line: `${first}${extra} ${rest}${end}`, short: `${first}${extra} ${tr(`Its TD error is ${num(x.delta)}.`, `Su TD error es ${num(x.delta)}.`)}${end}` };
 }
 
 /* ---------- Slides ---------- */
 
 const slides = [];
-slides.push({ title: tr("Sarsa(λ) on the cliff", "Sarsa(λ) en el acantilado"), builds: [{ ep: 1, move: null, at: -1, time: 0, Q: freshQ(), agent: START, line: tr(
+slides.push({ title: tr("Sarsa(λ) on the cliff", "Sarsa(λ) en el acantilado"), builds: [{ code: [L.init], ep: 1, move: null, at: -1, time: 0, Q: freshQ(), agent: START, line: tr(
   `All values start at 0 again, with the agent at ${sym("S", 0)} = A1.`,
   `Todos los valores vuelven a partir en 0, con el agente en ${sym("S", 0)} = A1.`) }] });
 {
   const x = X(0), m = moveName(x.s, x.a);
-  slides.push({ title: tr("Move 1", "Movimiento 1"), builds: [
-    chooseBuild(0, tr("The agent chooses its first move.", "El agente elige su primer movimiento.")),
+  const m1 = [
+    { ...chooseBuild(0, tr("The agent chooses its first move.", "El agente elige su primer movimiento.")), short: reason(x.qAt[x.s], x.explored, x.s, x.a, x.t) },
     ...moveBuilds(0,
       tr(`The TD error compares what the move earned, plus the value of the move just chosen, outlined in red, with what the move was worth. ${markText(0)}`, `El TD error compara lo que ganó el movimiento, más el valor del movimiento recién elegido, con borde rojo, con lo que valía el movimiento. ${markText(0)}`),
       tr(`Every pair moves by α · δ · <i>z</i>, and only ${m} has a trace: from 0 to ${num(x.post[x.s][x.a])}. Then every trace fades by γλ = ${LAM}.`, `Cada par se mueve α · δ · <i>z</i>, y solo ${m} tiene traza: de 0 a ${num(x.post[x.s][x.a])}. Luego todas las trazas se achican por el factor γλ = ${LAM}.`)),
-  ] });
+  ];
+  // With the pseudocode beside the run: what the TD error and the update lines leave out.
+  m1.at(-2).short = usesRed + markText(0);
+  m1.at(-1).short = tr(`Only ${m} has a trace, so only its value moves: from 0 to ${num(x.post[x.s][x.a])}. Then the trace fades by γλ = ${LAM}.`, `Solo ${m} tiene traza, así que solo su valor se mueve: de 0 a ${num(x.post[x.s][x.a])}. Luego la traza se achica por el factor γλ = ${LAM}.`);
+  slides.push({ title: tr("Move 1", "Movimiento 1"), builds: m1 });
 }
 // Moves 2 to 6: each TD error updates every move made so far, by its trace.
 for (let i = 1; i <= 5; i++) {
@@ -138,11 +171,11 @@ for (let i = 6; i < fallI; i++) slides.push({ title: tr(`Move ${i + 1}`, `Movimi
   const firstBy = n3(ALPHA * x.delta * x.z[first.s][first.a]);
   slides.push({ title: tr("The first fall", "La primera caída"), builds: [
     // Its choice is recalled only after a press that showed it without saying why.
-    ...(i > 6 ? [chooseBuild(i, tr("Its move from here was chosen at the end of the last step.", "Su movimiento desde aquí se eligió al final del paso anterior."))] : []),
+    ...(i > 6 ? [chooseBuild(i, tr("Its move from here was chosen at the end of the last step.", "Su movimiento desde aquí se eligió al final del paso anterior."), [L.shift])] : []),
     ...moveBuilds(i,
       tr(`The fall makes the TD error large. ${usesRed}${markText(i)}`, `La caída hace grande el TD error. ${usesRed}${markText(i)}`),
       tr(`All ${list.length} traced moves drop at once, each by ${ALPHA} · ${par(x.delta)} · <i>z</i>: ${shares(i, 3).join(", ")}, and so on back to ${moveName(first.s, first.a)}, the episode's first move, by ${firstBy}. The whole path pays, each move by its trace: recent and repeated moves most.`,
-        `Los ${list.length} movimientos con traza bajan a la vez, cada uno en ${ALPHA} · ${par(x.delta)} · <i>z</i>: ${shares(i, 3).join(", ")}, y así hasta ${moveName(first.s, first.a)}, el primer movimiento del episodio, en ${firstBy}. Paga todo el camino, cada movimiento según su traza: más los movimientos recientes y los repetidos.`)),
+        `Los ${list.length} movimientos con traza bajan a la vez, cada uno en ${ALPHA} · ${par(x.delta)} · <i>z</i>: ${shares(i, 3).join(", ")}, y así hasta ${moveName(first.s, first.a)}, el primer movimiento del episodio, en ${firstBy}. Paga todo el camino, cada movimiento según su traza: más los movimientos recientes y los repetidos.`), i > 6),
   ] });
 }
 // The rest of episode 1, one press per move. A fall repeated right after the first one, by the same move from the same
@@ -164,7 +197,7 @@ for (let i = fallI + 1; i < firstOf[1] - 1; i++) {
   let settle = null, lastKey = null;
   steps.forEach((y, i) => { const p = greedyPath(y.post), key = p ? p.join() : ""; if (key !== lastKey) { settle = p ? i : null; lastKey = key; } });
   const x = X(settle), len = greedyPath(x.post).length - 1;
-  slides.push({ title: tr("A path one row up", "Un camino una fila más arriba"), builds: [{ ...pos(settle), time: x.t + 1, Q: x.post, agent: x.done ? GOAL : x.s2, route: greedyPath(x.post), line: tr(
+  slides.push({ title: tr("A path one row up", "Un camino una fila más arriba"), builds: [{ code: [L.upd], ...pos(settle), time: x.t + 1, Q: x.post, agent: x.done ? GOAL : x.s2, route: greedyPath(x.post), line: tr(
     `In episode ${x.ep} the best moves settle on the route one row up, ${len} moves, the route of one-step Sarsa in the TD note, and keep it to the end.`,
     `En el episodio ${x.ep}, los mejores movimientos se asientan en la ruta una fila más arriba, ${len} movimientos, la ruta de Sarsa de un paso en la nota de TD, y la mantienen hasta el final.`) }] });
   const lastI = steps.length - 1, Qf = X(lastI).post, pf = greedyPath(Qf), falls = steps.filter((y) => y.fell !== null), later = falls.filter((y) => steps.indexOf(y) > settle).length;
@@ -184,10 +217,27 @@ for (let i = 1; i < slides.length; i++) {
 slideshow({
   svg: document.getElementById("fig-lambda"),
   slides,
+  code: {
+    title: "Sarsa(λ)",
+    lines: [
+      { head: true, html: tr("Repeat, for each episode:", "Repetir, en cada episodio:") },
+      { kind: "plain", ind: 1, html: tr(`<span class="nowrap"><i>z</i>(<i>s</i>, <i>a</i>) ← 0</span> for every pair; <span class="nowrap"><i>S</i> ← the first state</span>`, `<span class="nowrap"><i>z</i>(<i>s</i>, <i>a</i>) ← 0</span> para cada par; <span class="nowrap"><i>S</i> ← el primer estado</span>`) },
+      { kind: "pick", ind: 1, html: tr(`<span class="nowrap"><i>A</i> ← ε-greedy</span> from <i>Q</i> in <i>S</i>`, `<span class="nowrap"><i>A</i> ← ε-greedy</span> según <i>Q</i> en <i>S</i>`) },
+      { head: true, ind: 1, html: tr(`Repeat, for each move, until <i>S</i> is terminal:`, `Repetir, en cada movimiento, hasta que <i>S</i> sea terminal:`) },
+      { kind: "take", ind: 2, html: tr(`Take <i>A</i>; observe <i>R</i>, <i>S</i>′`, `Tomar <i>A</i>; observar <i>R</i>, <i>S</i>′`) },
+      { kind: "pick", ind: 2, html: tr(`<span class="nowrap"><i>A</i>′ ← ε-greedy</span> from <i>Q</i> <span class="nowrap">in <i>S</i>′</span>`, `<span class="nowrap"><i>A</i>′ ← ε-greedy</span> según <i>Q</i> <span class="nowrap">en <i>S</i>′</span>`) },
+      { kind: "target", ind: 2, html: `<span class="nowrap">δ ← <span class="pt"><i>R</i> + γ<i>Q</i>(<i>S</i>′, <i>A</i>′)</span></span> <span class="nowrap">− <i>Q</i>(<i>S</i>, <i>A</i>)</span>` },
+      { kind: "plain", ind: 2, html: `<span class="nowrap"><i>z</i>(<i>S</i>, <i>A</i>) ← <i>z</i>(<i>S</i>, <i>A</i>) + 1</span>` },
+      { kind: "update", ind: 2, html: tr(`<span class="nowrap"><span class="upd"><i>Q</i>(<i>s</i>, <i>a</i>)</span> ← <i>Q</i>(<i>s</i>, <i>a</i>)</span> <span class="nowrap">+ αδ<i>z</i>(<i>s</i>, <i>a</i>),</span> for every pair`, `<span class="nowrap"><span class="upd"><i>Q</i>(<i>s</i>, <i>a</i>)</span> ← <i>Q</i>(<i>s</i>, <i>a</i>)</span> <span class="nowrap">+ αδ<i>z</i>(<i>s</i>, <i>a</i>),</span> para cada par`) },
+      { kind: "plain", ind: 2, html: tr(`<span class="nowrap"><i>z</i>(<i>s</i>, <i>a</i>) ← γλ<i>z</i>(<i>s</i>, <i>a</i>),</span> for every pair`, `<span class="nowrap"><i>z</i>(<i>s</i>, <i>a</i>) ← γλ<i>z</i>(<i>s</i>, <i>a</i>),</span> para cada par`) },
+      { kind: "plain", ind: 2, html: `<span class="nowrap"><i>S</i> ← <i>S</i>′;</span> <span class="nowrap"><i>A</i> ← <i>A</i>′</span>` },
+    ],
+  },
   // The state after step m of the whole run, for the frames of a skip: the trail of traces in green, the next move in
-  // yellow.
+  // yellow; its code is one pass of the loop's lines, after the episode's two opening lines on its first move, and
+  // without A′ (nor A ← A′) on its last.
   frame: (m) => {
     const x = X(m), { marks } = traced(m, true);
-    return { Q: x.post, agent: x.done ? GOAL : x.s2, ring: x.fell, ep: x.ep, move: x.t + 1, time: x.t + 1, bumpPose: shake(x, m), marks, pick: x.next ? [x.s2, x.next.a] : undefined };
+    return { code: [...(x.t === 0 ? [L.init, L.first] : []), L.take, ...(x.done ? [] : [L.next]), L.delta, L.mark, L.upd, L.fade, ...(x.done ? [] : [L.shift])], Q: x.post, agent: x.done ? GOAL : x.s2, ring: x.fell, ep: x.ep, move: x.t + 1, time: x.t + 1, bumpPose: shake(x, m), marks, pick: x.next ? [x.s2, x.next.a] : undefined };
   },
 });

@@ -8,7 +8,8 @@ scripts:
 ---
 <div class="prose">
   <p>Monte Carlo methods learn nothing from an episode until it is over, since only then is the return known. Yet much can be learned before that. Picture the robot of the previous note, wandering through a home with a kitchen, a hallway, a study and a charger, at a cost of 1 per move. When it steps from the hallway back into the kitchen, it already knows its trip just got longer. It need not reach the charger to lower its estimate of the hallway.</p>
-  <p>Temporal-difference (TD) learning updates an estimate right after each step, toward the reward just received plus the current estimate of the state that step led to. It learns a guess from a guess. That turns out to work well: TD methods need no model of the world, learn while the episode is still running, and often learn faster than Monte Carlo methods. This note covers TD for predicting values, what it converges to, and Sarsa, the same idea for learning to act.</p>
+  <div class="hl-def"><p><dfn>Temporal-difference (TD) learning</dfn> updates an estimate right after each step, toward the reward just received plus the current estimate of the state that step led to. It learns a guess from a guess.</p></div>
+  <p>That turns out to work well: TD methods need no model of the world, learn while the episode is still running, and often learn faster than Monte Carlo methods. This note covers TD for predicting values, what it converges to, and Sarsa, the same idea for learning to act.</p>
   <p class="legend">Throughout this page, <span class="bar" aria-hidden="true"></span>the steps of an episode are drawn in blue ink, and <span class="dot" aria-hidden="true"></span>the target of an update, and the estimate it relies on, in red ink.</p>
 </div>
 
@@ -21,8 +22,19 @@ scripts:
     <div class="disp hero-f"><i>V</i>(<i>S</i><sub><i>t</i></sub>) <span class="nowrap">← <i>V</i>(<i>S</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub> + γ<i>V</i>(<i>S</i><sub><i>t</i>+1</sub>)</span></span> <span class="nowrap">− <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span></div>
     <p>Why is that a sensible target? The return of one step is the next reward plus the discounted return of the next step, <span class="nowrap"><i>G</i><sub><i>t</i></sub> = <i>R</i><sub><i>t</i>+1</sub> + γ<i>G</i><sub><i>t</i>+1</sub></span>, so the value of a state can be written in two ways:</p>
     <div class="disp"><i>v</i><sub>π</sub>(<i>s</i>) = <span class="nowrap">E<sub>π</sub>[<i>G</i><sub><i>t</i></sub> | <i>S</i><sub><i>t</i></sub> = <i>s</i>]</span> <span class="nowrap">= E<sub>π</sub>[<i>R</i><sub><i>t</i>+1</sub> + γ<i>v</i><sub>π</sub>(<i>S</i><sub><i>t</i>+1</sub>) | <i>S</i><sub><i>t</i></sub> = <i>s</i>]</span></div>
-    <p>Monte Carlo estimates the first form: it replaces the expectation by a sampled return. Dynamic programming uses the second, computing the expectation exactly from a model of the world but relying on the current estimate <i>V</i> for <i>v</i><sub>π</sub>. TD does both at once: it samples the second form, with one real reward and next state, and uses <i>V</i>(<i>S</i><sub><i>t</i>+1</sub>) for <i>v</i><sub>π</sub>(<i>S</i><sub><i>t</i>+1</sub>). Like dynamic programming, it bootstraps; like Monte Carlo, it needs no model.</p>
-    <p>The bracket measures how wrong the estimate of <i>S</i><sub><i>t</i></sub> turned out to be, one step later. It is the TD error:</p>
+    <p>The three methods use the two forms differently:</p>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col">Method</th><th scope="col">What it does with the two forms</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Monte Carlo</th><td>estimates the first form, with a sampled return in place of the expectation</td></tr>
+          <tr><th scope="row">Dynamic programming</th><td>computes the second form's expectation exactly from a model of the world, relying on the current estimate <i>V</i> for <i>v</i><sub>π</sub></td></tr>
+          <tr><th scope="row">TD</th><td>samples the second form, with one real reward and next state, and uses <i>V</i>(<i>S</i><sub><i>t</i>+1</sub>) for <i>v</i><sub>π</sub>(<i>S</i><sub><i>t</i>+1</sub>)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>TD does both at once: like dynamic programming, it bootstraps, and like Monte Carlo, it needs no model.</p>
+    <div class="hl-def"><p>The <dfn>TD error</dfn> is the bracket of the update: how wrong the estimate of <i>S</i><sub><i>t</i></sub> turned out to be, one step later.</p></div>
     <div class="disp">δ<sub><i>t</i></sub> ≐ <span class="nowrap"><span class="pt"><i>R</i><sub><i>t</i>+1</sub> + γ<i>V</i>(<i>S</i><sub><i>t</i>+1</sub>)</span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)</span></div>
     <figure class="diagram">
       <svg viewBox="0 0 440 190" role="img" aria-label="Two backup diagrams. TD(0): a state, the action taken and the next state, whose estimate the target uses. Monte Carlo: a state and the whole rest of the episode down to the terminal state.">
@@ -87,10 +99,20 @@ scripts:
         </tbody>
       </table>
     </div>
-    <p>At <i>t</i> = 1, stepping back into the kitchen tells the robot that the hallway was worse than it thought, and TD lowers the hallway's estimate on the spot. At <i>t</i> = 3 the robot reaches the study from the hallway, which is better news, and the estimate goes back up. Constant-α Monte Carlo waits until the charger, then moves each visit's estimate toward its return: the kitchen toward −5 and then −3, ending at −4, the hallway toward −4 and −2, ending at −3, and the study toward −1, ending at −1.5.</p>
+    <p>At <i>t</i> = 1, stepping back into the kitchen tells the robot that the hallway was worse than it thought, and TD lowers the hallway's estimate on the spot. At <i>t</i> = 3 the robot reaches the study from the hallway, which is better news, and the estimate goes back up. Constant-α Monte Carlo waits until the charger, then moves each visit's estimate toward its return:</p>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col">State</th><th scope="col">Returns</th><th scope="col">Monte Carlo ends at</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">kitchen</th><td>−5, then −3</td><td>−4</td></tr>
+          <tr><th scope="row">hallway</th><td>−4, then −2</td><td>−3</td></tr>
+          <tr><th scope="row">study</th><td>−1</td><td>−1.5</td></tr>
+        </tbody>
+      </table>
+    </div>
 
     <h3>The Monte Carlo error as a sum of TD errors</h3>
-    <p>If the table does not change during the episode, the error of the Monte Carlo update is the discounted sum of the TD errors along the rest of the episode, because the estimates in between cancel in pairs:</p>
+    <p><mark class="hl-key">If the table does not change during the episode, the error of the Monte Carlo update is the discounted sum of the TD errors along the rest of the episode</mark>, because the estimates in between cancel in pairs:</p>
     <div class="disp"><i>G</i><sub><i>t</i></sub> − <i>V</i>(<i>S</i><sub><i>t</i></sub>) <span class="nowrap">= δ<sub><i>t</i></sub> + γδ<sub><i>t</i>+1</sub> + ⋯</span> <span class="nowrap">= Σ<span class="lims"><span><i>T</i>−1</span><span><i>k</i>=<i>t</i></span></span>γ<sup><i>k</i>−<i>t</i></sup>δ<sub><i>k</i></sub></span></div>
     <p>With the table held at −5, −4 and −2, the TD errors of this trip are 0, −2, 0, 1 and 1, which add up to 0: exactly <span class="nowrap"><i>G</i><sub>0</sub> − <i>V</i>(kitchen) = −5 − (−5)</span>. TD(0) changes the table as it goes, so the identity then holds only approximately; the third TD error above is −1 instead of 0 because the hallway had already been updated.</p>
   </div>
@@ -99,15 +121,21 @@ scripts:
 <section id="why">
   <div class="prose">
     <h2><span class="n">3</span>Why learn from a guess?</h2>
-    <p>Compared with dynamic programming, TD needs no model: no probabilities of rewards and next states, only experience. Compared with Monte Carlo, it learns online, one step at a time. That matters when episodes are long, when the task never ends, and when some policies would make an episode last forever: Monte Carlo can learn nothing from an episode that never ends, while TD notices during the episode that things are going badly.</p>
-    <p>It is also sound. For a fixed policy π, TD(0) converges to <i>v</i><sub>π</sub>: in the mean for a small enough constant α, and with probability 1 if α shrinks in the usual way, with a sum that grows without limit and a sum of squares that stays finite. Which method learns faster has not been proved in general, but in practice TD usually beats constant-α Monte Carlo on tasks with randomness.</p>
+    <p>Compared with dynamic programming, TD needs no model: no probabilities of rewards and next states, only experience. Compared with Monte Carlo, it learns online, one step at a time. That matters:</p>
+    <ul>
+      <li>when episodes are long;</li>
+      <li>when the task never ends;</li>
+      <li>when some policies would make an episode last forever: Monte Carlo can learn nothing from an episode that never ends, while TD notices during the episode that things are going badly.</li>
+    </ul>
+    <p>It is also sound. <mark class="hl-key">For a fixed policy π, TD(0) converges to <i>v</i><sub>π</sub>.</mark> It does so in the mean for a small enough constant α, and with probability 1 if α shrinks in the usual way, with a sum that grows without limit and a sum of squares that stays finite. Which method learns faster has not been proved in general, but in practice TD usually beats constant-α Monte Carlo on tasks with randomness.</p>
   </div>
 </section>
 
 <section id="batch">
   <div class="prose">
     <h2><span class="n">4</span>Batch updating: what each method converges to</h2>
-    <p>With a fixed amount of experience, say a few episodes, one can replay it until the estimates stop changing. In batch updating, the increments of every step of every episode are computed and added up, the table changes once by their sum, and the whole batch is processed again, until it converges. With a small enough α, batch TD(0) converges to a single answer that does not depend on α, and so does batch Monte Carlo, but the two answers differ.</p>
+    <p>With a fixed amount of experience, say a few episodes, one can replay it until the estimates stop changing. In <dfn>batch updating</dfn>, the increments of every step of every episode are computed and added up, the table changes once by their sum, and the whole batch is processed again, until it converges.</p>
+    <p>With a small enough α, batch TD(0) converges to a single answer that does not depend on α, and so does batch Monte Carlo, but the two answers differ.</p>
     <p>An example. The charger is sometimes taken by another robot. Reaching it from the study gives +1 if it is free and 0 if it is taken, and moving from the hallway to the study gives −1; γ = 1. Five episodes were recorded:</p>
     <div class="tbl left">
       <table>
@@ -119,7 +147,19 @@ scripts:
         </tbody>
       </table>
     </div>
-    <p>Both methods give the study the average of its five returns, 0, 1, 1, 1 and 0: <span class="nowrap"><i>V</i>(study) = 0.6</span>. They disagree about the hallway. Batch Monte Carlo averages the hallway's only return, <span class="nowrap"><i>V</i>(hallway) = −1 + 0 = −1</span>. Batch TD(0) says the hallway always led to the study with a reward of −1, so <span class="nowrap"><i>V</i>(hallway) = −1 + 0.6 = −0.4</span>.</p>
+    <p>Both methods give the study the average of its five returns, 0, 1, 1, 1 and 0: <span class="nowrap"><i>V</i>(study) = 0.6</span>. They disagree about the hallway:</p>
+    <div class="tbl left">
+      <table>
+        <tbody>
+          <tr><th scope="rowgroup" colspan="2">Batch Monte Carlo</th></tr>
+          <tr><th scope="row"><i>V</i>(hallway)</th><td>the average of its only return, <span class="nowrap">−1 + 0 = −1</span></td></tr>
+          <tr><th scope="row">Finds</th><td>the estimates with the smallest squared error on the data seen: −1 fits the hallway's only return perfectly</td></tr>
+          <tr><th scope="rowgroup" colspan="2">Batch TD(0)</th></tr>
+          <tr><th scope="row"><i>V</i>(hallway)</th><td><span class="nowrap">−1 + 0.6 = −0.4</span>, since the hallway always led to the study with a reward of −1</td></tr>
+          <tr><th scope="row">Finds</th><td>the certainty-equivalence estimate: the values exactly right for the maximum-likelihood model of the process, built from the data and treated as certain</td></tr>
+        </tbody>
+      </table>
+    </div>
     <figure class="diagram">
       <svg viewBox="0 0 440 130" role="img" aria-label="The model the data suggests: from the hallway, always to the study with reward −1; from the study, to the end with reward +1 three times in five and 0 two times in five.">
         <defs><marker id="td-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head" d="M0 0 L10 5 L0 10 z"/></marker></defs>
@@ -136,9 +176,9 @@ scripts:
         <text class="dg-lab" x="60" y="98" text-anchor="middle">hallway</text>
         <text class="dg-lab" x="210" y="98" text-anchor="middle">study</text>
       </svg>
-      <figcaption>The process as the data describes it: the transitions seen, with how often each happened and its reward. Batch TD(0) gives the values that are exactly right for this model.</figcaption>
+      <figcaption>The process as the data describes it: the transitions seen, with how often each happened and its reward. Each transition's probability is the fraction of times it was observed, and its reward the average reward observed. Batch TD(0) gives the values that are exactly right for this model.</figcaption>
     </figure>
-    <p>Batch Monte Carlo finds the estimates with the smallest squared error on the data seen: −1 fits the hallway's only return perfectly. Batch TD(0) finds the estimates that are exactly right for the maximum-likelihood model of the process, built from the data: each transition's probability is the fraction of times it was observed, and its reward is the average reward observed. This is the certainty-equivalence estimate, the answer one would get by treating the estimated model as certain. If the process is Markov, the TD answer should predict future returns better: the one bad outcome after the hallway was the charger's doing, and five visits to the study say more about the charger than one.</p>
+    <p><mark class="hl-key">If the process is Markov, the TD answer should predict future returns better.</mark> The one bad outcome after the hallway was the charger's doing, and five visits to the study say more about the charger than one.</p>
     <p>This helps explain why TD tends to learn faster. Computing the certainty-equivalence estimate directly is rarely practical: with <i>n</i> states, the model alone can need memory of order <i>n</i><sup>2</sup>, and solving it about <i>n</i><sup>3</sup> steps. TD approaches the same answer with memory of order <i>n</i>, and online TD, which does not replay, still moves roughly toward it.</p>
     <h3>The algorithm</h3>
     <p>Batch TD(0), for a batch of episodes and a small step size α:</p>
@@ -149,7 +189,12 @@ scripts:
       <li>Go back to step 2 until <i>V</i> stops changing.</li>
     </ol>
     <p>Batch Monte Carlo is the same with <span class="nowrap"><span class="pt"><i>G</i><sub><i>t</i></sub></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)</span> in place of δ<sub><i>t</i></sub>, at every step, as in constant-α Monte Carlo.</p>
-    <p>The figure runs both on the 702 moves of the <a href="#td0">first figure</a>'s 30 episodes, with every estimate at 0 and α = 0.005, small because each estimate moves by α times a sum: 176 of the moves start in A1. The agent stays in A1, since the batch is only replayed. Each press is one line of the steps above; the estimates a pass changes are outlined in green, and those that targets borrow in red, as in the first figure. The buttons above the grid switch between batch TD(0) and batch Monte Carlo.</p>
+    <p>The figure runs both on the 702 moves of the <a href="#td0">first figure</a>'s 30 episodes, with every estimate at 0 and α = 0.005, small because each estimate moves by α times a sum: 176 of the moves start in A1.</p>
+    <ul>
+      <li>The agent stays in A1, since the batch is only replayed.</li>
+      <li>Each press is one line of the steps above; the estimates a pass changes are outlined in green, and those that targets borrow in red, as in the first figure.</li>
+      <li>The buttons above the grid switch between batch TD(0) and batch Monte Carlo.</li>
+    </ul>
   </div>
 
   <div class="fig steps">
@@ -172,6 +217,7 @@ scripts:
     <h2><span class="n">5</span>Sarsa: TD for control</h2>
     <p>To learn to act without a model, TD learns action values, and the policy improves along the way: evaluate with TD, act ε-greedily with respect to the current estimates, and repeat, as in generalized policy iteration. The update is the same as TD(0), from one state–action pair to the next:</p>
     <div class="disp hero-f long"><i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">← <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub></span></span> <span class="nowrap pt">+ γ<i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>A</i><sub><i>t</i>+1</sub>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
+    <aside class="hl-back">From the Monte Carlo note: <a href="/notes/reinforcement-learning/monte-carlo/#soft">on-policy methods</a> evaluate and improve the same policy that makes the decisions.</aside>
     <p>It is made after every transition from a nonterminal state, with <span class="nowrap"><i>Q</i>(terminal, ·) = 0</span>. It uses the five quantities <i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>, <i>R</i><sub><i>t</i>+1</sub>, <i>S</i><sub><i>t</i>+1</sub> and <i>A</i><sub><i>t</i>+1</sub>, which give the method its name. Sarsa is on-policy: <i>A</i><sub><i>t</i>+1</sub> is the action the policy actually takes next, so Sarsa learns the values of the policy it follows, exploration included.</p>
     <p>Sarsa converges with probability 1 to an optimal policy and its action values if every pair keeps being visited, the step sizes shrink in the usual way, and the policy becomes greedy in the limit, for example ε-greedy with ε = 1/<i>t</i>.</p>
 
@@ -183,9 +229,20 @@ scripts:
       <li>Update <span class="nowrap"><i>Q</i>(<i>S</i>, <i>A</i>) ← <i>Q</i>(<i>S</i>, <i>A</i>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i> + γ<i>Q</i>(<i>S</i>′, <i>A</i>′)</span> − <i>Q</i>(<i>S</i>, <i>A</i>)]</span>.</li>
       <li>Set <i>S</i> ← <i>S</i>′ and <i>A</i> ← <i>A</i>′, and go back to step 2 until <i>S</i> is terminal.</li>
     </ol>
-    <p>Learning within the episode is what lets Sarsa escape a policy that would never finish. Suppose all of the robot's action values start at 0 and, breaking the tie, its policy sends it from the hallway back to the kitchen, from where the only move is back to the hallway. Followed greedily, that policy shuttles forever, and a Monte Carlo method would wait forever for a return. With Sarsa, α = 0.5 and γ = 1, the first time the robot goes back to the kitchen, <i>Q</i>(hallway, kitchen) drops to <span class="nowrap">0.5(−1 + 0 − 0) = −0.5</span>, below the 0 of the untried move to the study, and the next time it is in the hallway it heads for the study.</p>
-    <p>To watch Sarsa learn, take a larger grid than the cookie grid: 6 cells wide and 4 tall, from A1 at the bottom left to F4 at the top right. The agent starts in A1, and an episode ends when it reaches the goal, F1, at the bottom right. Every move gives −1, and between start and goal, along the bottom edge, runs a cliff: a step into it gives −100 and sends the agent back to the start. The shortest route runs right along the edge, in 7 moves.</p>
-    <p>The figure runs Sarsa there with α = 0.5, γ = 1 and ε = 0.1, so that in each cell the greedy move has probability 0.925 and each other move 0.025. Each cell holds the values of its four moves again, as in the Monte Carlo control figure. Here every move costs, so the values are negative, and the heatmap shades them a faint coral, deeper the more negative they are. Before each update, the agent chooses its next move, in yellow, and the target uses that move's value, outlined in red.</p>
+    <p>Learning within the episode is what lets Sarsa escape a policy that would never finish. Suppose all of the robot's action values start at 0 and, breaking the tie, its policy sends it from the hallway back to the kitchen, from where the only move is back to the hallway. Followed greedily, that policy shuttles forever, and a Monte Carlo method would wait forever for a return. With Sarsa, α = 0.5 and γ = 1:</p>
+    <ol>
+      <li>The first time the robot goes back to the kitchen, <i>Q</i>(hallway, kitchen) drops to <span class="nowrap">0.5(−1 + 0 − 0) = −0.5</span>.</li>
+      <li>That is below the 0 of the untried move to the study.</li>
+      <li>So the next time it is in the hallway, it heads for the study.</li>
+    </ol>
+    <p>To watch Sarsa learn, take a larger grid than the cookie grid:</p>
+    <ul>
+      <li>6 cells wide and 4 tall, from A1 at the bottom left to F4 at the top right;</li>
+      <li>the agent starts in A1, and an episode ends when it reaches the goal, F1, at the bottom right;</li>
+      <li>every move gives −1, and between start and goal, along the bottom edge, runs a cliff: a step into it gives −100 and sends the agent back to the start;</li>
+      <li>the shortest route runs right along the edge, in 7 moves.</li>
+    </ul>
+    <p>The figure runs Sarsa there with α = 0.5, γ = 1 and ε = 0.1, so that in each cell the greedy move has probability 0.925 and each other move 0.025. Each cell holds the values of its four moves again, as in the <a href="/notes/reinforcement-learning/monte-carlo/#control">Monte Carlo control figure</a>. Here every move costs, so the values are negative, and the heatmap shades them a faint coral, deeper the more negative they are. Before each update, the agent chooses its next move, in yellow, and the target uses that move's value, outlined in red.</p>
   </div>
 
   <div class="fig steps">
@@ -199,7 +256,18 @@ scripts:
   </div>
 
   <div class="prose">
-    <p>Sarsa's target uses the move the agent actually makes next, exploring moves included, so its values count what exploring costs. Next to the edge, every step has a 0.025 chance of a random move down into the cliff; one row up, a random move down only lands on the edge. That makes the edge worth less to Sarsa. In the figure the values still jump with every fall, since α = 0.5 moves an estimate halfway to each target. With a small step size and many episodes, they settle at the values of the ε-greedy policy the agent follows, which average in every fall: in A2, moving up is worth <span class="nowrap"><i>q</i><sub>π</sub>(A2, up) = −9.39</span>, and moving right, onto the edge, <span class="nowrap"><i>q</i><sub>π</sub>(A2, right) = −12.01</span>. The route one row up, 9 moves, is the best an agent can do while it keeps exploring. It is not the best route: once the exploring stops, the edge is two moves shorter and never falls.</p>
+    <p><mark class="hl-key">Sarsa's target uses the move the agent actually makes next, exploring moves included, so its values count what exploring costs.</mark> Next to the edge, every step has a 0.025 chance of a random move down into the cliff; one row up, a random move down only lands on the edge. That makes the edge worth less to Sarsa.</p>
+    <p>In the figure the values still jump with every fall, since α = 0.5 moves an estimate halfway to each target. With a small step size and many episodes, they settle at the values of the ε-greedy policy the agent follows, which average in every fall:</p>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col">Move from A2</th><th scope="col"><i>q</i><sub>π</sub>(A2, move)</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">up</th><td>−9.39</td></tr>
+          <tr><th scope="row">right, onto the edge</th><td>−12.01</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The route one row up, 9 moves, is the best an agent can do while it keeps exploring. It is not the best route: once the exploring stops, the edge is two moves shorter and never falls.</p>
   </div>
 </section>
 

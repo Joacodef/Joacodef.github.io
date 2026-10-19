@@ -49,7 +49,8 @@ scripts:
 <section id="values">
   <div class="prose">
     <h2><span class="n">1</span>Los valores de la mejor conducta</h2>
-    <p>Sarsa aprende <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>), el retorno que cabe esperar después de tomar la acción <i>a</i> en el estado <i>s</i> y seguir π desde ahí, con movimientos de exploración y todo. Lo mejor que puede lograr una política da los valores de acción óptimos:</p>
+    <aside class="hl-back">De los apuntes de Monte Carlo y de TD: <a href="/es/notes/reinforcement-learning/monte-carlo/#action-values"><i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>)</a> es el retorno que cabe esperar después de tomar la acción <i>a</i> en el estado <i>s</i> y seguir π desde ahí, y <a href="/es/notes/reinforcement-learning/td-learning/#sarsa">Sarsa</a> lo aprende para la política que sigue, con movimientos de exploración y todo.</aside>
+    <p>Lo mejor que puede lograr una política da los valores de acción óptimos:</p>
     <div class="disp"><i>q</i><sub>*</sub>(<i>s</i>, <i>a</i>) = <span class="nowrap">max<sub>π</sub> <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>)</span></div>
     <p>Conocer <i>q</i><sub>*</sub> basta para actuar bien: en cada estado, toma la acción de mayor valor. En el acantilado, con γ = 1, <i>q</i><sub>*</sub> cuenta movimientos. Desde A2, la celda sobre el inicio, moverse a la derecha deja 6 movimientos hasta la meta por el borde, así que <span class="nowrap"><i>q</i><sub>*</sub>(A2, derecha) = −6</span>, y subir cuesta dos más, <span class="nowrap"><i>q</i><sub>*</sub>(A2, arriba) = −8</span>. Desde B2, un paso hacia abajo, al acantilado, cuesta 100, y desde el inicio el mejor viaje sigue costando 7: <span class="nowrap"><i>q</i><sub>*</sub>(B2, abajo) = −107</span>.</p>
     <p>Los valores óptimos están ligados entre sí, a un paso de distancia, por la ecuación de optimalidad de Bellman. El valor de una acción es la recompensa que trae más el valor descontado de actuar lo mejor posible desde el estado al que lleva:</p>
@@ -63,7 +64,13 @@ scripts:
   <div class="prose">
     <h2><span class="n">2</span>La actualización de Q-learning</h2>
     <div class="disp"><i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">← <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub></span></span> <span class="nowrap pt">+ γ max<sub><i>a</i></sub> <i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>a</i>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
-    <p>Compárala con la de Sarsa. El objetivo de Sarsa, <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub> + γ<i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>A</i><sub><i>t</i>+1</sub>)</span>, usa el valor de la acción que el agente toma después. El de Q-learning usa la mejor acción en el estado siguiente, haga lo que haga el agente ahí. ¿Por qué este objetivo? Es el interior de la ecuación de optimalidad de Bellman, con sus dos incógnitas reemplazadas por lo que el agente tiene. La esperanza sobre recompensas y estados siguientes pasa a ser la recompensa y el estado siguiente que acaba de observar, y <i>q</i><sub>*</sub> pasa a ser la tabla actual <i>Q</i>. A lo largo de muchos pasos, el azar de cada recompensa y cada estado siguiente se promedia, como un promedio muestral se acerca a una esperanza, mientras la tabla misma mejora.</p>
+    <p>Compárala con la de Sarsa. El objetivo de Sarsa, <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub> + γ<i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>A</i><sub><i>t</i>+1</sub>)</span>, usa el valor de la acción que el agente toma después. <mark class="hl-key">El objetivo de Q-learning usa la mejor acción en el estado siguiente, haga lo que haga el agente ahí.</mark></p>
+    <p>¿Por qué este objetivo? Es el interior de la ecuación de optimalidad de Bellman, con sus dos incógnitas reemplazadas por lo que el agente tiene:</p>
+    <ul>
+      <li>la esperanza sobre recompensas y estados siguientes pasa a ser la recompensa y el estado siguiente que acaba de observar;</li>
+      <li><i>q</i><sub>*</sub> pasa a ser la tabla actual <i>Q</i>.</li>
+    </ul>
+    <p>A lo largo de muchos pasos, el azar de cada recompensa y cada estado siguiente se promedia, como un promedio muestral se acerca a una esperanza, mientras la tabla misma mejora.</p>
     <p>Un ejemplo con números, con α = 0.5. A mitad del aprendizaje, la tabla tiene <span class="nowrap"><i>Q</i>(A2, derecha) = −8</span>, y en B2 arriba −7, derecha −5, abajo −60 e izquierda −7. El agente se mueve a la derecha de A2 a B2 y recibe −1. El objetivo es <span class="nowrap pt">−1 + max(−7, −5, −60, −7) = −6</span>, y la estimación recorre la mitad del camino hacia él:</p>
     <div class="disp num"><i>Q</i>(A2, derecha) <span class="nowrap">← −8 + 0.5(<span class="pt">−6</span> − (−8))</span> <span class="nowrap">= −7</span></div>
     <p>El objetivo es el mismo haga lo que haga el agente después en B2, aunque su siguiente movimiento sea un paso al azar hacia abajo, al acantilado.</p>
@@ -92,15 +99,22 @@ scripts:
   </div>
 
   <div class="prose">
-    <p>¿Cuándo funciona? <i>Q</i> converge a <i>q</i><sub>*</sub> con probabilidad 1 siempre que todos los pares se sigan actualizando, así que la política nunca debe dejar de probar todas las acciones, y que los tamaños de paso se achiquen lo bastante lento: su suma crece sin límite mientras la suma de sus cuadrados se mantiene finita. La primera condición es lo mínimo que puede pedir cualquier método, porque el valor de una acción que nunca se prueba no se puede aprender.</p>
+    <p>¿Cuándo funciona? <i>Q</i> converge a <i>q</i><sub>*</sub> con probabilidad 1 siempre que:</p>
+    <ol>
+      <li>todos los pares se sigan actualizando, así que la política nunca debe dejar de probar todas las acciones;</li>
+      <li>los tamaños de paso se achiquen lo bastante lento: su suma crece sin límite mientras la suma de sus cuadrados se mantiene finita.</li>
+    </ol>
+    <p>La primera condición es lo mínimo que puede pedir cualquier método, porque el valor de una acción que nunca se prueba no se puede aprender.</p>
   </div>
 </section>
 
 <section id="off-policy">
   <div class="prose">
     <h2><span class="n">3</span>Aprender sobre una política mientras se sigue otra</h2>
-    <p>El agente se comporta de forma ε-greedy, pero su objetivo usa <span class="nowrap">max<sub><i>a</i></sub> <i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>a</i>)</span>, el valor de la acción greedy en el estado siguiente, sin importar qué acción tome realmente ahí. Así, Q-learning aprende los valores de la política greedy, mientras su experiencia viene de la ε-greedy. La política sobre la que se aprende es la política objetivo, y la que produce la conducta es la política de comportamiento. Cuando las dos difieren, el método es off-policy. La política de comportamiento igual importa en algo: decide qué pares se visitan, y por lo tanto cuáles se actualizan.</p>
-    <p>Sarsa es on-policy: su objetivo usa la acción que toma después, así que cuando esa acción es un movimiento de exploración, el objetivo incluye lo que cuesta explorar. Sarsa aprende <i>q</i><sub>π</sub> de la política ε-greedy que sigue, y Q-learning aprende <i>q</i><sub>*</sub>. Un diagrama de backup muestra la diferencia: lo que mira cada actualización, desde el par que se actualiza, arriba, hasta aquello con lo que se construye el objetivo, abajo.</p>
+    <p>El agente se comporta de forma ε-greedy, pero su objetivo usa <span class="nowrap">max<sub><i>a</i></sub> <i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>a</i>)</span>, el valor de la acción greedy en el estado siguiente, sin importar qué acción tome realmente ahí. Así, Q-learning aprende los valores de la política greedy, mientras su experiencia viene de la ε-greedy.</p>
+    <div class="hl-def"><p><dfn>Política objetivo</dfn>: la política sobre la que se aprende. <dfn>Política de comportamiento</dfn>: la que produce la conducta. Cuando las dos difieren, el método es <a href="/es/notes/reinforcement-learning/monte-carlo/#soft">off-policy</a>.</p></div>
+    <p>La política de comportamiento igual importa en algo: decide qué pares se visitan, y así cuáles se actualizan.</p>
+    <p>Sarsa es on-policy: su objetivo usa la acción que toma después, así que cuando esa acción es un movimiento de exploración, el objetivo incluye lo que cuesta explorar. Sarsa aprende <i>q</i><sub>π</sub> de la política ε-greedy que sigue, y Q-learning aprende <i>q</i><sub>*</sub>. Un diagrama de backup muestra la diferencia, en lo que mira cada actualización.</p>
     <figure class="diagram">
       <svg viewBox="0 0 440 196" role="img" aria-label="Tres diagramas de backup. Cada uno parte arriba con el par que se actualiza, pasa al estado siguiente y termina en las acciones siguientes que usa su objetivo: una acción muestreada en Sarsa, el máximo sobre todas las acciones en Q-learning, y todas las acciones en Expected Sarsa.">
         <line class="bk" x1="80" y1="24" x2="80" y2="70"/>
@@ -137,7 +151,7 @@ scripts:
       <figcaption>Arriba, el par que se actualiza. El círculo es el estado siguiente, al que se llega con la recompensa <i>R</i><sub><i>t</i>+1</sub>. Abajo, en rojo, lo que usa el objetivo: la acción que se toma después (Sarsa), la mejor de todas las acciones siguientes (Q-learning; el arco marca un máximo), o todas, ponderadas por su probabilidad (Expected Sarsa, sección 4).</figcaption>
     </figure>
     <p>En el acantilado, la diferencia decide la ruta. Deja que ambos métodos aprendan el tiempo suficiente, con ε = 0.1 y tamaños de paso que se achican. Sarsa se asienta una fila más arriba, como en el apunte anterior. Los valores de Q-learning suponen el movimiento greedy desde el paso siguiente en adelante, así que se queda en el borde, y mientras sigue explorando, a veces se cae.</p>
-    <div class="tbl">
+    <div class="tbl tight">
       <table>
         <thead><tr><th scope="col">En el acantilado, ε = 0.1</th><th scope="col"><span class="nowrap">Q-learning</span></th><th scope="col">Sarsa</th></tr></thead>
         <tbody>
@@ -148,8 +162,13 @@ scripts:
         </tbody>
       </table>
     </div>
-    <p>La tabla de Q-learning describe la mejor política, que vale −7 por viaje una vez que deja de explorar, pero a Sarsa le va mejor mientras aprende. La brecha depende de ε. Bajo <span class="nowrap">ε ≈ 0.02</span>, un movimiento al azar hacia abajo es lo bastante raro como para que Sarsa también se quede en el borde, y sobre <span class="nowrap">ε ≈ 0.26</span> sube a la fila de arriba. Si ε se achica hacia 0 con el tiempo, ambos terminan con la política óptima.</p>
-    <p>Con una conducta puramente greedy, ε = 0, los dos métodos casi coinciden: ambos actúan de forma greedy, y sus objetivos son iguales, porque la acción que Sarsa toma después es la greedy. La única diferencia es el momento. Sarsa elige su acción siguiente antes de actualizar la tabla, y Q-learning después, así que cuando el estado siguiente es el mismo estado, la actualización puede cambiar qué acción toma luego Q-learning. En la figura de Sarsa, elegir primero le costó al agente una segunda caída desde el inicio.</p>
+    <p><mark class="hl-key">La tabla de Q-learning describe la mejor política, que vale −7 por viaje una vez que deja de explorar, pero a Sarsa le va mejor mientras aprende.</mark> La brecha depende de ε:</p>
+    <ul>
+      <li>bajo <span class="nowrap">ε ≈ 0.02</span>, un movimiento al azar hacia abajo es lo bastante raro como para que Sarsa también se quede en el borde;</li>
+      <li>sobre <span class="nowrap">ε ≈ 0.26</span>, Sarsa sube a la fila de arriba;</li>
+      <li>si ε se achica hacia 0 con el tiempo, ambos terminan con la política óptima.</li>
+    </ul>
+    <p>Con una conducta puramente greedy, ε = 0, los dos métodos casi coinciden: ambos actúan de forma greedy, y sus objetivos son iguales, porque la acción que Sarsa toma después es la greedy. La única diferencia es el momento. Sarsa elige su acción siguiente antes de actualizar la tabla, y Q-learning después, así que cuando el estado siguiente es el mismo estado, la actualización puede cambiar qué acción toma luego Q-learning. En la <a href="/es/notes/reinforcement-learning/td-learning/#sarsa">figura de Sarsa</a>, elegir primero le costó al agente una segunda caída desde el inicio.</p>
     <p>Muchos métodos off-policy tienen que corregir la diferencia entre las dos políticas. Q-learning de un paso no necesita esa corrección: dado el par que actualiza, la recompensa y el estado siguiente no dependen de ninguna de las dos políticas, y el objetivo usa un máximo en vez de la acción que la política de comportamiento toma después.</p>
   </div>
 </section>
@@ -158,29 +177,34 @@ scripts:
   <div class="prose">
     <h2><span class="n">4</span>Expected Sarsa</h2>
     <div class="disp"><i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">← <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub></span></span> <span class="nowrap pt">+ γ Σ<sub><i>a</i></sub> π(<i>a</i>|<i>S</i><sub><i>t</i>+1</sub>) <i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>a</i>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
-    <p>El objetivo de Sarsa usa el valor de la única acción siguiente que la política elige, y el de Q-learning, el valor de la mejor. El objetivo de Expected Sarsa promedia los valores de todas las acciones siguientes, cada uno ponderado por la probabilidad de que π tome esa acción. Este promedio, que se escribe <span class="nowrap"><span class="ovl"><i>V</i></span>(<i>S</i><sub><i>t</i>+1</sub>)</span>, es el valor del estado siguiente que la tabla implica bajo π. Es también lo que vale en promedio el objetivo de Sarsa, así que Expected Sarsa se mueve cada vez como Sarsa se mueve en promedio, sin el azar que agrega la elección de <i>A</i><sub><i>t</i>+1</sub>. El precio es una suma sobre las acciones en cada paso.</p>
-    <p>Estos son los tres objetivos para el paso de la sección 2, de A2 a B2, ahora con los valores de B2 en <i>q</i><sub>*</sub> (arriba −7, derecha −5, abajo −107, izquierda −7) y ε = 0.1, así que el agente se mueve después a la derecha con probabilidad 0.925 y hace cada uno de los otros movimientos con probabilidad 0.025:</p>
-    <div class="tbl">
+    <p>Donde el objetivo de Sarsa usa la acción siguiente que la política elige y el de Q-learning la mejor, el objetivo de Expected Sarsa promedia los valores de todas las acciones siguientes, cada uno ponderado por la probabilidad de que π la tome. Este promedio, <span class="nowrap"><span class="ovl"><i>V</i></span>(<i>S</i><sub><i>t</i>+1</sub>)</span>, es el valor del estado siguiente que la tabla implica bajo π. <mark class="hl-key">Es también lo que vale en promedio el objetivo de Sarsa, así que Expected Sarsa se mueve cada vez como Sarsa se mueve en promedio, sin el azar que agrega la elección de <i>A</i><sub><i>t</i>+1</sub>.</mark> El precio es una suma sobre las acciones en cada paso.</p>
+    <p>La tabla toma el paso de A2 a B2 de la sección 2, ahora con los valores de B2 en <i>q</i><sub>*</sub> y <span class="nowrap">ε = 0.1</span>; las filas de Sarsa dan la probabilidad de cada caso. La última columna parte de <span class="nowrap"><i>Q</i>(A2, derecha) = −6</span>, con α = 0.5:</p>
+    <div class="tbl tight">
       <table>
-        <thead><tr><th scope="col">Método</th><th scope="col">Objetivo</th></tr></thead>
+        <thead><tr><th scope="col">Método</th><th scope="col">Objetivo</th><th scope="col">Valor nuevo</th></tr></thead>
         <tbody>
-          <tr><th scope="row"><span class="nowrap">Q-learning</span></th><td class="pt"><span class="nowrap">−1 + max(−7, −5, −107, −7)</span> <span class="nowrap">= −6</span></td></tr>
-          <tr><th scope="row">Sarsa, si luego va a la derecha (0.925)</th><td class="pt"><span class="nowrap">−1 + (−5)</span> <span class="nowrap">= −6</span></td></tr>
-          <tr><th scope="row">Sarsa, si luego va arriba o a la izquierda (0.05)</th><td class="pt"><span class="nowrap">−1 + (−7)</span> <span class="nowrap">= −8</span></td></tr>
-          <tr><th scope="row">Sarsa, si luego da un paso hacia abajo, al acantilado (0.025)</th><td class="pt"><span class="nowrap">−1 + (−107)</span> <span class="nowrap">= −108</span></td></tr>
-          <tr><th scope="row">Expected Sarsa</th><td class="pt"><span class="nowrap">−1 + 0.925(−5)</span> <span class="nowrap">+ 0.05(−7)</span> <span class="nowrap">+ 0.025(−107)</span> <span class="nowrap">= −8.65</span></td></tr>
+          <tr><th scope="row"><span class="nowrap">Q-learning</span></th><td class="pt"><span class="nowrap">−1 + max(−7, −5,</span> <span class="nowrap">−107, −7)</span> <span class="nowrap">= −6</span></td><td>−6</td></tr>
+          <tr><th scope="row">Sarsa, si luego va a la derecha (0.925)</th><td class="pt"><span class="nowrap">−1 + (−5)</span> <span class="nowrap">= −6</span></td><td>−6</td></tr>
+          <tr><th scope="row">Sarsa, si luego va arriba o a la izquierda (0.025 cada uno)</th><td class="pt"><span class="nowrap">−1 + (−7)</span> <span class="nowrap">= −8</span></td><td>−7</td></tr>
+          <tr><th scope="row">Sarsa, si luego da un paso hacia abajo, al acantilado (0.025)</th><td class="pt"><span class="nowrap">−1 + (−107)</span> <span class="nowrap">= −108</span></td><td>−57</td></tr>
+          <tr><th scope="row">Expected Sarsa</th><td class="pt"><span class="nowrap">−1 + 0.925(−5)</span> <span class="nowrap">+ 0.05(−7)</span> <span class="nowrap">+ 0.025(−107)</span> <span class="nowrap">= −8.65</span></td><td><span class="nowrap">≈ −7.33</span></td></tr>
         </tbody>
       </table>
     </div>
-    <p>Los objetivos posibles de Sarsa promedian <span class="nowrap">0.925(−6) + 0.05(−8)</span> <span class="nowrap">+ 0.025(−108) = −8.65</span>, el objetivo de Expected Sarsa. Con α = 0.5, partiendo de <span class="nowrap"><i>Q</i>(A2, derecha) = −6</span>, la actualización de Q-learning la deja en −6. La de Sarsa la deja en −6, la mueve a −7 o, una vez de cada cuarenta, la baja a −57, según el movimiento que toque a continuación; la de Expected Sarsa da siempre cerca de −7.33. Con menos ruido en sus actualizaciones, Expected Sarsa tolera un tamaño de paso mayor. En el acantilado los movimientos mismos son seguros y todo el azar viene de la política, así que Expected Sarsa puede usar incluso α = 1 y reemplazar cada estimación por su objetivo, mientras que Sarsa necesita un α pequeño para promediar sus objetivos aleatorios.</p>
-    <p>Expected Sarsa también puede aprender off-policy: los pesos π pueden venir de una política objetivo distinta de la de comportamiento. Si π es greedy, el promedio pone todo su peso en la mejor acción, y el objetivo es el de Q-learning. Así, Expected Sarsa incluye a Q-learning como caso particular.</p>
+    <p>Los objetivos posibles de Sarsa promedian <span class="nowrap">0.925(−6) + 0.05(−8)</span> <span class="nowrap">+ 0.025(−108) = −8.65</span>, el objetivo de Expected Sarsa. Pero el valor nuevo de Sarsa depende del movimiento que toque a continuación, mientras que el de Expected Sarsa es siempre el mismo. Con menos ruido en sus actualizaciones, Expected Sarsa tolera un tamaño de paso mayor. En el acantilado los movimientos mismos son seguros y todo el azar viene de la política, así que Expected Sarsa puede usar incluso α = 1 y reemplazar cada estimación por su objetivo, mientras que Sarsa necesita un α pequeño para promediar sus objetivos aleatorios.</p>
+    <p>Expected Sarsa también puede aprender off-policy, e incluye a Q-learning como caso particular:</p>
+    <ol>
+      <li>los pesos π pueden venir de una política objetivo distinta de la de comportamiento;</li>
+      <li>si π es greedy, el promedio pone todo su peso en la mejor acción, y el objetivo es el de Q-learning.</li>
+    </ol>
   </div>
 </section>
 
 <section id="double">
   <div class="prose">
     <h2><span class="n">5</span>Sesgo de maximización y aprendizaje doble</h2>
-    <p>El objetivo de Q-learning toma la mayor de varias estimaciones. La mayor de varias estimaciones ruidosas tiende a ser demasiado grande, aunque cada una acierte en promedio. Esto es el sesgo de maximización.</p>
+    <p>El objetivo de Q-learning toma la mayor de varias estimaciones.</p>
+    <div class="hl-def"><p><dfn>Sesgo de maximización</dfn>: la mayor de varias estimaciones ruidosas tiende a ser demasiado grande, aunque cada una acierte en promedio.</p></div>
     <p>Toma un estado con seis acciones que valen exactamente 0: cada una paga +1 o −1 con igual probabilidad. Estima cada acción con el promedio de tres pagos, de modo que una estimación es 1, 1/3, −1/3 o −1. Cada estimación acierta en promedio, pero la mayor de las seis es 1 con probabilidad 0.55, 1/3 con probabilidad 0.43, y queda bajo 0 menos del 2% de las veces. En promedio es <span class="nowrap">+0.69</span>.</p>
     <figure class="diagram">
       <svg viewBox="0 0 440 204" role="img" aria-label="Seis estimaciones, una por acción, en una escala de −1 a 1 con una línea punteada en el valor real 0: un tercio, menos un tercio, 1, menos un tercio, un tercio y −1. La mayor, 1, está encerrada en rojo. Debajo, un punto rojo marca la estimación de la misma acción en la segunda tabla, menos un tercio.">
@@ -203,7 +227,12 @@ scripts:
       <figcaption>Una muestra de las seis estimaciones, todas de acciones que valen 0. El objetivo con una sola tabla toma la mayor, 1. Con dos tablas, la primera elige la misma acción, pero su valor se lee en la segunda: −1/3 aquí, y 0 en promedio.</figcaption>
     </figure>
     <p>Un objetivo de Q-learning que termina en un estado así recibe este optimismo, y los estados que llevan ahí parecen mejores de lo que son. El agente se ve atraído hacia estados cuyas acciones son inciertas, sin ninguna buena razón.</p>
-    <p>El sesgo viene de usar las mismas muestras dos veces: para elegir la acción que parece mejor, y para decir cuán buena es. El aprendizaje doble separa las dos tareas. Lleva dos estimaciones independientes, <i>Q</i><sub>1</sub> y <i>Q</i><sub>2</sub>, cada una aprendida con su propia mitad de la experiencia. Una elige la acción, <span class="nowrap"><i>A</i><sup>*</sup> = argmax<sub><i>a</i></sub> <i>Q</i><sub>1</sub>(<i>a</i>)</span>, y la otra dice cuánto vale, <i>Q</i><sub>2</sub>(<i>A</i><sup>*</sup>). Las muestras detrás de <i>Q</i><sub>2</sub> no participaron en la elección, así que <span class="nowrap">E[<i>Q</i><sub>2</sub>(<i>A</i><sup>*</sup>)] = <i>q</i>(<i>A</i><sup>*</sup>)</span>, sin sesgo. En el ejemplo, <i>A</i><sup>*</sup> es la acción que por azar pareció mejor, pero su valor viene de tres pagos nuevos, que promedian 0.</p>
+    <p><mark class="hl-key">El sesgo viene de usar las mismas muestras dos veces: para elegir la acción que parece mejor, y para decir cuán buena es.</mark> El aprendizaje doble separa las dos tareas. Lleva dos estimaciones independientes, <i>Q</i><sub>1</sub> y <i>Q</i><sub>2</sub>, cada una aprendida con su propia mitad de la experiencia:</p>
+    <ul>
+      <li>una elige la acción, <span class="nowrap"><i>A</i><sup>*</sup> = argmax<sub><i>a</i></sub> <i>Q</i><sub>1</sub>(<i>a</i>)</span>;</li>
+      <li>la otra dice cuánto vale, <i>Q</i><sub>2</sub>(<i>A</i><sup>*</sup>).</li>
+    </ul>
+    <p>Las muestras detrás de <i>Q</i><sub>2</sub> no participaron en la elección, así que <span class="nowrap">E[<i>Q</i><sub>2</sub>(<i>A</i><sup>*</sup>)] = <i>q</i>(<i>A</i><sup>*</sup>)</span>, sin sesgo. En el ejemplo, <i>A</i><sup>*</sup> es la acción que por azar pareció mejor, pero su valor viene de tres pagos nuevos, que promedian 0.</p>
     <p>Double Q-learning aplica esto a Q-learning. En cada paso, una moneda decide qué tabla aprende. Si sale cara,</p>
     <div class="disp"><i>Q</i><sub>1</sub>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">← <i>Q</i><sub>1</sub>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub></span></span> <span class="nowrap pt">+ γ<i>Q</i><sub>2</sub>(<i>S</i><sub><i>t</i>+1</sub>,</span> <span class="nowrap pt">argmax<sub><i>a</i></sub> <i>Q</i><sub>1</sub>(<i>S</i><sub><i>t</i>+1</sub>, <i>a</i>))</span> <span class="nowrap">− <i>Q</i><sub>1</sub>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
     <p>y si sale sello, la misma actualización con <i>Q</i><sub>1</sub> y <i>Q</i><sub>2</sub> intercambiadas, de modo que aprende <i>Q</i><sub>2</sub>. Las dos tablas cumplen papeles simétricos. La conducta puede usar ambas, por ejemplo ε-greedy con respecto a <span class="nowrap"><i>Q</i><sub>1</sub> + <i>Q</i><sub>2</sub></span>. El aprendizaje doble duplica la memoria, pero no el trabajo por paso, porque cada paso actualiza una sola tabla. La misma idea da versiones dobles de Sarsa y de Expected Sarsa.</p>
@@ -213,7 +242,8 @@ scripts:
 <section id="afterstates">
   <div class="prose">
     <h2><span class="n">6</span>Afterstates</h2>
-    <p>A veces el efecto inmediato de una acción se conoce, y solo lo que sigue es incierto. En un juego de tablero sabes qué posición deja tu jugada, pero no la respuesta de tu rival. Entonces conviene aprender los valores de los afterstates, las situaciones justo después de que el agente actúa, en vez de los valores de los pares estado–acción.</p>
+    <p>A veces el efecto inmediato de una acción se conoce, y solo lo que sigue es incierto. En un juego de tablero sabes qué posición deja tu jugada, pero no la respuesta de tu rival. Entonces conviene aprender los valores de los afterstates en vez de los valores de los pares estado–acción.</p>
+    <div class="hl-def"><p><dfn>Afterstate</dfn>: la situación justo después de que el agente actúa.</p></div>
     <p>En el Nim, dos jugadores se turnan para sacar cualquier cantidad de palitos de una pila, y gana quien saca el último. Desde pilas de 3 y 2, sacar un palito de la primera pila deja pilas de 2 y 2. Desde pilas de 2 y 3, sacar uno de la segunda deja la misma posición.</p>
     <figure class="diagram">
       <svg viewBox="0 0 440 180" role="img" aria-label="Dos posiciones de Nim, pilas de 3 y 2 y pilas de 2 y 3. Desde cada una, una flecha azul saca un palito y lleva al mismo afterstate, pilas de 2 y 2.">
@@ -240,8 +270,17 @@ scripts:
       </svg>
       <figcaption>Dos posiciones y jugadas distintas, un solo afterstate. El palito punteado es el que se saca.</figcaption>
     </figure>
-    <p>Una tabla de valores de acción guarda aquí dos números separados, uno por cada posición y jugada, y tiene que aprender cada uno por su cuenta. Una tabla de valores de afterstates guarda un solo número, el valor de dejar pilas de 2 y 2, y lo que aprenda sirve para toda jugada que lleve ahí. Dejar pilas de 2 y 2 resulta ser ganador: saque lo que saque tu rival de una pila, tú sacas lo mismo de la otra, y te llevas el último palito.</p>
-    <p>Los métodos de aprendizaje no cambian; solo cambia de qué trata la tabla. Los afterstates también aparecen fuera de los juegos, cada vez que una acción se define por su efecto inmediato, como cargar un paquete en un camión determinado: el camión cargado se conoce, el tráfico de su ruta no.</p>
+    <div class="tbl left tight">
+      <table>
+        <thead><tr><th scope="col"></th><th scope="col">Valores de acción</th><th scope="col">Valores de afterstates</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Números que guarda</th><td>dos, uno por posición y jugada</td><td>uno, por dejar pilas de 2 y 2</td></tr>
+          <tr><th scope="row">Aprendizaje</th><td>cada uno por su cuenta</td><td>compartido por toda jugada que lleve ahí</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Dejar pilas de 2 y 2 resulta ser ganador: saque lo que saque tu rival de una pila, tú sacas lo mismo de la otra, y te llevas el último palito.</p>
+    <p><mark class="hl-key">Los métodos de aprendizaje no cambian; solo cambia de qué trata la tabla.</mark> Los afterstates también aparecen fuera de los juegos, cada vez que una acción se define por su efecto inmediato, como cargar un paquete en un camión determinado: el camión cargado se conoce, el tráfico de su ruta no.</p>
   </div>
 </section>
 

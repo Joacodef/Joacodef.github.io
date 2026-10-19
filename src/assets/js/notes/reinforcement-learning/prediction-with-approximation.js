@@ -167,6 +167,12 @@ const cpStart = (extra) => {
   return { w: Array(NB).fill(0), shown: new Set(), s, label: tr("Episode 1, step 0", "Episodio 1, paso 0"), agent: -1, ...extra };
 };
 const left = tr("left", "izquierda"), right = tr("right", "derecha");
+// The pseudocode beside each run: its symbols, and the lines both methods share (the weights, a new episode, and the
+// choice and the push, which TD writes without time indices, as the note does).
+const cW = `<b class="vec">w</b>`, cV = `<span class="hat lo"><i>v</i></span>`;
+const cInit = { kind: "plain", html: `${cW} ← 0` };
+const cEpisodes = { head: true, html: tr("Repeat, for each episode:", "Repetir, en cada episodio:") };
+const cPick = (t) => ({ kind: "pick", ind: 2, html: tr(`<i>A</i>${t} ← the action π gives for <i>S</i>${t}`, `<i>A</i>${t} ← la acción que π da para <i>S</i>${t}`) });
 const ep1 = CP.eps[0], S1 = ep1.states, R1 = ep1.ranges, T1 = ep1.T;
 cpWarn(T1 === 8 && ep1.pushes.join("") === "00000010" && R1.join("") === "333344555", "episode 1 is not the 8 steps the slides describe");
 // The words for a move of episode 1: a push, and where the pole goes.
@@ -185,18 +191,25 @@ function moveLine(t) {
     const R = CP.mc, F = R.frames;
     const slides = [
       { title: tr("A first episode", "Un primer episodio"), builds: [
-        cpStart({ line: tr(`Episode 1 starts with the pole ${cpAngle(S1[0])}° to the right of upright, in the range ${rangeName(R1[0])}. Every weight is 0, so no range has a bar yet.`, `El episodio 1 empieza con el péndulo ${cpAngle(S1[0])}° a la derecha de la vertical, en el rango ${rangeName(R1[0])}. Todos los pesos valen 0, así que ningún rango tiene barra todavía.`) }),
-        cpStart({ push: ep1.pushes[0], line: tr("The random policy picks a push: left.", "La política al azar elige un empujón: hacia la izquierda.") }),
-        { ...F[0], line: tr(`Pushed left, the cart rolls left and the pole tips further right: it now turns at ${cpTurn(S1[1])} rad/s.`, `Empujado a la izquierda, el carro rueda hacia la izquierda y el péndulo se inclina más a la derecha: ahora gira a ${cpTurn(S1[1])} rad/s.`) },
+        cpStart({ code: [0, 2], line: tr(`Episode 1 starts with the pole ${cpAngle(S1[0])}° to the right of upright, in the range ${rangeName(R1[0])}. Every weight is 0, so no range has a bar yet.`, `El episodio 1 empieza con el péndulo ${cpAngle(S1[0])}° a la derecha de la vertical, en el rango ${rangeName(R1[0])}. Todos los pesos valen 0, así que ningún rango tiene barra todavía.`) }),
+        cpStart({ code: [4], push: ep1.pushes[0], line: tr("The random policy picks a push: left.", "La política al azar elige un empujón: hacia la izquierda.") }),
+        { ...F[0], code: [5], line: tr(`Pushed left, the cart rolls left and the pole tips further right: it now turns at ${cpTurn(S1[1])} rad/s.`, `Empujado a la izquierda, el carro rueda hacia la izquierda y el péndulo se inclina más a la derecha: ahora gira a ${cpTurn(S1[1])} rad/s.`) },
       ] },
-      { title: tr("Pushed the wrong way", "Empujado para el lado equivocado"), builds: [...Array(T1 - 1).keys()].map((i) => ({ ...F[i + 1], push: ep1.pushes[i + 1], line: moveLine(i + 1), ...(i + 1 === T1 - 1 ? { sound: "fall" } : {}) })) },
+      { title: tr("Pushed the wrong way", "Empujado para el lado equivocado"), builds: [...Array(T1 - 1).keys()].map((i) => {
+        // A whole move in one press: the push chosen, drawn as an arrow at the state before it, then the push taken,
+        // which moves the cart and clears the arrow, as the first slide's take does.
+        const bd = { ...F[i + 1], line: moveLine(i + 1), ...(i + 1 === T1 - 1 ? { sound: "fall" } : {}), code: [4, 5] };
+        return { ...bd, phases: [{ lines: [4], draw: { ...F[i], push: ep1.pushes[i + 1] }, slow: true }, { lines: [5], draw: bd, slow: true }] };
+      }) },
       { title: tr("Learning from the returns", "Aprender de los retornos"), builds: [...Array(T1).keys()].map((t) => {
         const f = F[T1 + t], same = t > 0 && R1[t] === R1[t - 1];
         const line = t === 0 ? tr(`The episode over, gradient Monte Carlo updates its steps in order. From the start the return is ${f.g}, and the weight of its range, outlined in green, moves a tenth of the way to it.`, `Terminado el episodio, gradient Monte Carlo actualiza sus pasos en orden. Desde el inicio el retorno es ${f.g}, y el peso de su rango, con borde verde, avanza un décimo del camino hacia él.`)
           : same ? tr(`State ${t + 1} leans within the same range, so its return, ${f.g}, moves the same weight.`, `El estado ${t + 1} se inclina dentro del mismo rango, así que su retorno, ${f.g}, mueve el mismo peso.`)
           : tr(`State ${t + 1} leans within a new range, whose weight moves from 0 toward ${f.g}.`, `El estado ${t + 1} se inclina dentro de un rango nuevo, cuyo peso pasa de 0 hacia ${f.g}.`);
         cpWarn(same || t === 0 || f.from === 0, `episode 1, update ${t}: a new range whose weight is not 0`);
-        return { ...f, line, eq: `<span class="nowrap"><span class="pt"><i>G</i><sub>${t}</sub> = ${f.g}</span>:</span> <span class="nowrap"><span class="upd"><i>w</i></span> ← ${num(f.from)} + 0.1 · (<span class="pt">${f.g}</span> − ${num(f.from)})</span> <span class="nowrap">${eqv(f.to)}</span>` };
+        // Alone in the readout, a step in the same range as the one before says which.
+        const short = same ? tr(`State ${t + 1} leans within the same range as state ${t}, so its return, ${f.g}, moves that range's weight again.`, `El estado ${t + 1} se inclina dentro del mismo rango que el estado ${t}, así que su retorno, ${f.g}, vuelve a mover el peso de ese rango.`) : undefined;
+        return { ...f, code: [7], line, short, eq: `<span class="nowrap"><span class="pt"><i>G</i><sub>${t}</sub> = ${f.g}</span>:</span> <span class="nowrap"><span class="upd"><i>w</i></span> ← ${num(f.from)} + 0.1 · (<span class="pt">${f.g}</span> − ${num(f.from)})</span> <span class="nowrap">${eqv(f.to)}</span>` };
       }) },
     ];
     // Episode 2, and later episodes.
@@ -220,7 +233,27 @@ function moveLine(t) {
         { ...sum, line: tr("This is what the agent has learned: within 4° of upright a pole lasts about 18 more steps, from 4° to 8° about 12, past 8° about 5. It cannot tell a pole swinging back from one falling over, so each bar is the average of both, weighed by how often each comes.", "Esto es lo que aprendió el agente: a menos de 4° de la vertical un péndulo dura unos 18 pasos más, de 4° a 8° unos 12, pasado 8° unos 5. No puede distinguir un péndulo que vuelve de uno que se cae, así que cada barra es el promedio de ambos, ponderado por cuán seguido aparece cada uno.") },
       ] });
     }
-    slideshow({ svg, slides, frame: R.frame, view: createCartPole(svg) });
+    // The summaries of later episodes show the bars after their last update.
+    for (const sl of slides) for (const bd of sl.builds) bd.code ??= [7];
+    slideshow({
+      svg, slides, view: createCartPole(svg),
+      code: {
+        title: tr("Gradient Monte Carlo", "Gradient Monte Carlo"),
+        lines: [
+          cInit,
+          cEpisodes,
+          { kind: "plain", ind: 1, html: tr("<i>S</i><sub>0</sub> ← the first state", "<i>S</i><sub>0</sub> ← el primer estado") },
+          { head: true, ind: 1, html: tr("For <i>t</i> = 0, 1, … until the episode ends:", "Para <i>t</i> = 0, 1, … hasta que termine el episodio:") },
+          cPick("<sub><i>t</i></sub>"),
+          { kind: "take", ind: 2, html: tr("Take <i>A</i><sub><i>t</i></sub>; observe <i>R</i><sub><i>t</i>+1</sub>, <i>S</i><sub><i>t</i>+1</sub>", "Tomar <i>A</i><sub><i>t</i></sub>; observar <i>R</i><sub><i>t</i>+1</sub>, <i>S</i><sub><i>t</i>+1</sub>") },
+          { head: true, ind: 1, html: tr("For <i>t</i> = 0, 1, …, <i>T</i> − 1:", "Para <i>t</i> = 0, 1, …, <i>T</i> − 1:") },
+          { kind: "update", ind: 2, html: `<span class="nowrap"><span class="upd">${cW}</span> ← ${cW} + α[<span class="pt"><i>G</i><sub><i>t</i></sub></span></span> <span class="nowrap">− ${cV}(<i>S</i><sub><i>t</i></sub>, ${cW})]</span> <span class="nowrap">∇${cV}(<i>S</i><sub><i>t</i></sub>, ${cW})</span>` },
+        ],
+      },
+      // A skip's frames: a move of episode 2 (choose, take), one of its updates, or a whole later episode.
+      // Episode 2's first move also lights S₀, since the skip starts there.
+      frame: (m) => ({ ...R.frame(m), code: F[m].kind === "move" ? (F[m].t === 0 ? [2, 4, 5] : [4, 5]) : F[m].kind === "upd" ? [7] : [2, 4, 5, 7] }),
+    });
   }
 }
 
@@ -234,17 +267,30 @@ function moveLine(t) {
     const f0 = F[0], f1 = F[1];
     cpWarn(R1[0] === R1[1] && R1[1] === R1[2] && f0.delta === 1 && Math.abs(f1.delta - 1) < 1e-12, "episode 1 does not stay in one range at steps 1 and 2");
     const before = (f, w, shown) => ({ ...f, w, shown, upd: undefined });
+    // A press that plays a step from its start, drawn line by line from the step before (prev): S ← S′ with that step's
+    // marks cleared, the push chosen at the old state, the push taken, and, for a whole step, the TD error, its range
+    // outlined in red, and the update.
+    // At the fall S′ is terminal and has no range to outline, so δ and the update light together as the bar rises.
+    const stepPhases = (bd, prev, push, whole, end) => {
+      const at = { ...prev, upd: undefined, tg: undefined }, moved = before(bd, prev.w, prev.shown);
+      const phases = [{ lines: [8], draw: at, slow: true }, { lines: [4], draw: { ...at, push }, slow: true }, { lines: [5], draw: whole ? { ...moved, tg: undefined } : bd, slow: true }];
+      if (whole && end) phases.push({ lines: [6, 7], draw: bd, slow: true });
+      else if (whole) phases.push({ lines: [6], draw: moved, slow: true }, { lines: [7], draw: bd, slow: true });
+      return { ...bd, code: phases.flatMap((ph) => ph.lines), phases };
+    };
     const slides = [
       { title: tr("The first step", "El primer paso"), builds: [
-        cpStart({ line: tr("The same first episode, now with semi-gradient TD(0): every weight is 0, and each step will update one.", "El mismo primer episodio, ahora con semi-gradient TD(0): todos los pesos valen 0, y cada paso actualizará uno.") }),
-        cpStart({ push: ep1.pushes[0], line: tr("The random policy picks a push: left.", "La política al azar elige un empujón: hacia la izquierda.") }),
-        { ...before(f0, Array(NB).fill(0), new Set()), line: tr(`Pushed left, the pole tips further right, turning at ${cpTurn(S1[1])} rad/s, still in the range ${rangeName(R1[1])}.`, `Empujado a la izquierda, el péndulo se inclina más a la derecha, girando a ${cpTurn(S1[1])} rad/s, todavía en el rango ${rangeName(R1[1])}.`) },
-        { ...before(f0, Array(NB).fill(0), new Set()), tg: f0.next, line: tr("The target is the reward, 1, plus the estimate of the new state: the weight of its range, outlined in red, which is the very weight being updated, still 0.", "El objetivo es la recompensa, 1, más la estimación del estado nuevo: el peso de su rango, con borde rojo, que es justo el peso que se actualiza, todavía 0."), eq: tdEq(f0) },
-        { ...f0, tg: f0.next, line: tr(`The update raises that weight to ${num(f0.to)}, and with it the estimate the target borrowed.`, `La actualización sube ese peso a ${num(f0.to)}, y con él la estimación que tomó prestada el objetivo.`), eq: updEq(f0) },
+        cpStart({ code: [0, 2], line: tr("The same first episode, now with semi-gradient TD(0): every weight is 0, and each step will update one.", "El mismo primer episodio, ahora con semi-gradient TD(0): todos los pesos valen 0, y cada paso actualizará uno.") }),
+        cpStart({ code: [4], push: ep1.pushes[0], line: tr("The random policy picks a push: left.", "La política al azar elige un empujón: hacia la izquierda.") }),
+        { ...before(f0, Array(NB).fill(0), new Set()), code: [5], line: tr(`Pushed left, the pole tips further right, turning at ${cpTurn(S1[1])} rad/s, still in the range ${rangeName(R1[1])}.`, `Empujado a la izquierda, el péndulo se inclina más a la derecha, girando a ${cpTurn(S1[1])} rad/s, todavía en el rango ${rangeName(R1[1])}.`) },
+        { ...before(f0, Array(NB).fill(0), new Set()), tg: f0.next, code: [6], line: tr("The target is the reward, 1, plus the estimate of the new state: the weight of its range, outlined in red, which is the very weight being updated, still 0.", "El objetivo es la recompensa, 1, más la estimación del estado nuevo: el peso de su rango, con borde rojo, que es justo el peso que se actualiza, todavía 0."), eq: tdEq(f0) },
+        { ...f0, tg: f0.next, code: [7], line: tr(`The update raises that weight to ${num(f0.to)}, and with it the estimate the target borrowed.`, `La actualización sube ese peso a ${num(f0.to)}, y con él la estimación que tomó prestada el objetivo.`), eq: updEq(f0),
+          short: tr(`The update raises the weight of the range ${rangeName(R1[0])} to ${num(f0.to)}, and with it the estimate the target borrowed.`, `La actualización sube el peso del rango ${rangeName(R1[0])} a ${num(f0.to)}, y con él la estimación que tomó prestada el objetivo.`) },
       ] },
       { title: tr("A target that moves", "Un objetivo que se mueve"), builds: [
-        { ...before(f1, f0.w, f0.shown), push: ep1.pushes[1], line: tr("Left again, and the pole is still in the same range.", "Otra vez a la izquierda, y el péndulo sigue en el mismo rango.") },
-        { ...f1, tg: f1.next, line: tr(`The target rose with the estimate, so the TD error is ${num(f1.delta)} again: as long as the pole stays in one range, it stays 1, whatever the weight, and every step there adds 0.1.`, `El objetivo subió con la estimación, así que el TD error vuelve a ser ${num(f1.delta)}: mientras el péndulo se quede en un rango, se queda en 1, valga lo que valga el peso, y cada paso ahí suma 0.1.`), eq: `${tdEq(f1)}; ${updEq(f1)}` },
+        stepPhases({ ...before(f1, f0.w, f0.shown), push: ep1.pushes[1], line: tr("Left again, and the pole is still in the same range.", "Otra vez a la izquierda, y el péndulo sigue en el mismo rango.") }, f0, ep1.pushes[1], false),
+        { ...f1, tg: f1.next, code: [6, 7], phases: [{ lines: [6], draw: { ...before(f1, f0.w, f0.shown), tg: f1.next }, slow: true }, { lines: [7], draw: { ...f1, tg: f1.next }, slow: true }], line: tr(`The target rose with the estimate, so the TD error is ${num(f1.delta)} again: as long as the pole stays in one range, it stays 1, whatever the weight, and every step there adds 0.1.`, `El objetivo subió con la estimación, así que el TD error vuelve a ser ${num(f1.delta)}: mientras el péndulo se quede en un rango, se queda en 1, valga lo que valga el peso, y cada paso ahí suma 0.1.`), eq: `${tdEq(f1)}; ${updEq(f1)}`,
+          short: tr(`The target rose with the estimate of the range ${rangeName(R1[0])}, now ${num(f0.to)}, so the TD error is ${num(f1.delta)} again: as long as the pole stays in one range, it stays 1, whatever the weight, and every step there adds 0.1.`, `El objetivo subió con la estimación del rango ${rangeName(R1[0])}, ahora ${num(f0.to)}, así que el TD error vuelve a ser ${num(f1.delta)}: mientras el péndulo se quede en un rango, se queda en 1, valga lo que valga el peso, y cada paso ahí suma 0.1.`) },
       ] },
       { title: tr("To the fall", "Hasta la caída"), builds: [...Array(T1 - 2).keys()].map((i) => {
         const t = i + 2, f = F[t], same = f.next === f.upd, end = t === T1 - 1;
@@ -252,7 +298,7 @@ function moveLine(t) {
           : same ? tr(`${ep1.pushes[t] === 1 ? "Right at last" : "Left again"}, still in the same range: the TD error is ${num(f.delta)} once more.`, `${ep1.pushes[t] === 1 ? "Por fin a la derecha" : "Otra vez a la izquierda"}, todavía en el mismo rango: el TD error vuelve a ser ${num(f.delta)}.`)
           : tr(`${ep1.pushes[t] === 1 ? "Right" : "Left again"}, into the range ${rangeName(f.next)}, whose weight is still 0: the TD error is ${num(f.delta)}, and the weight of the range left behind becomes ${num(f.to)}.`, `${ep1.pushes[t] === 1 ? "A la derecha" : "Otra vez a la izquierda"}, al rango ${rangeName(f.next)}, cuyo peso todavía es 0: el TD error es ${num(f.delta)}, y el peso del rango que queda atrás pasa a ${num(f.to)}.`);
         cpWarn(end || same || f.wNext === 0, `episode 1, step ${t + 1}: the new range's weight is not 0`);
-        return { ...f, push: ep1.pushes[t], ...(end ? { sound: "fall" } : { tg: f.next }), line, eq: `${tdEq(f)}; ${updEq(f)}` };
+        return stepPhases({ ...f, push: ep1.pushes[t], ...(end ? { sound: "fall" } : { tg: f.next }), line, eq: `${tdEq(f)}; ${updEq(f)}` }, F[t - 1], ep1.pushes[t], true, end);
       }) },
     ];
     const e2 = CP.eps[1], m1 = R.endOf(1), m2 = R.endOf(2);
@@ -278,7 +324,27 @@ function moveLine(t) {
       { ...sum, line: tr(`After ${kn(kEnd)} episodes TD's bars are ${wEnd.map(n1).join(", ")}: above the long-run averages in the middle (${n1(cpMid(wEnd))} against ${n1(AVG[2])}), and below them in the outer ranges.`, `Tras ${kn(kEnd)} episodios las barras de TD son ${wEnd.map(n1).join(", ")}: sobre los promedios de largo plazo en el centro (${n1(cpMid(wEnd))} frente a ${n1(AVG[2])}), y bajo ellos en los rangos de afuera.`) },
       { ...sum, line: tr(`They are still moving, toward ${n1(SETTLE[1][2])} in the middle: TD does not settle on the averages, as gradient Monte Carlo does, but at a point of its own, which section 5 finds.`, `Todavía se mueven, hacia ${n1(SETTLE[1][2])} en el centro: TD no termina en los promedios, como gradient Monte Carlo, sino en un punto propio, que encuentra la sección 5.`) },
     ] });
-    slideshow({ svg, slides, frame: R.frame, view: createCartPole(svg) });
+    for (const sl of slides) for (const bd of sl.builds) bd.code ??= [7];
+    slideshow({
+      svg, slides, view: createCartPole(svg),
+      code: {
+        title: tr("Semi-gradient TD(0)", "Semi-gradient TD(0)"),
+        lines: [
+          cInit,
+          cEpisodes,
+          { kind: "plain", ind: 1, html: tr("<i>S</i> ← the first state", "<i>S</i> ← el primer estado") },
+          { head: true, ind: 1, html: tr("Until <i>S</i> is terminal:", "Hasta que <i>S</i> sea terminal:") },
+          cPick(""),
+          { kind: "take", ind: 2, html: tr("Take <i>A</i>; observe <i>R</i>, <i>S</i>′", "Tomar <i>A</i>; observar <i>R</i>, <i>S</i>′") },
+          { kind: "target", ind: 2, html: `<span class="nowrap">δ ← <span class="pt"><i>R</i> + γ${cV}(<i>S</i>′, ${cW})</span></span> <span class="nowrap">− ${cV}(<i>S</i>, ${cW})</span>` },
+          { kind: "update", ind: 2, html: `<span class="nowrap"><span class="upd">${cW}</span> ← ${cW} + αδ∇${cV}(<i>S</i>, ${cW})</span>` },
+          { kind: "plain", ind: 2, html: `<i>S</i> ← <i>S</i>′` },
+        ],
+      },
+      // A skip's frames: a step of episode 2, or a whole later episode.
+      // Episode 2's first step also lights S, since the skip starts there.
+      frame: (m) => ({ ...R.frame(m), code: F[m].kind === "td" ? (F[m].t === 0 ? [2, 4, 5, 6, 7, 8] : [4, 5, 6, 7, 8]) : [2, 4, 5, 6, 7, 8] }),
+    });
   }
 }
 

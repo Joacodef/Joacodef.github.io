@@ -8,7 +8,7 @@ scripts:
 ---
 <div class="prose">
   <p>Un método n-step confía en sus estimaciones después de un número fijo de pasos, <i>n</i>, y un buen <i>n</i> depende de la tarea. Nada obliga a elegir uno solo. Un objetivo puede promediar varios retornos de <i>n</i> pasos, por ejemplo la mitad de uno corto y la mitad de uno largo, y seguir siendo un objetivo válido.</p>
-  <p>El λ-return los promedia todos. Le da el mayor peso al retorno de un paso y un poco menos a cada retorno más largo, un factor λ por cada paso extra, así que un solo número, λ, mueve el objetivo de forma continua desde TD de un paso (λ = 0) hasta Monte Carlo (λ = 1). El problema es que este promedio llega hasta el final del episodio, así que solo se puede calcular cuando el episodio terminó. Las eligibility traces eliminan la espera. El agente lleva una memoria que se desvanece de los pares que ha visitado, y cada vez que calcula un TD error se lo pasa hacia atrás, más a los pares recientes y menos a los antiguos.</p>
+  <p>El λ-return los promedia todos. Le da el mayor peso al retorno de un paso y un poco menos a cada retorno más largo, un factor λ por cada paso extra, así que un solo número, λ, mueve el objetivo de forma continua desde TD de un paso (λ = 0) hasta Monte Carlo (λ = 1).</p>
   <figure class="diagram">
     <svg viewBox="0 0 440 176" role="img" aria-label="Gráfico de barras de los pesos que el λ-return da, con λ = 0.5, a cada retorno desde un estado a cuatro pasos del final del episodio: 0.5 al retorno de un paso, 0.25 al de dos pasos, 0.125 al de tres pasos y 0.125 al retorno completo.">
       <line class="guide" x1="40" y1="140" x2="410" y2="140"/>
@@ -27,19 +27,37 @@ scripts:
     </svg>
     <figcaption>Los pesos del λ-return con λ = 0.5, para un estado a cuatro pasos del final: los retornos de uno, dos y tres pasos, y luego el retorno completo <i>G</i><sub><i>t</i></sub>. Cada retorno más largo recibe la mitad del peso del anterior, y el retorno completo se lleva todo el peso que queda.</figcaption>
   </figure>
+  <p>El problema es que este promedio llega hasta el final del episodio, así que solo se puede calcular cuando el episodio terminó. Las eligibility traces eliminan la espera. El agente lleva una memoria que se desvanece de los pares que ha visitado, y cada vez que calcula un TD error se lo pasa hacia atrás, más a los pares recientes y menos a los antiguos.</p>
   <p class="legend">En esta página, <span class="bar" aria-hidden="true"></span>los pasos de un episodio se dibujan con tinta azul, y <span class="dot" aria-hidden="true"></span>los objetivos y los TD errors que los transportan, con tinta roja.</p>
 </div>
 
 <section id="compound">
   <div class="prose">
     <h2><span class="n">1</span><span>Promediar retornos de <i>n</i> pasos</span></h2>
+    <aside class="hl-back">Del apunte de <i>n</i>-step bootstrapping: el <a href="/es/notes/reinforcement-learning/n-step-bootstrapping/#return">retorno de <i>n</i> pasos</a> y <a href="/es/notes/reinforcement-learning/n-step-bootstrapping/#n-step-sarsa"><i>n</i>-step Sarsa</a>, cuyo mejor <i>n</i> depende de la tarea.</aside>
     <p>El retorno de <i>n</i> pasos se queda con <i>n</i> recompensas y luego confía en la estimación del estado o par al que llega:</p>
     <div class="disp"><i>G</i><sub><i>t</i>:<i>t</i>+<i>n</i></sub> ≐ <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub> + γ<i>R</i><sub><i>t</i>+2</sub> + ⋯</span> <span class="nowrap">+ γ<sup><i>n</i>−1</sup><i>R</i><sub><i>t</i>+<i>n</i></sub></span> <span class="nowrap">+ γ<sup><i>n</i></sup><span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i>+<i>n</i></sub>, <b class="vec">w</b><sub><i>t</i>+<i>n</i>−1</sub>)</span></div>
-    <p>Esta es la forma general, para cualquier manera de estimar valores: <span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>) es el valor estimado del estado <i>s</i> dado un vector de pesos <b class="vec">w</b>. Una tabla es el caso más simple, con un peso por estado, de modo que <span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>) es simplemente la entrada <i>V</i>(<i>s</i>) de la tabla. Con valores de acción, el último término es en cambio la estimación del par (<i>S</i><sub><i>t</i>+<i>n</i></sub>, <i>A</i><sub><i>t</i>+<i>n</i></sub>), como en n-step Sarsa.</p>
-    <p>Cualquier retorno de <i>n</i> pasos es un objetivo válido, y también lo es cualquier promedio de ellos, siempre que los pesos sean positivos y sumen 1. Un promedio así conserva la propiedad de reducción del error de los retornos de <i>n</i> pasos, así que también lleva a un aprendizaje correcto. Una actualización hacia un promedio de objetivos más simples es una actualización compuesta. Por ejemplo, la mitad de un retorno de dos pasos y la mitad de uno de cuatro:</p>
+    <p>Esta es la forma general, para cualquier manera de estimar valores: <span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>) es el valor estimado del estado <i>s</i> dado un vector de pesos <b class="vec">w</b>.</p>
+    <ul>
+      <li>Una tabla es el caso más simple, con un peso por estado, de modo que <span class="hat lo"><i>v</i></span>(<i>s</i>, <b class="vec">w</b>) es simplemente la entrada <i>V</i>(<i>s</i>) de la tabla.</li>
+      <li>Con valores de acción, el último término es en cambio la estimación del par (<i>S</i><sub><i>t</i>+<i>n</i></sub>, <i>A</i><sub><i>t</i>+<i>n</i></sub>), como en n-step Sarsa.</li>
+    </ul>
+    <p>Cualquier retorno de <i>n</i> pasos es un objetivo válido, y también lo es cualquier promedio de ellos, siempre que los pesos sean positivos y sumen 1. Un promedio así conserva la propiedad de reducción del error de los retornos de <i>n</i> pasos, así que también lleva a un aprendizaje correcto.</p>
+    <div class="hl-def"><p><dfn>Actualización compuesta</dfn>: una actualización hacia un promedio de objetivos más simples. Solo se puede hacer cuando su parte más larga está completa.</p></div>
+    <p>Por ejemplo, una actualización hacia la mitad de un retorno de dos pasos y la mitad de uno de cuatro tiene que esperar cuatro pasos:</p>
     <div class="disp">½<i>G</i><sub><i>t</i>:<i>t</i>+2</sub> + ½<i>G</i><sub><i>t</i>:<i>t</i>+4</sub></div>
-    <p>Una actualización compuesta solo se puede hacer cuando su parte más larga está completa: esta tiene que esperar cuatro pasos.</p>
-    <p>Un ejemplo. Un robot vuelve a su cargador desde la cocina, pasando por el pasillo y el estudio. Llegar al cargador da +10, cada otro paso 0, y γ = 0.9, así que los valores reales son 8.1, 9 y 10. La tabla del robot todavía es mala: 2 para la cocina, 4 para el pasillo y 6 para el estudio. Desde la cocina, el retorno de un paso es <span class="nowrap">0 + 0.9 · 4 = 3.6</span>, el de dos pasos <span class="nowrap">0.81 · 6 = 4.86</span>, y el de tres pasos llega al cargador, <span class="nowrap">0.81 · 10 = 8.1</span>. La mitad del primero y la mitad del último dan 5.85.</p>
+    <p>Un ejemplo. Un robot vuelve a su cargador desde la cocina, pasando por el pasillo y el estudio. Llegar al cargador da +10, cada otro paso 0, y γ = 0.9, lo que fija los valores reales. La tabla del robot todavía es mala:</p>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col">Pieza</th><th scope="col">Valor real</th><th scope="col">Tabla del robot</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Cocina</th><td>8.1</td><td>2</td></tr>
+          <tr><th scope="row">Pasillo</th><td>9</td><td>4</td></tr>
+          <tr><th scope="row">Estudio</th><td>10</td><td>6</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Desde la cocina, el retorno de un paso es <span class="nowrap">0 + 0.9 · 4 = 3.6</span>, el de dos pasos <span class="nowrap">0.81 · 6 = 4.86</span>, y el de tres pasos llega al cargador, <span class="nowrap">0.81 · 10 = 8.1</span>. La mitad del primero y la mitad del último dan 5.85.</p>
   </div>
 </section>
 
@@ -65,7 +83,7 @@ scripts:
         </tbody>
       </table>
     </div>
-    <p>Mientras más grande es λ, más se apoya el objetivo en recompensas reales y menos en las malas estimaciones.</p>
+    <p>De 3.6 con λ = 0 al retorno completo, 8.1, con λ = 1, el objetivo sube con λ: <mark class="hl-key">mientras más grande es λ, más se apoya el objetivo en recompensas reales y menos en las malas estimaciones.</mark></p>
   </div>
 </section>
 
@@ -77,11 +95,26 @@ scripts:
     <p>y lo mismo vale para valores de estado. <i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span> necesita todas las recompensas hasta el final, así que el algoritmo más simple espera. El algoritmo off-line del λ-return no cambia nada durante el episodio; cuando este termina, hace una actualización por paso, hacia el λ-return de ese paso:</p>
     <div class="disp"><b class="vec">w</b><sub><i>t</i>+1</sub> <span class="nowrap">≐ <b class="vec">w</b><sub><i>t</i></sub> + α[<span class="pt"><i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span></span></span> <span class="nowrap">− <span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>)] ∇<span class="hat lo"><i>v</i></span>(<i>S</i><sub><i>t</i></sub>, <b class="vec">w</b><sub><i>t</i></sub>),</span> <span class="nowrap"><i>t</i> = 0, …, <i>T</i> − 1</span></div>
     <p>El gradiente ∇<span class="hat lo"><i>v</i></span> dice qué pesos produjeron la estimación de <i>S</i><sub><i>t</i></sub>, y en qué medida. En una tabla vale 1 en la entrada de <i>S</i><sub><i>t</i></sub> y 0 en todas las demás, así que la actualización es la de siempre, <span class="nowrap"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + α[<span class="pt"><i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span>.</p>
-    <p>En el ejemplo, con λ = 0.5 y α = 0.5, los λ-returns son 5.04 para la cocina, 7.2 para el pasillo y 10 para el estudio, así que al final del episodio la tabla pasa de 2, 4 y 6 a 3.52, 5.6 y 8.</p>
-    <p>¿Qué tan bien aprende? Más o menos como n-step TD con su mejor <i>n</i>, y un poco mejor en sus mejores configuraciones. Como con <i>n</i>, un λ intermedio suele funcionar mejor, y promediar todos los horizontes suele ser más robusto que apostar por un solo <i>n</i>.</p>
+    <p>En el ejemplo, con λ = 0.5 y α = 0.5, la tabla cambia al final del episodio:</p>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col">Pieza</th><th scope="col">λ-return</th><th scope="col">Antes</th><th scope="col">Después</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Cocina</th><td>5.04</td><td>2</td><td>3.52</td></tr>
+          <tr><th scope="row">Pasillo</th><td>7.2</td><td>4</td><td>5.6</td></tr>
+          <tr><th scope="row">Estudio</th><td>10</td><td>6</td><td>8</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>¿Qué tan bien aprende? Más o menos como n-step TD con su mejor <i>n</i>, y un poco mejor en sus mejores configuraciones. <mark class="hl-key">Como con <i>n</i>, un λ intermedio suele funcionar mejor, y promediar todos los horizontes suele ser más robusto que apostar por un solo <i>n</i>.</mark></p>
 
     <h3>Vista hacia adelante y vista hacia atrás</h3>
-    <p>El λ-return es una vista hacia adelante (forward view): la actualización de cada estado mira hacia adelante en el tiempo, a todas las recompensas y estados que lo siguen. Por eso tiene que esperar, como Monte Carlo, y por eso no se puede usar en tareas que no terminan. Una vista hacia atrás (backward view) lo da vuelta. En cada paso calcula el TD error actual y lo envía hacia atrás, a los estados o pares visitados recientemente, así que cada estimación se actualiza un poco en cada paso, con información que ya existe. La sección siguiente muestra por qué las dos vistas pueden coincidir.</p>
+    <p>El λ-return es una vista hacia adelante (forward view): la actualización de cada estado mira hacia adelante en el tiempo. Una vista hacia atrás (backward view) lo da vuelta:</p>
+    <ul>
+      <li><b>Vista hacia adelante</b>: usa todas las recompensas y estados que siguen al estado, así que actualiza solo después del final, como en Monte Carlo, y nunca en tareas que no terminan.</li>
+      <li><b>Vista hacia atrás</b>: envía el TD error actual hacia atrás, a los estados o pares visitados recientemente, así que cada estimación se actualiza un poco en cada paso, con información que ya existe.</li>
+    </ul>
+    <p>La sección siguiente muestra por qué las dos vistas pueden coincidir.</p>
   </div>
 </section>
 
@@ -93,7 +126,8 @@ scripts:
     <p>Escribe el λ-return término a término, agrupa las recompensas y las estimaciones paso a paso, y las estimaciones se cancelan de a pares. Lo que queda es una suma descontada de los TD errors desde el tiempo <i>t</i> en adelante:</p>
     <div class="disp"><span class="pt"><i>G</i><span class="ss"><span>λ</span><span><i>t</i></span></span></span> − <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">= δ<sub><i>t</i></sub> + γλδ<sub><i>t</i>+1</sub></span> <span class="nowrap">+ (γλ)<sup>2</sup>δ<sub><i>t</i>+2</sub> + ⋯</span> <span class="nowrap">= Σ<span class="lims"><span><i>T</i>−1</span><span><i>k</i>=<i>t</i></span></span>(γλ)<sup><i>k</i>−<i>t</i></sup>δ<sub><i>k</i></sub></span></div>
     <p>Para la cocina, los TD errors son <span class="nowrap">δ<sub>0</sub> = 0 + 0.9 · 4 − 2 = 1.6</span>, <span class="nowrap">δ<sub>1</sub> = 0.9 · 6 − 4 = 1.4</span> y <span class="nowrap">δ<sub>2</sub> = 10 − 6 = 4</span>, y con γλ = 0.45 la suma es <span class="nowrap">1.6 + 0.45 · 1.4 + 0.2025 · 4 = 3.04</span>, que es <span class="nowrap">5.04 − 2</span>.</p>
-    <p>Ahora lee la suma al revés. El TD error δ<sub><i>k</i></sub> aparece en la actualización de cada par visitado antes o en el tiempo <i>k</i>, con peso (γλ)<sup><i>k</i>−<i>t</i></sup>, donde <span class="nowrap"><i>k</i> − <i>t</i></span> es hace cuántos pasos se visitó ese par. Así que no hace falta esperar: apenas se conoce δ<sub><i>k</i></sub>, se puede pasar hacia atrás a cada par anterior, ponderado por (γλ) elevado al tiempo desde su visita. La eligibility trace de un par guarda justamente ese peso.</p>
+    <p>Ahora lee la suma al revés. El TD error δ<sub><i>k</i></sub> aparece en la actualización de cada par visitado antes o en el tiempo <i>k</i>, con peso (γλ)<sup><i>k</i>−<i>t</i></sup>, donde <span class="nowrap"><i>k</i> − <i>t</i></span> es hace cuántos pasos se visitó ese par. Así que no hace falta esperar: apenas se conoce δ<sub><i>k</i></sub>, se puede pasar hacia atrás a cada par anterior.</p>
+    <div class="hl-def"><p><dfn>Eligibility trace</dfn> de un par: el peso con que le llega cada nuevo TD error, (γλ) elevado al tiempo desde su visita.</p></div>
     <figure class="diagram">
       <svg viewBox="0 0 440 196" role="img" aria-label="Los últimos cinco pares visitados, de t − 4 a t, cada uno con una barra para su traza: 0.41, 0.51, 0.64, 0.8 y 1. Una flecha roja lleva el TD error δ t desde el par actual hacia atrás, sobre todos ellos.">
         <defs><marker id="t-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head-tg" d="M0 0 L10 5 L0 10 z"/></marker></defs>
@@ -154,7 +188,7 @@ scripts:
         </tbody>
       </table>
     </div>
-    <p>En <i>t</i> = 2, por ejemplo, la cocina se mueve <span class="nowrap">0.5 · 4 · 0.2025 = 0.405</span>. La tabla final, 3.52, 5.6 y 8, es exactamente la que da el algoritmo off-line del λ-return. Aquí es así porque cada TD error se calculó con valores que todavía no habían cambiado. En general sí cambian durante el episodio, porque Sarsa(λ) actualiza sobre la marcha, así que un TD error posterior ya refleja actualizaciones anteriores. Entonces Sarsa(λ) no es equivalente al λ-return, pero es una aproximación cercana, y aprende en cada paso en vez de al final.</p>
+    <p>En <i>t</i> = 2, por ejemplo, la cocina se mueve <span class="nowrap">0.5 · 4 · 0.2025 = 0.405</span>. La tabla final, 3.52, 5.6 y 8, es exactamente la que da el algoritmo off-line del λ-return, porque cada TD error se calculó con valores que todavía no habían cambiado. En general sí cambian durante el episodio, porque Sarsa(λ) actualiza sobre la marcha, así que un TD error posterior ya refleja actualizaciones anteriores. <mark class="hl-key">Entonces Sarsa(λ) no es equivalente al λ-return, pero es una aproximación cercana, y aprende en cada paso en vez de al final.</mark></p>
 
     <h3>Crédito para todo un camino</h3>
     <p>Las trazas reparten cada TD error por todo el camino reciente. Toma un robot que cruza una sala abierta hasta su cargador, con recompensa 0 en cada movimiento salvo +1 al llegar, todos los valores en 0 al principio, γ = 1 y α = 0.5, y λ = 0.9. Su primer episodio da vueltas durante nueve movimientos. Todos los TD errors son 0 hasta el último movimiento, cuyo TD error es 1, y en ese momento la traza del movimiento que está <i>k</i> pasos antes del final es 0.9<sup><i>k</i></sup>.</p>
@@ -182,7 +216,13 @@ scripts:
       <figcaption>Después de un episodio de Sarsa(λ) con λ = 0.9, cada movimiento del camino tiene un valor más alto, desde 0.5 para el último hasta 0.22 para el primero; las flechas más gruesas subieron más. Sarsa de un paso habría subido solo el último movimiento, y 4-step Sarsa los cuatro últimos.</figcaption>
     </figure>
     <p>Las trazas no recuerdan qué movimientos fueron útiles, solo cuáles fueron recientes, así que el desvío en medio del camino también recibe crédito. Los episodios siguientes lo corrigen, porque los caminos que van directo cobran su recompensa antes.</p>
-    <p>La figura ejecuta Sarsa(λ) en el acantilado del <a href="/es/notes/reinforcement-learning/td-learning/#sarsa">apunte de TD</a>, con λ = 0.9 como en la sala, γ = 1, ε = 0.1 y un tamaño de paso menor, α = 0.1: un movimiento que se repite una y otra vez suma 1 a su traza cada vez, así que su traza puede crecer muy por encima de 1, y con un α grande los valores se pasarían de largo. Cada vez que presionas Siguiente se ejecuta una línea del algoritmo de arriba. Cada movimiento con traza tiene un borde verde, tan marcado como su traza, y el valor que usa el TD error, un borde rojo.</p>
+    <aside class="hl-back">Del apunte de TD: <a href="/es/notes/reinforcement-learning/td-learning/#sarsa">el acantilado</a>, una grilla de 6 celdas de ancho y 4 de alto, con el inicio abajo a la izquierda, la meta abajo a la derecha y el acantilado entre ambos, a lo largo de la fila de abajo.</aside>
+    <p>La figura ejecuta Sarsa(λ) en el acantilado del apunte de TD, con λ = 0.9 como en la sala, γ = 1, ε = 0.1 y un tamaño de paso menor, α = 0.1: un movimiento que se repite una y otra vez suma 1 a su traza cada vez, así que su traza puede crecer muy por encima de 1, y con un α grande los valores se pasarían de largo.</p>
+    <ul>
+      <li>Cada vez que presionas Siguiente se ejecuta una línea del algoritmo de arriba.</li>
+      <li>Cada movimiento con traza tiene un borde verde, tan marcado como su traza.</li>
+      <li>El valor que usa el TD error tiene un borde rojo.</li>
+    </ul>
   </div>
 
   <div class="fig steps">

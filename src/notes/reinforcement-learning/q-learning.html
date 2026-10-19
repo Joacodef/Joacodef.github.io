@@ -49,7 +49,8 @@ scripts:
 <section id="values">
   <div class="prose">
     <h2><span class="n">1</span>The values of the best behavior</h2>
-    <p>Sarsa learns <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>), the return to expect after taking action <i>a</i> in state <i>s</i> and then following π, exploring moves and all. The best any policy can do gives the optimal action values:</p>
+    <aside class="hl-back">From the Monte Carlo and TD notes: <a href="/notes/reinforcement-learning/monte-carlo/#action-values"><i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>)</a> is the return to expect after taking action <i>a</i> in state <i>s</i> and following π afterward, and <a href="/notes/reinforcement-learning/td-learning/#sarsa">Sarsa</a> learns it for the policy it follows, exploring moves and all.</aside>
+    <p>The best any policy can do gives the optimal action values:</p>
     <div class="disp"><i>q</i><sub>*</sub>(<i>s</i>, <i>a</i>) = <span class="nowrap">max<sub>π</sub> <i>q</i><sub>π</sub>(<i>s</i>, <i>a</i>)</span></div>
     <p>Knowing <i>q</i><sub>*</sub> is enough to act well: in each state, take the action with the largest value. On the cliff, with γ = 1, <i>q</i><sub>*</sub> counts moves. From A2, the cell above the start, moving right leaves 6 moves to the goal along the edge, so <span class="nowrap"><i>q</i><sub>*</sub>(A2, right) = −6</span>, and moving up costs two more, <span class="nowrap"><i>q</i><sub>*</sub>(A2, up) = −8</span>. From B2, a step down into the cliff costs 100, and from the start the best trip still costs 7: <span class="nowrap"><i>q</i><sub>*</sub>(B2, down) = −107</span>.</p>
     <p>The optimal values are tied together, one step apart, by the Bellman optimality equation. The value of an action is the reward it brings plus the discounted value of acting as well as possible from the state it leads to:</p>
@@ -63,7 +64,13 @@ scripts:
   <div class="prose">
     <h2><span class="n">2</span>The Q-learning update</h2>
     <div class="disp"><i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">← <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub></span></span> <span class="nowrap pt">+ γ max<sub><i>a</i></sub> <i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>a</i>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
-    <p>Compare it with Sarsa's. Sarsa's target, <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub> + γ<i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>A</i><sub><i>t</i>+1</sub>)</span>, uses the value of the action the agent takes next. Q-learning's uses the best action in the next state, whatever the agent does there. Why this target? It is the inside of the Bellman optimality equation, with its two unknowns replaced by what the agent has. The expectation over rewards and next states becomes the one reward and next state it just observed, and <i>q</i><sub>*</sub> becomes the current table <i>Q</i>. Over many steps the randomness of single rewards and next states averages out, as a sample average approaches an expectation, while the table itself improves.</p>
+    <p>Compare it with Sarsa's. Sarsa's target, <span class="nowrap"><i>R</i><sub><i>t</i>+1</sub> + γ<i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>A</i><sub><i>t</i>+1</sub>)</span>, uses the value of the action the agent takes next. <mark class="hl-key">Q-learning's target uses the best action in the next state, whatever the agent does there.</mark></p>
+    <p>Why this target? It is the inside of the Bellman optimality equation, with its two unknowns replaced by what the agent has:</p>
+    <ul>
+      <li>the expectation over rewards and next states becomes the one reward and next state it just observed;</li>
+      <li><i>q</i><sub>*</sub> becomes the current table <i>Q</i>.</li>
+    </ul>
+    <p>Over many steps the randomness of single rewards and next states averages out, as a sample average approaches an expectation, while the table itself improves.</p>
     <p>An example with numbers, with α = 0.5. Partway through learning, the table holds <span class="nowrap"><i>Q</i>(A2, right) = −8</span>, and in B2 up −7, right −5, down −60 and left −7. The agent moves right from A2 to B2 and gets −1. The target is <span class="nowrap pt">−1 + max(−7, −5, −60, −7) = −6</span>, and the estimate moves halfway to it:</p>
     <div class="disp num"><i>Q</i>(A2, right) <span class="nowrap">← −8 + 0.5(<span class="pt">−6</span> − (−8))</span> <span class="nowrap">= −7</span></div>
     <p>The target is the same whatever the agent does next in B2, even if its next move is a random step down into the cliff.</p>
@@ -92,15 +99,22 @@ scripts:
   </div>
 
   <div class="prose">
-    <p>When does it work? <i>Q</i> converges to <i>q</i><sub>*</sub> with probability 1 as long as every pair keeps being updated, so the policy must never stop trying every action, and the step sizes shrink slowly enough: their sum grows without limit while the sum of their squares stays finite. The first condition is the least any method can ask for, since the value of an action never tried cannot be learned.</p>
+    <p>When does it work? <i>Q</i> converges to <i>q</i><sub>*</sub> with probability 1 as long as:</p>
+    <ol>
+      <li>every pair keeps being updated, so the policy must never stop trying every action;</li>
+      <li>the step sizes shrink slowly enough: their sum grows without limit while the sum of their squares stays finite.</li>
+    </ol>
+    <p>The first condition is the least any method can ask for, since the value of an action never tried cannot be learned.</p>
   </div>
 </section>
 
 <section id="off-policy">
   <div class="prose">
     <h2><span class="n">3</span>Learning about one policy while following another</h2>
-    <p>The agent behaves ε-greedily, yet its target uses <span class="nowrap">max<sub><i>a</i></sub> <i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>a</i>)</span>, the value of the greedy action in the next state, whatever action it actually takes there. So Q-learning learns the values of the greedy policy, while its experience comes from the ε-greedy one. The policy being learned about is the target policy, and the one that produces the behavior is the behavior policy. When the two differ, the method is off-policy. The behavior policy still matters in one way: it decides which pairs get visited, and so updated.</p>
-    <p>Sarsa is on-policy: its target uses the action it takes next, so when that action is an exploring move, the target includes what exploring costs. Sarsa learns <i>q</i><sub>π</sub> for the ε-greedy policy it follows, and Q-learning learns <i>q</i><sub>*</sub>. A backup diagram shows the difference: what each update looks at, from the pair being updated at the top to what the target is built from at the bottom.</p>
+    <p>The agent behaves ε-greedily, yet its target uses <span class="nowrap">max<sub><i>a</i></sub> <i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>a</i>)</span>, the value of the greedy action in the next state, whatever action it actually takes there. So Q-learning learns the values of the greedy policy, while its experience comes from the ε-greedy one.</p>
+    <div class="hl-def"><p><dfn>Target policy</dfn>: the policy being learned about. <dfn>Behavior policy</dfn>: the one that produces the behavior. When the two differ, the method is <a href="/notes/reinforcement-learning/monte-carlo/#soft">off-policy</a>.</p></div>
+    <p>The behavior policy still matters in one way: it decides which pairs get visited, and so updated.</p>
+    <p>Sarsa is on-policy: its target uses the action it takes next, so when that action is an exploring move, the target includes what exploring costs. Sarsa learns <i>q</i><sub>π</sub> for the ε-greedy policy it follows, and Q-learning learns <i>q</i><sub>*</sub>. A backup diagram shows the difference, in what each update looks at.</p>
     <figure class="diagram">
       <svg viewBox="0 0 440 196" role="img" aria-label="Three backup diagrams. Each starts at the top with the pair being updated, goes to the next state, and ends in the next actions its target uses: one sampled action for Sarsa, the maximum over all actions for Q-learning, and all actions for Expected Sarsa.">
         <line class="bk" x1="80" y1="24" x2="80" y2="70"/>
@@ -137,7 +151,7 @@ scripts:
       <figcaption>At the top, the pair being updated. The circle is the next state, reached with reward <i>R</i><sub><i>t</i>+1</sub>. At the bottom, in red, what the target uses: the one action taken next (Sarsa), the best of all next actions (Q-learning; the arc marks a maximum), or all of them, weighted by their probability (Expected Sarsa, section 4).</figcaption>
     </figure>
     <p>On the cliff, the difference decides the route. Let both methods learn for long enough, with ε = 0.1 and shrinking step sizes. Sarsa settles one row up, as in the previous note. Q-learning's values assume the greedy move from the next step on, so it keeps to the edge, and while it keeps exploring, it sometimes falls in.</p>
-    <div class="tbl">
+    <div class="tbl tight">
       <table>
         <thead><tr><th scope="col">On the cliff, ε = 0.1</th><th scope="col"><span class="nowrap">Q-learning</span></th><th scope="col">Sarsa</th></tr></thead>
         <tbody>
@@ -148,8 +162,13 @@ scripts:
         </tbody>
       </table>
     </div>
-    <p>Q-learning's table describes the better policy, worth −7 per trip once exploring stops, but Sarsa does better while learning. The gap depends on ε. Below <span class="nowrap">ε ≈ 0.02</span>, a random move down is rare enough that Sarsa keeps to the edge too, and above <span class="nowrap">ε ≈ 0.26</span> it moves up to the top row. If ε shrinks toward 0 over time, both end up with the optimal policy.</p>
-    <p>With a purely greedy behavior, ε = 0, the two methods almost coincide: both act greedily, and their targets are equal, since the action Sarsa takes next is the greedy one. The one difference is timing. Sarsa chooses its next action before updating the table, and Q-learning after, so when the next state is the same state, the update can change which action Q-learning then takes. In the Sarsa figure, choosing first cost the agent a second fall from the start.</p>
+    <p><mark class="hl-key">Q-learning's table describes the better policy, worth −7 per trip once exploring stops, but Sarsa does better while learning.</mark> The gap depends on ε:</p>
+    <ul>
+      <li>below <span class="nowrap">ε ≈ 0.02</span>, a random move down is rare enough that Sarsa keeps to the edge too;</li>
+      <li>above <span class="nowrap">ε ≈ 0.26</span>, Sarsa moves up to the top row;</li>
+      <li>if ε shrinks toward 0 over time, both end up with the optimal policy.</li>
+    </ul>
+    <p>With a purely greedy behavior, ε = 0, the two methods almost coincide: both act greedily, and their targets are equal, since the action Sarsa takes next is the greedy one. The one difference is timing. Sarsa chooses its next action before updating the table, and Q-learning after, so when the next state is the same state, the update can change which action Q-learning then takes. In the <a href="/notes/reinforcement-learning/td-learning/#sarsa">Sarsa figure</a>, choosing first cost the agent a second fall from the start.</p>
     <p>Many off-policy methods must correct for the difference between the two policies. One-step Q-learning needs no such correction: given the pair it updates, the reward and the next state do not depend on either policy, and the target uses a maximum instead of the action the behavior takes next.</p>
   </div>
 </section>
@@ -158,29 +177,34 @@ scripts:
   <div class="prose">
     <h2><span class="n">4</span>Expected Sarsa</h2>
     <div class="disp"><i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">← <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub></span></span> <span class="nowrap pt">+ γ Σ<sub><i>a</i></sub> π(<i>a</i>|<i>S</i><sub><i>t</i>+1</sub>) <i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>a</i>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
-    <p>Sarsa's target uses the value of the one next action the policy happens to pick, and Q-learning's the value of the best one. Expected Sarsa's target averages the values of all next actions, each weighted by how likely π is to take it. This average, written <span class="nowrap"><span class="ovl"><i>V</i></span>(<i>S</i><sub><i>t</i>+1</sub>)</span>, is the value of the next state that the table implies under π. It is also what Sarsa's target is worth on average, so Expected Sarsa moves every time the way Sarsa moves on average, without the randomness that the choice of <i>A</i><sub><i>t</i>+1</sub> adds. The price is a sum over the actions at every step.</p>
-    <p>Here are the three targets for the step of section 2, from A2 to B2, now with B2's values at <i>q</i><sub>*</sub> (up −7, right −5, down −107, left −7) and ε = 0.1, so that the agent moves right next with probability 0.925 and makes each other move with probability 0.025:</p>
-    <div class="tbl">
+    <p>Where Sarsa's target uses the one next action the policy happens to pick and Q-learning's the best one, Expected Sarsa's target averages the values of all next actions, each weighted by how likely π is to take it. This average, written <span class="nowrap"><span class="ovl"><i>V</i></span>(<i>S</i><sub><i>t</i>+1</sub>)</span>, is the value of the next state that the table implies under π. <mark class="hl-key">It is also what Sarsa's target is worth on average, so Expected Sarsa moves every time the way Sarsa moves on average, without the randomness that the choice of <i>A</i><sub><i>t</i>+1</sub> adds.</mark> The price is a sum over the actions at every step.</p>
+    <p>The table takes section 2's step from A2 to B2, now with B2's values at <i>q</i><sub>*</sub> and <span class="nowrap">ε = 0.1</span>; the Sarsa rows give the probability of each case. The last column starts from <span class="nowrap"><i>Q</i>(A2, right) = −6</span>, with α = 0.5:</p>
+    <div class="tbl tight">
       <table>
-        <thead><tr><th scope="col">Method</th><th scope="col">Target</th></tr></thead>
+        <thead><tr><th scope="col">Method</th><th scope="col">Target</th><th scope="col">New value</th></tr></thead>
         <tbody>
-          <tr><th scope="row"><span class="nowrap">Q-learning</span></th><td class="pt"><span class="nowrap">−1 + max(−7, −5, −107, −7)</span> <span class="nowrap">= −6</span></td></tr>
-          <tr><th scope="row">Sarsa, if it then moves right (0.925)</th><td class="pt"><span class="nowrap">−1 + (−5)</span> <span class="nowrap">= −6</span></td></tr>
-          <tr><th scope="row">Sarsa, if it then moves up or left (0.05)</th><td class="pt"><span class="nowrap">−1 + (−7)</span> <span class="nowrap">= −8</span></td></tr>
-          <tr><th scope="row">Sarsa, if it then steps down into the cliff (0.025)</th><td class="pt"><span class="nowrap">−1 + (−107)</span> <span class="nowrap">= −108</span></td></tr>
-          <tr><th scope="row">Expected Sarsa</th><td class="pt"><span class="nowrap">−1 + 0.925(−5)</span> <span class="nowrap">+ 0.05(−7)</span> <span class="nowrap">+ 0.025(−107)</span> <span class="nowrap">= −8.65</span></td></tr>
+          <tr><th scope="row"><span class="nowrap">Q-learning</span></th><td class="pt"><span class="nowrap">−1 + max(−7, −5,</span> <span class="nowrap">−107, −7)</span> <span class="nowrap">= −6</span></td><td>−6</td></tr>
+          <tr><th scope="row">Sarsa, if it then moves right (0.925)</th><td class="pt"><span class="nowrap">−1 + (−5)</span> <span class="nowrap">= −6</span></td><td>−6</td></tr>
+          <tr><th scope="row">Sarsa, if it then moves up or left (0.025 each)</th><td class="pt"><span class="nowrap">−1 + (−7)</span> <span class="nowrap">= −8</span></td><td>−7</td></tr>
+          <tr><th scope="row">Sarsa, if it then steps down into the cliff (0.025)</th><td class="pt"><span class="nowrap">−1 + (−107)</span> <span class="nowrap">= −108</span></td><td>−57</td></tr>
+          <tr><th scope="row">Expected Sarsa</th><td class="pt"><span class="nowrap">−1 + 0.925(−5)</span> <span class="nowrap">+ 0.05(−7)</span> <span class="nowrap">+ 0.025(−107)</span> <span class="nowrap">= −8.65</span></td><td><span class="nowrap">≈ −7.33</span></td></tr>
         </tbody>
       </table>
     </div>
-    <p>Sarsa's possible targets average <span class="nowrap">0.925(−6) + 0.05(−8)</span> <span class="nowrap">+ 0.025(−108) = −8.65</span>, Expected Sarsa's target. With α = 0.5, starting from <span class="nowrap"><i>Q</i>(A2, right) = −6</span>, Q-learning's update leaves it at −6. Sarsa's leaves it at −6, moves it to −7, or, one time in forty, drops it to −57, depending on the move that happens to come next; Expected Sarsa's always gives about −7.33. With less noise in its updates, Expected Sarsa tolerates a larger step size. On the cliff the moves themselves are certain and all the randomness comes from the policy, so Expected Sarsa can even use α = 1 and replace each estimate by its target, while Sarsa needs a small α to average its random targets.</p>
-    <p>Expected Sarsa can also learn off-policy: the weights π can come from a target policy other than the behavior. If π is greedy, the average puts all its weight on the best action, and the target is Q-learning's. So Expected Sarsa includes Q-learning as a special case.</p>
+    <p>Sarsa's possible targets average <span class="nowrap">0.925(−6) + 0.05(−8)</span> <span class="nowrap">+ 0.025(−108) = −8.65</span>, Expected Sarsa's target. But Sarsa's new value depends on the move that happens to come next, while Expected Sarsa's is always the same. With less noise in its updates, Expected Sarsa tolerates a larger step size. On the cliff the moves themselves are certain and all the randomness comes from the policy, so Expected Sarsa can even use α = 1 and replace each estimate by its target, while Sarsa needs a small α to average its random targets.</p>
+    <p>Expected Sarsa can also learn off-policy, and it includes Q-learning as a special case:</p>
+    <ol>
+      <li>the weights π can come from a target policy other than the behavior;</li>
+      <li>if π is greedy, the average puts all its weight on the best action, and the target is Q-learning's.</li>
+    </ol>
   </div>
 </section>
 
 <section id="double">
   <div class="prose">
     <h2><span class="n">5</span>Maximization bias and double learning</h2>
-    <p>Q-learning's target takes the largest of several estimates. The largest of several noisy estimates tends to be too large, even when each of them is right on average. This is maximization bias.</p>
+    <p>Q-learning's target takes the largest of several estimates.</p>
+    <div class="hl-def"><p><dfn>Maximization bias</dfn>: the largest of several noisy estimates tends to be too large, even when each of them is right on average.</p></div>
     <p>Take a state with six actions that are all worth exactly 0: each pays +1 or −1 with equal chance. Estimate each action by the average of three payments, so an estimate is 1, 1/3, −1/3 or −1. Each estimate is right on average, but the largest of the six is 1 with probability 0.55, 1/3 with probability 0.43, and below 0 less than 2% of the time. On average it is <span class="nowrap">+0.69</span>.</p>
     <figure class="diagram">
       <svg viewBox="0 0 440 204" role="img" aria-label="Six estimates, one per action, on a scale from −1 to 1 with a dashed line at the true value 0: one third, minus one third, 1, minus one third, one third and −1. The largest, 1, is circled in red. Below it, a red dot marks the second table's estimate of the same action, minus one third.">
@@ -203,7 +227,12 @@ scripts:
       <figcaption>One draw of the six estimates, all of actions worth 0. A single table's target takes the largest, 1. With two tables, the first picks the same action, but its value is read from the second, −1/3 here and 0 on average.</figcaption>
     </figure>
     <p>A Q-learning target that ends in such a state gets this optimism added in, and the states that lead there look better than they are. The agent is drawn toward states whose actions are uncertain, for no good reason.</p>
-    <p>The bias comes from using the same samples twice: to pick the action that looks best, and to say how good it is. Double learning separates the two jobs. It keeps two independent estimates, <i>Q</i><sub>1</sub> and <i>Q</i><sub>2</sub>, each learned from its own half of the experience. One picks the action, <span class="nowrap"><i>A</i><sup>*</sup> = argmax<sub><i>a</i></sub> <i>Q</i><sub>1</sub>(<i>a</i>)</span>, and the other says what it is worth, <i>Q</i><sub>2</sub>(<i>A</i><sup>*</sup>). The samples behind <i>Q</i><sub>2</sub> played no part in the choice, so <span class="nowrap">E[<i>Q</i><sub>2</sub>(<i>A</i><sup>*</sup>)] = <i>q</i>(<i>A</i><sup>*</sup>)</span>, with no bias. In the example, <i>A</i><sup>*</sup> is whichever action happened to look best, but its value comes from three fresh payments, which average 0.</p>
+    <p><mark class="hl-key">The bias comes from using the same samples twice: to pick the action that looks best, and to say how good it is.</mark> Double learning separates the two jobs. It keeps two independent estimates, <i>Q</i><sub>1</sub> and <i>Q</i><sub>2</sub>, each learned from its own half of the experience:</p>
+    <ul>
+      <li>one picks the action, <span class="nowrap"><i>A</i><sup>*</sup> = argmax<sub><i>a</i></sub> <i>Q</i><sub>1</sub>(<i>a</i>)</span>;</li>
+      <li>the other says what it is worth, <i>Q</i><sub>2</sub>(<i>A</i><sup>*</sup>).</li>
+    </ul>
+    <p>The samples behind <i>Q</i><sub>2</sub> played no part in the choice, so <span class="nowrap">E[<i>Q</i><sub>2</sub>(<i>A</i><sup>*</sup>)] = <i>q</i>(<i>A</i><sup>*</sup>)</span>, with no bias. In the example, <i>A</i><sup>*</sup> is whichever action happened to look best, but its value comes from three fresh payments, which average 0.</p>
     <p>Double Q-learning applies this to Q-learning. At each step a coin flip decides which table learns. On heads,</p>
     <div class="disp"><i>Q</i><sub>1</sub>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">← <i>Q</i><sub>1</sub>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub></span></span> <span class="nowrap pt">+ γ<i>Q</i><sub>2</sub>(<i>S</i><sub><i>t</i>+1</sub>,</span> <span class="nowrap pt">argmax<sub><i>a</i></sub> <i>Q</i><sub>1</sub>(<i>S</i><sub><i>t</i>+1</sub>, <i>a</i>))</span> <span class="nowrap">− <i>Q</i><sub>1</sub>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
     <p>and on tails the same update with <i>Q</i><sub>1</sub> and <i>Q</i><sub>2</sub> swapped, so that <i>Q</i><sub>2</sub> learns. The two tables play symmetric roles. The behavior can use both, for example ε-greedy with respect to <span class="nowrap"><i>Q</i><sub>1</sub> + <i>Q</i><sub>2</sub></span>. Double learning doubles the memory, but not the work per step, since each step updates only one table. The same idea gives double versions of Sarsa and Expected Sarsa.</p>
@@ -213,7 +242,8 @@ scripts:
 <section id="afterstates">
   <div class="prose">
     <h2><span class="n">6</span>Afterstates</h2>
-    <p>Sometimes the immediate effect of an action is known, and only what follows is uncertain. In a board game you know the position your move leaves, but not your opponent's reply. Then it pays to learn the values of afterstates, the situations right after the agent acts, instead of the values of state–action pairs.</p>
+    <p>Sometimes the immediate effect of an action is known, and only what follows is uncertain. In a board game you know the position your move leaves, but not your opponent's reply. Then it pays to learn the values of afterstates instead of the values of state–action pairs.</p>
+    <div class="hl-def"><p><dfn>Afterstate</dfn>: the situation right after the agent acts.</p></div>
     <p>In Nim, two players take turns removing any number of sticks from one pile, and whoever takes the last stick wins. From piles of 3 and 2, taking one stick from the first pile leaves piles of 2 and 2. From piles of 2 and 3, taking one from the second pile leaves the same position.</p>
     <figure class="diagram">
       <svg viewBox="0 0 440 180" role="img" aria-label="Two Nim positions, piles of 3 and 2 and piles of 2 and 3. From each, a blue arrow removes one stick and leads to the same afterstate, piles of 2 and 2.">
@@ -240,8 +270,17 @@ scripts:
       </svg>
       <figcaption>Two different positions and moves, one afterstate. The dashed stick is the one taken.</figcaption>
     </figure>
-    <p>A table of action values stores two separate numbers here, one for each position and move, and has to learn each on its own. A table of afterstate values stores one number, the value of leaving piles of 2 and 2, and whatever it learns applies to every move that leads there. Piles of 2 and 2 happen to be a winning position to leave: whatever your opponent takes from one pile, you take the same from the other, and you take the last stick.</p>
-    <p>The learning methods stay the same; only what the table is about changes. Afterstates appear outside games too, whenever an action is defined by its immediate effect, such as loading a parcel onto a particular truck: the loaded truck is known, the traffic on its route is not.</p>
+    <div class="tbl left tight">
+      <table>
+        <thead><tr><th scope="col"></th><th scope="col">Action values</th><th scope="col">Afterstate values</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Numbers stored</th><td>two, one per position and move</td><td>one, for leaving piles of 2 and 2</td></tr>
+          <tr><th scope="row">Learning</th><td>each on its own</td><td>shared by every move that leads there</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Piles of 2 and 2 happen to be a winning position to leave: whatever your opponent takes from one pile, you take the same from the other, and you take the last stick.</p>
+    <p><mark class="hl-key">The learning methods stay the same; only what the table is about changes.</mark> Afterstates appear outside games too, whenever an action is defined by its immediate effect, such as loading a parcel onto a particular truck: the loaded truck is known, the traffic on its route is not.</p>
   </div>
 </section>
 

@@ -32,17 +32,28 @@ scripts:
     </svg>
     <figcaption>El modelo que el robot tiene de su casa: lo que siguió a cada movimiento que hizo, y cuántas veces. El movimiento al estudio, probado una vez, llevó ahí con un costo de 1; cargar en el estudio, probado cinco veces, dio +1 tres veces, cuando el cargador estaba libre, y 0 dos veces. La puerta del garaje nunca se ha probado.</figcaption>
   </figure>
-  <p>Primero, el robot puede calcular cuán buena es cada pieza sin moverse, razonando sobre su modelo: eso es planning. Segundo, sabe lo que nunca ha probado, como la puerta del garaje, y puede planear una visita.</p>
-  <p>Este apunte trata de los modelos y el planning, y luego de dos algoritmos clásicos construidos sobre ellos. R-Max cuenta lo que hicieron sus movimientos, supone lo mejor de cada movimiento que no ha probado, y planea cómo llegar a ellos. Dyna aprende dos veces de cada paso real: una del paso mismo, y otra después, al repetirlo con su modelo. La última sección pregunta qué pasa cuando el modelo está equivocado.</p>
+  <p>Primero, el robot puede calcular cuán buena es cada pieza sin moverse, razonando sobre su modelo: eso es planning. Segundo, sabe lo que nunca ha probado, como la puerta del garaje, y puede planear una visita. Este apunte termina con lo que pasa cuando el modelo está equivocado.</p>
   <p class="legend">En esta página, <span class="bar" aria-hidden="true"></span>los movimientos, y lo que un modelo dice que hacen, se dibujan con tinta azul, y <span class="dot" aria-hidden="true"></span>el objetivo de una actualización, con tinta roja.</p>
 </div>
 
 <section id="models">
   <div class="prose">
     <h2><span class="n">1</span>Modelos y planning</h2>
-    <p>Un modelo del ambiente es cualquier cosa que el agente pueda usar para predecir cómo responderá el ambiente a sus acciones: dado un estado y una acción, predice el siguiente estado y la recompensa. Algunos modelos dan cada resultado posible con su probabilidad; son modelos de distribución, como las dinámicas <span class="nowrap"><i>p</i>(<i>s</i>′, <i>r</i> | <i>s</i>, <i>a</i>)</span> que supone la programación dinámica. Otros dan un solo resultado, sorteado con esas probabilidades; son modelos de muestra. Si se le pregunta por cargar en el estudio, un modelo de distribución responde que da +1 con probabilidad 0.6 y 0 con probabilidad 0.4, y un modelo de muestra responde +1 o 0, al azar, +1 tres de cada cinco veces en promedio.</p>
-    <p>Un modelo de distribución siempre puede producir muestras, así que es el más fuerte de los dos. Pero un modelo de muestra suele ser mucho más fácil de construir: una noche de diez viajes al cargador tiene 2<sup>10</sup> = 1024 secuencias de libre y ocupado, y un modelo de distribución debe dar la probabilidad de cada una, mientras que un modelo de muestra simplemente juega los diez viajes. De cualquier forma, el modelo puede tomar el lugar del ambiente y producir experiencia simulada: una transición o un episodio a la vez con un modelo de muestra, y todos, cada uno con su probabilidad, con un modelo de distribución.</p>
-    <p>El planning es cualquier cálculo que toma un modelo y produce o mejora una política. El planning de estos apuntes pasa por valores, igual que el aprendizaje:</p>
+    <div class="hl-def"><p><dfn>Modelo</dfn> del ambiente: cualquier cosa que el agente pueda usar para predecir cómo responderá el ambiente a sus acciones. Dado un estado y una acción, predice el siguiente estado y la recompensa.</p></div>
+    <p>Los modelos son de dos tipos, y cualquiera de los dos puede tomar el lugar del ambiente y producir experiencia simulada. Las dinámicas <span class="nowrap"><i>p</i>(<i>s</i>′, <i>r</i> | <i>s</i>, <i>a</i>)</span> que supone la programación dinámica son un modelo de distribución:</p>
+    <div class="tbl left tight">
+      <table>
+        <thead><tr><th scope="col"></th><th scope="col">Modelo de distribución</th><th scope="col">Modelo de muestra</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Da</th><td>cada resultado, con su probabilidad</td><td>un solo resultado, sorteado con esas probabilidades</td></tr>
+          <tr><th scope="row">Cargar en el estudio</th><td>+1 con probabilidad 0.6, 0 con 0.4</td><td>+1 o 0, +1 tres de cada cinco veces en promedio</td></tr>
+          <tr><th scope="row">Experiencia simulada</th><td>toda, cada resultado con su probabilidad</td><td>una transición o un episodio a la vez</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Un modelo de distribución siempre puede producir muestras, así que es el más fuerte de los dos. Pero un modelo de muestra suele ser mucho más fácil de construir: una noche de diez viajes al cargador tiene 2<sup>10</sup> = 1024 secuencias de libre y ocupado, y un modelo de distribución debe dar la probabilidad de cada una, mientras que un modelo de muestra simplemente juega los diez viajes.</p>
+    <div class="hl-def"><p><dfn>Planning</dfn>: cualquier cálculo que toma un modelo y produce o mejora una política.</p></div>
+    <p>El planning de estos apuntes pasa por valores, igual que el aprendizaje:</p>
     <figure class="diagram">
       <svg viewBox="0 0 440 244" role="img" aria-label="Dos cadenas que se juntan. Un modelo produce experiencia simulada, y el mundo produce experiencia real; ambas entran en las mismas actualizaciones, que dan los valores y la política.">
         <line class="ln-path" x1="120" y1="40" x2="120" y2="64" marker-end="url(#mb-head)"/>
@@ -61,7 +72,7 @@ scripts:
       </svg>
       <figcaption>El planning y el aprendizaje calculan valores con las mismas actualizaciones. El planning toma su experiencia de un modelo, y el aprendizaje, del mundo.</figcaption>
     </figure>
-    <p>Ambos miran lo que sigue a un estado o a una acción, y llevan el resultado de vuelta a un valor. Por eso un método de aprendizaje normalmente también puede planear: solo necesita experiencia simulada en lugar de real.</p>
+    <p>Ambos miran lo que sigue a un estado o a una acción, y llevan el resultado de vuelta a un valor. <mark class="hl-key">Por eso un método de aprendizaje normalmente también puede planear: solo necesita experiencia simulada en lugar de real.</mark></p>
 
     <h3>Value iteration</h3>
     <p>Con un modelo de distribución, el agente puede resolver la ecuación de optimalidad de Bellman del <a href="/es/notes/reinforcement-learning/q-learning/#values">apunte de Q-learning</a>, algo que un agente sin modelo no puede hacer. Escrita para los valores de los estados, la ecuación se vuelve una actualización:</p>
@@ -101,7 +112,13 @@ scripts:
         </tbody>
       </table>
     </div>
-    <p>La figura ejecuta Q-planning en la <a href="/es/notes/reinforcement-learning/monte-carlo/#prediction">grilla de la galleta del apunte de Monte Carlo</a>, con un modelo que conoce todos los movimientos, como si al agente le hubieran dicho las reglas de la grilla. Ahí un movimiento siempre hace lo mismo, así que no hay nada que promediar: la figura usa α = 1, y cada paso fija el valor que actualiza en su objetivo. Los 32 valores parten en 0 y se ven todos, porque el modelo guarda todos los movimientos. El agente se queda en A1, y una copia tenue suya juega cada paso imaginado: aparece en el estado elegido, con el movimiento en amarillo, y va adonde el modelo dice que lleva el movimiento. La actualización tiene borde verde, hacia su objetivo en rojo, como en la <a href="/es/notes/reinforcement-learning/q-learning/#update">figura de Q-learning</a>. Después del primer paso, cada vez que presionas Siguiente se ejecuta un paso de planning completo.</p>
+    <p>La figura ejecuta Q-planning en la <a href="/es/notes/reinforcement-learning/monte-carlo/#prediction">grilla de la galleta del apunte de Monte Carlo</a>, con un modelo que conoce todos los movimientos, como si al agente le hubieran dicho las reglas de la grilla. Ahí un movimiento siempre hace lo mismo, así que no hay nada que promediar: la figura usa α = 1, y cada paso fija el valor que actualiza en su objetivo.</p>
+    <ul>
+      <li>Los 32 valores parten en 0 y se ven todos, porque el modelo guarda todos los movimientos.</li>
+      <li>El agente se queda en A1, y una copia tenue suya juega cada paso imaginado: aparece en el estado elegido, con el movimiento en amarillo, y va adonde el modelo dice que lleva el movimiento.</li>
+      <li>La actualización tiene borde verde, hacia su objetivo en rojo, como en la <a href="/es/notes/reinforcement-learning/q-learning/#update">figura de Q-learning</a>.</li>
+      <li>Después del primer paso, cada vez que presionas Siguiente se ejecuta un paso de planning completo.</li>
+    </ul>
   </div>
 
   <div class="fig steps">
@@ -125,8 +142,9 @@ scripts:
     <p>R-Max aprende su modelo contando. Lleva <i>N</i>(<i>s</i>, <i>a</i>), el número de veces que ha tomado la acción <i>a</i> en el estado <i>s</i>, y <i>N</i>(<i>s</i>, <i>a</i>, <i>s</i>′, <i>r</i>), el número de esas veces que llevaron a <i>s</i>′ con recompensa <i>r</i>, y estima las dinámicas con la fracción de veces que ocurrió cada resultado:</p>
     <div class="disp hero-f"><i>P</i>(<i>s</i>′, <i>r</i> | <i>s</i>, <i>a</i>) <span class="nowrap">= <span class="frac"><span><i>N</i>(<i>s</i>, <i>a</i>, <i>s</i>′, <i>r</i>)</span><span><i>N</i>(<i>s</i>, <i>a</i>)</span></span></span></div>
     <p>El modelo del robot se hizo así: el cargador del estudio estaba libre en 3 de 5 visitas, así que <span class="nowrap"><i>P</i>(fin, +1 | estudio, cargar) = 3/5</span>. Es el modelo de máxima verosimilitud del apunte de TD. R-Max planea sobre él con value iteration, en cada paso, y actúa de forma greedy según los valores que obtiene. Usa su experiencia solo para mejorar el modelo; sus valores vienen del planning.</p>
-    <p>Contar deja una pregunta: ¿qué hacer con un par probado pocas veces, o nunca? El robot tiene <span class="nowrap"><i>N</i>(pasillo, garaje) = 0</span>, así que no existe ninguna fracción, y un planificador que dejara fuera la puerta nunca iría a mirar.</p>
-    <p>R-Max es optimista ante lo desconocido. Un par es <i>known</i> una vez que <span class="nowrap"><i>N</i>(<i>s</i>, <i>a</i>) ≥ <i>k</i></span>, para un número de visitas <i>k</i> que elige el usuario, y se supone que un par <i>unknown</i> da <i>R</i><sub>max</sub>, una recompensa al menos tan grande como cualquiera que pueda dar el mundo, y termina el episodio. En la casa, <span class="nowrap"><i>R</i><sub>max</sub> = 1</span>, un cargador libre, así que value iteration valora la puerta del garaje en 1, contra <span class="nowrap">−1 + 0.6 = −0.4</span> pasando por el estudio, y el robot va a mirar. El optimismo convierte la exploración en un asunto de planning: los valores envían al agente a lo desconocido por el camino más corto, y solo cuando podría valer la pena. En la figura, la puerta está al final de un corredor cuyos movimientos son <i>known</i>, cada uno con un costo de 1; arrástrala más lejos.</p>
+    <p>Contar deja una pregunta: ¿qué hacer con un par probado pocas veces, o nunca? El robot tiene <span class="nowrap"><i>N</i>(pasillo, garaje) = 0</span>, así que no existe ninguna fracción, y un planificador que dejara fuera la puerta nunca iría a mirar. R-Max responde con optimismo ante lo desconocido:</p>
+    <div class="hl-def"><p><dfn>Par <i>known</i></dfn>: uno probado al menos <i>k</i> veces, <span class="nowrap"><i>N</i>(<i>s</i>, <i>a</i>) ≥ <i>k</i></span>, para un número de visitas <i>k</i> que elige el usuario. R-Max supone que un par <i>unknown</i> da <i>R</i><sub>max</sub>, una recompensa al menos tan grande como cualquiera que pueda dar el mundo, y que termina el episodio.</p></div>
+    <p>En la casa, <span class="nowrap"><i>R</i><sub>max</sub> = 1</span>, un cargador libre, así que value iteration valora la puerta del garaje en 1, contra <span class="nowrap">−1 + 0.6 = −0.4</span> pasando por el estudio, y el robot va a mirar. En la figura, la puerta está al final de un corredor cuyos movimientos son <i>known</i>, cada uno con un costo de 1; arrástrala más lejos.</p>
   </div>
 
   <div class="fig">
@@ -138,8 +156,15 @@ scripts:
   </div>
 
   <div class="prose">
-    <p>Los pares <i>unknown</i> demasiado lejos, o detrás de demasiados movimientos costosos, quedan sin explorar. Supón que el robot, al mirar, encuentra un segundo cargador en el garaje, que siempre está libre. Una vez que la puerta y el cargador son <i>known</i>, el garaje vale <span class="nowrap">−1 + 1 = 0</span> desde el pasillo, más que el estudio, y desde entonces el robot carga ahí, donde un planificador que dejara fuera la puerta habría seguido yendo al estudio. Con el tiempo, todo par que valga la pena conocer se vuelve <i>known</i>, y R-Max sigue la mejor política de su modelo.</p>
-    <p>El número <i>k</i> fija en cuánto se apoya cada estimación. Donde una acción siempre tiene el mismo resultado, como en la grilla de la figura de abajo, una visita lo dice todo, y <i>k</i> = 1 basta. Donde los resultados varían, pocas visitas pueden engañar. Un cargador libre 3 de cada 5 veces está ocupado en una sola visita 2 de cada 5 veces, y con <i>k</i> = 1 el modelo dice entonces que nunca está libre; el par es <i>known</i>, así que nada manda al robot de vuelta a comprobarlo, y podría conformarse con un cargador peor. Mientras más visitas pide <i>k</i>, menos probable es que todas lo encuentren ocupado:</p>
+    <p>Los pares <i>unknown</i> demasiado lejos, o detrás de demasiados movimientos costosos, quedan sin explorar. <mark class="hl-key">El optimismo convierte la exploración en un asunto de planning: los valores envían al agente a lo desconocido por el camino más corto, y solo cuando podría valer la pena.</mark></p>
+    <p>Supón que el robot, al mirar, encuentra en el garaje un segundo cargador, siempre libre. Una vez que la puerta y el cargador son <i>known</i>, el garaje vale <span class="nowrap">−1 + 1 = 0</span> desde el pasillo, más que el estudio, y desde entonces carga ahí, mientras que un planificador que dejara fuera la puerta seguiría yendo al estudio.</p>
+    <p>El número <i>k</i> fija en cuánto se apoya cada estimación. Donde una acción siempre tiene el mismo resultado, como en la grilla de abajo, una visita lo dice todo, y <i>k</i> = 1 basta. Donde los resultados varían, pocas visitas pueden engañar:</p>
+    <ol>
+      <li>Un cargador libre 3 de cada 5 veces está ocupado en una sola visita 2 de cada 5 veces.</li>
+      <li>Con <i>k</i> = 1, el modelo dice entonces que nunca está libre.</li>
+      <li>El par es <i>known</i>, así que nada manda al robot de vuelta a comprobarlo, y podría conformarse con un cargador peor.</li>
+    </ol>
+    <p>Mientras más visitas pide <i>k</i>, menos probable es que todas lo encuentren ocupado:</p>
     <div class="tbl">
       <table>
         <thead><tr><th scope="col"><i>k</i></th><th scope="col">Las <i>k</i> visitas lo encuentran ocupado, (2/5)<sup><i>k</i></sup></th></tr></thead>
@@ -152,7 +177,7 @@ scripts:
         </tbody>
       </table>
     </div>
-    <p>R-Max, propuesto por Brafman y Tennenholtz en 2002, converge a una política near-optimal, con una brecha que depende de <i>k</i>, en un número de pasos que crece solo de forma polinomial con el tamaño del problema.</p>
+    <p>Con el tiempo, todo par que valga la pena conocer se vuelve <i>known</i>, y R-Max sigue la mejor política de su modelo. R-Max, propuesto por Brafman y Tennenholtz en 2002, converge a una política near-optimal, con una brecha que depende de <i>k</i>, en un número de pasos que crece solo de forma polinomial con el tamaño del problema.</p>
 
     <h3>El algoritmo</h3>
     <p>Para un número de visitas <i>k</i> y una recompensa <i>R</i><sub>max</sub> al menos tan grande como cualquier recompensa que pueda dar el mundo:</p>
@@ -165,7 +190,12 @@ scripts:
       <li>Cuéntalo: <span class="nowrap"><i>N</i>(<i>S</i>, <i>A</i>) ← <i>N</i>(<i>S</i>, <i>A</i>) + 1</span> y <span class="nowrap"><i>N</i>(<i>S</i>, <i>A</i>, <i>S</i>′, <i>R</i>) ← <i>N</i>(<i>S</i>, <i>A</i>, <i>S</i>′, <i>R</i>) + 1</span>.</li>
       <li>Haz <i>S</i> ← <i>S</i>′, y vuelve al paso 3 hasta que <i>S</i> sea terminal.</li>
     </ol>
-    <p>La figura ejecuta R-Max en la grilla de la galleta, con <i>k</i> = 1, porque un movimiento en la grilla siempre hace lo mismo, <span class="nowrap"><i>R</i><sub>max</sub> = 1</span>, la recompensa de la galleta, y γ = 0.9. Cada triángulo tiene el valor de un movimiento, <i>Q</i>(<i>s</i>, <i>a</i>) como lo calcula el paso 4. Un movimiento sin probar está sombreado de gris y tiene el 1 que R-Max supone para él; un movimiento <i>known</i> tiene su recompensa más 0.9 veces el valor de la celda adonde lleva. Cada vez que presionas Siguiente se ejecuta una línea del algoritmo: el agente elige un movimiento, en amarillo, lo toma, lo cuenta, en verde, y value iteration corre sobre el nuevo modelo, lo que quita la sombra.</p>
+    <p>La figura ejecuta R-Max en la grilla de la galleta, con <i>k</i> = 1, <span class="nowrap"><i>R</i><sub>max</sub> = 1</span>, la recompensa de la galleta, y γ = 0.9. Cada triángulo tiene el valor de un movimiento, <i>Q</i>(<i>s</i>, <i>a</i>) como lo calcula el paso 4:</p>
+    <ul>
+      <li>un movimiento sin probar está sombreado de gris y tiene el 1 que R-Max supone para él;</li>
+      <li>un movimiento <i>known</i> tiene su recompensa más 0.9 veces el valor de la celda adonde lleva.</li>
+    </ul>
+    <p>Cada vez que presionas Siguiente se ejecuta una línea del algoritmo: el agente elige un movimiento, en amarillo, lo toma, lo cuenta, en verde, y value iteration corre sobre el nuevo modelo, lo que quita la sombra.</p>
   </div>
 
   <div class="fig steps">
@@ -203,11 +233,16 @@ scripts:
       </svg>
       <figcaption>La experiencia mejora los valores y la política de dos formas: directamente, aprendiendo, y a través de un modelo, planeando. Actuar con la política trae nueva experiencia.</figcaption>
     </figure>
-    <p>R-Max usa su experiencia solo para el modelo, y Q-learning solo para los valores. Cada forma tiene sus ventajas. El planning saca más provecho de una cantidad limitada de experiencia, así que llega a una buena política con menos pasos reales. El aprendizaje directo es más simple, y un modelo equivocado no puede engañarlo.</p>
-    <p>Dyna hace todo a la vez: actuar, aprender el modelo, RL directo y planning. Su planning aplica el mismo método de aprendizaje a los pasos simulados que a los reales, así que el aprendizaje y el planning comparten casi todo, salvo de dónde viene su experiencia. Qué pasos simulados da lo decide lo que se llama control de búsqueda (search control). Dyna-Q, el Dyna más simple, es Q-learning tabular de un paso, su RL directo, con dos partes agregadas:</p>
+    <p>R-Max usa su experiencia solo para el modelo, y Q-learning solo para los valores. Cada forma tiene sus ventajas:</p>
+    <ul>
+      <li>el planning saca más provecho de una cantidad limitada de experiencia, así que llega a una buena política con menos pasos reales;</li>
+      <li>el aprendizaje directo es más simple, y un modelo equivocado no puede engañarlo.</li>
+    </ul>
+    <p>Dyna hace todo a la vez: actuar, aprender el modelo, RL directo y planning. Su planning aplica el mismo método de aprendizaje a los pasos simulados que a los reales, así que el aprendizaje y el planning comparten casi todo, salvo de dónde viene su experiencia. El agente es siempre reactivo y siempre deliberativo: actúa de inmediato según sus valores más recientes, mientras el planning sigue de fondo. Cuando el modelo aprende algo nuevo, el planning que sigue lo incorpora a los valores.</p>
+    <p>Dyna-Q, el Dyna más simple, es Q-learning tabular de un paso, su RL directo, con dos partes agregadas:</p>
     <ul>
       <li>un modelo, una tabla que guarda, para cada par que el agente ha probado, la recompensa y el estado siguiente que vio después la última vez, que es todo lo que hay que saber en un mundo donde una acción siempre tiene el mismo resultado;</li>
-      <li>y planning, Q-planning de un paso con muestras al azar, <i>n</i> pasos después de cada paso real, sobre estados en los que el agente ha estado y acciones que ha tomado ahí, así que nunca se le pregunta al modelo por un par del que no sabe nada.</li>
+      <li>planning, Q-planning de un paso con muestras al azar, <i>n</i> pasos después de cada paso real. Su control de búsqueda (search control), la regla que decide qué pasos simulados dar, elige estados en los que el agente ha estado y acciones que ha tomado ahí, así que nunca se le pregunta al modelo por un par del que no sabe nada.</li>
     </ul>
 
     <h3>El algoritmo</h3>
@@ -234,9 +269,20 @@ scripts:
   </div>
 
   <div class="prose">
-    <p>Después del primer episodio, Q-learning solo tendría un valor para un movimiento, el último. Los <a href="/es/notes/reinforcement-learning/n-step-bootstrapping/#n-step-sarsa">métodos de <i>n</i> pasos</a> y <a href="/es/notes/reinforcement-learning/eligibility-traces/#sarsa-lambda">Sarsa(λ)</a> le dan crédito a más movimientos del episodio, a los últimos <i>n</i> o a todos con montos que se desvanecen, pero solo a lo largo del camino recién recorrido, y solo una vez. El planning repite todo lo que guarda el modelo, mientras el agente pueda permitírselo, así que el valor de la galleta viaja hacia atrás por cada movimiento recordado, y pedazos de recorridos distintos se juntan en rutas que nunca se recorrieron de una vez. Con más pasos de planning por movimiento, los valores se asientan en menos episodios, al precio de más cálculo por movimiento.</p>
-    <p>El agente es siempre reactivo y siempre deliberativo: actúa de inmediato según sus valores más recientes, mientras el planning sigue de fondo. Cuando el modelo aprende algo nuevo, el planning que sigue lo incorpora a los valores.</p>
-
+    <p>Después del primer episodio de la figura, los métodos difieren en cuántos movimientos del episodio reciben crédito:</p>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col">Método</th><th scope="col">Movimientos con crédito</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Q-learning</th><td>el último</td></tr>
+          <tr><th scope="row"><a href="/es/notes/reinforcement-learning/n-step-bootstrapping/#n-step-sarsa">Métodos de <i>n</i> pasos</a></th><td>los últimos <i>n</i>, a lo largo del camino recién recorrido, una vez</td></tr>
+          <tr><th scope="row"><a href="/es/notes/reinforcement-learning/eligibility-traces/#sarsa-lambda">Sarsa(λ)</a></th><td>todos, con montos que se desvanecen, a lo largo del camino recién recorrido, una vez</td></tr>
+          <tr><th scope="row">El planning de Dyna-Q</th><td>todo lo que guarda el modelo, repetido mientras el agente pueda permitírselo</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><mark class="hl-key">El planning lleva el valor de la galleta hacia atrás por cada movimiento recordado, y pedazos de recorridos distintos se juntan en rutas que nunca se recorrieron de una vez.</mark> Con más pasos de planning por movimiento, los valores se asientan en menos episodios, al precio de más cálculo por movimiento.</p>
+    
     <h3>R-Max y Dyna</h3>
     <div class="tbl left">
       <table>
@@ -262,8 +308,12 @@ scripts:
       <li>el modelo generaliza de unos estados a otros, de forma imperfecta;</li>
       <li>o el mundo cambió desde que el modelo lo aprendió.</li>
     </ul>
-    <p>Planear con un modelo equivocado da una política buena para el modelo, y posiblemente mala para el mundo. Algunos errores se corrigen solos. Cuando un modelo es optimista, y predice más recompensa o mejores movimientos de los que permite el mundo, la política planeada va a buscarlos, descubre que no están, y la experiencia que obtiene corrige el modelo. El optimismo de R-Max, en la sección 2, es un error así, cometido a propósito: su modelo promete <i>R</i><sub>max</sub> por cada movimiento que no ha probado, y probarlo lo corrige. Los errores en la otra dirección son más difíciles. Cuando el mundo se vuelve mejor de lo que cree el modelo, la política que recomienda el modelo puede no ir nunca adonde está la mejora, y el error puede durar mucho tiempo, o para siempre.</p>
-    <p>De vuelta en la casa del robot, una noche cierran con llave la puerta del garaje, así que el movimiento que siempre llevaba al garaje ahora deja al robot en el pasillo, con un costo de 1. El modelo de Dyna-Q guarda el último resultado visto, así que el primer choque reescribe <i>Model</i>(pasillo, garaje), y el planning, al repetirlo, pronto valora la puerta por debajo del estudio. R-Max cuenta cada resultado desde el comienzo, viejo y nuevo. Después de cien viajes en que la puerta estaba abierta, cada choque baja el valor de la puerta en apenas 0.01, así que el robot choca 41 veces con la puerta cerrada antes de que el −0.4 del estudio se vea mejor.</p>
+    <p><mark class="hl-key">Planear con un modelo equivocado da una política buena para el modelo, y posiblemente mala para el mundo.</mark> Algunos errores se corrigen solos; otros son más difíciles:</p>
+    <ul>
+      <li>Cuando un modelo es optimista, y predice más recompensa o mejores movimientos de los que permite el mundo, la política planeada va a buscarlos, descubre que no están, y la experiencia que obtiene corrige el modelo. El optimismo de R-Max, en la sección 2, es un error así, cometido a propósito: su modelo promete <i>R</i><sub>max</sub> por cada movimiento que no ha probado, y probarlo lo corrige.</li>
+      <li>Cuando el mundo se vuelve mejor de lo que cree el modelo, la política que recomienda el modelo puede no ir nunca adonde está la mejora, y el error puede durar mucho tiempo, o para siempre.</li>
+    </ul>
+    <p>De vuelta en la casa del robot, el mundo cambia en ambas direcciones. Una noche cierran con llave la puerta del garaje, así que el movimiento que siempre llevaba al garaje ahora deja al robot en el pasillo, con un costo de 1. Y un día abren una puerta trasera del pasillo, que el robot probó una vez y encontró cerrada, con un cargador justo detrás; nada en ninguno de los dos modelos apunta ahí.</p>
     <figure class="diagram">
       <svg viewBox="0 0 440 172" role="img" aria-label="Dos imágenes de la casa del robot. A la izquierda, peor que el modelo: el movimiento del modelo desde el pasillo al garaje está bloqueado en el mundo por una puerta cerrada con llave. A la derecha, mejor que el modelo: el modelo dice que una puerta trasera está cerrada, pero en el mundo está abierta, con un cargador detrás.">
         <line class="rule-line" x1="220" y1="14" x2="220" y2="156"/>
@@ -287,8 +337,22 @@ scripts:
       </svg>
       <figcaption>En azul, lo que dice el modelo, y en tinta, el mundo. A la izquierda, la puerta del garaje ahora está cerrada con llave: el modelo sigue mandando al robot ahí, y el choque lo corrige. A la derecha, una puerta trasera que el robot encontró cerrada una vez ahora está abierta, con un cargador detrás: el modelo sigue esperando un choque, así que el robot nunca vuelve a mirar.</figcaption>
     </figure>
-    <p>Ahora lo contrario. Supón que el pasillo también tiene una puerta trasera, que el robot probó una vez y encontró cerrada, y que un día la abren, con un cargador justo detrás. Nada en ninguno de los dos modelos apunta ahí. Dyna-Q vuelve a probar la puerta trasera solo con un movimiento al azar: con ε = 0.1 y tres movimientos en el pasillo, en una visita de cada 30. R-Max, que explora solo lo que no ha probado, y nunca al azar, no vuelve a probarla.</p>
-    <p>La figura pone a ambos métodos en el <a href="/es/notes/reinforcement-learning/td-learning/#sarsa">acantilado del apunte de TD</a>, γ = 1: R-Max con <i>k</i> = 1 y <span class="nowrap"><i>R</i><sub>max</sub> = −1</span>, la mayor recompensa ahí, y Dyna-Q con los parámetros de la figura de la sección 3. Su primer paso juega rápido sus primeros 10 episodios, después de los cuales ambos siguen el borde. Antes del episodio 11 se levanta una pared entre A2 y B2, cruzando el borde, y antes del episodio 21 cae. Los botones sobre la grilla cambian de método; sus marcas son las de las secciones 2 y 3, y la pared se dibuja en tinta.</p>
+    <p>El modelo de Dyna-Q guarda el último resultado visto, y el de R-Max cuenta cada resultado desde el comienzo, viejo y nuevo:</p>
+    <div class="tbl left">
+      <table>
+        <tbody>
+          <tr><th scope="rowgroup" colspan="2">Puerta del garaje cerrada con llave</th></tr>
+          <tr><th scope="row"><span class="nowrap">Dyna-Q</span></th><td>el primer choque reescribe <span class="nowrap"><i>Model</i>(pasillo, garaje)</span>, y el planning pronto valora la puerta por debajo del estudio</td></tr>
+          <tr><th scope="row"><span class="nowrap">R-Max</span></th><td>después de cien viajes con la puerta abierta, cada choque baja el valor de la puerta en apenas 0.01: 41 choques antes de que el −0.4 del estudio se vea mejor</td></tr>
+        </tbody>
+        <tbody>
+          <tr><th scope="rowgroup" colspan="2">Puerta trasera abierta</th></tr>
+          <tr><th scope="row"><span class="nowrap">Dyna-Q</span></th><td>vuelve a probarla solo con un movimiento al azar: con ε = 0.1 y tres movimientos en el pasillo, en una visita de cada 30</td></tr>
+          <tr><th scope="row"><span class="nowrap">R-Max</span></th><td>no vuelve a probarla nunca: R-Max explora solo lo que no ha probado, y nunca al azar</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>La figura pone a ambos métodos en el <a href="/es/notes/reinforcement-learning/td-learning/#sarsa">acantilado del apunte de TD</a>, γ = 1: R-Max con <i>k</i> = 1 y <span class="nowrap"><i>R</i><sub>max</sub> = −1</span>, la mayor recompensa ahí, y Dyna-Q con los parámetros de la figura de la sección 3. Su primer paso juega rápido sus primeros 10 episodios, después de los cuales ambos siguen el borde. Luego se levanta una pared entre A2 y B2, cruzando el borde, antes del episodio 11, y cae antes del episodio 21. Los botones sobre la grilla cambian de método; sus marcas son las de las secciones 2 y 3, y la pared se dibuja en tinta.</p>
   </div>
 
   <div class="fig steps">

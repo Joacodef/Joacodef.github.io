@@ -56,19 +56,48 @@ import { cookie, NAME, rngFrom, epsGreedy, num, eqv, listAnd, listOr, sym, slide
     return { ep: x.ep, time: x.t, stage: "after", at: i, V: x.V, agent: GOAL, marks: [...trail(e, x.t), ...swept(e, x.t)] };
   }
 
+  /* The pseudocode beside the grid, as the note's list of steps writes it; each build lists the lines it plays */
+
+  const St = sym("S", "<i>t</i>"), At = sym("A", "<i>t</i>"), Rt1 = sym("R", "<i>t</i>+1"), St1 = sym("S", "<i>t</i>+1");
+  const L = { init: 0, pick: 3, take: 4, g0: 5, ret: 7, avg: 9 };
+  const CODE = {
+    title: tr("First-visit Monte Carlo prediction", "Predicción Monte Carlo first-visit"),
+    lines: [
+      { kind: "plain", html: tr(`<i>V</i>(<i>s</i>) ← 0 and no returns, for every state <i>s</i>`, `<i>V</i>(<i>s</i>) ← 0 y ningún retorno, para cada estado <i>s</i>`) },
+      { head: true, html: tr("Repeat, for each episode:", "Repetir, en cada episodio:") },
+      { head: true, ind: 1, html: tr(`For <i>t</i> = 0, 1, … until the cookie:`, `Para <i>t</i> = 0, 1, … hasta la galleta:`) },
+      { kind: "pick", ind: 2, html: tr(`${At} ← the move π <span class="nowrap">picks in ${St}</span>`, `${At} ← el movimiento que π <span class="nowrap">elige en ${St}</span>`) },
+      { kind: "take", ind: 2, html: tr(`Take ${At}; observe <span class="nowrap">${Rt1}, ${St1}</span>`, `Tomar ${At}; observar <span class="nowrap">${Rt1}, ${St1}</span>`) },
+      { kind: "plain", ind: 1, html: `<i>G</i> ← 0` },
+      { head: true, ind: 1, html: tr(`For <i>t</i> = <i>T</i> − 1, <i>T</i> − 2, …, 0:`, `Para <i>t</i> = <i>T</i> − 1, <i>T</i> − 2, …, 0:`) },
+      { kind: "target", ind: 2, html: `<span class="nowrap"><span class="pt"><i>G</i> ← γ<i>G</i> + ${Rt1}</span></span>` },
+      { head: true, ind: 2, html: tr(`If ${St} does not appear earlier in the episode:`, `Si ${St} no aparece antes en el episodio:`) },
+      { kind: "update", ind: 3, html: tr(`Add <i>G</i> to the returns of ${St}; <span class="nowrap"><span class="upd"><i>V</i>(${St})</span> ← their average</span>`, `Agregar <i>G</i> a los retornos de ${St}; <span class="nowrap"><span class="upd"><i>V</i>(${St})</span> ← su promedio</span>`) },
+    ],
+  };
+  // The lines one pass of event i plays, for the frames of a skip: a move (with G ← 0 when it ends the episode), or a
+  // step of the sweep (G, then the average at a first visit).
+  const passOf = (i) => { const x = X(i); return x.kind === "move" ? [L.pick, L.take, ...(x.done ? [L.g0] : [])] : x.first ? [L.ret, L.avg] : [L.ret]; };
+
   /* Builds: one line of the algorithm per press */
 
   const pos = (i) => ({ ep: X(i).ep, move: X(i).t + 1, at: i });
   // Choose: the policy's random pick turns yellow before the agent moves.
   function chooseBuild(i) {
     const x = X(i);
-    return { ...pos(i), time: x.t, V: x.V, agent: x.s, jump: x.t === 0, pick: [x.s, x.a], marks: trail(epOf(i), x.t), line: randomPick(x) };
+    return { code: [L.pick], ...pos(i), time: x.t, V: x.V, agent: x.s, jump: x.t === 0, pick: [x.s, x.a], marks: trail(epOf(i), x.t), line: randomPick(x) };
   }
   // Take: the agent moves along the yellow move; no estimate changes. After the first move, choosing and taking share
-  // one press.
+  // one press, its phases the pick in yellow, then the move. The take's line stays lit for three of the engine's line
+  // times, so that the agent's glide, a nudge at a wall and the cookie eaten play out before the press's last drawing,
+  // which has no animation; a move into the cookie then lights G ← 0.
   function takeBuild(i, withChoice, extra = "") {
     const x = X(i), bump = x.s2 === x.s ? x.a : null;
-    return { ...pos(i), time: x.t, V: x.V, agent: x.s2, taken: [x.s, x.a], bump, sound: bump !== null ? "wall" : undefined, marks: trail(epOf(i), x.t), line: (withChoice ? randomTake(x) : takeText(x)) + extra };
+    const bd = { code: withChoice ? passOf(i) : [L.take], ...pos(i), time: x.t, V: x.V, agent: x.s2, taken: [x.s, x.a], bump, sound: bump !== null ? "wall" : undefined, marks: trail(epOf(i), x.t), line: (withChoice ? randomTake(x) : takeText(x)) + extra };
+    if (!withChoice) return bd;
+    bd.phases = [{ slow: true, lines: [L.pick], draw: chooseBuild(i) }, { slow: true, lines: [L.take, L.take, L.take], draw: bd }];
+    if (x.done) bd.phases.push({ slow: true, lines: [L.g0], draw: { ...bd, taken: undefined } });
+    return bd;
   }
   const gEq = (x) => `<span class="pt"><i>G</i> ${nw(`← γ<i>G</i> + ${sym("R", x.t + 1)}`)} ${nw(`= 0.9 · ${num(x.prevG)} + ${num(x.r)}`)} ${nw(eqv(x.G))}</span>`;
   // The average of a cell's returns, written out: the return itself while it is the only one.
@@ -81,10 +110,14 @@ import { cookie, NAME, rngFrom, epsGreedy, num, eqv, listAnd, listOr, sym, slide
   // A step of the sweep, before its update: its cell still in the blue part, with G computed.
   function gBuild(i, line) {
     const x = X(i), e = epOf(i);
-    return { ep: x.ep, time: x.t, stage: "after", at: i, V: X(i - 1).V, agent: GOAL, marks: [...trail(e, x.t + 1), ...swept(e, x.t + 1)], line, eq: gEq(x) };
+    return { code: [L.ret], ep: x.ep, time: x.t, stage: "after", at: i, V: X(i - 1).V, agent: GOAL, marks: [...trail(e, x.t + 1), ...swept(e, x.t + 1)], line, eq: gEq(x) };
   }
-  // A step of the sweep, after its update: its cell green when this was its first visit.
-  const stepBuild = (i, line, eq) => ({ ...after(i), line, eq });
+  // A step of the sweep, after its update: its cell green when this was its first visit. In one press, G is computed
+  // (its cell still blue), then averaged in (green); after a press that computed G, the average alone (withG false).
+  const stepBuild = (i, line, eq, more = {}, withG = true) => {
+    const bd = { ...after(i), line, eq, ...more };
+    return withG ? { ...bd, code: [L.ret, L.avg], phases: [{ lines: [L.ret], draw: gBuild(i, "") }, { lines: [L.avg], draw: bd }] } : { ...bd, code: [L.avg] };
+  };
 
   /* Moments of the run */
 
@@ -100,7 +133,7 @@ import { cookie, NAME, rngFrom, epsGreedy, num, eqv, listAnd, listOr, sym, slide
   /* Slides */
 
   const slides = [];
-  slides.push({ title: tr("Monte Carlo prediction on the cookie grid", "Predicción Monte Carlo en la grilla de la galleta"), builds: [{ ep: 1, move: null, at: -1, time: 0, V: Array(9).fill(0), agent: START, line: tr(
+  slides.push({ title: tr("Monte Carlo prediction on the cookie grid", "Predicción Monte Carlo en la grilla de la galleta"), builds: [{ code: [L.init], ep: 1, move: null, at: -1, time: 0, V: Array(9).fill(0), agent: START, line: tr(
     `All estimates start at 0, with the agent at ${sym("S", 0)} = A1.`,
     `Todas las estimaciones parten en 0, con el agente en ${sym("S", 0)} = A1.`) }] });
   slides.push({ title: tr("Move 1", "Movimiento 1"), builds: [
@@ -118,10 +151,14 @@ import { cookie, NAME, rngFrom, epsGreedy, num, eqv, listAnd, listOr, sym, slide
       gBuild(i, tr(`The sweep starts at <i>t</i> = ${x.t}, in ${cellName(x.s)}, with the move into the cookie.`, `El recorrido parte en <i>t</i> = ${x.t}, en ${cellName(x.s)}, con el movimiento hacia la galleta.`)),
       stepBuild(i, tr(
         `${cellName(x.s)} appears nowhere earlier in the episode, so <i>G</i> is its first return, and its estimate becomes the average of its returns, so far just this one.`,
-        `${cellName(x.s)} no aparece antes en el episodio, así que <i>G</i> es su primer retorno, y su estimación pasa a ser el promedio de sus retornos, por ahora solo este.`), vEq(x)),
+        `${cellName(x.s)} no aparece antes en el episodio, así que <i>G</i> es su primer retorno, y su estimación pasa a ser el promedio de sus retornos, por ahora solo este.`), vEq(x), { short: tr(
+        `${cellName(x.s)} appears nowhere earlier in the episode, so <i>G</i> is its first return, and so far its only one.`,
+        `${cellName(x.s)} no aparece antes en el episodio, así que <i>G</i> es su primer retorno, y por ahora el único.`) }, false),
       stepBuild(j, tr(
         `One step back, <i>t</i> = ${y.t}, ${cellName(y.s)}: <i>G</i> ${eqv(y.G)}, its first return, so its estimate is ${num(y.nu)}.`,
-        `Un paso atrás, <i>t</i> = ${y.t}, ${cellName(y.s)}: <i>G</i> ${eqv(y.G)}, su primer retorno, así que su estimación es ${num(y.nu)}.`), upEq(y)),
+        `Un paso atrás, <i>t</i> = ${y.t}, ${cellName(y.s)}: <i>G</i> ${eqv(y.G)}, su primer retorno, así que su estimación es ${num(y.nu)}.`), upEq(y), { short: tr(
+        `<i>t</i> = ${y.t}, ${cellName(y.s)}: <i>G</i> ${eqv(y.G)}, its first return, so its estimate is ${num(y.nu)}.`,
+        `<i>t</i> = ${y.t}, ${cellName(y.s)}: <i>G</i> ${eqv(y.G)}, su primer retorno, así que su estimación es ${num(y.nu)}.`) }),
     ] });
   }
   {
@@ -177,9 +214,9 @@ import { cookie, NAME, rngFrom, epsGreedy, num, eqv, listAnd, listOr, sym, slide
     const route = valuePath(Vf, GAMMA), len = route ? route.length - 1 : 0;
     const band = !route ? "" : tr(` The band follows the estimates from A1, taking in each cell the move with the largest reward plus 0.9 times the next cell's estimate: ${len} moves to the cookie${len === 4 ? ", the shortest route" : ""}.`,
       ` La banda sigue las estimaciones desde A1, tomando en cada celda el movimiento con la mayor recompensa más 0.9 veces la estimación de la celda siguiente: ${len} movimientos hasta la galleta${len === 4 ? ", la ruta más corta" : ""}.`);
-    slides.push({ title: tr(`After ${EPISODES} episodes`, `Después de ${EPISODES} episodios`), builds: [{ ...stepBuild(last, tr(
+    slides.push({ title: tr(`After ${EPISODES} episodes`, `Después de ${EPISODES} episodios`), builds: [stepBuild(last, tr(
       `After ${moves} moves, each estimate is the average of its cell's first-visit returns: ${n(START)} for A1, one from every episode, and ${n(fewest)} for ${cellName(fewest)}, the fewest. They still miss the random policy's true values by up to ${num(gap(c))}, in ${cellName(c)}: ${num(Vf[c])} against ${num(vpi[c])}.`,
-      `Tras ${moves} movimientos, cada estimación es el promedio de los retornos first-visit de su celda: ${n(START)} para A1, uno de cada episodio, y ${n(fewest)} para ${cellName(fewest)}, la que menos tiene. Todavía se alejan de los valores verdaderos de la política al azar hasta en ${num(gap(c))}, en ${cellName(c)}: ${num(Vf[c])} contra ${num(vpi[c])}.`) + band), eq: null, marks: [], route }] });
+      `Tras ${moves} movimientos, cada estimación es el promedio de los retornos first-visit de su celda: ${n(START)} para A1, uno de cada episodio, y ${n(fewest)} para ${cellName(fewest)}, la que menos tiene. Todavía se alejan de los valores verdaderos de la política al azar hasta en ${num(gap(c))}, en ${cellName(c)}: ${num(Vf[c])} contra ${num(vpi[c])}.`) + band, null, { marks: [], route })] });
   }
   // How far each slide jumps ahead of the one before it: the moves it skips, or the steps of a sweep.
   for (let i = 1; i < slides.length; i++) {
@@ -197,7 +234,7 @@ import { cookie, NAME, rngFrom, epsGreedy, num, eqv, listAnd, listOr, sym, slide
     slides[i].skip = { from, to, moves: gap, text, note };
   }
 
-  slideshow({ svg: document.getElementById("fig-pred"), slides, frame: (m) => ({ ...after(m), bumpPose: shake(X(m), m) }), world: cookie, perCell: true });
+  slideshow({ svg: document.getElementById("fig-pred"), slides, code: CODE, frame: (m) => ({ ...after(m), code: passOf(m), bumpPose: shake(X(m), m) }), world: cookie, perCell: true });
 }
 
 /* ---------- Section 4: on-policy first-visit Monte Carlo control on the cookie grid ---------- */
@@ -261,21 +298,53 @@ function route(Q) {
   return null;
 }
 
+/* ---------- The pseudocode beside the grid, as the note's list of steps writes it ---------- */
+
+const St = sym("S", "<i>t</i>"), At = sym("A", "<i>t</i>"), Rt1 = sym("R", "<i>t</i>+1"), St1 = sym("S", "<i>t</i>+1");
+const L = { init: 0, pick: 3, take: 4, g0: 5, ret: 7, avg: 9, pol: 10 };
+const CODE = {
+  title: tr("On-policy first-visit Monte Carlo control", "Control Monte Carlo first-visit on-policy"),
+  lines: [
+    { kind: "plain", html: tr(`<i>Q</i>(<i>s</i>, <i>a</i>) ← 0 and no returns, for every pair; <span class="nowrap">π ε-greedy</span> with respect to <i>Q</i>`, `<i>Q</i>(<i>s</i>, <i>a</i>) ← 0 y ningún retorno, para cada par; <span class="nowrap">π ε-greedy</span> con respecto a <i>Q</i>`) },
+    { head: true, html: tr("Repeat, for each episode:", "Repetir, en cada episodio:") },
+    { head: true, ind: 1, html: tr(`For <i>t</i> = 0, 1, … until the cookie:`, `Para <i>t</i> = 0, 1, … hasta la galleta:`) },
+    { kind: "pick", ind: 2, html: tr(`${At} ← the move π <span class="nowrap">picks in ${St}</span>`, `${At} ← el movimiento que π <span class="nowrap">elige en ${St}</span>`) },
+    { kind: "take", ind: 2, html: tr(`Take ${At}; observe <span class="nowrap">${Rt1}, ${St1}</span>`, `Tomar ${At}; observar <span class="nowrap">${Rt1}, ${St1}</span>`) },
+    { kind: "plain", ind: 1, html: `<i>G</i> ← 0` },
+    { head: true, ind: 1, html: tr(`For <i>t</i> = <i>T</i> − 1, <i>T</i> − 2, …, 0:`, `Para <i>t</i> = <i>T</i> − 1, <i>T</i> − 2, …, 0:`) },
+    { kind: "target", ind: 2, html: `<span class="nowrap"><span class="pt"><i>G</i> ← γ<i>G</i> + ${Rt1}</span></span>` },
+    { head: true, ind: 2, html: tr(`If the pair ${St}, ${At} does not appear earlier in the episode:`, `Si el par ${St}, ${At} no aparece antes en el episodio:`) },
+    { kind: "update", ind: 3, html: tr(`Add <i>G</i> to its returns; <span class="nowrap"><span class="upd"><i>Q</i>(${St}, ${At})</span> ← their average</span>`, `Agregar <i>G</i> a sus retornos; <span class="nowrap"><span class="upd"><i>Q</i>(${St}, ${At})</span> ← su promedio</span>`) },
+    { kind: "update", ind: 3, html: tr(`Make <span class="nowrap">π ε-greedy</span> in ${St} with respect to <i>Q</i>`, `Hacer <span class="nowrap">π ε-greedy</span> en ${St} con respecto a <i>Q</i>`) },
+  ],
+};
+// The lines one pass of event i plays, for the frames of a skip: a move (with G ← 0 when it ends the episode), or a step
+// of the sweep (G, then, at a first visit, the average and the policy).
+const passOf = (i) => { const x = X(i); return x.kind === "move" ? [L.pick, L.take, ...(x.done ? [L.g0] : [])] : x.first ? [L.ret, L.avg, L.pol] : [L.ret]; };
+
 /* ---------- Builds: one line of the algorithm per press ---------- */
 
 const pos = (i) => ({ ep: X(i).ep, move: X(i).t + 1, at: i });
 // Choose A: the move turns yellow before the agent moves, from the table as it stood when the episode began.
 function chooseBuild(i, lead, extra = "") {
   const x = X(i);
-  return { ...pos(i), time: x.t, Q: x.Q, agent: x.s, jump: x.t === 0, pick: [x.s, x.a], marks: trail(epOf(i), x.t), line: `${lead} ${reason(x.Q[x.s], x.explored, x.s, x.a, x.t)}${extra}` };
+  return { code: [L.pick], ...pos(i), time: x.t, Q: x.Q, agent: x.s, jump: x.t === 0, pick: [x.s, x.a], marks: trail(epOf(i), x.t), line: `${lead} ${reason(x.Q[x.s], x.explored, x.s, x.a, x.t)}${extra}` };
 }
 // Take A: the agent moves along the yellow move; no value changes.
 function takeBuild(i, extra = "") {
   const x = X(i), bump = x.s2 === x.s ? x.a : null;
-  return { ...pos(i), time: x.t, Q: x.Q, agent: x.s2, taken: [x.s, x.a], bump, sound: bump !== null ? "wall" : undefined, marks: trail(epOf(i), x.t), line: takeText(x) + extra };
+  return { code: [L.take], ...pos(i), time: x.t, Q: x.Q, agent: x.s2, taken: [x.s, x.a], bump, sound: bump !== null ? "wall" : undefined, marks: trail(epOf(i), x.t), line: takeText(x) + extra };
 }
-// Choose and take in one press, for the moves of episode 1 after the second.
-const moveBuild = (i, extra = "") => { const x = X(i); return { ...takeBuild(i), line: chooseTakeText(x.Q[x.s], x.explored, x) + extra }; };
+// Choose and take in one press, for the moves of episode 1 after the second: its phases the pick in yellow, then the
+// move, whose line stays lit for three of the engine's line times, so that the agent's glide, a nudge at a wall and the
+// cookie eaten play out before the press's last drawing, which has no animation; a move into the cookie then lights
+// G ← 0.
+const moveBuild = (i, extra = "") => {
+  const x = X(i), bd = { ...takeBuild(i), code: passOf(i), line: chooseTakeText(x.Q[x.s], x.explored, x) + extra };
+  bd.phases = [{ slow: true, lines: [L.pick], draw: chooseBuild(i, "") }, { slow: true, lines: [L.take, L.take, L.take], draw: bd }];
+  if (x.done) bd.phases.push({ slow: true, lines: [L.g0], draw: { ...bd, taken: undefined } });
+  return bd;
+};
 const gEq = (x) => `<span class="pt"><i>G</i> <span class="nowrap">← γ<i>G</i> + ${sym("R", x.t + 1)}</span> <span class="nowrap">= 0.9 · ${num(x.prevG)} + ${num(x.r)}</span> <span class="nowrap">${eqv(x.G)}</span></span>`;
 const qEq = (x) => `<span class="upd"><i>Q</i>(${sym("S", x.t)}, ${sym("A", x.t)})</span> <span class="nowrap">← ${num(x.old)} + [<span class="pt">${num(x.G)}</span> − ${num(x.old)}]/${x.n}</span> <span class="nowrap">${eqv(x.nu)}</span>`;
 // A step of the sweep that updates its pair with a first return: the value, in green, takes G as it is computed, in red.
@@ -284,10 +353,14 @@ const upEq = (x) => (x.n > 1 ? qEq(x)
 // A step of the sweep, before its update: its move still in the blue part, with G computed.
 function gBuild(i, line) {
   const x = X(i), e = epOf(i);
-  return { ep: x.ep, time: x.t, stage: "after", at: i, Q: X(i - 1).Q, agent: GOAL, marks: [...trail(e, x.t + 1), ...swept(e, x.t + 1)], line, eq: gEq(x) };
+  return { code: [L.ret], ep: x.ep, time: x.t, stage: "after", at: i, Q: X(i - 1).Q, agent: GOAL, marks: [...trail(e, x.t + 1), ...swept(e, x.t + 1)], line, eq: gEq(x) };
 }
-// A step of the sweep, after its update: its pair green when this was its first visit.
-const stepBuild = (i, line, eq) => ({ ...after(i), line, eq });
+// A step of the sweep, after its update: its pair green when this was its first visit. In one press, G is computed
+// (its move still blue), then averaged in (green), and the best move of its cell, in bold, is the policy's greedy one.
+const stepBuild = (i, line, eq, more = {}) => {
+  const bd = { ...after(i), line, eq, ...more };
+  return { ...bd, code: [L.ret, L.avg, L.pol], phases: [{ lines: [L.ret], draw: gBuild(i, "") }, { lines: [L.avg], draw: { ...bd, route: undefined, bestQ: X(i - 1).Q } }, { lines: [L.pol], draw: bd }] };
+};
 
 /* ---------- Moments of the run ---------- */
 
@@ -303,15 +376,16 @@ const sc = X(shortcut), scFirstMove = find(sc.ep, "move", 0);
 /* ---------- Slides ---------- */
 
 const slides = [];
-slides.push({ title: tr("Monte Carlo control on the cookie grid", "Control Monte Carlo en la grilla de la galleta"), builds: [{ ep: 1, move: null, at: -1, time: 0, Q: freshQ(), agent: START, line: tr(
+slides.push({ title: tr("Monte Carlo control on the cookie grid", "Control Monte Carlo en la grilla de la galleta"), builds: [{ code: [L.init], ep: 1, move: null, at: -1, time: 0, Q: freshQ(), agent: START, line: tr(
   `All values start at 0. The agent stands at ${sym("S", 0)} = A1.`,
   `Todos los valores parten en 0. El agente está en ${sym("S", 0)} = A1.`) }] });
 slides.push({ title: tr("Move 1", "Movimiento 1"), builds: [
-  chooseBuild(0, tr("The agent chooses its first move.", "El agente elige su primer movimiento.")),
+  { ...chooseBuild(0, tr("The agent chooses its first move.", "El agente elige su primer movimiento.")), short: reason(X(0).Q[X(0).s], X(0).explored, X(0).s, X(0).a, X(0).t) },
   takeBuild(0),
 ] });
 slides.push({ title: tr("Move 2", "Movimiento 2"), builds: [
-  chooseBuild(1, tr("It chooses its next move from the same table.", "Elige su siguiente movimiento con la misma tabla.")),
+  { ...chooseBuild(1, tr("It chooses its next move from the same table.", "Elige su siguiente movimiento con la misma tabla.")), short: tr(
+    "It chooses its next move from the same table as its first.", "Elige su siguiente movimiento con la misma tabla que el primero.") + " " + reason(X(1).Q[X(1).s], X(1).explored, X(1).s, X(1).a, X(1).t) },
   takeBuild(1),
 ] });
 // The other moves of episode 1, one slide each, choosing and taking in one press.
@@ -327,7 +401,9 @@ slides.push({ title: tr("Episode 1 ends", "Termina el episodio 1"), builds: [mov
       `El recorrido parte en <i>t</i> = ${x.t}, con el movimiento hacia la galleta, ${moveName(x.s, x.a)}: su primer retorno, <i>G</i> = 1, entra en su promedio, calculado sobre la marcha.`), qEq(x)),
     stepBuild(j, tr(
       `One step back, <i>t</i> = ${y.t}, ${moveName(y.s, y.a)}: <i>G</i> ${eqv(y.G)}, its first return, so its value is ${num(y.nu)}.`,
-      `Un paso atrás, <i>t</i> = ${y.t}, ${moveName(y.s, y.a)}: <i>G</i> ${eqv(y.G)}, su primer retorno, así que su valor es ${num(y.nu)}.`), upEq(y)),
+      `Un paso atrás, <i>t</i> = ${y.t}, ${moveName(y.s, y.a)}: <i>G</i> ${eqv(y.G)}, su primer retorno, así que su valor es ${num(y.nu)}.`), upEq(y), { short: tr(
+      `<i>t</i> = ${y.t}, ${moveName(y.s, y.a)}: <i>G</i> ${eqv(y.G)}, its first return, so its value is ${num(y.nu)}.`,
+      `<i>t</i> = ${y.t}, ${moveName(y.s, y.a)}: <i>G</i> ${eqv(y.G)}, su primer retorno, así que su valor es ${num(y.nu)}.`) }),
   ] });
 }
 {
@@ -353,24 +429,25 @@ slides.push({ title: tr("Episode 1 ends", "Termina el episodio 1"), builds: [mov
   for (let t = X(firstVisit).t - 1; t > 0; t--) { const k = find(1, "sweep", t), y = X(k); rest.push(stepBuild(k, tr(
     `<i>t</i> = ${y.t}, ${moveName(y.s, y.a)}: <i>G</i> ${eqv(y.G)}, its first return.`,
     `<i>t</i> = ${y.t}, ${moveName(y.s, y.a)}: <i>G</i> ${eqv(y.G)}, su primer retorno.`), upEq(y))); }
-  slides.push({ title: tr("The loop is cut", "Se corta el bucle"), builds: [...rest, { ...stepBuild(i, tr(
+  slides.push({ title: tr("The loop is cut", "Se corta el bucle"), builds: [...rest, stepBuild(i, tr(
     `The sweep reaches <i>t</i> = 0, and each move of the episode holds its return. In ${cellName(c)}, ${NAME[best]} (${num(Q[c][best])}) beats ${listAnd(vs)}, so the best moves cut out the loop and reach the cookie from A1 in ${p.length - 1} moves.`,
-    `El recorrido llega a <i>t</i> = 0, y cada movimiento del episodio tiene su retorno. En ${cellName(c)}, ${NAME[best]} (${num(Q[c][best])}) le gana a ${listAnd(vs)}, así que los mejores movimientos cortan el bucle y llegan a la galleta desde A1 en ${p.length - 1} movimientos.`), upEq(X(i))), route: p }] });
+    `El recorrido llega a <i>t</i> = 0, y cada movimiento del episodio tiene su retorno. En ${cellName(c)}, ${NAME[best]} (${num(Q[c][best])}) le gana a ${listAnd(vs)}, así que los mejores movimientos cortan el bucle y llegan a la galleta desde A1 en ${p.length - 1} movimientos.`), upEq(X(i)), { route: p })] });
 }
 {
   const m = X(scFirstMove), before = m.Q[m.s], best = before.indexOf(Math.max(...before));
-  slides.push({ title: tr("A random first move", "Un primer movimiento al azar"), builds: [
-    chooseBuild(scFirstMove, tr("The agent chooses its first move.", "El agente elige su primer movimiento."), tr(
+  const firstExtra = tr(
       ` ${NAME[m.a][0].toUpperCase() + NAME[m.a].slice(1)} has never been tried in ${cellName(m.s)}: at 0, it looks worse than ${NAME[best]}, ${num(before[best])}, so only a random move can try it.`,
-      ` ${NAME[m.a][0].toUpperCase() + NAME[m.a].slice(1)} nunca se ha probado en ${cellName(m.s)}: con 0, parece peor que ${NAME[best]}, ${num(before[best])}, así que solo un movimiento al azar puede probarlo.`)),
+      ` ${NAME[m.a][0].toUpperCase() + NAME[m.a].slice(1)} nunca se ha probado en ${cellName(m.s)}: con 0, parece peor que ${NAME[best]}, ${num(before[best])}, así que solo un movimiento al azar puede probarlo.`);
+  slides.push({ title: tr("A random first move", "Un primer movimiento al azar"), builds: [
+    { ...chooseBuild(scFirstMove, tr("The agent chooses its first move.", "El agente elige su primer movimiento."), firstExtra), short: reason(m.Q[m.s], m.explored, m.s, m.a, m.t) + firstExtra },
     takeBuild(scFirstMove),
   ] });
 }
 {
   const up = sc.Q[sc.s][UP], other = sc.a === RIGHT ? UP : RIGHT;
-  slides.push({ title: tr("A shortcut", "Un atajo"), builds: [{ ...stepBuild(shortcut, tr(
+  slides.push({ title: tr("A shortcut", "Un atajo"), builds: [stepBuild(shortcut, tr(
     `The sweep reaches <i>t</i> = 0: <i>G</i> ${eqv(sc.G)} is the first return of ${moveName(sc.s, sc.a)}, above ${NAME[other]}'s average, ${num(sc.Q[sc.s][other])}, which holds the long route's returns. The best move in ${cellName(sc.s)} becomes ${NAME[sc.a]}, and the best moves reach the cookie in 4 moves, the shortest route. They keep it to the end.`,
-    `El recorrido llega a <i>t</i> = 0: <i>G</i> ${eqv(sc.G)} es el primer retorno de ${moveName(sc.s, sc.a)}, más que el promedio de ${NAME[other]}, ${num(sc.Q[sc.s][other])}, que guarda los retornos de la ruta larga. El mejor movimiento en ${cellName(sc.s)} pasa a ser ${NAME[sc.a]}, y los mejores movimientos llegan a la galleta en 4 movimientos, la ruta más corta. Ahí se quedan hasta el final.`), qEq(sc)), route: route(sc.Q) }] });
+    `El recorrido llega a <i>t</i> = 0: <i>G</i> ${eqv(sc.G)} es el primer retorno de ${moveName(sc.s, sc.a)}, más que el promedio de ${NAME[other]}, ${num(sc.Q[sc.s][other])}, que guarda los retornos de la ruta larga. El mejor movimiento en ${cellName(sc.s)} pasa a ser ${NAME[sc.a]}, y los mejores movimientos llegan a la galleta en 4 movimientos, la ruta más corta. Ahí se quedan hasta el final.`), qEq(sc), { route: route(sc.Q) })] });
 }
 {
   const Q = X(last).Q, p = route(Q), n = p.length - 1, vals = p.slice(0, -1).map((s) => num(Math.max(...Q[s]))).join(", ");
@@ -378,9 +455,9 @@ slides.push({ title: tr("Episode 1 ends", "Termina el episodio 1"), builds: [mov
   const shortest = p.slice(0, -1).map((_, j) => num(GAMMA ** (n - 1 - j))).join(", ");
   const a1 = Q[START], off = a1.indexOf(Math.max(...a1)) === RIGHT ? UP : RIGHT;
   const never = [...Array(9).keys()].filter((s) => s !== GOAL && Q[s].every((v) => v === 0)).map(cellName);
-  slides.push({ title: tr(`After ${EPISODES} episodes`, `Después de ${EPISODES} episodios`), builds: [{ ...stepBuild(last, tr(
+  slides.push({ title: tr(`After ${EPISODES} episodes`, `Después de ${EPISODES} episodios`), builds: [stepBuild(last, tr(
     `Along the route the values are ${vals}, a little below the shortest trip's returns, ${shortest}, where early trips and exploring moves are still in the averages. ${NAME[off][0].toUpperCase() + NAME[off].slice(1)} in A1 keeps ${num(a1[off])} from the long route.${never.length ? ` The agent never visited ${listOr(never)}, so their moves have no values.` : ""}`,
-    `A lo largo de la ruta, los valores son ${vals}, un poco por debajo de los retornos del viaje más corto, ${shortest}, donde los viajes del principio y los movimientos de exploración siguen en los promedios. ${NAME[off][0].toUpperCase() + NAME[off].slice(1)} en A1 conserva ${num(a1[off])} de la ruta larga.${never.length ? ` El agente nunca visitó ${listOr(never)}, así que sus movimientos no tienen valores.` : ""}`)), route: p }] });
+    `A lo largo de la ruta, los valores son ${vals}, un poco por debajo de los retornos del viaje más corto, ${shortest}, donde los viajes del principio y los movimientos de exploración siguen en los promedios. ${NAME[off][0].toUpperCase() + NAME[off].slice(1)} en A1 conserva ${num(a1[off])} de la ruta larga.${never.length ? ` El agente nunca visitó ${listOr(never)}, así que sus movimientos no tienen valores.` : ""}`), undefined, { route: p })] });
 }
 // How far each slide jumps ahead of the one before it: the moves it skips, or the steps of a sweep.
 for (let i = 1; i < slides.length; i++) {
@@ -398,4 +475,4 @@ for (let i = 1; i < slides.length; i++) {
   slides[i].skip = { from, to, moves: gap, text, note };
 }
 
-slideshow({ svg: document.getElementById("fig-mc"), slides, frame: (m) => ({ ...after(m), bumpPose: shake(X(m), m) }), world: cookie });
+slideshow({ svg: document.getElementById("fig-mc"), slides, code: CODE, frame: (m) => ({ ...after(m), code: passOf(m), bumpPose: shake(X(m), m) }), world: cookie });

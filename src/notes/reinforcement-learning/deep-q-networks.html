@@ -10,7 +10,12 @@ scripts:
 ---
 <div class="prose">
   <p>Every agent of the earlier notes was handed its state: a cell of a grid, or the cart-pole's angle and swing, features someone chose. The paper this note follows, by Mnih and six colleagues at DeepMind (2013), gives an agent only what a person at the console has: the screen of an Atari 2600 game, the score, the signal that the game is over, and the controls. With the same network and the same way of learning for every game, it learned to play seven games, played better than every earlier method on six of them, and better than an expert human on three.</p>
-  <p>The figures follow the paper on a game of this note's own, small enough to watch every step of its learning. On a screen of 8 by 6 pixels, a ball bounces off the top, bottom and left walls, and the agent moves a paddle on the right edge up or down, or keeps it still, to hit the ball back. A hit is worth 1 point, and a miss costs 1 and ends the game. Section 1 gives the rest of the rules.</p>
+  <p>The figures follow the paper on a game of this note's own, small enough to watch every step of its learning:</p>
+  <ul>
+    <li>on a screen of 8 by 6 pixels, a ball bounces off the top, bottom and left walls;</li>
+    <li>the agent moves a paddle on the right edge up or down, or keeps it still, to hit the ball back;</li>
+    <li>a hit is worth 1 point, and a miss costs 1 and ends the game. Section 1 gives the rest of the rules.</li>
+  </ul>
   <p>Networks with many layers, deep learning, had learned to recognize images from many examples, each labeled with its answer and independent of the others. A game offers neither, and the paper names three obstacles:</p>
   <ul class="asks">
     <li>
@@ -26,16 +31,27 @@ scripts:
       <p>How it plays decides what it sees</p>
     </li>
   </ul>
-  <p>The score changes only when the ball reaches the paddle, a few screens after the move that put the paddle there, and nothing says which move earned it. One screen differs from the next by a pixel or two, so screens taken in order teach nearly the same thing many times. And what the agent sees depends on how it plays: a paddle kept near the top fills its experience with screens of the paddle near the top, and the mix shifts whenever its play does. The paper meets the first obstacle with Q-learning, whose targets carry each reward back to the moves before it, and the other two with a memory of its own play, from which it learns in random order.</p>
+  <ol>
+    <li>The score changes only when the ball reaches the paddle, a few screens after the move that put the paddle there, and nothing says which move earned it.</li>
+    <li>One screen differs from the next by a pixel or two, so screens taken in order teach nearly the same thing many times.</li>
+    <li>What the agent sees depends on how it plays: a paddle kept near the top fills its experience with screens of the paddle near the top, and the mix shifts whenever its play does.</li>
+  </ol>
+  <p><mark class="hl-key">The paper meets the first obstacle with Q-learning and the other two with a memory of its own play.</mark> Q-learning's targets carry each reward back to the moves before it, and the agent learns from the memory in random order.</p>
   <p class="legend">Throughout this page, <span class="bar" aria-hidden="true"></span>the network's estimates are drawn in blue ink, and <span class="dot" aria-hidden="true"></span>what they aim for, the target of an update or the exact value of a move, in red ink. The move just chosen is yellow.</p>
 </div>
 
 <section id="screen">
   <div class="prose">
     <h2><span class="n">1</span>Values from the screen</h2>
-    <p>The paper's agent plays through an emulator of the console, ℰ. At each time step <i>t</i> it picks an action <i>a</i><sub><i>t</i></sub> from <span class="nowrap">𝒜 = {1, …, <i>K</i>}</span>, here <span class="nowrap"><i>K</i> = 3</span>: up, stay and down; it sees an image <span class="nowrap"><i>x</i><sub><i>t</i></sub> ∈ ℝ<sup><i>d</i></sup></span>, the pixels of the screen (here <span class="nowrap"><i>d</i> = 48</span>, each 0 or 1); and it receives a reward <i>r</i><sub><i>t</i></sub>, the change in the score.</p>
-    <p>Within a step the paddle moves first, then the ball, then the check: when the ball arrives beside the paddle's column, it is hit if the paddle covers its row, and turns back, or else missed. Each episode starts with a serve from the left wall, on any of the 6 rows, rising or falling, so there are 12 serves, with the paddle on rows 2 and 3. A rally that reaches 10 hits is cut there: the cut is this game's own rule, not an ending, and the agent learns as if play went on.</p>
-    <p>One screen does not show the whole situation: a ball beside the paddle may be rising or falling, and the move that hits it depends on which. The paper calls such states perceptually aliased, different situations that one screen shows alike, and takes as the state the whole sequence of screens and actions so far,</p>
+    <p>The paper's agent plays through an emulator of the console, ℰ. At each time step <i>t</i> it picks an action <i>a</i><sub><i>t</i></sub> from <span class="nowrap">𝒜 = {1, …, <i>K</i>}</span>, here <span class="nowrap"><i>K</i> = 3</span>: up, stay and down; it sees an image <span class="nowrap"><i>x</i><sub><i>t</i></sub> ∈ ℝ<sup><i>d</i></sup></span>, the pixels of the screen (here <span class="nowrap"><i>d</i> = 48</span>, each 0 or 1); and it receives a reward <i>r</i><sub><i>t</i></sub>, the change in the score. The rest of this note's game:</p>
+    <ul>
+      <li>Within a step the paddle moves first, then the ball, then the check: when the ball arrives beside the paddle's column, it is hit if the paddle covers its row, and turns back, or else missed.</li>
+      <li>Each episode starts with a serve from the left wall, on any of the 6 rows, rising or falling, so there are 12 serves, with the paddle on rows 2 and 3.</li>
+      <li>A rally that reaches 10 hits is cut there: the cut is this game's own rule, not an ending, and the agent learns as if play went on.</li>
+    </ul>
+    <p>One screen does not show the whole situation: a ball beside the paddle may be rising or falling, and the move that hits it depends on which.</p>
+    <div class="hl-def"><p><dfn>Perceptually aliased</dfn> states, in the paper's words: different situations that one screen shows alike.</p></div>
+    <p>So the paper takes as the state the whole sequence of screens and actions so far,</p>
     <div class="disp"><i>s</i><sub><i>t</i></sub> <span class="nowrap">= <i>x</i><sub>1</sub>, <i>a</i><sub>1</sub>, <i>x</i><sub>2</sub>, …,</span> <span class="nowrap"><i>a</i><sub><i>t</i>−1</sub>, <i>x</i><sub><i>t</i></sub></span></div>
     <p>A state should hold everything that decides what happens next, given the move, and the sequence does. In the paper's games every episode ends, so there are finitely many sequences, each a state of its own: a large but finite problem, to which the earlier notes' methods apply.</p>
     <p>A network needs an input of fixed length, while a sequence grows, so the paper feeds it φ(<i>s</i><sub><i>t</i></sub>), the last four screens, each shrunk to a gray image of 84 × 84 pixels. In this note's game the ball moves one pixel diagonally per step, in a straight line between bounces, so two screens already show where it is going, as the swing told which way the pole moved in the <a href="/notes/reinforcement-learning/control-with-approximation/#pushes">control note</a>:</p>
@@ -45,16 +61,50 @@ scripts:
     <div class="disp"><i>R</i><sub><i>t</i></sub> <span class="nowrap">= Σ<span class="lims"><span><i>T</i></span><span><i>t</i>′=<i>t</i></span></span>γ<sup><i>t</i>′−<i>t</i></sup><i>r</i><sub><i>t</i>′</sub></span></div>
     <p>and the value of an action is the largest expected return after it, over all ways of playing on,</p>
     <div class="disp"><i>Q</i><sup>*</sup>(<i>s</i>, <i>a</i>) <span class="nowrap">= max<sub>π</sub> E[<i>R</i><sub><i>t</i></sub> | <i>s</i><sub><i>t</i></sub> = <i>s</i>,</span> <span class="nowrap"><i>a</i><sub><i>t</i></sub> = <i>a</i>, π]</span></div>
-    <p>For this game the page can compute <i>Q</i><sup>*</sup> exactly, by the value iteration of the <a href="/notes/reinforcement-learning/model-based/#models">model-based note</a>, over the game's true state: where the ball is, which way it moves, and where the paddle is, 552 situations in all. The agent can do nothing of the kind: it knows neither the rules nor the state, only screens. Two screens give the true state everywhere but at the serve, where both are the same screen. Since the cut is not an ending, these are the values of a rally that never ends. One step before a hit the value is <span class="nowrap">1 + 0.9<sup>12</sup> + 0.9<sup>24</sup> + ⋯</span> <span class="nowrap">= 1/(1 − 0.9<sup>12</sup>) ≈ 1.39</span>, with a hit every 12 steps from then on; just after a hit the next one is 12 steps away, so the value is <span class="nowrap">0.9<sup>11</sup> × 1.39 ≈ 0.44</span>, and it grows by a factor of 1/0.9 at every step until the next hit; at a serve it is <span class="nowrap">0.9<sup>5</sup> × 1.39 ≈ 0.82</span>. When a miss is certain <i>k</i> steps ahead, the value is <span class="nowrap">−0.9<sup><i>k</i>−1</sup></span>: −1 one step before it, −0.9 two steps before, −0.81 three.</p>
+    <p>For this game the page can compute <i>Q</i><sup>*</sup> exactly, by the value iteration of the <a href="/notes/reinforcement-learning/model-based/#models">model-based note</a>, over the game's true state: where the ball is, which way it moves, and where the paddle is, 552 situations in all. The agent can do nothing of the kind: it knows neither the rules nor the state, only screens. Two screens give the true state everywhere but at the serve, where both are the same screen. Since the cut is not an ending, these are the values of a rally that never ends:</p>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col">Where the rally is</th><th scope="col">Exact value</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">One step before a hit, with a hit every 12 steps from then on</th><td><span class="nowrap">1 + 0.9<sup>12</sup> + 0.9<sup>24</sup> + ⋯</span> <span class="nowrap">= 1/(1 − 0.9<sup>12</sup>) ≈ 1.39</span></td></tr>
+          <tr><th scope="row">Just after a hit, the next one 12 steps away</th><td><span class="nowrap">0.9<sup>11</sup> × 1.39 ≈ 0.44</span>, growing by a factor of 1/0.9 at every step until the next hit</td></tr>
+          <tr><th scope="row">At a serve</th><td><span class="nowrap">0.9<sup>5</sup> × 1.39 ≈ 0.82</span></td></tr>
+          <tr><th scope="row">A miss certain <i>k</i> steps ahead</th><td><span class="nowrap">−0.9<sup><i>k</i>−1</sup></span>: −1 one step before it, −0.9 two steps before, −0.81 three</td></tr>
+        </tbody>
+      </table>
+    </div>
     <p>With a value for each sequence, or even for each pair of screens, the agent would learn nothing about a screen it had not seen. This game's pairs of screens are few enough for a table, 1,336 can occur, but an Atari game's are not, so the paper estimates <i>Q</i><sup>*</sup> with weights θ, as the approximation notes estimated values with weights:</p>
     <div class="disp hero-f"><i>Q</i>(<i>s</i>, <i>a</i>; θ) <span class="nowrap">≈ <i>Q</i><sup>*</sup>(<i>s</i>, <i>a</i>)</span></div>
-    <p>Those notes' estimates were linear in features someone chose. A linear estimate with the pixels as its features fails at this game: trained as below, none of 16 agents ever hit the ball ten times from every serve, at any of four step sizes from 0.01 to 0.3. Each lit pixel adds its own weight, so the estimate cannot say that moving up is good when the ball is above the paddle and bad when it is below, wherever the two are; the control note built such combinations by hand, a feature for each situation and push. A network learns them from the pixels.</p>
-    <p>A network is built in layers, each multiplying what it receives by a table of weights and passing the result through a fixed function (the network of the <a href="/notes/natural-language-processing/word2vec/#model">word2vec note</a>). Here the function is the rectifier, max(0, <i>z</i>), which keeps a positive number and turns a negative one into 0. The figures' network has two layers: 96 inputs, the pixels of the two screens; 32 rectifier units, its hidden layer; and 3 outputs, one value for each move:</p>
+    <p>A linear estimate like those notes' fails on the pixels at this game: trained as below, none of 16 agents ever hit the ball ten times from every serve, at any of four step sizes from 0.01 to 0.3. <mark class="hl-key">Each lit pixel adds its own weight, so the estimate cannot say that moving up is good when the ball is above the paddle and bad when it is below, wherever the two are.</mark> The control note built such combinations by hand, a feature for each situation and push; a network learns them from the pixels.</p>
+    <p>A network is built in layers, each multiplying what it receives by a table of weights and passing the result through a fixed function (the network of the <a href="/notes/natural-language-processing/word2vec/#model">word2vec note</a>). The figures' network has two layers:</p>
+    <ul>
+      <li>96 inputs, the pixels of the two screens;</li>
+      <li>32 rectifier units, its hidden layer, where the function is the rectifier, max(0, <i>z</i>), which keeps a positive number and turns a negative one into 0;</li>
+      <li>and 3 outputs, one value for each move:</li>
+    </ul>
     <div class="disp hero-f"><i>Q</i>(φ, ·; θ) <span class="nowrap">= <i>W</i><sub>2</sub> max(0, <i>W</i><sub>1</sub>φ)</span></div>
     <p>with a 1 in front of φ and in front of the hidden layer, so that the first column of <i>W</i><sub>1</sub> and of <i>W</i><sub>2</sub> holds the biases, as in the <a href="/notes/natural-language-processing/word-vectors/#pooling">word vectors note</a>; θ is <i>W</i><sub>1</sub> (32 × 97) and <i>W</i><sub>2</sub> (3 × 33), 3,203 weights. The network reads φ(<i>s</i>), so the paper's <i>Q</i>(<i>s</i>, <i>a</i>; θ) is computed as <i>Q</i>(φ(<i>s</i>), <i>a</i>; θ).</p>
-    <p>One output per move is the paper's choice: earlier networks took the action as an input beside the history and needed a pass for each action, as the control note's <span class="hat lo"><i>q</i></span>(<i>s</i>, <i>a</i>, <b class="vec">w</b>) needed a product for each push; this one gives every move's value in one pass. The paper's own network begins with two convolutional layers, which slide one small set of weights over the whole image so that a pattern is found wherever it appears (section 3's table gives its sizes); this game's screen is small enough for a layer that joins every pixel to every unit.</p>
-    <p>In the earlier notes' notation, θ is the <b class="vec">w</b> of the <a href="/notes/reinforcement-learning/prediction-with-approximation/#weights">approximation notes</a>, <i>Q</i>(<i>s</i>, <i>a</i>; θ) their <span class="hat lo"><i>q</i></span>(<i>s</i>, <i>a</i>, <b class="vec">w</b>) and <i>Q</i><sup>*</sup> the <i>q</i><sub>*</sub> of the Q-learning note; <i>r</i><sub><i>t</i></sub> is the reward that follows <i>a</i><sub><i>t</i></sub>, which they write <i>R</i><sub><i>t</i>+1</sub>, so the return <i>R</i><sub><i>t</i></sub> is their <i>G</i><sub><i>t</i></sub>.</p>
-    <p>The figure shows the network that section 3's run trains. Drag the ball: where you drop it is where it is now, on the later of the two screens, and the way you moved it sets where it was a step before, drawn faint. The paddle stays on rows 2 and 3. The bars are the network's values of the three moves for these two screens, and the small blue arrow beside the paddle points to the move worth most. The short red line across each bar is that move's exact value, from the game's rules, which the network never sees; from section 2 on, red also marks a target, which the network computes itself. Where a move decides a hit, the network's best move is one that hits, and its value is near its red line; the values of moves the agent seldom makes in a situation stay rough, since only its random moves teach them. One screen shows the values of a network that sees only the later screen.</p>
+    <div class="hl-vs"><div><p><span class="hl-run">The paper</span>Its network begins with two convolutional layers, which slide one small set of weights over the whole image so that a pattern is found wherever it appears (section 3's table gives its sizes).</p></div><div class="ours"><p><span class="hl-run">In the rally</span>The screen is small enough for a layer that joins every pixel to every unit.</p></div></div>
+    <p>One output per move is the paper's choice: earlier networks took the action as an input beside the history and needed a pass for each action, as the control note's <span class="hat lo"><i>q</i></span>(<i>s</i>, <i>a</i>, <b class="vec">w</b>) needed a product for each push; this one gives every move's value in one pass. In the earlier notes' notation:</p>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col">The paper</th><th scope="col">The earlier notes</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">θ</th><td>the <b class="vec">w</b> of the <a href="/notes/reinforcement-learning/prediction-with-approximation/#weights">approximation notes</a></td></tr>
+          <tr><th scope="row"><i>Q</i>(<i>s</i>, <i>a</i>; θ)</th><td>their <span class="hat lo"><i>q</i></span>(<i>s</i>, <i>a</i>, <b class="vec">w</b>)</td></tr>
+          <tr><th scope="row"><i>Q</i><sup>*</sup></th><td>the <i>q</i><sub>*</sub> of the Q-learning note</td></tr>
+          <tr><th scope="row"><i>r</i><sub><i>t</i></sub>, the reward that follows <i>a</i><sub><i>t</i></sub></th><td><i>R</i><sub><i>t</i>+1</sub></td></tr>
+          <tr><th scope="row">the return <i>R</i><sub><i>t</i></sub></th><td><i>G</i><sub><i>t</i></sub></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The figure shows the network that section 3's run trains. Drag the ball: where you drop it is where it is now, on the later of the two screens, and the way you moved it sets where it was a step before, drawn faint. The paddle stays on rows 2 and 3.</p>
+    <ul>
+      <li>The bars are the network's values of the three moves for these two screens, and the small blue arrow beside the paddle points to the move worth most.</li>
+      <li>The short red line across each bar is that move's exact value, from the game's rules, which the network never sees; from section 2 on, red also marks a target, which the network computes itself.</li>
+      <li>The One screen button shows the values of a network that sees only the later screen.</li>
+    </ul>
+    <p>Where a move decides a hit, the network's best move is one that hits, and its value is near its red line; the values of moves the agent seldom makes in a situation stay rough, since only its random moves teach them.</p>
   </div>
 
   <div class="fig">
@@ -84,9 +134,16 @@ scripts:
     <div class="disp hero-f"><i>L</i><sub><i>i</i></sub>(θ<sub><i>i</i></sub>) <span class="nowrap">= E<sub><i>s</i>,<i>a</i>∼ρ(·)</sub>[(<span class="pt"><i>y</i><sub><i>i</i></sub></span></span> <span class="nowrap">− <i>Q</i>(<i>s</i>, <i>a</i>; θ<sub><i>i</i></sub>))<sup>2</sup>]</span></div>
     <p>where the target is</p>
     <div class="disp"><i>y</i><sub><i>i</i></sub> <span class="nowrap">= <span class="pt">E<sub><i>s</i>′∼ℰ</sub>[<i>r</i></span></span> <span class="nowrap pt">+ γ max<sub><i>a</i>′</sub> <i>Q</i>(<i>s</i>′, <i>a</i>′; θ<sub><i>i</i>−1</sub>)</span> <span class="nowrap pt">| <i>s</i>, <i>a</i>]</span></div>
-    <p>ρ(<i>s</i>, <i>a</i>) is the paper's behavior distribution, how often each sequence and action come up as the agent plays. It does the job of the prediction note's μ, and it is not the importance-sampling ratio ρ of the <a href="/notes/reinforcement-learning/n-step-bootstrapping/#off-policy"><i>n</i>-step note</a>. θ<sub><i>i</i>−1</sub> is not a second network: it is the weights as they stand before a step, and θ<sub><i>i</i></sub> the weights that the step changes.</p>
-    <p>So the targets depend on the weights. In supervised learning each example's target, its label, is fixed before learning begins; here every step that changes the weights can change the targets too.</p>
-    <p>The figure takes the game's first step from a serve: the paddle stays, the reward is 0, and the next pair of screens is φ<sub>2</sub>. It lets the network, with its random starting weights, learn from that one transition alone, one gradient step on <i>L</i><sub><i>i</i></sub> per iteration, each step moving <span class="nowrap"><i>Q</i>(φ<sub>1</sub>, stay; θ)</span> toward its target as the prediction note's steps moved an estimate toward its target, and it draws two such runs side by side: the left one keeps the first target, as a label would be kept; the right one computes it again before every step, from the weights as they stand. The value is the blue line, its target the red one.</p>
+    <ul>
+      <li>ρ(<i>s</i>, <i>a</i>) is the paper's behavior distribution, how often each sequence and action come up as the agent plays. It does the job of the prediction note's μ, and it is not the importance-sampling ratio ρ of the <a href="/notes/reinforcement-learning/n-step-bootstrapping/#off-policy"><i>n</i>-step note</a>.</li>
+      <li>θ<sub><i>i</i>−1</sub> is not a second network: it is the weights as they stand before a step, and θ<sub><i>i</i></sub> the weights that the step changes.</li>
+    </ul>
+    <p>So the targets depend on the weights. In supervised learning each example's target, its label, is fixed before learning begins. <mark class="hl-key">Here every step that changes the weights can change the targets too.</mark></p>
+    <p>The figure takes the game's first step from a serve: the paddle stays, the reward is 0, and the next pair of screens is φ<sub>2</sub>. It lets the network, with its random starting weights, learn from that one transition alone, one gradient step on <i>L</i><sub><i>i</i></sub> per iteration, each step moving <span class="nowrap"><i>Q</i>(φ<sub>1</sub>, stay; θ)</span> toward its target as the prediction note's steps moved an estimate toward its target. It draws two such runs side by side, the value as the blue line and its target as the red one:</p>
+    <ul>
+      <li>the left one keeps the first target, as a label would be kept;</li>
+      <li>the right one computes it again before every step, from the weights as they stand.</li>
+    </ul>
     <figure class="diagram" id="fig-target">
       <svg viewBox="0 0 440 352" role="img" aria-label="Above, the one transition the network learns from: the serve, the move stay with reward 0, and the next pair of screens, the ball one step down and to the right. Below, two charts of the value of staying at the serve, in blue, and its target, in red, over 30 iterations. Target held: the target stays at 0.167, and the value rises from 0.106 to reach it by iteration 4. Target from the network: the target rises with the value, and the two meet at 0.329.">
       <path class="pg-wall sm" d="M162,9.25 H63.25 V86.75 H162"/><rect x="66" y="12" width="96" height="72" style="fill: color-mix(in srgb, var(--img-hi) 0%, var(--img-lo))"/><rect x="66" y="12" width="12" height="12" style="fill: color-mix(in srgb, var(--img-hi) 100%, var(--img-lo))"/><rect x="150" y="36" width="12" height="12" style="fill: color-mix(in srgb, var(--img-hi) 100%, var(--img-lo))"/><rect x="150" y="48" width="12" height="12" style="fill: color-mix(in srgb, var(--img-hi) 100%, var(--img-lo))"/><g class="pg-grid"><line x1="78" y1="12" x2="78" y2="84"/><line x1="90" y1="12" x2="90" y2="84"/><line x1="102" y1="12" x2="102" y2="84"/><line x1="114" y1="12" x2="114" y2="84"/><line x1="126" y1="12" x2="126" y2="84"/><line x1="138" y1="12" x2="138" y2="84"/><line x1="150" y1="12" x2="150" y2="84"/><line x1="66" y1="24" x2="162" y2="24"/><line x1="66" y1="36" x2="162" y2="36"/><line x1="66" y1="48" x2="162" y2="48"/><line x1="66" y1="60" x2="162" y2="60"/><line x1="66" y1="72" x2="162" y2="72"/></g><rect class="px-frame" x="66" y="12" width="96" height="72"/>
@@ -117,16 +174,40 @@ scripts:
       </svg>
       <figcaption>Held like a label (left), the target stays at <span class="pt"><span class="nowrap"><i>y</i><sub>1</sub> ≈ 0 + 0.9 · 0.186</span> <span class="nowrap">≈ 0.167</span></span>, and the value reaches it by iteration 4. Recomputed from the weights before every step (right), the target rises with the value, and the two meet at <span class="pt"><span class="nowrap"><i>y</i><sub>30</sub> ≈ 0 + 0.9 · 0.365</span> <span class="nowrap">≈ 0.329</span></span>, about twice the first target.</figcaption>
     </figure>
-    <p>The target moved because one network computes both values. The step that raised staying in φ<sub>1</sub> changed staying's own output weights, which every screen uses, and the hidden units fed by the pixels the two screens share, 5 of their 6 lit ones; so it raised staying in φ<sub>2</sub> too, by about four fifths as much. Before the first step, moving down was φ<sub>2</sub>'s largest value, just above staying (0.1858 against 0.1856); after it, staying is, so the target borrows the very value the steps raise. Times <span class="nowrap">γ = 0.9</span>, the target gains about 0.73 of what the value gains at each step, so the gap shrinks by about a fifth per step, until the two meet at 0.329, where the value equals its own target: a fixed point, as the TD fixed point of the <a href="/notes/reinforcement-learning/prediction-with-approximation/#linear">prediction note</a> was for a linear estimate. Had a step raised the next screen's value by more than 1/0.9 times as much as the value it updates, the target would have run ahead faster than the value could follow, and both would have grown without bound: learning from its own estimates can diverge, as section 4 takes up again. Learned alone in the same way, each from the starting weights, episode 1's other transitions settle well above their first target (<span class="nowrap">0.152 → 0.562</span>, <span class="nowrap">0.506 → 0.981</span>), below it (<span class="nowrap">0.104 → 0.053</span>), or barely away from it (<span class="nowrap">0.230 → 0.222</span>, where the step raises moving up while the target borrows moving down); the last one, which ends the episode, keeps its target, the reward −1, which no step can move.</p>
+    <p>The target moved because one network computes both values:</p>
+    <ol>
+      <li>The step that raised staying in φ<sub>1</sub> changed staying's own output weights, which every screen uses, and the hidden units fed by the pixels the two screens share, 5 of their 6 lit ones; so it raised staying in φ<sub>2</sub> too, by about four fifths as much.</li>
+      <li>Before the first step, moving down was φ<sub>2</sub>'s largest value, just above staying (0.1858 against 0.1856); after it, staying is, so the target borrows the very value the steps raise.</li>
+      <li>Times <span class="nowrap">γ = 0.9</span>, the target gains about 0.73 of what the value gains at each step, so the gap shrinks by about a fifth per step, until the two meet at 0.329, where the value equals its own target: a fixed point, as the TD fixed point of the <a href="/notes/reinforcement-learning/prediction-with-approximation/#linear">prediction note</a> was for a linear estimate.</li>
+    </ol>
+    <p>Had a step raised the next screen's value by more than 1/0.9 times as much as the value it updates, the target would have run ahead faster than the value could follow, and both would have grown without bound: learning from its own estimates can diverge, as section 4 takes up again.</p>
+    <p>Learned alone in the same way, each from the starting weights, episode 1's other transitions settle:</p>
+    <ul>
+      <li>well above their first target, <span class="nowrap">0.152 → 0.562</span> and <span class="nowrap">0.506 → 0.981</span>;</li>
+      <li>below it, <span class="nowrap">0.104 → 0.053</span>;</li>
+      <li>or barely away from it, <span class="nowrap">0.230 → 0.222</span>, where the step raises moving up while the target borrows moving down.</li>
+    </ul>
+    <p>The last one, which ends the episode, keeps its target, the reward −1, which no step can move.</p>
     <p>To make <i>L</i><sub><i>i</i></sub> small, the paper follows its gradient. With θ<sub><i>i</i>−1</sub> held fixed it is (the paper's equation 3, with a factor added):</p>
     <div class="disp hero-f long"><span class="nowrap">−½∇<sub>θ<sub><i>i</i></sub></sub><i>L</i><sub><i>i</i></sub>(θ<sub><i>i</i></sub>)</span> <span class="nowrap">= E<sub><i>s</i>,<i>a</i>∼ρ(·); <i>s</i>′∼ℰ</sub>[(<span class="pt"><i>r</i></span></span> <span class="nowrap pt">+ γ max<sub><i>a</i>′</sub> <i>Q</i>(<i>s</i>′, <i>a</i>′; θ<sub><i>i</i>−1</sub>)</span> <span class="nowrap">− <i>Q</i>(<i>s</i>, <i>a</i>; θ<sub><i>i</i></sub>))</span> <span class="nowrap">∇<sub>θ<sub><i>i</i></sub></sub><i>Q</i>(<i>s</i>, <i>a</i>; θ<sub><i>i</i></sub>)]</span></div>
-    <p>The paper prints its equation 3 without the −½: its right side is then the direction a descent step takes, not the gradient itself, which points the other way and is twice as long. The prediction note's ½ gave the same step, <span class="nowrap"><b class="vec">w</b> ← <b class="vec">w</b> − ½α∇[…]<sup>2</sup></span> <span class="nowrap">= <b class="vec">w</b> + α[…]∇<span class="hat lo"><i>v</i></span></span> (<a href="/notes/reinforcement-learning/prediction-with-approximation/#gradient-mc">prediction note</a>). ∇<sub>θ</sub><i>Q</i> still says which weights produced the value, and how much, as there; for a network it is computed layer by layer, from the output back, by the chain rule of the <a href="/notes/natural-language-processing/linear-classifiers/#descent">linear classifiers note</a>, a computation called backpropagation.</p>
+    <div class="hl-slip"><p><span class="hl-run">A slip in the paper</span>It prints its equation 3 without the −½: its right side is then the direction a descent step takes, not the gradient itself, which points the other way and is twice as long.</p></div>
+    <p>The prediction note's ½ gave the same step, <span class="nowrap"><b class="vec">w</b> ← <b class="vec">w</b> − ½α∇[…]<sup>2</sup></span> <span class="nowrap">= <b class="vec">w</b> + α[…]∇<span class="hat lo"><i>v</i></span></span> (<a href="/notes/reinforcement-learning/prediction-with-approximation/#gradient-mc">prediction note</a>). ∇<sub>θ</sub><i>Q</i> still says which weights produced the value, and how much, as there; for a network it is computed layer by layer, from the output back, by the chain rule of the <a href="/notes/natural-language-processing/linear-classifiers/#descent">linear classifiers note</a>, a computation called backpropagation.</p>
     <p>Holding θ<sub><i>i</i>−1</sub> fixed is the paper's way of writing what the prediction note called a <a href="/notes/reinforcement-learning/prediction-with-approximation/#semi-gradient">semi-gradient</a>: the step follows how the weights move the estimate, and ignores how they move the target.</p>
     <p>Rather than computing the expectations, the paper takes stochastic gradient steps; with a single sample of ρ and of ℰ after every time step, the update is</p>
     <div class="disp">θ <span class="nowrap">← θ + α[<span class="pt"><i>r</i></span></span> <span class="nowrap pt">+ γ max<sub><i>a</i>′</sub> <i>Q</i>(<i>s</i>′, <i>a</i>′; θ)</span> <span class="nowrap">− <i>Q</i>(<i>s</i>, <i>a</i>; θ)]</span> <span class="nowrap">∇<sub>θ</sub><i>Q</i>(<i>s</i>, <i>a</i>; θ)</span></div>
     <p>This is Q-learning. With a table, a weight for each sequence and move, ∇<sub>θ</sub><i>Q</i> is 1 for the pair updated and 0 for every other, and the step is the update of the <a href="/notes/reinforcement-learning/q-learning/#update">Q-learning note</a>, where the expectation became the one reward and next state just observed. With the value of the next move in place of the maximum, it would be the control note's semi-gradient Sarsa: only the maximum and the network are new.</p>
-    <p>An earlier method, neural fitted Q-learning (NFQ), minimizes the same losses with batch updates over all the data, at a cost per iteration that grows with the size of the data; deep Q-learning takes stochastic steps, at a small cost per iteration that stays the same however much data there is.</p>
-    <p>Like the methods of the <a href="/notes/reinforcement-learning/td-learning/#td0">TD note</a>, it is model-free: it learns from samples of ℰ and builds no model of it. And it is off-policy, as in the <a href="/notes/reinforcement-learning/q-learning/#off-policy">Q-learning note</a>: it learns about the greedy policy, <span class="nowrap"><i>a</i> = argmax<sub><i>a</i></sub> <i>Q</i>(<i>s</i>, <i>a</i>; θ)</span>, while it plays ε-greedy. The paper writes max where it means argmax, here and in its algorithm.</p>
+    <p>An earlier method, neural fitted Q-learning (NFQ), minimizes the same losses another way:</p>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col"></th><th scope="col">Updates</th><th scope="col">Cost per iteration</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">NFQ</th><td>batch updates over all the data</td><td>grows with the size of the data</td></tr>
+          <tr><th scope="row">Deep <span class="nowrap">Q-learning</span></th><td>stochastic steps</td><td>small, and the same however much data there is</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Like the methods of the <a href="/notes/reinforcement-learning/td-learning/#td0">TD note</a>, it is model-free: it learns from samples of ℰ and builds no model of it. And it is off-policy, as in the <a href="/notes/reinforcement-learning/q-learning/#off-policy">Q-learning note</a>: it learns about the greedy policy, <span class="nowrap"><i>a</i> = argmax<sub><i>a</i></sub> <i>Q</i>(<i>s</i>, <i>a</i>; θ)</span>, while it plays ε-greedy.</p>
+    <div class="hl-slip"><p><span class="hl-run">A slip in the paper</span>It writes max where it means argmax, here and in its algorithm.</p></div>
   </div>
 </section>
 
@@ -135,7 +216,9 @@ scripts:
     <h2><span class="n">3</span>Deep Q-learning</h2>
     <p>Deep Q-learning adds one thing to that update: a memory. After every step the agent stores the transition, <span class="nowrap"><i>e</i><sub><i>t</i></sub> = (<i>s</i><sub><i>t</i></sub>, <i>a</i><sub><i>t</i></sub>, <i>r</i><sub><i>t</i></sub>, <i>s</i><sub><i>t</i>+1</sub>)</span>, in a data set,</p>
     <div class="disp">𝒟 <span class="nowrap">= <i>e</i><sub>1</sub>, …, <i>e</i><sub><i>N</i></sub></span></div>
-    <p>the replay memory, which keeps the last <i>N</i> transitions, pooled over many episodes (this <i>N</i> is the memory's size, not the visit counts of the model-based note). Learning from such a memory, experience replay, goes back to Lin (1993). Each update draws a minibatch of transitions at random from 𝒟, 32 in the paper, and takes one gradient step on their average: between the <a href="/notes/reinforcement-learning/prediction-with-approximation/#gradient-mc">prediction note's</a> one state per step and the <a href="/notes/reinforcement-learning/td-learning/#batch">TD note</a>'s batch updating, which used them all at once. Dyna-Q, in the <a href="/notes/reinforcement-learning/model-based/#dyna">model-based note</a>, also learned from remembered steps drawn at random, but its model kept only the last outcome of each pair, where 𝒟 keeps every recent transition. Section 4 says why the draws are random.</p>
+    <p>the replay memory, which keeps the last <i>N</i> transitions, pooled over many episodes (this <i>N</i> is the memory's size, not the visit counts of the model-based note).</p>
+    <div class="hl-def"><p><dfn>Experience replay</dfn>: learning from such a memory, an idea that goes back to Lin (1993). Each update draws a minibatch of transitions at random from 𝒟, 32 in the paper, and takes one gradient step on their average.</p></div>
+    <p>That lies between the <a href="/notes/reinforcement-learning/prediction-with-approximation/#gradient-mc">prediction note's</a> one state per step and the <a href="/notes/reinforcement-learning/td-learning/#batch">TD note</a>'s batch updating, which used them all at once. Dyna-Q, in the <a href="/notes/reinforcement-learning/model-based/#dyna">model-based note</a>, also learned from remembered steps drawn at random, but its model kept only the last outcome of each pair, where 𝒟 keeps every recent transition. Section 4 says why the draws are random.</p>
 
     <h3>The algorithm</h3>
     <p>Deep Q-learning with experience replay, for a network <i>Q</i> with weights θ, a memory of <i>N</i> transitions, minibatches of 32, a step size α and an ε that falls over time, as the <a href="/notes/reinforcement-learning/monte-carlo/#soft">Monte Carlo note</a> let it shrink, for <i>M</i> episodes:</p>
@@ -152,7 +235,8 @@ scripts:
     </ol>
     <p>The targets of step 6 are</p>
     <div class="disp hero-f long"><i>y</i><sub><i>j</i></sub> <span class="nowrap">= <span class="pt"><i>r</i><sub><i>j</i></sub></span>,</span> <span class="nowrap">if φ<sub><i>j</i>+1</sub> is terminal;</span><br><i>y</i><sub><i>j</i></sub> <span class="nowrap">= <span class="pt"><i>r</i><sub><i>j</i></sub></span></span> <span class="nowrap"><span class="pt">+ γ max<sub><i>a</i>′</sub> <i>Q</i>(φ<sub><i>j</i>+1</sub>, <i>a</i>′; θ)</span>,</span> <span class="nowrap">otherwise.</span></div>
-    <p>Here <i>j</i> counts the transitions drawn, where section 2's <i>i</i> counted iterations; with one step per iteration, the targets use θ as it stands before the step, the θ<sub><i>i</i>−1</sub> of section 2, and α absorbs the 2 of the squared error, as there. The paper's algorithm writes <i>Q</i><sup>*</sup> for the network's <i>Q</i> (and max for argmax, as section 2 said), and it calls the networks trained this way deep Q-networks, DQN. A rally cut after 10 hits is not terminal, so its last target still adds γ times the next screen's value.</p>
+    <p>Here <i>j</i> counts the transitions drawn, where section 2's <i>i</i> counted iterations; with one step per iteration, the targets use θ as it stands before the step, the θ<sub><i>i</i>−1</sub> of section 2, and α absorbs the 2 of the squared error, as there. A rally cut after 10 hits is not terminal, so its last target still adds γ times the next screen's value. The paper calls the networks trained this way deep Q-networks, DQN.</p>
+    <div class="hl-slip"><p><span class="hl-run">A slip in the paper</span>Its algorithm writes <i>Q</i><sup>*</sup> for the network's <i>Q</i>.</p></div>
     <div class="tbl left dqn-settings">
       <table>
         <thead><tr><th scope="col"></th><th scope="col">The paper</th><th scope="col">The figures</th></tr></thead>
@@ -172,9 +256,19 @@ scripts:
         </tbody>
       </table>
     </div>
-    <p>The paper gives its reasons for two of the settings. Scores differ in scale from game to game, so in training the paper counts every positive reward as +1 and every negative one as −1, <span class="nowrap"><i>r</i> ← sign(<i>r</i>)</span>: the errors, and so the steps, stay of similar size, and one step size suits every game; the price is that a large reward and a small one look the same, and the results use the games' real scores. And the agent chooses a move only on every 4th frame, repeating it on the frames between: emulating a frame costs far less than choosing a move, so it plays about four times as many games in the same time. Space Invaders is the one exception, every 3rd frame, since its lasers blink in a way that hides them at every 4th.</p>
-    <p>RMSProp is a form of gradient descent that divides each weight's step by the typical size of its recent gradients, so that every weight moves by a similar amount. The figures take plain gradient steps, as the algorithm above writes them: each moves a value part of the way to its target, which the readouts can show.</p>
-    <p>The figure runs these steps on the game, from random weights, with the settings of the table. At the top is the game, with section 1's bars and blue arrow for the pair of screens in view; the move just chosen fills its row in yellow, and the bars a target borrows are outlined in red. Below it is the memory, one numbered cell per stored transition, showing its move and its reward when it is not 0; the green number over a cell is how many of the 32 draws fell on it. Once the memory holds more than a dozen transitions it is drawn as a strip, oldest at the left, with a green tick for each transition drawn. At the bottom is one drawn transition being learned from: its two pairs of screens and, on a short gauge, its value in blue and its target in red, with a green marker for where the step takes the value; the gauge is there because one step moves a value too little to see on the bars. Each press is one line of the steps above, as in the Sarsa figure of the <a href="/notes/reinforcement-learning/control-with-approximation/#control">control note</a>; episode 1 is played in full and episode 2 up to its first hit, and from there the figure skips to moments where something new is learned.</p>
+    <p>The paper gives its reasons for two of the settings:</p>
+    <ul>
+      <li>Rewards: scores differ in scale from game to game, so in training the paper counts every positive reward as +1 and every negative one as −1, <span class="nowrap"><i>r</i> ← sign(<i>r</i>)</span>. The errors, and so the steps, stay of similar size, and one step size suits every game; the price is that a large reward and a small one look the same, and the results use the games' real scores.</li>
+      <li>Frame skipping: the agent chooses a move only on every 4th frame, repeating it on the frames between. Emulating a frame costs far less than choosing a move, so it plays about four times as many games in the same time. Space Invaders is the one exception, every 3rd frame, since its lasers blink in a way that hides them at every 4th.</li>
+    </ul>
+    <div class="hl-vs"><div><p><span class="hl-run">The paper</span>RMSProp, a form of gradient descent that divides each weight's step by the typical size of its recent gradients, so that every weight moves by a similar amount.</p></div><div class="ours"><p><span class="hl-run">In the rally</span>Plain gradient steps, as the algorithm above writes them: each moves a value part of the way to its target, which the readouts can show.</p></div></div>
+    <p>The figure runs these steps on the game, from random weights, with the settings of the table, in three parts:</p>
+    <ul>
+      <li>At the top is the game, with section 1's bars and blue arrow for the pair of screens in view; the move just chosen fills its row in yellow, and the bars a target borrows are outlined in red.</li>
+      <li>Below it is the memory, one numbered cell per stored transition, showing its move and its reward when it is not 0; the green number over a cell is how many of the 32 draws fell on it. Once the memory holds more than a dozen transitions it is drawn as a strip, oldest at the left, with a green tick for each transition drawn.</li>
+      <li>At the bottom is one drawn transition being learned from: its two pairs of screens and, on a short gauge, its value in blue and its target in red, with a green marker for where the step takes the value. The gauge is there because one step moves a value too little to see on the bars.</li>
+    </ul>
+    <p>Each press is one line of the steps above, as in the Sarsa figure of the <a href="/notes/reinforcement-learning/control-with-approximation/#control">control note</a>; episode 1 is played in full and episode 2 up to its first hit, and from there the figure skips to moments where something new is learned.</p>
   </div>
 
   <div class="fig steps">
@@ -201,9 +295,25 @@ scripts:
       <li>Consecutive steps are strongly correlated, the opening's second obstacle: one pair of screens differs from the next by a pixel or two. The prediction note warned that steps that wiped out each state's error would just chase the last state visited; learning from transitions in order chases the current rally in the same way. Draws from the last 10,000 steps break the correlation, and lower the variance of the updates.</li>
       <li>When an agent learns from the data its current weights produce, the weights choose the next data they learn from, the opening's third obstacle (the paper calls this learning on-policy, in a looser sense than the Q-learning note's). The behavior policy decides which pairs get visited, and so updated, as the Q-learning note said: a network that prefers moving up keeps its paddle near the top (a policy that moves up four times in five has it there on 88% of its screens), so it trains mostly on screens with the paddle at the top, and if it comes to prefer moving down, its data follow. Such loops can trap the weights or make them diverge. Replay averages the data over many past behaviors.</li>
     </ol>
-    <p>Replay makes learning off-policy, in section 2's sense, whether one wants it or not: a drawn transition holds a move that older weights chose, often at random (when section 3's figure reaches ten hits in a row, at step 8,094, 23 of the 32 transitions drawn held a move the network would not choose now). Sarsa's target uses the move that came next, which older weights chose too, so with replay it would learn about old policies; Q-learning's target takes the best move of the next screen under the weights as they stand, which is why the paper uses Q-learning. Its one-step target needs no correction for the other policy, as the Q-learning note showed: given the pair it updates, the reward and the next screen do not depend on who chose the move.</p>
+    <p>Replay makes learning off-policy, in section 2's sense, whether one wants it or not: a drawn transition holds a move that older weights chose, often at random (when section 3's figure reaches ten hits in a row, at step 8,094, 23 of the 32 transitions drawn held a move the network would not choose now). That decides the method:</p>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col"></th><th scope="col">Its target uses</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Sarsa</th><td>the move that came next, which older weights chose too, so with replay it would learn about old policies</td></tr>
+          <tr><th scope="row"><span class="nowrap">Q-learning</span></th><td>the best move of the next screen, under the weights as they stand, which is why the paper uses Q-learning</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Q-learning's one-step target needs no correction for the other policy, as the Q-learning note showed: given the pair it updates, the reward and the next screen do not depend on who chose the move.</p>
     <p>The paper also names the limits of its memory: it keeps only the last <i>N</i> transitions, dropping the oldest whatever they hold, and draws every transition alike, though in this run only 3 or 4 of each 32 draws carry a reward of +1 or −1; it suggests favoring the transitions there is most to learn from.</p>
-    <p>The figure runs section 3's agent 16 times, from 16 seeds, with three ways of choosing each step's minibatch. Replay draws 32 transitions at random from the memory. Last 32 takes the 32 most recent, in order: the same work per step, but on consecutive transitions, all made by nearly the current weights, so it loses the second and third advantages. Latest only learns from the newest transition alone, once, and loses the first as well. Every 250 steps a check, as in section 3's figure, plays each of the 12 serves with no random moves, and each curve counts the agents it finds perfect, ten hits from every serve; the runs go on to step 30,000, since without replay the agents need longer. Replay's curve is blue, the other two faint, Latest only's dashed.</p>
+    <p>The figure runs section 3's agent 16 times, from 16 seeds, with three ways of choosing each step's minibatch:</p>
+    <ul>
+      <li>Replay draws 32 transitions at random from the memory.</li>
+      <li>Last 32 takes the 32 most recent, in order: the same work per step, but on consecutive transitions, all made by nearly the current weights, so it loses the second and third advantages.</li>
+      <li>Latest only learns from the newest transition alone, once, and loses the first as well.</li>
+    </ul>
+    <p>Every 250 steps a check, as in section 3's figure, plays each of the 12 serves with no random moves, and each curve counts the agents it finds perfect, ten hits from every serve; the runs go on to step 30,000, since without replay the agents need longer. Replay's curve is blue, the other two faint, Latest only's dashed.</p>
     <figure class="diagram" id="fig-replay">
       <svg viewBox="0 0 440 312" role="img" aria-label="Three curves of how many of 16 agents a check finds perfect, every 250 steps over 30,000 training steps. Replay, in blue, rises first, and from step 15,750 it stays at 15 or 16. Last 32 rises later and keeps falling back, ending at 15. Latest only, dashed, first has a perfect agent at step 17,750 and ends at 6. A dashed line at step 10,000 marks where ε reaches 0.1.">
       <text class="pg-ax" x="12" y="17" text-anchor="start">agents perfect in a check, of 16</text>
@@ -221,9 +331,26 @@ scripts:
       </svg>
       <figcaption>Replay draws its 32 transitions from dozens of rallies, and its agents learn and nearly always keep it: all 16 are perfect for the first time at step 15,750, the curve dips back to 15 at 17 of the later checks, and of each agent's checks from its first perfect one on, only 8% miss a serve. Last 32 does the same work on the current rally: its agents get there later (a median of 11,000 steps, against 9,000) and fall back often, 30% of each agent's checks from then on missing a serve. Latest only learns from one transition per step, used once: at step 30,000, 6 of the 16 agents play every serve, and 75% of the checks from an agent's first perfect one on miss one.</figcaption>
     </figure>
-    <p>Last 32's agents keep falling back, even after ε has reached 0.1 and nine moves in ten are their own: the kind of oscillation the paper says replay smooths out, though the figure shows the falls, not their cause. At a smaller step size, <span class="nowrap">α = 0.03</span>, agents without replay learn too, and replay is no faster (a median of 25,500 steps to the first perfect check, against 21,500 for Latest only, over 8 seeds): replay's gain here is that it stays stable at a step size large enough to learn fast.</p>
-    <p>With a step three times larger, <span class="nowrap">α = 0.3</span>, the difference is starker. With replay, all 16 agents play every serve perfectly, from a median of 4,000 steps, and their average largest value stays below 5.4. Without it, none of the 32 agents ever does, and on 17 of them the values grow past 10<sup>20</sup>, or past the largest number the computer can hold, all of them within the first 1,400 steps, while at least 87% of the moves are still random. So it is not the loop between the weights and the data that drives it here: half of the Last 32 agents blow up just the same when every move is random. What differs between the three ways is only which transitions each step learns from. Without replay, each step learns from the last few transitions, nearly the same screens, and pushes the same weights again and again, toward targets those weights set; drawn from 10,000 steps, the pushes average out.</p>
-    <p>The paper cites results showing that Q-learning can diverge when its estimate is not linear, such as a network (Tsitsiklis and Van Roy, 1997), or when it learns off-policy (Baird, 1995). It offers no guarantee that its own method converges, and it reports that none of its runs diverged.</p>
+    <p>Last 32's agents keep falling back, even after ε has reached 0.1 and nine moves in ten are their own: the kind of oscillation the paper says replay smooths out, though the figure shows the falls, not their cause. Two other step sizes show what replay's gain is:</p>
+    <div class="tbl left">
+      <table>
+        <tbody>
+          <tr><th scope="colgroup" colspan="2"><span class="nowrap">α = 0.03</span>, smaller than the run's 0.1, 8 seeds</th></tr>
+          <tr><th scope="row">With replay</th><td>first perfect check at a median of 25,500 steps</td></tr>
+          <tr><th scope="row">Without replay</th><td>agents learn too, and replay is no faster: 21,500 for Latest only</td></tr>
+          <tr><th scope="colgroup" colspan="2"><span class="nowrap">α = 0.3</span>, three times the run's 0.1</th></tr>
+          <tr><th scope="row">With replay</th><td>all 16 agents play every serve perfectly, from a median of 4,000 steps; their average largest value stays below 5.4</td></tr>
+          <tr><th scope="row">Without replay</th><td>none of the 32 agents ever does; on 17 the values grow past 10<sup>20</sup>, or past the largest number the computer can hold, all within the first 1,400 steps, while at least 87% of the moves are still random</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Replay's gain is that it stays stable at a step size large enough to learn fast. At the large one, the loop between the weights and the data does not drive the blow-ups: half of the Last 32 agents blow up just the same when every move is random. What differs between the three ways is only which transitions each step learns from. Without replay, each step learns from the last few transitions, nearly the same screens, and pushes the same weights again and again, toward targets those weights set. <mark class="hl-key">Drawn at random from 10,000 steps, the pushes average out.</mark></p>
+    <p>The paper cites results showing that Q-learning can diverge:</p>
+    <ul>
+      <li>when its estimate is not linear, such as a network (Tsitsiklis and Van Roy, 1997);</li>
+      <li>or when it learns off-policy (Baird, 1995).</li>
+    </ul>
+    <p>It offers no guarantee that its own method converges, and it reports that none of its runs diverged.</p>
   </div>
 </section>
 
@@ -233,7 +360,7 @@ scripts:
     <p>How can one tell that the agent is learning? The paper's measure of play is the total reward per episode, averaged over the episodes of a stretch of ε-greedy play with <span class="nowrap">ε = 0.05</span>. It is noisy, because a small change to the weights can change which states the policy visits. A steadier measure looks at the values instead: before training, collect a fixed set of states by playing at random, and follow the average, over them, of the largest value the network predicts,</p>
     <div class="disp"><span class="frac"><span>1</span><span>500</span></span> Σ<sub>φ</sub> max<sub><i>a</i></sub> <i>Q</i>(φ, <i>a</i>; θ)</div>
     <p>the sum running over the 500 pairs of screens φ collected that way.</p>
-    <p>The figure follows section 3's run with both measures, every 250 steps: on top, the total reward per episode over 10,000 steps of play with <span class="nowrap">ε = 0.05</span>, as the paper measured it; below, the average largest value over 500 pairs of screens collected by random play before training. A dashed line marks step 8,000, the last check at which greedy play missed a serve.</p>
+    <p>The figure follows section 3's run with both measures, every 250 steps: on top, the total reward per episode over 10,000 steps of play, as the paper measured it; below, the average largest value. A dashed line marks step 8,000, the last check at which greedy play missed a serve.</p>
     <figure class="diagram" id="fig-progress">
       <svg viewBox="0 0 440 404" role="img" aria-label="Two charts over 20,000 training steps, one check every 250 steps, both in blue. Above, the total reward per episode, which stays below 2 until step 6,500, swings widely until step 8,250, and from then on stays between 7.79 and 9.29. Below, the average largest value over 500 fixed pairs of screens. A dashed line marks the check at step 8,000: since the check before, the total reward fell from 7.80 to 5.04, while the average largest value moved from 1.025 to 1.003.">
       <text class="pg-ax" x="12" y="18" text-anchor="start">total reward per episode</text>
@@ -256,7 +383,12 @@ scripts:
       </svg>
       <figcaption>At step 8,000, greedy play has lost 6 of the 12 serves since the check before: the total reward per episode fell by a third, from 7.80 to 5.04, while the average largest value barely moved, from 1.025 to 1.003.</figcaption>
     </figure>
-    <p>In this game the average is not the steady rise of the paper's runs. It jumps from 0.17 to 0.93 in the first 500 steps and falls back to 0.34 by step 1,500. From there it climbs to about 1.0 by step 7,750, while the total reward stays below 2 until step 6,500: progress that the values show and play does not yet. While the agent learns to play, from step 6,750 to 8,250, the total reward jumps up and down as greedy play wins or loses whole groups of serves, and the average moves a few percent: from 7,000 to 7,250 greedy play goes from 5 perfect serves to none and the total reward from 4.21 to 1.17, while the average moves from 0.97 to 0.94. Once every ball is hit, the ball's path settles into one of two cycles, six serves on each, so a small change that breaks one costs six serves at once. From step 8,250 on, both measures are steady: the average stays between 1.03 and 1.31 until step 14,000, then drifts down to 0.93 at step 20,000, still above the exact average over the same screens, 0.79: the learned values end too high, as section 6 shows screen by screen.</p>
+    <div class="hl-vs"><div><p><span class="hl-run">The paper</span>The average largest value rises steadily in its runs.</p></div><div class="ours"><p><span class="hl-run">In the rally</span>The average jumps from 0.17 to 0.93 in the first 500 steps and falls back to 0.34 by step 1,500.</p></div></div>
+    <ul>
+      <li>From step 1,500 it climbs to about 1.0 by step 7,750, while the total reward stays below 2 until step 6,500: progress that the values show and play does not yet.</li>
+      <li>While the agent learns to play, from step 6,750 to 8,250, the total reward jumps up and down as greedy play wins or loses whole groups of serves, and the average moves a few percent: from 7,000 to 7,250 greedy play goes from 5 perfect serves to none and the total reward from 4.21 to 1.17, while the average moves from 0.97 to 0.94. Once every ball is hit, the ball's path settles into one of two cycles, six serves on each, so a small change that breaks one costs six serves at once.</li>
+      <li>From step 8,250 on, both measures are steady: the average stays between 1.03 and 1.31 until step 14,000, then drifts down to 0.93 at step 20,000, still above the exact average over the same screens, 0.79: the learned values end too high, as section 6 shows screen by screen.</li>
+    </ul>
 
     <h3>The paper's results</h3>
     <p>The paper's main results compare the average total reward per episode, under ε-greedy play with <span class="nowrap">ε = 0.05</span>, with two earlier learning methods, Sarsa and Contingency, both linear in features engineered for the screen (each color in a channel of its own, the background subtracted; Contingency also learns which parts of the screen the agent controls), with an expert human (the median score after about two hours of play per game) and with random play:</p>
@@ -274,14 +406,21 @@ scripts:
         </tbody>
       </table>
     </div>
-    <p>Random play scores 354, 1.2, 0, −20.4, 157, 110 and 179 on the same games, in the table's order. Deep Q-learning beats both earlier learning methods on all seven games, with far less built in. It beats the expert human on Breakout, Enduro and Pong, comes close on Beam Rider, and falls far behind on Q*bert, Seaquest and Space Invaders, games that, the paper says, need a strategy over long stretches of time. A last comparison, with HyperNEAT, which evolves networks given an object detector or a map of the screen's objects that the emulator provides, and is scored on its single best episode, explains why the paper's summary says six of the seven games: on Space Invaders HyperNEAT's best episode scored 1,720, against 1,075 for deep Q-learning's best.</p>
+    <p>Random play scores 354, 1.2, 0, −20.4, 157, 110 and 179 on the same games, in the table's order. Deep Q-learning:</p>
+    <ul>
+      <li>beats both earlier learning methods on all seven games, with far less built in;</li>
+      <li>beats the expert human on Breakout, Enduro and Pong, and comes close on Beam Rider;</li>
+      <li>falls far behind on Q*bert, Seaquest and Space Invaders, games that, the paper says, need a strategy over long stretches of time.</li>
+    </ul>
+    <p>A last comparison, with HyperNEAT, which evolves networks given an object detector or a map of the screen's objects that the emulator provides, and is scored on its single best episode, explains why the paper's summary says six of the seven games: on Space Invaders HyperNEAT's best episode scored 1,720, against 1,075 for deep Q-learning's best.</p>
   </div>
 </section>
 
 <section id="trace">
   <div class="prose">
     <h2><span class="n">6</span>What the values say</h2>
-    <p>The paper also shows what the values say during play: over 30 frames of Seaquest, the predicted value jumps when an enemy appears, peaks as a torpedo is about to hit it, and falls once the enemy is gone. In this game no reward ever appears suddenly, so there is no jump, but the peak and the fall are there, and section 1's exact values give the shape to compare: a rise toward each hit, a fall right after it, and −1 one step before a certain miss. The network's values follow that shape but run high: one step before a hit they reach 1.5 to 1.65, where the exact value is 1.39. Every target takes a maximum over estimates, which, as the maximization bias of the <a href="/notes/reinforcement-learning/q-learning/#double">Q-learning note</a> showed, tends to come out high; it may contribute here.</p>
+    <p>The paper also shows what the values say during play:</p>
+    <div class="hl-vs"><div><p><span class="hl-run">The paper</span>Over 30 frames of Seaquest, the predicted value jumps when an enemy appears, peaks as a torpedo is about to hit it, and falls once the enemy is gone.</p></div><div class="ours"><p><span class="hl-run">In the rally</span>No reward ever appears suddenly, so there is no jump, but the peak and the fall are there. Section 1's exact values give the shape to compare: a rise toward each hit, a fall right after it, and −1 one step before a certain miss.</p></div></div>
     <p>The figure plays the network trained in section 3, with <span class="nowrap">ε = 0.05</span>, through 40 steps of a rally that ends in a miss. The chart traces the largest value of each pair of screens in blue, against the exact one as red dots, with +1 at each hit and −1 at the miss.</p>
     <figure class="diagram" id="fig-trace">
       <svg viewBox="0 0 440 272" role="img" aria-label="A chart of the largest value of the screens over steps 63 to 102 of a rally: the network's in blue, with a dot at each step, and the exact one as red dots, with a dashed line at 0. Ticks above the chart mark +1 at the hits, at steps 66, 78 and 90, and −1 at the miss, at step 102. Both rise toward each hit and fall right after it, the network's above the exact one at 39 of the 40 steps, up to 1.65 against 1.39; at the miss the network's falls to −0.71, the exact one to −1.">
@@ -304,6 +443,7 @@ scripts:
       </svg>
       <figcaption>The network's largest value (blue) peaks one step before each hit, at 1.65, 1.53 and 1.59. Just after a hit the next one is 12 steps away, and the value falls to 0.63, 0.59 and 0.61 (exact 0.44), then climbs toward the next hit, as the exact value (red) does, though not at every step. At step 101 a random move, up, wastes the paddle's last chance (the network preferred down); at step 102 the ball can no longer be reached, and the value falls to −0.71 (exact −1).</figcaption>
     </figure>
+    <p><mark class="hl-key">The network's values follow the exact values' shape but run high</mark>: one step before a hit they reach 1.5 to 1.65, where the exact value is 1.39. Every target takes a maximum over estimates, which, as the maximization bias of the <a href="/notes/reinforcement-learning/q-learning/#double">Q-learning note</a> showed, tends to come out high; it may contribute here.</p>
     <p>Over 3,000 episodes of such play, the network's largest value was below 0 on 254 of the 260 pairs of screens one step before a miss that was already certain.</p>
   </div>
 </section>
@@ -311,7 +451,14 @@ scripts:
 <section id="summary">
   <div class="prose">
     <h2><span class="n">7</span>Summary</h2>
-    <p>The key ideas next to their NumPy equivalents, for the figures' network and settings. <code>x_prev</code> and <code>x</code> are the last two screens, 48 numbers each; <code>w1</code> and <code>w2</code> are the network's weights, each with a first column of biases, and <code>theta</code> holds them as one vector; <code>q</code> holds the three values of a pair of screens. <code>rs</code> holds the rewards of an episode from <i>t</i> on, and <code>g</code> is the return <i>R</i><sub><i>t</i></sub>. In the minibatch rows, <code>r</code>, <code>done</code> and <code>q_a</code> hold the 32 rewards, whether each next pair of screens is terminal (1 or 0), and the values of the moves taken; <code>q_next</code> holds the values of each next pair of screens, as rows, and <code>grad_q</code> the gradient of each <span class="nowrap"><i>Q</i>(φ<sub><i>j</i></sub>, <i>a</i><sub><i>j</i></sub>; θ)</span> with respect to the weights, as rows, which backpropagation computes. <code>q_fixed</code> holds the values of the 500 fixed pairs of screens. The step is the figures' plain gradient step, α absorbing the 2 of the squared error as section 2 explained; the paper's optimizer is RMSProp.</p>
+    <p>The key ideas next to their NumPy equivalents, for the figures' network and settings. In the code:</p>
+    <ul>
+      <li><code>x_prev</code> and <code>x</code> are the last two screens, 48 numbers each; <code>w1</code> and <code>w2</code> are the network's weights, each with a first column of biases, and <code>theta</code> holds them as one vector; <code>q</code> holds the three values of a pair of screens.</li>
+      <li><code>rs</code> holds the rewards of an episode from <i>t</i> on, and <code>g</code> is the return <i>R</i><sub><i>t</i></sub>.</li>
+      <li>In the minibatch rows, <code>r</code>, <code>done</code> and <code>q_a</code> hold the 32 rewards, whether each next pair of screens is terminal (1 or 0), and the values of the moves taken; <code>q_next</code> holds the values of each next pair of screens, as rows, and <code>grad_q</code> the gradient of each <span class="nowrap"><i>Q</i>(φ<sub><i>j</i></sub>, <i>a</i><sub><i>j</i></sub>; θ)</span> with respect to the weights, as rows, which backpropagation computes.</li>
+      <li><code>q_fixed</code> holds the values of the 500 fixed pairs of screens.</li>
+    </ul>
+    <p>The step is the figures' plain gradient step, α absorbing the 2 of the squared error as section 2 explained; the paper's optimizer is RMSProp.</p>
   </div>
   <div class="sum">
     <div class="sum-row">

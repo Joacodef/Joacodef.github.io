@@ -1,5 +1,5 @@
 import { tr } from "../../plane.js";
-import { START, GOAL, W, H, NAME, cellName, stepEnv, rngFrom, freshQ, epsGreedy, greedyPath, num, par, eqv, count, sym, reason, takeText, chooseTakeText, slideshow, shake } from "./gridworld.js";
+import { START, GOAL, W, H, NAME, cellName, moveName, stepEnv, rngFrom, freshQ, epsGreedy, greedyPath, num, par, eqv, count, sym, reason, takeText, chooseTakeText, slideshow, shake } from "./gridworld.js";
 
 /* ---------- Section 2: Q-learning on the cliff, stepped through like slides ---------- */
 
@@ -66,14 +66,18 @@ function moveBuilds(n, lead) {
   const bump = x.fell === null && x.s2 === x.s ? x.a : null, pos = { ep: x.ep, move: x.t }, pick = [x.s, x.a];
   // The target's moves: the best ones in the next state, from the values before the update.
   const tg = x.done ? [] : next.map((v, a) => (v === Math.max(...next) ? { c: x.s2, a, kind: "tg" } : null)).filter(Boolean);
+  // With the pseudocode beside the grid, the target's and the update's texts leave out what their lines say.
+  const targetShort = tr(`${R1} and ${S1} are known at <i>t</i> = ${t + 1}. The maximum is taken in ${S1}: ${which}.`, `${R1} y ${S1} se conocen en <i>t</i> = ${t + 1}. El máximo se toma en ${S1}: ${which}.`);
+  const updateShort = tr(`At <i>t</i> = ${t + 1}, the pair the agent just left moves halfway toward the target, from ${num(x.old)} to ${num(x.nu)}.`, `En <i>t</i> = ${t + 1}, el par que el agente acaba de dejar avanza la mitad del camino hacia el objetivo, de ${num(x.old)} a ${num(x.nu)}.`);
   return [
-    { ...pos, time: t, Q: Qpre, agent: x.s, pick, line: `${lead} ${reason(Qpre[x.s], x.explored, x.s, x.a, t)}` },
-    { ...pos, time: t, Q: Qpre, agent: x.fell !== null ? x.fell : x.s2, ring: x.fell, taken: pick, bump, sound: x.fell !== null ? "fall" : bump !== null ? "wall" : undefined, line: takeText({ s: x.s, a: x.a, t, s2: x.s2, fell: x.fell }) },
-    { ...pos, time: t + 1, Q: Qpre, agent: x.s2, jump: x.fell !== null, ring: x.fell, marks: tg, line: target, eq: tgtEq },
-    { ...pos, time: t + 1, Q: qAfter(n), agent: x.s2, ring: x.fell, marks: [...tg, { c: x.s, a: x.a, kind: "upd" }], line: update, eq: updEq },
+    { ...pos, code: [1], time: t, Q: Qpre, agent: x.s, pick, line: `${lead} ${reason(Qpre[x.s], x.explored, x.s, x.a, t)}` },
+    { ...pos, code: [2], time: t, Q: Qpre, agent: x.fell !== null ? x.fell : x.s2, ring: x.fell, taken: pick, bump, sound: x.fell !== null ? "fall" : bump !== null ? "wall" : undefined, line: takeText({ s: x.s, a: x.a, t, s2: x.s2, fell: x.fell }) },
+    { ...pos, code: [3], time: t + 1, Q: Qpre, agent: x.s2, jump: x.fell !== null, ring: x.fell, marks: tg, line: target, short: targetShort, eq: tgtEq },
+    { ...pos, code: [4], time: t + 1, Q: qAfter(n), agent: x.s2, ring: x.fell, marks: [...tg, { c: x.s, a: x.a, kind: "upd" }], line: update, short: updateShort, eq: updEq },
   ];
 }
-// A slide shown whole: the state after move n and, with withEq, the update that move made, in green.
+// A slide shown whole: the state after move n. As in Dyna-Q's last slide, it lights no line of the pseudocode and draws
+// no mark (unless withEq, which no slide passes now).
 function wholeSlide(n, line, withEq) {
   const x = n ? X(n) : null, Q = qAfter(n), t = x ? x.t - 1 : 0, to = x ? (x.done ? GOAL : x.s2) : START;
   let eq = null;
@@ -84,12 +88,16 @@ function wholeSlide(n, line, withEq) {
 
 // The other moves of episode 1, one press each: why the move was chosen and where it led, then its update, with the best
 // moves of the next cell in red and the pair updated in green. extra, when given, follows the first sentence.
+// The press plays the four lines, the grid drawn as each one lights, as the four presses of a detailed move draw it.
 function oneBuild(n, extra = "", end = "") {
-  const [, take, target, update] = moveBuilds(n, ""), x = X(n), t = x.t - 1;
+  const four = moveBuilds(n, ""), [, take, target, update] = four, x = X(n), t = x.t - 1;
   const rest = x.done ? end : tr(`The target adds ${sym("R", t + 1)} to the best value in ${sym("S", t + 1)}, outlined in red, and ${`<i>Q</i>(${sym("S", t)}, ${sym("A", t)})`} moves halfway toward it.`,
     `El objetivo suma ${sym("R", t + 1)} al mejor valor en ${sym("S", t + 1)}, con borde rojo, y ${`<i>Q</i>(${sym("S", t)}, ${sym("A", t)})`} avanza la mitad del camino hacia él.`);
-  return { ...update, taken: take.taken, bump: take.bump, sound: take.sound, jump: x.fell !== null, time: t + 1,
-    line: `${chooseTakeText(qAfter(n - 1)[x.s], x.explored, { s: x.s, a: x.a, t, s2: x.s2, fell: x.fell })}${extra} ${rest}` };
+  const chosen = chooseTakeText(qAfter(n - 1)[x.s], x.explored, { s: x.s, a: x.a, t, s2: x.s2, fell: x.fell });
+  const short = x.done ? undefined : `${chosen}${extra} ` + tr(`The best value in ${sym("S", t + 1)} is outlined in red, and <i>Q</i>(${sym("S", t)}, ${sym("A", t)}) moves halfway toward the target.`,
+    `El mejor valor en ${sym("S", t + 1)} tiene borde rojo, y <i>Q</i>(${sym("S", t)}, ${sym("A", t)}) avanza la mitad del camino hacia el objetivo.`);
+  return { ...update, code: [1, 2, 3, 4], phases: four.map((d, i) => ({ slow: true, lines: [i + 1], draw: d })), taken: take.taken, bump: take.bump, sound: take.sound, jump: x.fell !== null, time: t + 1,
+    line: `${chosen}${extra} ${rest}`, short };
 }
 // Q-learning chooses each move after the last update, from the table as it stands.
 const nextLead = tr("It chooses its next move from the table as it stands, after the last update.", "Elige su siguiente movimiento con la tabla tal como está, después de la última actualización.");
@@ -99,20 +107,28 @@ const firstPath = greedyPath(qAfter(connect)).length - 1;
 // random move is chosen after it (yellow), then taken and updated, which lowers only its own value.
 function exploreBuilds(n) {
   const x = X(n), p = X(n - 1), t = x.t - 1, pair = `<i>Q</i>(${sym("S", t)}, ${sym("A", t)})`;
-  const [choose, take, target, update] = moveBuilds(n, tr("Only after that update does it choose its next move.", "Solo después de esa actualización elige su siguiente movimiento.")), before = moveBuilds(n - 1, "")[3];
+  const [choose, take, target, update] = moveBuilds(n, tr("Only after that update does it choose its next move.", "Solo después de esa actualización elige su siguiente movimiento.")), prev = moveBuilds(n - 1, ""), before = prev[3];
   const bestMark = before.marks.filter((m) => m.kind === "tg"), bestA = bestMark[0].a;
   // In the updates' equations, the target written out as the reward plus the best value it borrows; on a phone the line
   // can then break before the subtraction.
   const spell = (eq, y) => eq.replace(`<span class="pt">${num(y.target)}</span> − ${par(y.old)}]</span>`, `<span class="pt">${num(y.r)} + ${par(y.maxNext)}</span></span> <span class="nowrap">− ${par(y.old)}]</span>`);
+  const sarsa = tr(
+    ` Sarsa would have chosen it before that update, and its target would have used this move's value, ${num(x.old)}, instead of ${num(p.maxNext)}.`,
+    ` Sarsa lo habría elegido antes de esa actualización, y su objetivo habría usado el valor de este movimiento, ${num(x.old)}, en vez de ${num(p.maxNext)}.`);
   return [
-    { ...before, eq: spell(before.eq, p), line: tr(
+    // After the skip, the move before plays its last three lines: the skip's last frame showed it chosen, in yellow. Its
+    // own text stands alone, so it drops the short text it would inherit from that move's update.
+    { ...before, code: [2, 3, 4], phases: prev.slice(1).map((d, i) => ({ slow: true, lines: [i + 2], draw: d })), eq: spell(before.eq, p), short: undefined, line: tr(
       `The agent has just stepped ${NAME[p.a]} from ${cellName(p.s)} to ${cellName(x.s)} and updated that move. Its target used the best move in ${cellName(x.s)}, ${NAME[bestA]}, worth ${num(p.maxNext)}, outlined in red.`,
       `El agente acaba de pasar de ${cellName(p.s)} a ${cellName(x.s)}, hacia ${NAME[p.a]}, y de actualizar ese movimiento. Su objetivo usó el mejor movimiento en ${cellName(x.s)}, ${NAME[bestA]}, que vale ${num(p.maxNext)}, con borde rojo.`) },
-    { ...choose, marks: bestMark, line: choose.line + tr(
-      ` Sarsa would have chosen it before that update, and its target would have used this move's value, ${num(x.old)}, instead of ${num(p.maxNext)}.`,
-      ` Sarsa lo habría elegido antes de esa actualización, y su objetivo habría usado el valor de este movimiento, ${num(x.old)}, en vez de ${num(p.maxNext)}.`) },
+    // Its short text names the update that "that update" points to, since the press before is no longer shown.
+    { ...choose, marks: bestMark, line: choose.line + sarsa, short: tr(`Only after the update of ${moveName(p.s, p.a)} does it choose its next move.`, `Solo después de la actualización de ${moveName(p.s, p.a)} elige su siguiente movimiento.`)
+      + ` ${reason(qAfter(n - 1)[x.s], x.explored, x.s, x.a, t)}` + sarsa },
     take,
-    { ...update, marks: [...target.marks, { c: x.s, a: x.a, kind: "upd" }], eq: spell(update.eq, x), line: tr(
+    { ...update, code: [3, 4], phases: [{ slow: true, lines: [3], draw: target }, { slow: true, lines: [4], draw: { ...update, marks: [...target.marks, { c: x.s, a: x.a, kind: "upd" }] } }],
+      marks: [...target.marks, { c: x.s, a: x.a, kind: "upd" }], eq: spell(update.eq, x), short: tr(
+      `At <i>t</i> = ${t + 1}, the best value in ${cellName(x.s2)} is outlined in red, and ${pair} moves halfway toward the target: from ${num(x.old)} to ${num(x.nu)}. The fall lowers only this value, so the best moves still follow the edge, where any random step toward the cliff falls in.`,
+      `En <i>t</i> = ${t + 1}, el mejor valor en ${cellName(x.s2)} tiene borde rojo, y ${pair} avanza la mitad del camino hacia el objetivo: de ${num(x.old)} a ${num(x.nu)}. La caída baja solo este valor, así que los mejores movimientos siguen por el borde, donde cualquier paso al azar hacia el acantilado cae.`), line: tr(
       `Still at <i>t</i> = ${t + 1}, ${pair} moves halfway toward ${num(x.r)} plus the best value in ${cellName(x.s2)}, outlined in red: from ${num(x.old)} to ${num(x.nu)}. The fall lowers only this value, so the best moves still follow the edge, where any random step toward the cliff falls in.`,
       `Todavía en <i>t</i> = ${t + 1}, ${pair} avanza la mitad del camino hacia ${num(x.r)} más el mejor valor en ${cellName(x.s2)}, con borde rojo: de ${num(x.old)} a ${num(x.nu)}. La caída baja solo este valor, así que los mejores movimientos siguen por el borde, donde cualquier paso al azar hacia el acantilado cae.`) },
   ];
@@ -168,10 +184,21 @@ for (let i = 1; i < slides.length; i++) {
 slideshow({
   svg: document.getElementById("fig-cliff"),
   slides,
+  // The method's lines, in the note's words; a press lights the line it plays.
+  code: {
+    title: "Q-learning",
+    lines: [
+      { head: true, html: tr("Repeat, for each move:", "Repetir, en cada movimiento:") },
+      { kind: "pick", ind: 1, html: tr(`<i>S</i> ← the current state, <span class="nowrap"><i>A</i> ← ε-greedy</span> from <i>Q</i>`, `<i>S</i> ← el estado actual, <span class="nowrap"><i>A</i> ← ε-greedy</span> según <i>Q</i>`) },
+      { kind: "take", ind: 1, html: tr(`Take <i>A</i>; observe <i>R</i>, <i>S</i>′`, `Tomar <i>A</i>; observar <i>R</i>, <i>S</i>′`) },
+      { kind: "target", ind: 1, html: `<span class="nowrap">${tr("target", "objetivo")} ← <span class="pt"><i>R</i> + γ max<sub><i>a</i></sub> <i>Q</i>(<i>S</i>′, <i>a</i>)</span></span>` },
+      { kind: "update", ind: 1, html: `<span class="nowrap"><span class="upd"><i>Q</i>(<i>S</i>, <i>A</i>)</span> ← <i>Q</i>(<i>S</i>, <i>A</i>)</span> <span class="nowrap">+ α[<span class="pt">${tr("target", "objetivo")}</span> − <i>Q</i>(<i>S</i>, <i>A</i>)]</span>` },
+    ],
+  },
   // The state after m moves, for the frames of a skip: the move just updated in green, the next one in yellow.
   frame: (m) => {
     const x = X(m), y = m < last ? X(m + 1) : null;
-    return { Q: qAfter(m), agent: x.done ? GOAL : x.s2, ring: x.fell, ep: x.ep, move: x.t, time: x.t, bumpPose: shake(x, m),
+    return { code: [1, 2, 3, 4], Q: qAfter(m), agent: x.done ? GOAL : x.s2, ring: x.fell, ep: x.ep, move: x.t, time: x.t, bumpPose: shake(x, m),
       marks: [{ c: x.s, a: x.a, kind: "upd" }], pick: y && y.ep === x.ep ? [y.s, y.a] : undefined };
   },
 });

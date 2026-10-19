@@ -12,6 +12,8 @@
   --ok: #3B6D11;
   /* The move an agent has just chosen, in the reinforcement learning figures. */
   --pick: #E0B000;
+  /* What a paper note adds from after its paper, in the notes' highlights (notes.css). */
+  --violet: #6A4C93;
   /* The heatmap of the reinforcement learning figures: positive values in --ok, mixed into the background up to
      --heat-max, and negative ones (costs) in --coral, a red toward orange, more faintly. --coral is mixed from --red and
      --pick, so it follows them in both themes. */
@@ -53,6 +55,7 @@
     --red: #E48A8F;
     --ok: #9CC66B;
     --pick: #D9B340;
+    --violet: #B9A2DA;
     --heat-max: 45%;
     --img-lo: var(--card);
     --img-hi: var(--ink);
@@ -71,6 +74,7 @@
   --red: #E48A8F;
   --ok: #9CC66B;
   --pick: #D9B340;
+  --violet: #B9A2DA;
   --heat-max: 45%;
   --img-lo: var(--card);
   --img-hi: var(--ink);

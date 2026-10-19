@@ -1380,3 +1380,77 @@ button.sl-w:hover { border-color: var(--rule); }
 .note-foot p { margin: 0 0 0.5rem; }
 
 @media print { .fig .btn { display: none; } }
+
+/* Highlights: kinds of important information in the running text, each with a look of its own (Joaquín's choice of
+   19 Oct 2026, the "more colors" mockup), each a tint of one ink mixed into the paper, stronger in the dark theme.
+   Use them sparingly: never two next to each other (two paragraphs, a figure, a list or a table between any two), at
+   most one key idea and three highlights in a section. See "Highlights" in .claude/rules/notes.md. */
+.note { --t-def: color-mix(in srgb, var(--ok) 13%, var(--paper)); --t-ours: color-mix(in srgb, var(--blue) 11%, var(--paper));
+  --t-slip: color-mix(in srgb, var(--red) 10%, var(--paper)); --t-back: color-mix(in srgb, var(--blue) 9%, var(--paper));
+  --t-later: color-mix(in srgb, var(--violet) 12%, var(--paper)); --t-key: color-mix(in srgb, var(--pick) 30%, var(--paper)); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .note { --t-def: color-mix(in srgb, var(--ok) 20%, var(--paper)); --t-ours: color-mix(in srgb, var(--blue) 20%, var(--paper)); --t-slip: color-mix(in srgb, var(--red) 18%, var(--paper)); --t-back: color-mix(in srgb, var(--blue) 16%, var(--paper)); --t-later: color-mix(in srgb, var(--violet) 20%, var(--paper)); --t-key: color-mix(in srgb, var(--pick) 24%, var(--paper)); } }
+:root[data-theme="dark"] .note { --t-def: color-mix(in srgb, var(--ok) 20%, var(--paper)); --t-ours: color-mix(in srgb, var(--blue) 20%, var(--paper)); --t-slip: color-mix(in srgb, var(--red) 18%, var(--paper)); --t-back: color-mix(in srgb, var(--blue) 16%, var(--paper)); --t-later: color-mix(in srgb, var(--violet) 20%, var(--paper)); --t-key: color-mix(in srgb, var(--pick) 24%, var(--paper)); }
+/* A run-in label that opens a box ("The paper", "In the rally", "A slip in the paper", "After the paper"). */
+.hl-run { font-family: var(--sans); font-weight: 600; font-size: 0.9em; font-variation-settings: normal; margin-right: 0.35em; }
+/* Key idea: the one sentence of a section to remember, a highlighter stroke inside its paragraph. */
+mark.hl-key { background: var(--t-key); color: inherit; padding: 0.05em 0.18em; margin: 0 -0.08em; border-radius: 0.2em; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+/* Definition of a new term: a short block on green, the term in bold green. */
+.hl-def { background: var(--t-def); border-radius: 10px; padding: 0.75rem 1rem; margin: 1.2rem 0; }
+.hl-def p { margin: 0; }
+.hl-def dfn { font-style: normal; font-weight: 620; font-variation-settings: normal; color: var(--ok); }
+/* The paper against the note's own example (paper notes): two short columns, stacked on phones; the example in blue. */
+.hl-vs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; margin: 1.3rem 0; }
+.hl-vs > div { background: var(--card); border: 1px solid var(--rule); border-radius: 10px; padding: 0.7rem 0.9rem; }
+.hl-vs > div.ours { background: var(--t-ours); border-color: color-mix(in srgb, var(--blue) 30%, var(--paper)); }
+.hl-vs p { margin: 0; }
+.hl-vs .ours .hl-run { color: var(--blue); }
+@media (max-width: 560px) { .hl-vs { grid-template-columns: minmax(0, 1fr); } }
+/* A slip or loose spot in the paper (paper notes): carmine. */
+.hl-slip { background: var(--t-slip); border-left: 3px solid var(--red); border-radius: 0 10px 10px 0; padding: 0.6rem 1rem; margin: 1.2rem 0; }
+.hl-slip p { margin: 0; }
+.hl-slip .hl-run { color: var(--red); }
+/* Link back to what an earlier note gave the reader: a note in the margin at desktop width, inline below it. */
+aside.hl-back { font-family: var(--sans); font-size: 0.86rem; line-height: 1.4; color: var(--ink-2); font-variation-settings: normal; background: var(--t-back); border-left: 2px solid var(--blue); border-radius: 0 8px 8px 0; padding: 0.45rem 0.6rem; margin: 0.8rem 0; }
+aside.hl-back a { color: var(--blue); }
+@media (min-width: 1180px) { aside.hl-back { float: right; clear: right; width: 170px; margin: 0.2rem -200px 0.6rem 0; } }
+/* What comes from after the paper (paper notes), such as a later version's change: violet. */
+.hl-later { background: var(--t-later); border-left: 3px solid var(--violet); border-radius: 0 10px 10px 0; padding: 0.8rem 1rem; margin: 1.3rem 0; }
+.hl-later p { margin: 0.35rem 0; }
+.hl-later .disp { margin: 0.6rem 0; }
+.hl-later .hl-run, .hl-later dfn { color: var(--violet); }
+.hl-later dfn { font-style: normal; font-weight: 620; font-variation-settings: normal; }
+
+/* Pseudocode beside a guided run (slideshow()'s code option, in gridworld.js). Wide screens: the drawing and its controls on the left, the pseudocode
+   above the readout on the right; phones: the pseudocode between the controls and the readout. */
+.fig.steps.with-code { grid-template-areas: "draw" "ctl" "code" "ro" "foot"; }
+.fig.steps.with-code > .pcode { grid-area: code; }
+@media (min-width: 840px) { .fig.steps.with-code { grid-template-rows: auto auto auto 1fr; grid-template-areas: "draw code" "draw ro" "ctl ro" "foot ro"; } }
+/* A figure with two runs behind mode buttons keeps the buttons above the drawing, the pseudocode beside them. */
+.fig.steps.with-code:has(> .modes) { grid-template-areas: "modes" "draw" "ctl" "code" "ro" "foot"; }
+@media (min-width: 840px) { .fig.steps.with-code:has(> .modes) { grid-template-rows: auto auto 1fr auto auto; grid-template-areas: "modes code" "draw code" "draw ro" "ctl ro" "foot ro"; } }
+.pcode { background: var(--card); border-radius: 12px; padding: 0.7rem 0.8rem 0.6rem; min-width: 0; }
+.pc-title { font-family: var(--sans); font-size: 0.86rem; line-height: 1.4; color: var(--ink-3); margin: 0 0 0.4rem; font-variation-settings: normal; }
+ol.pc { list-style: none; margin: 0; padding: 0; counter-reset: pc; font-family: var(--serif); font-size: 1.02rem; line-height: 1.5; }
+/* No fade: a planning line is lit for about 50 ms, and a fade would lag behind the grid. */
+ol.pc li { position: relative; padding: 0.18rem 0.4rem 0.18rem 2.3rem; border-left: 3px solid transparent; border-radius: 0 6px 6px 0; color: var(--ink-2); }
+ol.pc li.head { padding-left: 0.4rem; font-weight: 620; font-variation-settings: normal; color: var(--ink); }
+ol.pc li:not(.head) { counter-increment: pc; }
+ol.pc li:not(.head)::before { content: counter(pc); position: absolute; left: 1rem; color: var(--ink-3); font-family: var(--sans); font-size: 0.8rem; top: 0.33rem; }
+ol.pc li.k-pick { --k: var(--pick); } ol.pc li.k-model { --k: var(--blue); } ol.pc li.k-update { --k: var(--ok); }
+ol.pc li.on { color: var(--ink); background: color-mix(in srgb, var(--k) 20%, var(--card)); border-left-color: var(--k); }
+ol.pc .upd { color: var(--ok); }
+/* Nesting: each loop level indents its lines; the inner loop's lines sit beside a faint rule. */
+ol.pc li.ind1 { margin-left: 0.9rem; }
+ol.pc li.head.ind1 { padding-left: 0.4rem; }
+ol.pc li.ind2 { margin-left: 1.8rem; }
+ol.pc li.ind2::after { content: ""; position: absolute; left: -0.55rem; top: 0; bottom: 0; border-left: 1px solid var(--rule); }
+ol.pc li.k-take { --k: var(--ink-3); } ol.pc li.k-plain { --k: var(--ink-3); }
+/* A line that computes a return, a target or a TD error: red, as the grid outlines what a target uses. */
+ol.pc li.k-target { --k: var(--red); }
+/* The grid figures: the four inner tips of each cell, where each move's best-move arrow goes, always a faint blue; the best move's arrow (.gw-arrow) keeps its blue. */
+.gw-tip { fill: color-mix(in srgb, var(--blue) 16%, transparent); stroke: none; }
+/* A table that would otherwise scroll on phones (a long row header beside two or three columns of numbers): less
+   padding and smaller type below 480 px. */
+@media (max-width: 480px) { .tbl.tight th, .tbl.tight td { padding: 0.35rem 0.3rem; font-size: 0.88rem; } .tbl.tight th:first-child, .tbl.tight td:first-child { padding-left: 0; } }
+/* On the narrowest phones (320 px), every table takes the tight padding and type, so that few need to scroll. */
+@media (max-width: 360px) { .tbl th, .tbl td { padding: 0.35rem 0.3rem; font-size: 0.88rem; hyphens: auto; -webkit-hyphens: auto; } .tbl th:first-child, .tbl td:first-child { padding-left: 0; } }

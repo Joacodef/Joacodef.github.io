@@ -223,6 +223,39 @@ function readout(s, mode) {
     warn(st(12).life === 243 && st(12).y === 1160, "transition 12 is not drawn 243 times, or its target is not 1.160");
 
     const kept = (t) => ({ memory: cells(t), agent: t, label: label(st(t).ep, t) });
+    // The pseudocode beside the run: the note's steps, numbered by the panel. Lines (data-line): 0 the start, 2 a new
+    // episode's first pair, 4 choose, 5 take, 6 store, 7 draw the minibatch, 8 its targets, 9 the gradient step.
+    const Lt = (s) => `${s}<sub><i>t</i></sub>`, Lt1 = (s) => `${s}<sub><i>t</i>+1</sub>`, Lj = (s) => `${s}<sub><i>j</i></sub>`, Lj1 = (s) => `${s}<sub><i>j</i>+1</sub>`;
+    const at = Lt("<i>a</i>"), rt = Lt("<i>r</i>"), phiT = Lt("φ"), phiT1 = Lt1("φ"), phiJ1 = Lj1("φ");
+    const tuple = (f) => `<span class="nowrap">(${f("φ")}, ${f("<i>a</i>")}, ${f("<i>r</i>")}, ${f === Lt ? phiT1 : phiJ1})</span>`;
+    const qJ = `<i>Q</i>(${Lj("φ")}, ${Lj("<i>a</i>")}; θ)`;
+    const CODE = {
+      title: tr("Deep Q-learning with experience replay", "Deep Q-learning con experience replay"),
+      lines: [
+        { kind: "plain", html: tr(`<span class="nowrap">𝒟 ← empty,</span> with room for <i>N</i>; <span class="nowrap">θ ← random</span>`, `<span class="nowrap">𝒟 ← vacío,</span> con espacio para <i>N</i>; <span class="nowrap">θ ← al azar</span>`) },
+        { head: true, html: tr("For each episode:", "En cada episodio:") },
+        { kind: "plain", ind: 1, html: tr(`Observe <i>x</i><sub>1</sub>; <span class="nowrap"><i>s</i><sub>1</sub> = <i>x</i><sub>1</sub>,</span> <span class="nowrap">φ<sub>1</sub> = φ(<i>s</i><sub>1</sub>)</span>`, `Observar <i>x</i><sub>1</sub>; <span class="nowrap"><i>s</i><sub>1</sub> = <i>x</i><sub>1</sub>,</span> <span class="nowrap">φ<sub>1</sub> = φ(<i>s</i><sub>1</sub>)</span>`) },
+        { head: true, ind: 1, html: tr(`For each step <i>t</i>, until ${phiT1} is terminal or the rally reaches the cut:`, `En cada paso <i>t</i>, hasta que ${phiT1} sea terminal o el peloteo llegue al corte:`) },
+        { kind: "pick", ind: 2, html: tr(`${at} ← random with probability ε, else <span class="nowrap">argmax<sub><i>a</i></sub> <i>Q</i>(${phiT}, <i>a</i>; θ)</span>`, `${at} ← al azar con probabilidad ε; si no, <span class="nowrap">argmax<sub><i>a</i></sub> <i>Q</i>(${phiT}, <i>a</i>; θ)</span>`) },
+        { kind: "take", ind: 2, html: tr(`Take ${at}; observe ${rt} and ${Lt1("<i>x</i>")}; <span class="nowrap">${Lt1("<i>s</i>")} = ${Lt("<i>s</i>")}, ${at}, ${Lt1("<i>x</i>")};</span> <span class="nowrap">${phiT1} = φ(${Lt1("<i>s</i>")})</span>`, `Tomar ${at}; observar ${rt} y ${Lt1("<i>x</i>")}; <span class="nowrap">${Lt1("<i>s</i>")} = ${Lt("<i>s</i>")}, ${at}, ${Lt1("<i>x</i>")};</span> <span class="nowrap">${phiT1} = φ(${Lt1("<i>s</i>")})</span>`) },
+        { kind: "model", ind: 2, html: tr(`Store ${tuple(Lt)} in 𝒟, dropping the oldest once it holds <i>N</i>`, `Guardar ${tuple(Lt)} en 𝒟, y descartar la más antigua cuando ya tiene <i>N</i>`) },
+        { kind: "model", ind: 2, html: tr(`Draw 32 transitions ${tuple(Lj)} from 𝒟 at random`, `Sacar al azar 32 transiciones ${tuple(Lj)} de 𝒟`) },
+        { kind: "target", ind: 2, html: tr(`<span class="nowrap">${yj} ← <span class="pt">${rj}</span></span> if ${phiJ1} is terminal, else <span class="nowrap"><span class="pt">${rj} + γ max<sub><i>a</i>′</sub> <i>Q</i>(${phiJ1}, <i>a</i>′; θ)</span></span>`, `<span class="nowrap">${yj} ← <span class="pt">${rj}</span></span> si ${phiJ1} es terminal; si no, <span class="nowrap"><span class="pt">${rj} + γ max<sub><i>a</i>′</sub> <i>Q</i>(${phiJ1}, <i>a</i>′; θ)</span></span>`) },
+        { kind: "update", ind: 2, html: `<span class="nowrap"><span class="upd">θ</span> ← θ + α · <sup>1</sup>⁄<sub>32</sub> Σ<sub><i>j</i></sub>[<span class="pt">${yj}</span></span> <span class="nowrap">− ${qJ}]</span> <span class="nowrap">∇<sub>θ</sub>${qJ}</span>` },
+      ],
+    };
+    // A press that plays several lines draws each as it lights (playPhases): the choice in yellow on the old pair, the
+    // move taken, the transition stored; then the draws, the target's borrowed bars and the step. A line listed twice
+    // holds its phase for two beats (150 ms each), so that the glides and fades it starts (260 to 400 ms) end before
+    // the next phase or the final draw of the build cuts them.
+    const x0 = (t) => st(t), lab = (t) => label(st(t).ep, t);
+    const pickDraw = (t) => ({ s: pair(x0(t).s), q: qs(x0(t).q), pick: x0(t).a, memory: cells(t - 1), agent: t - 1, label: lab(t) });
+    const takeDraw = (t) => ({ s: next(x0(t)), q: x0(t).r === -1 ? null : qs(x0(t).qn), taken: x0(t).a, memory: cells(t - 1), agent: t, label: lab(t) });
+    const storeDraw = (t) => ({ ...takeDraw(t), taken: null, memory: cells(t) });
+    const drawDraw = (t) => ({ ...storeDraw(t), memory: cells(t, x0(t).draws) });
+    const targetDraw = (t) => ({ ...drawDraw(t), tg: borrowed(x0(t)), learn: learnOf(t, false) });
+    const actPhases = (t) => [{ slow: true, lines: [4], draw: pickDraw(t) }, { slow: true, lines: [5, 5], draw: takeDraw(t) }, { slow: true, lines: [6], draw: storeDraw(t) }];
+    const learnPhases = (t, b) => [{ slow: true, lines: [7], draw: drawDraw(t) }, { slow: true, lines: [8], draw: targetDraw(t) }, { slow: true, lines: [9, 9, 9], draw: b }];
     const slides = [];
     // Slide 1: step 1, line by line.
     {
@@ -231,29 +264,29 @@ function readout(s, mode) {
       const tied = bestOf(x.qn);
       warn(tied.join() === "1,2", "φ_2's largest values are not staying and moving down, tied");
       slides.push({ title: tr("An empty memory, random weights", "Una memoria vacía, pesos al azar"), builds: [
-        { s: null, memory: cells(0), agent: 0, label: tr(`Before episode 1 · ${epsText(1)}`, `Antes del episodio 1 · ${epsText(1)}`),
+        { code: [0], s: null, memory: cells(0), agent: 0, label: tr(`Before episode 1 · ${epsText(1)}`, `Antes del episodio 1 · ${epsText(1)}`),
           line: tr("The memory is empty and the weights are random.", "La memoria está vacía y los pesos son al azar.") },
-        { s: pair(x.s), q: qs(x.q), memory: cells(0), agent: 0, label: lab, eq: valuesEq(phi1, x.q),
+        { code: [2], s: pair(x.s), q: qs(x.q), memory: cells(0), agent: 0, label: lab, eq: valuesEq(phi1, x.q),
           line: tr(`Episode 1 starts with a serve from the top left corner; at the serve, ${phi1} holds this first screen twice. The random weights give the moves small values.`, `El episodio 1 parte con un saque desde la esquina superior izquierda; en el saque, ${phi1} tiene esta primera pantalla dos veces. Los pesos al azar dan valores pequeños a los movimientos.`) },
-        { s: pair(x.s), q: qs(x.q), pick: x.a, memory: cells(0), agent: 0, label: lab,
+        { code: [4], s: pair(x.s), q: qs(x.q), pick: x.a, memory: cells(0), agent: 0, label: lab,
           line: tr(`With ε = 1 the move is random: ${MOVES[x.a]}.`, `Con ε = 1 el movimiento es al azar: ${MOVES[x.a]}.`) },
-        { s: alone(x), q: qs(x.q), taken: x.a, memory: cells(0), agent: 1, label: lab,
+        { code: [5], s: alone(x), q: qs(x.q), taken: x.a, memory: cells(0), agent: 1, label: lab,
           line: tr(`The paddle stays, the ball bounces off the top wall to ${xy(x.s1)}, and the reward ${sub("<i>r</i>", 1)} is 0.`, `La paleta se queda, la pelota rebota en la pared de arriba hacia ${xy(x.s1)}, y la recompensa ${sub("<i>r</i>", 1)} es 0.`) },
-        { s: next(x), q: qs(x.qn), memory: cells(0), agent: 1, label: lab, eq: valuesEq(phi2, x.qn),
+        { code: [5], s: next(x), q: qs(x.qn), memory: cells(0), agent: 1, label: lab, eq: valuesEq(phi2, x.qn),
           line: tr(`${phi2} holds the last two screens; the faint ball shows which way it moves. ${cap(and(tied.map((a) => DOING[a])))} are equal to three decimals, so there is no blue arrow.`, `${phi2} tiene las dos últimas pantallas; la pelota tenue muestra hacia dónde se mueve. ${cap(and(tied.map((a) => DOING[a])))} son iguales con tres decimales, así que no hay flecha azul.`) },
-        { s: next(x), q: qs(x.qn), memory: cells(1), agent: 1, label: lab,
+        { code: [6], s: next(x), q: qs(x.qn), memory: cells(1), agent: 1, label: lab,
           line: tr(`The transition (${phi1}, ${MOVES[x.a]}, 0, ${phi2}) is the memory's first.`, `La transición (${phi1}, ${MOVES[x.a]}, 0, ${phi2}) es la primera de la memoria.`) },
-        { s: next(x), q: qs(x.qn), memory: cells(1, x.draws), agent: 1, label: lab,
+        { code: [7], s: next(x), q: qs(x.qn), memory: cells(1, x.draws), agent: 1, label: lab,
           line: tr(`The minibatch draws 32 times at random from the memory, with repeats: here, the only transition, ${kn(drawn(x, 1))} times.`, `El minibatch saca 32 veces al azar de la memoria, con repetición: aquí, la única transición, ${kn(drawn(x, 1))} veces.`) },
-        { s: next(x), q: qs(x.qn), tg: borrowed(x), memory: cells(1, x.draws), learn: learnOf(1, false), agent: 1, label: lab, eq: targetEq(x),
+        { code: [8], s: next(x), q: qs(x.qn), tg: borrowed(x), memory: cells(1, x.draws), learn: learnOf(1, false), agent: 1, label: lab, eq: targetEq(x),
           line: tr(`Its target is the reward plus γ times the largest value of the next screen, the one in view, which ${and(tied.map((a) => DOING[a]))} share.`, `Su objetivo es la recompensa más γ veces el mayor valor de la pantalla siguiente, la que se ve, que comparten ${and(tied.map((a) => DOING[a]))}.`) },
-        { s: next(x), q: qs(x.qa), tg: borrowed(x), memory: cells(1, x.draws), learn: learnOf(1), agent: 1, label: lab, eq: updEq(phi1, x),
+        { code: [9], s: next(x), q: qs(x.qa), tg: borrowed(x), memory: cells(1, x.draws), learn: learnOf(1), agent: 1, label: lab, eq: updEq(phi1, x),
           line: tr(`One gradient step, the first of section 2's figure: the value of staying in ${phi1} rises from ${f3(x.v0)} to ${f3(x.v1)}, ${x.pct}% of the way. The same step raised staying in the screen in view, to ${f3(x.qa[1])}.`, `Un paso de gradiente, el primero de la figura de la sección 2: el valor de quedarse en ${phi1} sube de ${f3(x.v0)} a ${f3(x.v1)}, un ${x.pct}% del camino. El mismo paso subió quedarse en la pantalla que se ve, a ${f3(x.qa[1])}.`) },
       ] });
     }
     // Steps 2 to 5: choose, take and store in one press; draw, target and step in the next.
-    const act = (t, en, es) => ({ s: next(st(t)), q: qs(st(t).qn), taken: st(t).a, ...kept(t), line: tr(en, es) });
-    const learnPress = (t, en, es, eq) => ({ s: next(st(t)), q: qs(st(t).qa), tg: borrowed(st(t)), ...kept(t), memory: cells(t, st(t).draws), learn: learnOf(t), eq, line: tr(en, es) });
+    const act = (t, en, es) => ({ code: [4, 5, 6], phases: actPhases(t), s: next(st(t)), q: qs(st(t).qn), taken: st(t).a, ...kept(t), line: tr(en, es) });
+    const learnPress = (t, en, es, eq) => { const b = { code: [7, 8, 9], s: next(st(t)), q: qs(st(t).qa), tg: borrowed(st(t)), ...kept(t), memory: cells(t, st(t).draws), learn: learnOf(t), eq, line: tr(en, es) }; b.phases = learnPhases(t, b); return b; };
     {
       const [x2, x3, x4, x5] = [2, 3, 4, 5].map(st), c2 = counts(x2.draws);
       slides.push({ title: tr("Random moves, a growing memory", "Movimientos al azar, una memoria que crece"), builds: [
@@ -271,16 +304,26 @@ function readout(s, mode) {
     {
       const x = st(6), end = next(x), p = x.s1[2];
       slides.push({ title: tr("The miss", "La pelota se escapa"), builds: [
-        { s: end, q: null, taken: x.a, ...kept(6), sound: "fall",
+        { code: [4, 5, 6], phases: actPhases(6), s: end, q: null, taken: x.a, ...kept(6), sound: "fall",
           line: tr(`Random: ${MOVES[x.a]}. The ball bounces to ${xy(x.s1)}, beside the paddle's column, while the paddle covers rows ${p} and ${p + 1}: a miss, ${sub("<i>r</i>", 6)} = −1, and the episode ends.`, `Al azar: ${MOVES[x.a]}. La pelota rebota hacia ${xy(x.s1)}, junto a la columna de la paleta, mientras la paleta cubre las filas ${p} y ${p + 1}: se escapa, ${sub("<i>r</i>", 6)} = −1, y el episodio termina.`) },
-        { s: end, q: null, ...kept(6), memory: cells(6, x.draws), learn: learnOf(6), eq: `${targetEq(x)}; ${updEq(sub("φ", 6), x, false)}`,
+        { code: [7, 8, 9], s: end, q: null, ...kept(6), memory: cells(6, x.draws), learn: learnOf(6), eq: `${targetEq(x)}; ${updEq(sub("φ", 6), x, false)}`,
           line: tr(`Transition 6 ends the episode, so its target is the reward alone, which no step can move. The step lowers the value of staying in ${sub("φ", 6)} from ${f3(x.v0)} to ${f3(x.v1)}.`, `La transición 6 termina el episodio, así que su objetivo es solo la recompensa, que ningún paso puede mover. El paso baja el valor de quedarse en ${sub("φ", 6)} de ${f3(x.v0)} a ${f3(x.v1)}.`) },
       ] });
+      const lb = slides.at(-1).builds[1];
+      lb.phases = learnPhases(6, lb);
     }
     // Slide 4: episode 2, one press per step, up to its first hit.
     {
       const phiJ = sub("φ", "<i>j</i>");
-      const step = (t, en, es) => ({ s: next(st(t)), q: qs(st(t).qa), taken: st(t).a, tg: borrowed(st(t)), ...kept(t), memory: cells(t, st(t).draws), learn: learnOf(t), eq: updEq(phiJ, st(t)), line: tr(en, es) });
+      // A whole step in one press: choose, take, store, draw, target and the gradient step, each drawn as its line lights;
+      // the episode's first step starts from its serve, the new pair φ_1.
+      const step = (t, en, es) => {
+        const b = { s: next(st(t)), q: qs(st(t).qa), taken: st(t).a, tg: borrowed(st(t)), ...kept(t), memory: cells(t, st(t).draws), learn: learnOf(t), eq: updEq(phiJ, st(t)), line: tr(en, es) };
+        const serve = st(t - 1).r === -1 ? [{ slow: true, lines: [2], draw: { s: pair(st(t).s), q: qs(st(t).q), memory: cells(t - 1), agent: t - 1 } }] : [];
+        b.phases = [...serve, ...actPhases(t), ...learnPhases(t, { ...b, taken: null })];
+        b.code = b.phases.flatMap((ph) => ph.lines).filter((l, i, a) => l !== a[i - 1]);
+        return b;
+      };
       const [x7, x8, x9, x10, x11, x12] = [7, 8, 9, 10, 11, 12].map(st), share = (x, t) => [times(drawn(x, t)), x.pct];
       const serveRow = x7.s[4];
       slides.push({ title: tr("A first hit", "Una primera devolución"), builds: [
@@ -290,23 +333,27 @@ function readout(s, mode) {
         step(9, `Random: ${MOVES[x9.a]}; the ball bounces up to ${xy(x9.s1)}. Transition 9, drawn ${share(x9, 9)[0]}: ${x9.pct}% of the way.`, `Al azar: ${MOVES[x9.a]}; la pelota rebota hacia arriba, a ${xy(x9.s1)}. La transición 9, sacada ${share(x9, 9)[0]}: un ${x9.pct}% del camino.`),
         step(10, `Random: ${MOVES[x10.a]}; the ball moves to ${xy(x10.s1)}. Transition 10, drawn ${share(x10, 10)[0]}: ${x10.pct}% of the way.`, `Al azar: ${MOVES[x10.a]}; la pelota va a ${xy(x10.s1)}. La transición 10, sacada ${share(x10, 10)[0]}: un ${x10.pct}% del camino.`),
         step(11, `Random: ${MOVES[x11.a]}; the paddle reaches the top, rows 0 and 1, and the ball moves to ${xy(x11.s1)}. Transition 11, drawn ${share(x11, 11)[0]}: ${x11.pct}% of the way.`, `Al azar: ${MOVES[x11.a]}; la paleta llega arriba, filas 0 y 1, y la pelota va a ${xy(x11.s1)}. La transición 11, sacada ${share(x11, 11)[0]}: un ${x11.pct}% del camino.`),
-        { s: next(x12), q: qs(x12.qn), taken: x12.a, ...kept(12), sound: "wall",
+        { code: [4, 5, 6], phases: actPhases(12), s: next(x12), q: qs(x12.qn), taken: x12.a, ...kept(12), sound: "wall",
           line: tr(`Random: ${MOVES[x12.a]}. The paddle covers rows ${x12.s1[2]} and ${x12.s1[2] + 1} as the ball arrives at row ${x12.s1[1]}: a hit, ${sub("<i>r</i>", 12)} = +1, and the ball turns back.`, `Al azar: ${MOVES[x12.a]}. La paleta cubre las filas ${x12.s1[2]} y ${x12.s1[2] + 1} cuando la pelota llega a la fila ${x12.s1[1]}: la devuelve, ${sub("<i>r</i>", 12)} = +1, y la pelota se vuelve.`) },
-        { s: next(x12), q: qs(x12.qa), tg: borrowed(x12), ...kept(12), memory: cells(12, x12.draws), learn: learnOf(12), eq: `${targetEq(x12)}; ${updEq(phiJ, x12, false)}`,
+        { code: [7, 8, 9], s: next(x12), q: qs(x12.qa), tg: borrowed(x12), ...kept(12), memory: cells(12, x12.draws), learn: learnOf(12), eq: `${targetEq(x12)}; ${updEq(phiJ, x12, false)}`,
           line: tr(`Transition 12 is drawn once among the 32, so it gets one 32nd of the step: its value moves from ${f3(x12.v0)} to ${f3(x12.v1)}, though its target is far above. It will stay in the memory for ${kn(CAP)} steps and be drawn ${kn(x12.life)} times in all.`, `La transición 12 sale una vez entre las 32, así que le toca una de las 32 partes del paso: su valor va de ${f3(x12.v0)} a ${f3(x12.v1)}, aunque su objetivo está mucho más arriba. Se quedará en la memoria ${kn(CAP)} pasos y saldrá ${kn(x12.life)} veces en total.`) },
       ] });
+      const lb = slides.at(-1).builds.at(-1);
+      lb.phases = learnPhases(12, lb);
     }
 
     // The skips' frames: every step of the three episodes the later slides land on, the pair of screens in view when the
     // move is chosen, its values, the move in yellow, and the memory's strip as it fills. A move into the top or bottom
     // wall leaves the paddle in place; every other frame such a move draws it pressed into the wall.
+    // One pass of the loop per frame: choose to the gradient step, from the new pair φ_1 at an episode's first frame.
+    const FF = [[4, 5, 6, 7, 8, 9], [2, 4, 5, 6, 7, 8, 9]];
     const FR = [], first = {}, presses = {};
     for (const L of F.landings) {
       first[L.slide] = FR.length; presses[L.slide] = 0;
       L.frames.forEach((f, n) => {
         const t = L.from + n, m = FR.length, wall = (f[9] === 0 && f[5] === 0) || (f[9] === 2 && f[5] === 4);
         if (wall) presses[L.slide]++;
-        FR.push({ s: pair(f), q: f.slice(6, 9).map(q3), pick: f[9], nudge: wall && m % 2 === 0 ? (f[9] === 0 ? -1 : 1) : 0, memory: strip(t, Math.min(t, CAP)), agent: t, label: label(L.ep, t), line: "" });
+        FR.push({ s: pair(f), q: f.slice(6, 9).map(q3), pick: f[9], nudge: wall && m % 2 === 0 ? (f[9] === 0 ? -1 : 1) : 0, memory: strip(t, Math.min(t, CAP)), agent: t, label: label(L.ep, t), line: "", code: FF[n === 0 ? 1 : 0] });
       });
     }
     const L5 = F.landings.find((l) => l.slide === 5), L6 = F.landings.find((l) => l.slide === 6), L7 = F.landings.find((l) => l.slide === 7);
@@ -328,7 +375,7 @@ function readout(s, mode) {
       slides.push({ title: tr("The right last move", "El último movimiento, bien elegido"),
         skip: skip(L5, L5.frames.length - 1, tr(`Steps 13 to ${kn(t)}`, `Pasos 13 a ${kn(t)}`), `${plays(13, t, tr(`the rest of episode 2 and episodes 3 to ${kn(L5.ep)}`, `el resto del episodio 2 y los episodios 3 a ${kn(L5.ep)}`), episode(L5.ep))}${wallNote(presses[5])}.`),
         builds: [
-          { s: pair(f), q: f.slice(6, 9).map(q3), pick: f[9], memory: strip(t, T5.size, T5.draws), agent: t, sound: "fall", label: label(L5.ep, t), eq: valuesEq("φ", f.slice(6, 9)),
+          { code: [4], s: pair(f), q: f.slice(6, 9).map(q3), pick: f[9], memory: strip(t, T5.size, T5.draws), agent: t, sound: "fall", label: label(L5.ep, t), eq: valuesEq("φ", f.slice(6, 9)),
             line: tr(`In steps ${kn(T5.window[0])} to ${kn(T5.window[1])}, around this episode, whenever the ball was one step away and the move decided a hit, the network valued most a move that hits: ${right} times out of ${all}. Here it prefers ${MOVES[2]}, the one move that hits, but most moves are still random, and this one is: the paddle stays, and the ball will be missed.`,
               `Entre los pasos ${kn(T5.window[0])} y ${kn(T5.window[1])}, alrededor de este episodio, cada vez que la pelota estaba a un paso y el movimiento decidía la devolución, la red valoró más un movimiento que la devuelve: ${right} veces de ${all}. Aquí prefiere ${MOVES[2]}, el único movimiento que la devuelve, pero la mayoría de los movimientos todavía son al azar, y este lo es: la paleta se queda, y la pelota se escapará.`) },
           { s: pair(f), q: f.slice(6, 9).map(q3), pick: f[9], memory: strip(t, T5.size, T5.draws), agent: t, label: label(L5.ep, t),
@@ -344,9 +391,9 @@ function readout(s, mode) {
       slides.push({ title: tr("Ten hits in a row", "Diez devoluciones seguidas"),
         skip: skip(L6, L6.frames.length, tr(`Steps ${kn(lastOf(L5) + 1)} to ${kn(t)}`, `Pasos ${kn(lastOf(L5) + 1)} a ${kn(t)}`), `${plays(lastOf(L5) + 1, t, tr(`episodes ${kn(L5.ep + 1)} to ${kn(L6.ep)}`, `los episodios ${kn(L5.ep + 1)} a ${kn(L6.ep)}`), episode(L6.ep))}${wallNote(presses[6])}.`),
         builds: [
-          { s: pair(e), q: e.slice(6, 9).map(q3), memory: strip(t, T6.size, T6.draws), agent: t, sound: "wall", label: label(L6.ep, t),
+          { code: [5], s: pair(e), q: e.slice(6, 9).map(q3), memory: strip(t, T6.size, T6.draws), agent: t, sound: "wall", label: label(L6.ep, t),
             line: tr(`Episode ${kn(L6.ep)} is the first rally to reach the cut of ten hits, at step ${kn(t)}, while about one move in four is still random.`, `El episodio ${kn(L6.ep)} es el primer peloteo que llega al corte de diez devoluciones, en el paso ${kn(t)}, cuando todavía cerca de un movimiento de cada cuatro es al azar.`) },
-          { s: pair(e), q: e.slice(6, 9).map(q3), memory: strip(t, T6.size, T6.draws), agent: t, label: label(L6.ep, t),
+          { code: [7, 8], s: pair(e), q: e.slice(6, 9).map(q3), memory: strip(t, T6.size, T6.draws), agent: t, label: label(L6.ep, t),
             line: tr(`Of the 32 transitions drawn at this step, made ${kn(T6.age)} steps ago on average, ${T6.differ} hold a move that the network would not choose now, and ${T6.random} a random move. Each target still uses the best move of its next screen.`, `De las 32 transiciones sacadas en este paso, hechas hace ${kn(T6.age)} pasos en promedio, ${T6.differ} tienen un movimiento que la red no elegiría ahora, y ${T6.random} un movimiento al azar. Cada objetivo usa igual el mejor movimiento de su pantalla siguiente.`) },
         ] });
     }
@@ -362,8 +409,23 @@ function readout(s, mode) {
               `Paso ${kn(t)}. La memoria está llena desde el paso ${kn(T7.full)}, así que cada transición se queda ahí ${kn(CAP)} pasos, y ε se ha mantenido en 0.1. Desde el paso ${kn(T7.stable)}, cada prueba devolvió la pelota diez veces desde cada saque. En palabras simples: el agente lleva la paleta adonde llegará la pelota.`) },
         ] });
     }
+    // Short texts: with the pseudocode beside the run the readout shows only the current press, so a text that leaned on
+    // an earlier press, or said what its lit line says, gets one that stands alone, with the same cells and numbers.
+    {
+      const [b1, b2] = [slides[0].builds, slides[1].builds], b4 = slides[3].builds, x1 = st(1), x2 = st(2), tied = bestOf(x1.qn);
+      const way = (t) => tr(`Transition ${kn(t)}, drawn ${times(drawn(st(t), t))}, moves ${st(t).pct}% of the way to its target.`, `La transición ${kn(t)}, sacada ${times(drawn(st(t), t))}, avanza un ${st(t).pct}% del camino hacia su objetivo.`);
+      b1[6].short = tr(`The draws are with repeats, so the memory's only transition is drawn all ${kn(drawn(x1, 1))} times.`, `Los sorteos son con repetición, así que la única transición de la memoria sale las ${kn(drawn(x1, 1))} veces.`);
+      b1[7].short = tr(`The next screen of transition 1 is ${sub("φ", 2)}, the one in view, whose largest value ${and(tied.map((a) => DOING[a]))} share.`, `La pantalla siguiente de la transición 1 es ${sub("φ", 2)}, la que se ve, cuyo mayor valor comparten ${and(tied.map((a) => DOING[a]))}.`);
+      b1[8].short = tr(`The first step of section 2's figure: the value of staying in ${sub("φ", 1)} rises from ${f3(x1.v0)} to ${f3(x1.v1)}, ${x1.pct}% of the way. The same step raised staying in the screen in view, to ${f3(x1.qa[1])}.`, `El primer paso de la figura de la sección 2: el valor de quedarse en ${sub("φ", 1)} sube de ${f3(x1.v0)} a ${f3(x1.v1)}, un ${x1.pct}% del camino. El mismo paso subió quedarse en la pantalla que se ve, a ${f3(x1.qa[1])}.`);
+      b2[0].short = tr(`Random: ${MOVES[x2.a]}. The paddle moves down and the ball to ${xy(x2.s1)}; reward 0. The memory holds two transitions.`, `Al azar: ${MOVES[x2.a]}. La paleta baja y la pelota va a ${xy(x2.s1)}; recompensa 0. La memoria tiene dos transiciones.`);
+      b2[5].short = way(4);
+      b2[7].short = way(5);
+      const tail = [[8, tr(`the ball moves to ${xy(st(8).s1)}, on the bottom wall`, `la pelota va a ${xy(st(8).s1)}, en la pared de abajo`)], [9, tr(`the ball bounces up to ${xy(st(9).s1)}`, `la pelota rebota hacia arriba, a ${xy(st(9).s1)}`)],
+        [10, tr(`the ball moves to ${xy(st(10).s1)}`, `la pelota va a ${xy(st(10).s1)}`)], [11, tr(`the paddle reaches the top, rows 0 and 1, and the ball moves to ${xy(st(11).s1)}`, `la paleta llega arriba, filas 0 y 1, y la pelota va a ${xy(st(11).s1)}`)]];
+      tail.forEach(([t, what], i) => { b4[i + 1].short = `${tr(`Random: ${MOVES[st(t).a]}; ${what}.`, `Al azar: ${MOVES[st(t).a]}; ${what}.`)} ${way(t)}`; });
+    }
     for (const sl of slides) for (const b of sl.builds) if (b.eq) b.eq = xs(b.eq);
     warn(slides.reduce((n, sl) => n + sl.builds.length, 0) === 31, "Figure 3 does not have the 31 presses the plan sets");
-    slideshow({ svg, slides, frame: (m) => FR[m], view: createPongView(svg) });
+    slideshow({ svg, slides, frame: (m) => FR[m], view: createPongView(svg), code: CODE });
   }
 }
