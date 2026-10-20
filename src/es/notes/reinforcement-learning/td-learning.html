@@ -127,7 +127,7 @@ scripts:
       <li>cuando la tarea nunca termina;</li>
       <li>cuando algunas políticas harían que un episodio durara para siempre: Monte Carlo no puede aprender nada de un episodio que nunca termina, mientras que TD se da cuenta durante el episodio de que las cosas van mal.</li>
     </ul>
-    <p>Además es correcto. <mark class="hl-key">Para una política fija π, TD(0) converge a <i>v</i><sub>π</sub>.</mark> Lo hace en promedio con un α constante lo bastante pequeño, y con probabilidad 1 si α se achica de la forma habitual, con una suma que crece sin límite y una suma de cuadrados que se mantiene finita. Qué método aprende más rápido no se ha demostrado en general, pero en la práctica TD suele ganarle a Monte Carlo con α constante en tareas con azar.</p>
+    <p>Además es correcto. <mark class="hl-key">Para una política fija π, TD(0) converge a <i>v</i><sub>π</sub>.</mark> Lo hace en promedio con un α constante lo bastante pequeño, y con probabilidad 1 si α se achica de la <a href="/es/notes/reinforcement-learning/multi-armed-bandits/#nonstationary">forma habitual</a>, con una suma que crece sin límite y una suma de cuadrados que se mantiene finita. Qué método aprende más rápido no se ha demostrado en general, pero en la práctica TD suele ganarle a Monte Carlo con α constante en tareas con azar.</p>
   </div>
 </section>
 
@@ -219,7 +219,7 @@ scripts:
     <div class="disp hero-f long"><i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">← <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub></span></span> <span class="nowrap pt">+ γ<i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>A</i><sub><i>t</i>+1</sub>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
     <aside class="hl-back">Del apunte de Monte Carlo: los <a href="/es/notes/reinforcement-learning/monte-carlo/#soft">métodos on-policy</a> evalúan y mejoran la misma política que toma las decisiones.</aside>
     <p>Se hace después de cada transición desde un estado no terminal, con <span class="nowrap"><i>Q</i>(terminal, ·) = 0</span>. Usa las cinco cantidades <i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>, <i>R</i><sub><i>t</i>+1</sub>, <i>S</i><sub><i>t</i>+1</sub> y <i>A</i><sub><i>t</i>+1</sub>, que le dan su nombre al método. Sarsa es on-policy: <i>A</i><sub><i>t</i>+1</sub> es la acción que la política de verdad toma después, así que Sarsa aprende los valores de la política que sigue, exploración incluida.</p>
-    <p>Sarsa converge con probabilidad 1 a una política óptima y sus valores de acción si todos los pares se siguen visitando, los tamaños de paso se achican de la forma habitual y la política se vuelve greedy en el límite, por ejemplo ε-greedy con ε = 1/<i>t</i>.</p>
+    <p>Sarsa converge con probabilidad 1 a una política óptima y sus valores de acción si todos los pares se siguen visitando, los tamaños de paso se achican de la <a href="/es/notes/reinforcement-learning/multi-armed-bandits/#nonstationary">forma habitual</a> y la política se vuelve greedy en el límite, por ejemplo ε-greedy con ε = 1/<i>t</i>.</p>
 
     <h3>El algoritmo</h3>
     <p>Para un tamaño de paso α en (0, 1] y un ε &gt; 0 pequeño, con <i>Q</i>(<i>s</i>, <i>a</i>) arbitraria salvo <span class="nowrap"><i>Q</i>(terminal, ·) = 0</span>:</p>

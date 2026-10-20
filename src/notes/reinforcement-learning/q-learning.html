@@ -102,7 +102,7 @@ scripts:
     <p>When does it work? <i>Q</i> converges to <i>q</i><sub>*</sub> with probability 1 as long as:</p>
     <ol>
       <li>every pair keeps being updated, so the policy must never stop trying every action;</li>
-      <li>the step sizes shrink slowly enough: their sum grows without limit while the sum of their squares stays finite.</li>
+      <li>the step sizes shrink in <a href="/notes/reinforcement-learning/multi-armed-bandits/#nonstationary">the usual way</a>: their sum grows without limit while the sum of their squares stays finite.</li>
     </ol>
     <p>The first condition is the least any method can ask for, since the value of an action never tried cannot be learned.</p>
   </div>

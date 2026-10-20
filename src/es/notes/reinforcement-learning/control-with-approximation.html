@@ -87,7 +87,7 @@ scripts:
       <li>Haz <i>S</i> ← <i>S</i>′ y <i>A</i> ← <i>A</i>′, y vuelve al paso 3.</li>
     </ol>
     <aside class="hl-back">Del apunte de model-based RL: <a href="/es/notes/reinforcement-learning/model-based/#r-max">R-Max</a> también exploraba con optimismo.</aside>
-    <p>El agente de la figura explora sin empujones al azar, con <span class="nowrap">ε = 0</span>. En cambio, parte con todos sus pesos en 300 pasos, más de lo que durará cualquiera de sus episodios. Todo empujón que prueba se queda corto de 300 tarde o temprano, así que el empujón que no ha probado parece mejor, y prueba ese: optimismo.</p>
+    <p>El agente de la figura explora sin empujones al azar, con <span class="nowrap">ε = 0</span>. En cambio, parte con todos sus pesos en 300 pasos, más de lo que durará cualquiera de sus episodios. Todo empujón que prueba se queda corto de 300 tarde o temprano, así que el empujón que no ha probado parece mejor, y prueba ese: optimismo, el <a href="/es/notes/reinforcement-learning/multi-armed-bandits/#optimistic">inicio optimista</a> del apunte de bandits.</p>
     <p>α se queda en 0.1 todo el tiempo. El apunte de predicción achicaba α de un episodio al siguiente para que sus pesos se asentaran; aquí primero tienen que bajar desde 300, y sus objetivos siguen cambiando a medida que la política mejora. En 100 corridas de 500 episodios:</p>
     <div class="tbl">
       <table>

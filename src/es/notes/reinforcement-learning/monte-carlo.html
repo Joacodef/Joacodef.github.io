@@ -48,7 +48,7 @@ scripts:
     <h2><span class="n">1</span>Promediar retornos</h2>
     <p>Una política π dice cómo elige el agente sus acciones; aquí, los movimientos al azar del robot. El valor de un estado bajo π es el retorno que cabe esperar desde él, la suma de las recompensas hasta que el episodio termina en el tiempo <i>T</i>, descontadas por γ:</p>
     <div class="disp"><i>v</i><sub>π</sub>(<i>s</i>) = <span class="nowrap">E<sub>π</sub>[<i>G</i><sub><i>t</i></sub> | <i>S</i><sub><i>t</i></sub> = <i>s</i>],</span>&ensp;<span class="nowrap"><i>G</i><sub><i>t</i></sub> = <i>R</i><sub><i>t</i>+1</sub> + γ<i>R</i><sub><i>t</i>+2</sub></span> <span class="nowrap">+ ⋯ + γ<sup><i>T</i>−<i>t</i>−1</sup><i>R</i><sub><i>T</i></sub></span></div>
-    <p>Un valor esperado se puede estimar con un promedio de muestras, y cada visita a <i>s</i> en un episodio da una muestra: el retorno que vino después. Un estado se puede visitar más de una vez en el mismo episodio, así que hay dos formas de promediar:</p>
+    <p>Un valor esperado se puede estimar con un <a href="/es/notes/reinforcement-learning/multi-armed-bandits/#values">promedio de muestras</a>, y cada visita a <i>s</i> en un episodio da una muestra: el retorno que vino después. Un estado se puede visitar más de una vez en el mismo episodio, así que hay dos formas de promediar:</p>
     <div class="hl-def"><p><dfn>Monte Carlo first-visit</dfn> promedia solo los retornos después de la primera visita a <i>s</i> en cada episodio; <dfn>Monte Carlo every-visit</dfn> promedia los retornos después de todas las visitas.</p></div>
     <p>En la casa γ = 1 y cada movimiento da −1, así que un retorno es menos el número de movimientos que quedan. Estos son dos viajes:</p>
     <div class="tbl left">
@@ -76,7 +76,7 @@ scripts:
     <p>que juntas dan −9, −8 y −5. Promediar más viajes llega ahí: después de 10&nbsp;000 viajes, ambos métodos están a menos de 0.1 de estos valores.</p>
     <p><mark class="hl-key">Ambos métodos convergen a <i>v</i><sub>π</sub>(<i>s</i>) a medida que crece el número de visitas</mark>, cada uno por su propia razón:</p>
     <ul>
-      <li>Para Monte Carlo first-visit es la ley de los grandes números: cada retorno es una muestra independiente cuya esperanza es <i>v</i><sub>π</sub>(<i>s</i>), así que el promedio es insesgado, y su error se achica como 1/√<i>n</i> después de <i>n</i> retornos.</li>
+      <li>Para Monte Carlo first-visit es la <a href="/es/notes/reinforcement-learning/multi-armed-bandits/#values">ley de los grandes números</a>: cada retorno es una muestra independiente cuya esperanza es <i>v</i><sub>π</sub>(<i>s</i>), así que el promedio es insesgado, y su error se achica como 1/√<i>n</i> después de <i>n</i> retornos.</li>
       <li>Monte Carlo every-visit también converge, aunque sus muestras de un mismo episodio no son independientes.</li>
     </ul>
 
@@ -115,7 +115,7 @@ scripts:
     <h3>Promediar sobre la marcha</h3>
     <p>No hace falta guardar todos los retornos. Después de un nuevo retorno <i>G</i><sub><i>t</i></sub>, el promedio de los <i>N</i>(<i>S</i><sub><i>t</i></sub>) retornos vistos hasta ahora se mueve hacia él:</p>
     <div class="disp"><i>V</i>(<i>S</i><sub><i>t</i></sub>) <span class="nowrap">← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + <span class="frac"><span>1</span><span><i>N</i>(<i>S</i><sub><i>t</i></sub>)</span></span>[<span class="pt"><i>G</i><sub><i>t</i></sub></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span></div>
-    <p>Para el pasillo, el primer retorno, −2, da <i>V</i> = −2, y el segundo, −6, da <span class="nowrap">−2 + ½(−6 + 2) = −4</span>, el mismo promedio de antes. Un paso constante α en lugar de 1/<i>N</i> da Monte Carlo con α constante, <span class="nowrap"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + α[<span class="pt"><i>G</i><sub><i>t</i></sub></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span>, que pesa más los retornos recientes. Eso sirve en problemas que cambian con el tiempo, como aprender sobre una política que sigue cambiando.</p>
+    <p>Para el pasillo, el primer retorno, −2, da <i>V</i> = −2, y el segundo, −6, da <span class="nowrap">−2 + ½(−6 + 2) = −4</span>, el mismo promedio de antes. Un paso constante α en lugar de 1/<i>N</i> da Monte Carlo con α constante, <span class="nowrap"><i>V</i>(<i>S</i><sub><i>t</i></sub>) ← <i>V</i>(<i>S</i><sub><i>t</i></sub>) + α[<span class="pt"><i>G</i><sub><i>t</i></sub></span> − <i>V</i>(<i>S</i><sub><i>t</i></sub>)]</span>, que, como el <a href="/es/notes/reinforcement-learning/multi-armed-bandits/#nonstationary">α constante del apunte de bandits</a>, sirve en problemas que cambian con el tiempo, por ejemplo aprender sobre una política que sigue cambiando.</p>
 
     <h3>Sin bootstrapping</h3>
     <div class="hl-def"><p><dfn>Bootstrapping</dfn>: construir estimaciones sobre otras estimaciones. Los métodos Monte Carlo no hacen bootstrapping: cada estimación sale solo de sus propios retornos, y la estimación de la cocina no usa la del pasillo.</p></div>
@@ -212,8 +212,10 @@ scripts:
     <h2><span class="n">4</span>Control sin exploring starts</h2>
     <p>Sin exploring starts, la única forma de seguir probando todas las acciones es que la propia política las siga eligiendo. Hay dos maneras de hacerlo, y esta sección trata de un método on-policy:</p>
     <div class="hl-def"><p>Los métodos <dfn>on-policy</dfn> evalúan y mejoran la misma política que toma las decisiones. Los métodos <dfn>off-policy</dfn> evalúan o mejoran una política distinta de la que genera la experiencia.</p></div>
-    <p>La política se mantiene blanda (soft), con <span class="nowrap">π(<i>a</i>|<i>s</i>) &gt; 0</span> para toda acción. Una política ε-soft le da a cada acción al menos <span class="nowrap">ε/|𝒜(<i>s</i>)|</span>, donde |𝒜(<i>s</i>)| es el número de acciones en <i>s</i>, y la más cercana a greedy entre ellas es ε-greedy:</p>
+    <p>La política se mantiene blanda (soft), con <span class="nowrap">π(<i>a</i>|<i>s</i>) &gt; 0</span> para toda acción. Una política ε-soft le da a cada acción al menos <span class="nowrap">ε/|𝒜(<i>s</i>)|</span>, donde |𝒜(<i>s</i>)| es el número de acciones en <i>s</i>.</p>
+    <p>La más cercana a greedy entre ellas es ε-greedy:</p>
     <div class="disp">π(<i>a</i>|<i>s</i>) <span class="nowrap">= 1 − ε + ε/|𝒜(<i>s</i>)|</span> <span class="nowrap">para la acción greedy,</span><br>π(<i>a</i>|<i>s</i>) <span class="nowrap">= ε/|𝒜(<i>s</i>)|</span> <span class="nowrap">para cada una de las demás.</span></div>
+    <aside class="hl-back">Del apunte de bandits: un agente <a href="/es/notes/reinforcement-learning/multi-armed-bandits/#values">ε-greedy</a> es greedy casi siempre y, con probabilidad ε, elige una acción al azar.</aside>
     <p>El control Monte Carlo first-visit on-policy es Monte Carlo ES con un cambio: los episodios parten donde parten, y el paso de mejora vuelve la política ε-greedy con respecto a <i>Q</i> en vez de greedy.</p>
 
     <h3>El algoritmo</h3>

@@ -1,0 +1,533 @@
+---
+title: Bandits de múltiples brazos
+module: Bandits de múltiples brazos
+order: 1
+description: Cómo elegir una y otra vez entre opciones cuyo rendimiento solo se conoce probándolas, estimando cuánto vale cada una y equilibrando probar las demás con usar la mejor encontrada hasta ahora.
+---
+<div class="prose">
+  <p>Una pescadora pasa una temporada en un lago. Cada mañana pesca en uno de cuatro lugares, el muelle, los juncos, las rocas o el puente, y se queda con lo que pesca. Algunos lugares tienen más peces que otros, pero nadie le ha dicho cuáles.</p>
+  <figure class="diagram" id="fig-lake">
+    <svg viewBox="0 0 440 222" role="img" aria-label="Un lago visto desde arriba, con cuatro lugares de pesca en su orilla cercana: el muelle, los juncos, las rocas y el puente. Bajo cada lugar, una barra vacía con un signo de interrogación: su pesca media, desconocida.">
+        <ellipse class="pond" cx="220" cy="62" rx="185" ry="46"/>
+        <circle class="act" cx="100" cy="97" r="5"/>
+        <rect class="pg-cell empty" x="82" y="126" width="36" height="60" rx="3"/>
+        <text class="dg-lab" x="100" y="161" text-anchor="middle">?</text>
+        <text class="dg-lab" x="100" y="208" text-anchor="middle">muelle</text>
+        <circle class="act" cx="180" cy="106.9" r="5"/>
+        <rect class="pg-cell empty" x="162" y="126" width="36" height="60" rx="3"/>
+        <text class="dg-lab" x="180" y="161" text-anchor="middle">?</text>
+        <text class="dg-lab" x="180" y="208" text-anchor="middle">juncos</text>
+        <circle class="act" cx="260" cy="106.9" r="5"/>
+        <rect class="pg-cell empty" x="242" y="126" width="36" height="60" rx="3"/>
+        <text class="dg-lab" x="260" y="161" text-anchor="middle">?</text>
+        <text class="dg-lab" x="260" y="208" text-anchor="middle">rocas</text>
+        <circle class="act" cx="340" cy="97" r="5"/>
+        <rect class="pg-cell empty" x="322" y="126" width="36" height="60" rx="3"/>
+        <text class="dg-lab" x="340" y="161" text-anchor="middle">?</text>
+        <text class="dg-lab" x="340" y="208" text-anchor="middle">puente</text>
+        <text class="dg-lab" x="14" y="152">pesca</text>
+        <text class="dg-lab" x="14" y="170">media</text>
+      </svg>
+  </figure>
+  <p>La pesca de una mañana dice cuán bueno fue ese día el lugar que eligió, y nada sobre los tres que dejó de lado. Para encontrar el mejor lugar, a veces debe pescar en lugares que parecen peores, renunciando a peces hoy: eso es <i>explorar</i>. Para pescar muchos peces, debe pescar en el lugar que parece mejor, <i>explotando</i> lo que ha aprendido. Este apunte trata de equilibrar las dos cosas. Nada en el lago le indica que otro lugar sea mejor en una mañana dada: hay una sola situación, y los apuntes que siguen a este agregan situaciones que cambian la mejor elección.</p>
+  <div class="hl-def"><p>Un <dfn>problema de bandit de <i>k</i> brazos</dfn> consiste en elegir una y otra vez entre <i>k</i> acciones, cada una de las cuales da una recompensa aleatoria cuya distribución depende solo de la acción y no cambia con el tiempo, para reunir tanta recompensa como sea posible a lo largo de muchas elecciones. El nombre viene de las máquinas tragamonedas, llamadas en inglés <i lang="en">one-armed bandits</i>, bandidos de un brazo: este problema es una máquina con <i>k</i> palancas. En el lago, <span class="nowrap"><i>k</i> = 4</span>: las acciones son los cuatro lugares, cada mañana es un paso de tiempo <i>t</i>, y la recompensa de una mañana es su pesca.</p></div>
+  <p>El apunte recorre cinco ideas:</p>
+  <ol>
+    <li>estimar cuánto vale cada lugar, y elegir a partir de las estimaciones;</li>
+    <li>actualizar una estimación sin guardar cada pesca;</li>
+    <li>seguir a los peces cuando se mueven;</li>
+    <li>hacer que las estimaciones iniciales impulsen la exploración;</li>
+    <li>aprender preferencias en vez de valores.</li>
+  </ol>
+  <p class="legend">En esta página, <span class="bar" aria-hidden="true"></span>las estimaciones se dibujan con tinta azul, y <span class="dot" aria-hidden="true"></span>aquello hacia lo que se mueven, las pescas y las medias reales, con tinta roja.</p>
+</div>
+
+<section id="values">
+  <div class="prose">
+    <h2><span class="n">1</span>Valores de las acciones</h2>
+    <p>Sea <i>A</i><sub><i>t</i></sub> el lugar donde se pesca la mañana <i>t</i> y <i>R</i><sub><i>t</i></sub> su pesca. Cada lugar <i>a</i> tiene un valor, la pesca que cabe esperar al pescar en él:</p>
+    <div class="disp"><i>q</i><sub>*</sub>(<i>a</i>) <span class="nowrap">≐ E[<i>R</i><sub><i>t</i></sub> | <i>A</i><sub><i>t</i></sub> = <i>a</i>]</span></div>
+    <div class="hl-def"><p>El <dfn>valor de una acción</dfn> es la recompensa que cabe esperar tras tomarla. La estrella marca el valor real, que la pescadora nunca ve, y ≐ se lee «se define como».</p></div>
+    <p>En el lago, <span class="nowrap"><i>q</i><sub>*</sub>(muelle) = 1</span>, <span class="nowrap"><i>q</i><sub>*</sub>(juncos) = 3</span>, <span class="nowrap"><i>q</i><sub>*</sub>(rocas) = 4</span> y <span class="nowrap"><i>q</i><sub>*</sub>(puente) = 2</span> peces por mañana. Su estimación en la mañana <i>t</i>, <i>Q</i><sub><i>t</i></sub>(<i>a</i>), es el promedio de las pescas que el lugar ha dado hasta entonces:</p>
+    <div class="disp"><i>Q</i><sub><i>t</i></sub>(<i>a</i>) <span class="nowrap">≐ <span class="frac"><span>Σ<span class="lims"><span><i>t</i>−1</span><span><i>i</i>=1</span></span><i>R</i><sub><i>i</i></sub> · 𝟙<sub><i>A</i><sub><i>i</i></sub>=<i>a</i></sub></span><span>Σ<span class="lims"><span><i>t</i>−1</span><span><i>i</i>=1</span></span>𝟙<sub><i>A</i><sub><i>i</i></sub>=<i>a</i></sub></span></span></span></div>
+    <p>Aquí 𝟙<sub><i>A</i><sub><i>i</i></sub>=<i>a</i></sub> vale 1 si se pescó en el lugar <i>a</i> la mañana <i>i</i> y 0 si no, así que ambas sumas conservan solo las mañanas pasadas en <i>a</i>. Un lugar donde nunca se ha pescado recibe una estimación por defecto, como 0. Mientras más se pesca en un lugar, más se acerca su promedio a <i>q</i><sub>*</sub>(<i>a</i>), por la ley de los grandes números: el promedio de más y más muestras se asienta en su media. Este es el método del promedio muestral.</p>
+    <p>La forma más simple de elegir es greedy: pescar en el lugar con la mayor estimación, la <i>acción greedy</i>, desempatando al azar.</p>
+    <div class="disp"><i>A</i><sub><i>t</i></sub> <span class="nowrap">≐ argmax<sub><i>a</i></sub> <i>Q</i><sub><i>t</i></sub>(<i>a</i>)</span></div>
+    <p>Una pescadora ε-greedy es greedy la mayoría de las mañanas, pero con una probabilidad pequeña ε elige un lugar al azar entre los <i>k</i>, incluido el greedy. El lugar greedy se pesca entonces con probabilidad <span class="nowrap">1 − ε + ε/<i>k</i></span>, y cada uno de los otros con ε/<i>k</i>. Con <span class="nowrap"><i>k</i> = 4</span> y <span class="nowrap">ε = 0.2</span>:</p>
+    <ul>
+      <li>el lugar greedy recibe 0.85 y cada uno de los otros 0.05;</li>
+      <li>cuando dos lugares empatan en la mayor estimación, se reparten el 0.8 de las mañanas greedy, así que cada uno recibe <span class="nowrap">0.4 + 0.05 = 0.45</span>, y los otros dos conservan 0.05.</li>
+    </ul>
+    <p>Una pescadora greedy que parte con todas las estimaciones en 0 puede dejar de explorar tras una sola mañana:</p>
+    <ol>
+      <li>La primera mañana las cuatro estimaciones valen 0, y el empate se rompe al azar.</li>
+      <li>Una pesca nunca es negativa, así que si la primera es mayor que cero, la estimación de ese lugar sube sobre 0 mientras las otras tres siguen en 0.</li>
+      <li>Su promedio sigue sobre 0 pesque lo que pesque después, así que los otros lugares nunca se vuelven a probar.</li>
+    </ol>
+    <p>La figura sigue una de esas temporadas. Cada fila es una mañana, con las cuatro estimaciones antes de ella; el lugar donde se pesca está sombreado en amarillo, y su pesca, en rojo.</p>
+  </div>
+  <figure class="diagram" id="fig-greedy">
+    <svg viewBox="0 0 440 256" role="img" aria-label="Una temporada greedy con estimaciones iniciales de 0, mañanas 1 a 8. Mañana 1: las cuatro estimaciones valen 0, el empate se rompe al azar, se pesca en los juncos y se obtienen 5. Desde entonces la estimación de los juncos está sobre 0 y las otras tres siguen en 0, así que cada mañana va a los juncos: pescas 2, 1, 3, 1, 4, 0 y 3, estimaciones 5, 3.5, 2.67, 2.75, 2.4, 2.67 y 2.29.">
+        <text class="pg-ax" x="226" y="20" text-anchor="middle">estimación de cada lugar antes de la mañana</text>
+        <text class="pg-ax" x="14" y="46">mañana</text>
+        <text class="pg-lab ink" x="118" y="46" text-anchor="middle">muelle</text>
+        <text class="pg-lab ink" x="190" y="46" text-anchor="middle">juncos</text>
+        <text class="pg-lab ink" x="262" y="46" text-anchor="middle">rocas</text>
+        <text class="pg-lab ink" x="334" y="46" text-anchor="middle">puente</text>
+        <text class="pg-lab tg" x="404" y="46" text-anchor="middle">pesca</text>
+        <line class="cp-grid" x1="14" y1="54" x2="426" y2="54"/>
+        <rect class="gw-pick" x="160" y="55" width="60" height="21" rx="4"/>
+        <text class="pg-lab" x="40" y="70" text-anchor="middle">1</text>
+        <text class="pg-val" x="118" y="70" text-anchor="middle">0</text>
+        <text class="pg-val" x="190" y="70" text-anchor="middle">0</text>
+        <text class="pg-val" x="262" y="70" text-anchor="middle">0</text>
+        <text class="pg-val" x="334" y="70" text-anchor="middle">0</text>
+        <text class="pg-lab tg" x="404" y="70" text-anchor="middle">5</text>
+        <rect class="gw-pick" x="160" y="79" width="60" height="21" rx="4"/>
+        <text class="pg-lab" x="40" y="94" text-anchor="middle">2</text>
+        <text class="pg-val" x="118" y="94" text-anchor="middle">0</text>
+        <text class="pg-val" x="190" y="94" text-anchor="middle">5</text>
+        <text class="pg-val" x="262" y="94" text-anchor="middle">0</text>
+        <text class="pg-val" x="334" y="94" text-anchor="middle">0</text>
+        <text class="pg-lab tg" x="404" y="94" text-anchor="middle">2</text>
+        <rect class="gw-pick" x="160" y="103" width="60" height="21" rx="4"/>
+        <text class="pg-lab" x="40" y="118" text-anchor="middle">3</text>
+        <text class="pg-val" x="118" y="118" text-anchor="middle">0</text>
+        <text class="pg-val" x="190" y="118" text-anchor="middle">3.5</text>
+        <text class="pg-val" x="262" y="118" text-anchor="middle">0</text>
+        <text class="pg-val" x="334" y="118" text-anchor="middle">0</text>
+        <text class="pg-lab tg" x="404" y="118" text-anchor="middle">1</text>
+        <rect class="gw-pick" x="160" y="127" width="60" height="21" rx="4"/>
+        <text class="pg-lab" x="40" y="142" text-anchor="middle">4</text>
+        <text class="pg-val" x="118" y="142" text-anchor="middle">0</text>
+        <text class="pg-val" x="190" y="142" text-anchor="middle">2.67</text>
+        <text class="pg-val" x="262" y="142" text-anchor="middle">0</text>
+        <text class="pg-val" x="334" y="142" text-anchor="middle">0</text>
+        <text class="pg-lab tg" x="404" y="142" text-anchor="middle">3</text>
+        <rect class="gw-pick" x="160" y="151" width="60" height="21" rx="4"/>
+        <text class="pg-lab" x="40" y="166" text-anchor="middle">5</text>
+        <text class="pg-val" x="118" y="166" text-anchor="middle">0</text>
+        <text class="pg-val" x="190" y="166" text-anchor="middle">2.75</text>
+        <text class="pg-val" x="262" y="166" text-anchor="middle">0</text>
+        <text class="pg-val" x="334" y="166" text-anchor="middle">0</text>
+        <text class="pg-lab tg" x="404" y="166" text-anchor="middle">1</text>
+        <rect class="gw-pick" x="160" y="175" width="60" height="21" rx="4"/>
+        <text class="pg-lab" x="40" y="190" text-anchor="middle">6</text>
+        <text class="pg-val" x="118" y="190" text-anchor="middle">0</text>
+        <text class="pg-val" x="190" y="190" text-anchor="middle">2.4</text>
+        <text class="pg-val" x="262" y="190" text-anchor="middle">0</text>
+        <text class="pg-val" x="334" y="190" text-anchor="middle">0</text>
+        <text class="pg-lab tg" x="404" y="190" text-anchor="middle">4</text>
+        <rect class="gw-pick" x="160" y="199" width="60" height="21" rx="4"/>
+        <text class="pg-lab" x="40" y="214" text-anchor="middle">7</text>
+        <text class="pg-val" x="118" y="214" text-anchor="middle">0</text>
+        <text class="pg-val" x="190" y="214" text-anchor="middle">2.67</text>
+        <text class="pg-val" x="262" y="214" text-anchor="middle">0</text>
+        <text class="pg-val" x="334" y="214" text-anchor="middle">0</text>
+        <text class="pg-lab tg" x="404" y="214" text-anchor="middle">0</text>
+        <rect class="gw-pick" x="160" y="223" width="60" height="21" rx="4"/>
+        <text class="pg-lab" x="40" y="238" text-anchor="middle">8</text>
+        <text class="pg-val" x="118" y="238" text-anchor="middle">0</text>
+        <text class="pg-val" x="190" y="238" text-anchor="middle">2.29</text>
+        <text class="pg-val" x="262" y="238" text-anchor="middle">0</text>
+        <text class="pg-val" x="334" y="238" text-anchor="middle">0</text>
+        <text class="pg-lab tg" x="404" y="238" text-anchor="middle">3</text>
+      </svg>
+    <figcaption>Una temporada greedy con estimaciones iniciales de 0. Los juncos ganan el empate de la primera mañana y dan 5 peces; desde entonces las otras estimaciones siguen en 0, y la temporada pasa sus 300 mañanas en los juncos sin probar nunca las rocas, el mejor lugar.</figcaption>
+  </figure>
+  <div class="prose">
+    <p>En 1000 temporadas de 300 mañanas, 9 de cada 10 temporadas greedy nunca dejan su primer lugar (en las demás no se pescó nada la primera mañana, así que el empate siguió abierto), y greedy pesca en las rocas cerca del 29% de las mañanas durante toda la temporada. Explorar lo arregla:</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th scope="col">Pescadora</th><th scope="col">Peces por mañana, mañanas <span class="nowrap">291–300</span></th><th scope="col">Con estimaciones exactas</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Greedy</th><td>2.61</td><td>4</td></tr>
+          <tr><th scope="row"><span class="nowrap">ε = 0.05</span></th><td>3.82</td><td>3.925</td></tr>
+          <tr><th scope="row"><span class="nowrap">ε = 0.2</span></th><td>3.67</td><td>3.7</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>La última columna es lo que pescaría cada una con estimaciones exactas: 4 con greedy, lo mejor posible, pescando en las rocas cada mañana, y menos con ε, ya que explorar todavía la manda a lugares peores algunas mañanas. Con <span class="nowrap">ε = 0.2</span> encuentra antes las rocas, y pesca en ellas el 76% de las mañanas 91–100, contra el 62% con <span class="nowrap">ε = 0.05</span>, pero más avanzada la temporada sus muchas mañanas al azar le cuestan más. <mark class="hl-key">Explorar cuesta peces hoy y rinde después.</mark></p>
+  </div>
+</section>
+
+<section id="incremental">
+  <div class="prose">
+    <h2><span class="n">2</span>Promediar sobre la marcha</h2>
+    <p>Promediar todas las pescas significa guardar todas las pescas. El promedio puede, en cambio, actualizarse tras cada una, guardando un número y un conteo por lugar. Toma un solo lugar y cuenta sus propias mañanas: <i>R</i><sub><i>i</i></sub> es ahora la pesca de su <i>i</i>-ésima mañana, y <i>Q</i><sub><i>n</i></sub> su estimación después de haber pescado en él <span class="nowrap"><i>n</i> − 1</span> veces:</p>
+    <div class="disp"><i>Q</i><sub><i>n</i></sub> <span class="nowrap">≐ <span class="frac"><span><i>R</i><sub>1</sub> + <i>R</i><sub>2</sub> + ⋯ + <i>R</i><sub><i>n</i>−1</sub></span><span><i>n</i> − 1</span></span></span></div>
+    <p>Las primeras <span class="nowrap"><i>n</i> − 1</span> pescas suman <span class="nowrap">(<i>n</i> − 1)<i>Q</i><sub><i>n</i></sub></span>, así que tras la <i>n</i>-ésima pesca el promedio es <span class="nowrap"><i>Q</i><sub><i>n</i>+1</sub> = [<i>R</i><sub><i>n</i></sub> + (<i>n</i> − 1)<i>Q</i><sub><i>n</i></sub>]/<i>n</i></span>, que se reordena como</p>
+    <div class="disp hero-f"><i>Q</i><sub><i>n</i>+1</sub> <span class="nowrap">= <i>Q</i><sub><i>n</i></sub> + <span class="frac"><span>1</span><span><i>n</i></span></span>[<span class="pt"><i>R</i><sub><i>n</i></sub></span> − <i>Q</i><sub><i>n</i></sub>]</span></div>
+    <p>Vale también para <span class="nowrap"><i>n</i> = 1</span>, y da <span class="nowrap"><i>Q</i><sub>2</sub> = <i>R</i><sub>1</sub></span> sea cual sea la conjetura inicial <i>Q</i><sub>1</sub>. Ahora hay dos contadores en juego: <i>t</i> cuenta las mañanas de la temporada, y <i>n</i> las mañanas en un lugar. En seis mañanas, para las rocas:</p>
+    <div class="tbl tight">
+      <table>
+        <thead><tr><th scope="col"><i>t</i></th><th scope="col" class="l">Lugar</th><th scope="col">Pesca</th><th scope="col"><i>n</i></th><th scope="col"><i>Q</i>(rocas) después</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">1</th><td class="l">juncos</td><td>2</td><td></td><td>0</td></tr>
+          <tr><th scope="row">2</th><td class="l">rocas</td><td>5</td><td>1</td><td><span class="nowrap">0 + 1(5 − 0)</span> <span class="nowrap">= 5</span></td></tr>
+          <tr><th scope="row">3</th><td class="l">rocas</td><td>3</td><td>2</td><td><span class="nowrap">5 + ½(3 − 5)</span> <span class="nowrap">= 4</span></td></tr>
+          <tr><th scope="row">4</th><td class="l">muelle</td><td>1</td><td></td><td>4</td></tr>
+          <tr><th scope="row">5</th><td class="l">rocas</td><td>6</td><td>3</td><td><span class="nowrap">4 + ⅓(6 − 4)</span> <span class="nowrap">≈ 4.67</span></td></tr>
+          <tr><th scope="row">6</th><td class="l">rocas</td><td>2</td><td>4</td><td><span class="nowrap">4.67 + ¼(2 − 4.67)</span> <span class="nowrap">= 4</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Las rocas terminan en 4, el promedio simple de 5, 3, 6 y 2. Cada fila de la tabla tiene la misma forma:</p>
+    <div class="disp"><i>EstimaciónNueva</i> <span class="nowrap">← <i>EstimaciónAnterior</i></span> <span class="nowrap">+ <i>TamañoDePaso</i></span> <span class="nowrap">[<span class="pt"><i>Objetivo</i></span> − <i>EstimaciónAnterior</i>]</span></div>
+    <p>El corchete es un error, cuán lejos está la estimación del objetivo, aquí la última pesca. Una sola pesca es un objetivo ruidoso, pero en promedio apunta en la dirección correcta, y el tamaño de paso, aquí 1/<i>n</i>, fija cuánto moverse. <mark class="hl-key">Cada método de estos apuntes mueve una estimación un paso hacia un objetivo</mark>; los apuntes de <a href="/es/notes/reinforcement-learning/monte-carlo/">Monte Carlo</a> y de <a href="/es/notes/reinforcement-learning/td-learning/">TD</a> lo hacen con otros objetivos. Un tamaño de paso se escribe α, o α<sub><i>n</i></sub>(<i>a</i>) cuando cambia de una pesca a la siguiente.</p>
+
+    <h3>El algoritmo</h3>
+    <p>Un algoritmo de bandit simple, ε-greedy con promedios muestrales:</p>
+    <ol class="steps">
+      <li>Para cada lugar <i>a</i>, haz <i>Q</i>(<i>a</i>) ← 0 y <i>N</i>(<i>a</i>) ← 0.</li>
+      <li>Elige <i>A</i>: con probabilidad 1 − ε, el lugar con la mayor <i>Q</i>, desempatando al azar; con probabilidad ε, un lugar al azar.</li>
+      <li>Pesca en <i>A</i> y observa la pesca <i>R</i>.</li>
+      <li>Haz <span class="nowrap"><i>N</i>(<i>A</i>) ← <i>N</i>(<i>A</i>) + 1</span> y <span class="nowrap"><i>Q</i>(<i>A</i>) ← <i>Q</i>(<i>A</i>)</span> <span class="nowrap">+ [<span class="pt"><i>R</i></span> − <i>Q</i>(<i>A</i>)]/<i>N</i>(<i>A</i>)</span>.</li>
+      <li>Repite desde el paso 2 cada mañana.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="nonstationary">
+  <div class="prose">
+    <h2><span class="n">3</span>Cuando los peces se mueven</h2>
+    <p>Un promedio muestral pesa la primera pesca tanto como la última. Eso es correcto mientras los lugares no cambien, pero un lago cambia, en contra del «no cambia con el tiempo» del problema de bandit definido arriba. En un problema no estacionario los valores reales cambian mientras el agente juega, y las recompensas recientes merecen más peso. La forma usual de dárselo es un tamaño de paso constante α, con <span class="nowrap">0 &lt; α ≤ 1</span>:</p>
+    <div class="disp"><i>Q</i><sub><i>n</i>+1</sub> <span class="nowrap">≐ <i>Q</i><sub><i>n</i></sub> + α[<span class="pt"><i>R</i><sub><i>n</i></sub></span> − <i>Q</i><sub><i>n</i></sub>]</span></div>
+    <p>Reescrita como <span class="nowrap">α<i>R</i><sub><i>n</i></sub> + (1 − α)<i>Q</i><sub><i>n</i></sub></span>, puede desenrollarse sustituyendo <i>Q</i><sub><i>n</i></sub> por su propia actualización, luego <i>Q</i><sub><i>n</i>−1</sub>, y así hasta <i>Q</i><sub>1</sub>:</p>
+    <div class="disp fit"><i>Q</i><sub><i>n</i>+1</sub> <span class="nowrap">= α<span class="pt"><i>R</i><sub><i>n</i></sub></span> + (1 − α)[α<span class="pt"><i>R</i><sub><i>n</i>−1</sub></span> + (1 − α)<i>Q</i><sub><i>n</i>−1</sub>]</span><br><span class="nowrap">= α<span class="pt"><i>R</i><sub><i>n</i></sub></span> + (1 − α)α<span class="pt"><i>R</i><sub><i>n</i>−1</sub></span></span> <span class="nowrap">+ (1 − α)<sup>2</sup><i>Q</i><sub><i>n</i>−1</sub> = ⋯</span><br><span class="nowrap">= (1 − α)<sup><i>n</i></sup><i>Q</i><sub>1</sub></span> <span class="nowrap">+ Σ<span class="lims"><span><i>n</i></span><span><i>i</i>=1</span></span>α(1 − α)<sup><i>n</i>−<i>i</i></sup><span class="pt"><i>R</i><sub><i>i</i></sub></span></span></div>
+    <p>Es un promedio ponderado del inicio y de cada pesca. Cada actualización multiplica la estimación anterior por <span class="nowrap">1 − α</span>, así que el peso de una pesca se achica en ese factor con cada pesca posterior. Los pesos de las pescas forman una suma geométrica, <span class="nowrap">α[1 + (1 − α) + ⋯ + (1 − α)<sup><i>n</i>−1</sup>]</span> <span class="nowrap">= 1 − (1 − α)<sup><i>n</i></sup></span>, así que junto con el <span class="nowrap">(1 − α)<sup><i>n</i></sup></span> de <i>Q</i><sub>1</sub> suman 1.</p>
+    <div class="hl-def"><p>Un <dfn>promedio ponderado que privilegia lo reciente</dfn> (<i lang="en">exponential recency-weighted average</i>) da a cada recompensa pasada un peso que decae exponencialmente con el número de recompensas que llegaron después de ella.</p></div>
+    <p>Con <span class="nowrap">α = 0.25</span> y <i>Q</i><sub>1</sub> = 0, las cuatro pescas de las rocas de la sección 2 (5, 3, 6 y 2) dan estimaciones de 1.25, 1.69, 2.77 y 2.57. La figura muestra los pesos en la última.</p>
+  </div>
+  <figure class="diagram" id="fig-weights">
+    <svg viewBox="0 0 440 224" role="img" aria-label="Barras de los pesos en Q5 con alfa 0.25 tras las pescas 5, 3, 6 y 2: el inicio Q1 0.316, la primera pesca 0.105, la segunda 0.141, la tercera 0.188, la cuarta 0.25.">
+        <text class="pg-ax" x="14" y="18">peso en la estimación</text>
+        <line class="cp-grid" x1="70" y1="129" x2="420" y2="129"/>
+        <line class="cp-grid" x1="70" y1="92" x2="420" y2="92"/>
+        <line class="cp-grid" x1="70" y1="55" x2="420" y2="55"/>
+        <g class="axes"><line x1="70" y1="166" x2="420" y2="166"/><line x1="70" y1="166" x2="70" y2="30"/></g>
+        <text class="pg-lab" x="62" y="171" text-anchor="end">0</text>
+        <text class="pg-lab" x="62" y="134" text-anchor="end">0.1</text>
+        <text class="pg-lab" x="62" y="97" text-anchor="end">0.2</text>
+        <text class="pg-lab" x="62" y="60" text-anchor="end">0.3</text>
+        <rect class="bar-w" x="98" y="48.9" width="40" height="117.1"/>
+        <text class="pg-lab ink" x="118" y="41.9" text-anchor="middle">0.316</text>
+        <text class="pg-lab" x="118" y="188" text-anchor="middle"><tspan class="m" font-style="italic">Q</tspan><tspan class="pg-sub" dy="0.32em">1</tspan><tspan dy="-0.32em"> = 0</tspan></text>
+        <rect class="bar-w" x="164" y="127" width="40" height="39"/>
+        <text class="pg-lab ink" x="184" y="120" text-anchor="middle">0.105</text>
+        <text class="pg-lab tg" x="184" y="188" text-anchor="middle"><tspan class="m" font-style="italic">R</tspan><tspan class="pg-sub" dy="0.32em">1</tspan><tspan dy="-0.32em"> = 5</tspan></text>
+        <rect class="bar-w" x="230" y="114" width="40" height="52"/>
+        <text class="pg-lab ink" x="250" y="107" text-anchor="middle">0.141</text>
+        <text class="pg-lab tg" x="250" y="188" text-anchor="middle"><tspan class="m" font-style="italic">R</tspan><tspan class="pg-sub" dy="0.32em">2</tspan><tspan dy="-0.32em"> = 3</tspan></text>
+        <rect class="bar-w" x="296" y="96.6" width="40" height="69.4"/>
+        <text class="pg-lab ink" x="316" y="89.6" text-anchor="middle">0.188</text>
+        <text class="pg-lab tg" x="316" y="188" text-anchor="middle"><tspan class="m" font-style="italic">R</tspan><tspan class="pg-sub" dy="0.32em">3</tspan><tspan dy="-0.32em"> = 6</tspan></text>
+        <rect class="bar-w" x="362" y="73.5" width="40" height="92.5"/>
+        <text class="pg-lab ink" x="382" y="66.5" text-anchor="middle">0.25</text>
+        <text class="pg-lab tg" x="382" y="188" text-anchor="middle"><tspan class="m" font-style="italic">R</tspan><tspan class="pg-sub" dy="0.32em">4</tspan><tspan dy="-0.32em"> = 2</tspan></text>
+        <text class="pg-ax" x="245" y="214" text-anchor="middle">el inicio y las pescas, la más antigua primero</text>
+      </svg>
+    <figcaption>Los pesos en la estimación de las rocas tras cuatro pescas, con <span class="nowrap">α = 0.25</span>. La última pesca es la que más cuenta, y el inicio aún conserva 0.316, más que cualquier pesca; por eso la estimación, 2.57, queda tan por debajo del promedio de las pescas, que es 4. El peso del inicio, (1 − α)<sup><i>n</i></sup>, baja de 0.05 solo después de 11 pescas.</figcaption>
+  </figure>
+  <div class="prose">
+    <p>Ahora el agua se entibia en la mañana 151: los peces dejan las rocas por los juncos, la media de las rocas cae de 4 a 1 y la de los juncos sube de 3 a 5. Para comparar el promedio muestral con <span class="nowrap">α = 0.25</span> sin nada más en juego, supón que la pescadora sigue pescando en las rocas y que cada pesca es exactamente la media.</p>
+  </div>
+  <figure class="diagram" id="fig-warming">
+    <svg viewBox="0 0 440 236" role="img" aria-label="La estimación de las rocas después de que el agua se entibia, si se pesca en las rocas cada mañana y cada pesca es exactamente la media. Ambas estimaciones parten en 4. El promedio muestral baja lento: 3.98, 3.90, 3.81 y 3.50 tras 1, 5, 10 y 30 mañanas. Con alfa 0.25 baja rápido: 3.25, 1.71, 1.17 y 1.00. La media real, en rojo, cae de 4 a 1 cuando el agua se entibia.">
+        <text class="pg-ax" x="14" y="18">estimación de las rocas</text>
+        <line class="cp-grid" x1="70" y1="152" x2="420" y2="152"/>
+        <line class="cp-grid" x1="70" y1="118" x2="420" y2="118"/>
+        <line class="cp-grid" x1="70" y1="84" x2="420" y2="84"/>
+        <line class="cp-grid" x1="70" y1="50" x2="420" y2="50"/>
+        <g class="axes"><line x1="70" y1="186" x2="420" y2="186"/><line x1="70" y1="186" x2="70" y2="30"/><line x1="120" y1="186" x2="120" y2="190"/><line x1="220" y1="186" x2="220" y2="190"/><line x1="320" y1="186" x2="320" y2="190"/><line x1="420" y1="186" x2="420" y2="190"/></g>
+        <text class="pg-lab" x="62" y="191" text-anchor="end">0</text>
+        <text class="pg-lab" x="62" y="157" text-anchor="end">1</text>
+        <text class="pg-lab" x="62" y="123" text-anchor="end">2</text>
+        <text class="pg-lab" x="62" y="89" text-anchor="end">3</text>
+        <text class="pg-lab" x="62" y="55" text-anchor="end">4</text>
+        <text class="pg-lab" x="120" y="207" text-anchor="middle">0</text>
+        <text class="pg-lab" x="220" y="207" text-anchor="middle">10</text>
+        <text class="pg-lab" x="320" y="207" text-anchor="middle">20</text>
+        <text class="pg-lab" x="420" y="207" text-anchor="middle">30</text>
+        <text class="pg-ax" x="245" y="226" text-anchor="middle">mañanas desde que el agua se entibia</text>
+        <line class="guide" x1="120" y1="186" x2="120" y2="30"/>
+        <text class="pg-ax" x="126" y="40">el agua se entibia</text>
+        <line class="cp-ref" x1="70" y1="50" x2="120" y2="50"/>
+        <line class="cp-ref" x1="120" y1="152" x2="420" y2="152"/>
+        <polyline class="ln-path" points="120,50 130,50.7 140,51.3 150,52 160,52.6 170,53.3 180,53.9 190,54.5 200,55.2 210,55.8 220,56.4 230,57 240,57.6 250,58.1 260,58.7 270,59.3 280,59.8 290,60.4 300,60.9 310,61.5 320,62 330,62.5 340,63 350,63.6 360,64.1 370,64.6 380,65.1 390,65.6 400,66 410,66.5 420,67"/>
+        <polyline class="ln-path dash" points="120,50 130,75.5 140,94.6 150,109 160,119.7 170,127.8 180,133.8 190,138.4 200,141.8 210,144.3 220,146.3 230,147.7 240,148.8 250,149.6 260,150.2 270,150.6 280,151 290,151.2 300,151.4 310,151.6 320,151.7 330,151.8 340,151.8 350,151.9 360,151.9 370,151.9 380,151.9 390,152 400,152 410,152 420,152"/>
+        <text class="pg-lab ln" x="420" y="57" text-anchor="end">promedio muestral</text>
+        <text class="pg-lab ln" x="180" y="109.5" text-anchor="start">α = 0.25</text>
+        <text class="pg-lab tg" x="420" y="172" text-anchor="end">media real</text>
+      </svg>
+    <figcaption>La estimación de las rocas tras 150 pescas de exactamente 4, seguidas de pescas de exactamente 1. Tras 1, 5, 10 y 30 mañanas, el promedio muestral marca 3.98, 3.90, 3.81 y 3.50, sostenido por las 150 pescas anteriores; con <span class="nowrap">α = 0.25</span> marca 3.25, 1.71, 1.17 y 1.00.</figcaption>
+  </figure>
+  <div class="prose">
+    <p>Con pescas aleatorias y <span class="nowrap">ε = 0.2</span>, en 1000 temporadas, la fracción de mañanas en el mejor lugar (las rocas hasta que el agua se entibia, los juncos después) es:</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th scope="col">Mañanas</th><th scope="col">Promedio muestral</th><th scope="col"><span class="nowrap">α = 0.25</span></th></tr></thead>
+        <tbody>
+          <tr><th scope="row">141–150, antes de que el agua se entibie</th><td>81%</td><td>76%</td></tr>
+          <tr><th scope="row">161–170</th><td>15%</td><td>81%</td></tr>
+          <tr><th scope="row">191–200</th><td>48%</td><td>84%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Antes de que el agua se entibie, al promedio muestral le va un poco mejor, ya que sus estimaciones son menos ruidosas. Después, el promedio muestral sigue volviendo a las rocas, y de la mañana 151 a la 300 pesca 3.46 peces por mañana, contra 4.34 con <span class="nowrap">α = 0.25</span>.</p>
+    <p>Las dos actualizaciones son una sola, con un tamaño de paso α<sub><i>n</i></sub>(<i>a</i>) que puede cambiar de una pesca a otra:</p>
+    <div class="disp"><i>Q</i><sub><i>n</i>+1</sub> <span class="nowrap">= <i>Q</i><sub><i>n</i></sub> + α<sub><i>n</i></sub>(<i>a</i>)[<span class="pt"><i>R</i><sub><i>n</i></sub></span> − <i>Q</i><sub><i>n</i></sub>]</span></div>
+    <p>Con α<sub><i>n</i></sub>(<i>a</i>) = 1/<i>n</i> es el promedio muestral, y con un α constante, el que privilegia lo reciente. Las estimaciones convergen a los valores reales, con probabilidad 1 (en todas las temporadas salvo las de una mala suerte imposible), cuando</p>
+    <div class="disp">Σ<span class="lims"><span>∞</span><span><i>n</i>=1</span></span>α<sub><i>n</i></sub>(<i>a</i>) = ∞&ensp;<span class="nowrap">y&ensp;Σ<span class="lims"><span>∞</span><span><i>n</i>=1</span></span>α<span class="ss"><span>2</span><span><i>n</i></span></span>(<i>a</i>) &lt; ∞</span></div>
+    <p>La primera suma debe crecer sin límite, para que los pasos siempre puedan superar el inicio y las pescas desafortunadas; la segunda debe quedar finita, para que los pasos terminen siendo lo bastante pequeños como para asentarse. Los promedios muestrales cumplen ambas: la suma de 1/<i>n</i> llega a 7.49 en <span class="nowrap"><i>n</i> = 1000</span> y sigue creciendo, mientras que la suma de 1/<i>n</i><sup>2</sup> se queda bajo 1.645. Un α constante no cumple la segunda, así que sus estimaciones nunca se asientan y siguen las últimas pescas, que es lo que necesita un lago que cambia. Las secuencias de pasos que cumplen ambas suelen aprender lento o requerir ajuste, y como la mayoría de los problemas cambian con el tiempo, un α constante es la elección usual en la práctica.</p>
+  </div>
+</section>
+
+<section id="optimistic">
+  <div class="prose">
+    <h2><span class="n">4</span>Inicios optimistas</h2>
+    <p>Todos los métodos vistos hasta aquí dependen de las estimaciones iniciales <i>Q</i><sub>1</sub>(<i>a</i>): están sesgados por ellas, con sus estimaciones arrastradas hacia el inicio y, por lo tanto, en promedio, desviadas de <i>q</i><sub>*</sub>(<i>a</i>). Cuánto dura el sesgo depende del tamaño de paso:</p>
+    <ul>
+      <li>con promedios muestrales desaparece tras la primera pesca de un lugar, ya que <span class="nowrap"><i>Q</i><sub>2</sub> = <i>R</i><sub>1</sub></span>;</li>
+      <li>con un α constante solo se achica, como <span class="nowrap">(1 − α)<sup><i>n</i></sup></span>: desde <i>Q</i><sub>1</sub> = 8, las pescas 5, 3, 6 y 2 con <span class="nowrap">α = 0.25</span> aún dan 5.11, y 2.53 de eso es el inicio.</li>
+    </ul>
+    <p>Así que el inicio es una elección, una forma de introducir conocimiento previo o de impulsar la exploración. La pescadora greedy de la sección 1 partió en 0, bajo el valor de cada lugar, y se quedó en su primer lugar. Un α constante no la habría liberado: una pesca de 0 solo multiplica su estimación por <span class="nowrap">1 − α</span>, así que nunca vuelve a 0. Si, en cambio, parte en 8, sobre la media de cada lugar, <mark class="hl-key">casi toda pesca decepciona, y la elección greedy se va</mark> a los lugares que siguen en 8, hasta que todos se han probado. La figura se dibuja como la de la sección 1.</p>
+  </div>
+  <figure class="diagram" id="fig-optimistic">
+    <svg viewBox="0 0 440 208" role="img" aria-label="Una temporada greedy con estimaciones iniciales de 8, mañanas 1 a 6. Mañana 1: todas en 8, se pesca en el muelle y se obtienen 2. Mañana 2: las rocas, 4. Mañana 3: el puente, 1. Mañana 4: los juncos, 4. Mañana 5: juncos y rocas empatan en 4, se pesca en los juncos y se obtienen 3. Mañana 6: las rocas lideran con 4, se pesca en ellas y se obtienen 6.">
+        <text class="pg-ax" x="226" y="20" text-anchor="middle">estimación de cada lugar antes de la mañana</text>
+        <text class="pg-ax" x="14" y="46">mañana</text>
+        <text class="pg-lab ink" x="118" y="46" text-anchor="middle">muelle</text>
+        <text class="pg-lab ink" x="190" y="46" text-anchor="middle">juncos</text>
+        <text class="pg-lab ink" x="262" y="46" text-anchor="middle">rocas</text>
+        <text class="pg-lab ink" x="334" y="46" text-anchor="middle">puente</text>
+        <text class="pg-lab tg" x="404" y="46" text-anchor="middle">pesca</text>
+        <line class="cp-grid" x1="14" y1="54" x2="426" y2="54"/>
+        <rect class="gw-pick" x="88" y="55" width="60" height="21" rx="4"/>
+        <text class="pg-lab" x="40" y="70" text-anchor="middle">1</text>
+        <text class="pg-val" x="118" y="70" text-anchor="middle">8</text>
+        <text class="pg-val" x="190" y="70" text-anchor="middle">8</text>
+        <text class="pg-val" x="262" y="70" text-anchor="middle">8</text>
+        <text class="pg-val" x="334" y="70" text-anchor="middle">8</text>
+        <text class="pg-lab tg" x="404" y="70" text-anchor="middle">2</text>
+        <rect class="gw-pick" x="232" y="79" width="60" height="21" rx="4"/>
+        <text class="pg-lab" x="40" y="94" text-anchor="middle">2</text>
+        <text class="pg-val" x="118" y="94" text-anchor="middle">2</text>
+        <text class="pg-val" x="190" y="94" text-anchor="middle">8</text>
+        <text class="pg-val" x="262" y="94" text-anchor="middle">8</text>
+        <text class="pg-val" x="334" y="94" text-anchor="middle">8</text>
+        <text class="pg-lab tg" x="404" y="94" text-anchor="middle">4</text>
+        <rect class="gw-pick" x="304" y="103" width="60" height="21" rx="4"/>
+        <text class="pg-lab" x="40" y="118" text-anchor="middle">3</text>
+        <text class="pg-val" x="118" y="118" text-anchor="middle">2</text>
+        <text class="pg-val" x="190" y="118" text-anchor="middle">8</text>
+        <text class="pg-val" x="262" y="118" text-anchor="middle">4</text>
+        <text class="pg-val" x="334" y="118" text-anchor="middle">8</text>
+        <text class="pg-lab tg" x="404" y="118" text-anchor="middle">1</text>
+        <rect class="gw-pick" x="160" y="127" width="60" height="21" rx="4"/>
+        <text class="pg-lab" x="40" y="142" text-anchor="middle">4</text>
+        <text class="pg-val" x="118" y="142" text-anchor="middle">2</text>
+        <text class="pg-val" x="190" y="142" text-anchor="middle">8</text>
+        <text class="pg-val" x="262" y="142" text-anchor="middle">4</text>
+        <text class="pg-val" x="334" y="142" text-anchor="middle">1</text>
+        <text class="pg-lab tg" x="404" y="142" text-anchor="middle">4</text>
+        <rect class="gw-pick" x="160" y="151" width="60" height="21" rx="4"/>
+        <text class="pg-lab" x="40" y="166" text-anchor="middle">5</text>
+        <text class="pg-val" x="118" y="166" text-anchor="middle">2</text>
+        <text class="pg-val" x="190" y="166" text-anchor="middle">4</text>
+        <text class="pg-val" x="262" y="166" text-anchor="middle">4</text>
+        <text class="pg-val" x="334" y="166" text-anchor="middle">1</text>
+        <text class="pg-lab tg" x="404" y="166" text-anchor="middle">3</text>
+        <rect class="gw-pick" x="232" y="175" width="60" height="21" rx="4"/>
+        <text class="pg-lab" x="40" y="190" text-anchor="middle">6</text>
+        <text class="pg-val" x="118" y="190" text-anchor="middle">2</text>
+        <text class="pg-val" x="190" y="190" text-anchor="middle">3.5</text>
+        <text class="pg-val" x="262" y="190" text-anchor="middle">4</text>
+        <text class="pg-val" x="334" y="190" text-anchor="middle">1</text>
+        <text class="pg-lab tg" x="404" y="190" text-anchor="middle">6</text>
+      </svg>
+    <figcaption>Una temporada greedy con estimaciones iniciales de 8, con promedios muestrales. Cada pesca deja a su lugar muy por debajo de 8, así que cada mañana va a un lugar aún no probado. La mañana 5 los juncos y las rocas empatan en 4 y ganan los juncos; su pesca de 3 deja adelante a las rocas, y la temporada pasa las 295 mañanas restantes en las rocas.</figcaption>
+  </figure>
+  <div class="prose">
+    <p>En 1000 temporadas, la fracción de las mañanas 291–300 pasadas en las rocas:</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th scope="col">Pescadora</th><th scope="col">Inicio</th><th scope="col">Tamaño de paso</th><th scope="col">En las rocas</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Greedy</th><td>0</td><td>1/<i>n</i></td><td>29%</td></tr>
+          <tr><th scope="row">Greedy</th><td>8</td><td>1/<i>n</i></td><td>78%</td></tr>
+          <tr><th scope="row">Greedy</th><td>8</td><td>0.25</td><td>93%</td></tr>
+          <tr><th scope="row"><span class="nowrap">ε = 0.05</span></th><td>0</td><td>0.25</td><td>77%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Con promedios muestrales, el optimismo consigue cerca de un intento en cada lugar (una primera pesca de 8 o más, que es rara, mantiene a un lugar en carrera), y una primera pesca desafortunada aún puede enterrar a las rocas para siempre. Con <span class="nowrap">α = 0.25</span>, el optimismo se desvanece en varias pescas y mantiene a la pescadora probando por más tiempo. Las dos últimas filas comparten tamaño de paso, así que son la comparación justa, y gana el inicio optimista.</p>
+    <p>Solo ayuda una vez, al principio. Si el agua se entibia en la mañana 151, el inicio ya se olvidó, y nada en él manda a la pescadora a buscar lo que cambió. Una tercera forma de dirigir la exploración, la selección por cota superior de confianza (UCB), prefiere los lugares cuyas estimaciones aún son inciertas porque se ha pescado poco en ellos; este apunte no entra en ella.</p>
+  </div>
+</section>
+
+<section id="preferences">
+  <div class="prose">
+    <h2><span class="n">5</span>Preferencias en vez de valores</h2>
+    <p>En vez de estimar valores, la pescadora puede aprender una preferencia <i>H</i><sub><i>t</i></sub>(<i>a</i>) por cada lugar y elegir los lugares con probabilidades que crecen con ella, mediante un softmax, cuya exponencial hace positiva cada probabilidad y cuya división por la suma hace que sumen 1:</p>
+    <div class="disp">Pr{<i>A</i><sub><i>t</i></sub> = <i>a</i>} <span class="nowrap">≐ <span class="frac"><span><i>e</i><sup><i>H</i><sub><i>t</i></sub>(<i>a</i>)</sup></span><span>Σ<span class="lims"><span><i>k</i></span><span><i>b</i>=1</span></span><i>e</i><sup><i>H</i><sub><i>t</i></sub>(<i>b</i>)</sup></span></span></span> <span class="nowrap">≐ π<sub><i>t</i></sub>(<i>a</i>)</span></div>
+    <div class="hl-def"><p>Una <dfn>preferencia</dfn> es un número que hace más probable una acción mientras mayor sea comparado con los de las demás. No significa nada en peces. π<sub><i>t</i></sub>(<i>a</i>) es la probabilidad de tomar la acción <i>a</i> en el paso <i>t</i>. Una regla que da a cada acción una probabilidad es una <dfn>política</dfn>, y π<sub><i>t</i></sub> es la primera de estos apuntes.</p></div>
+    <p>Solo importan las diferencias entre preferencias: el softmax de 0.3, −0.1, 0.5 y 0 es 0.275, 0.185, 0.336 y 0.204, y sumar 5 a cada preferencia no lo cambia. Las preferencias parten iguales, aquí en 0, así que cada lugar parte con 0.25. Tras cada mañana se actualizan:</p>
+    <div class="disp hero-f long"><i>H</i><sub><i>t</i>+1</sub>(<i>A</i><sub><i>t</i></sub>) <span class="nowrap">≐ <i>H</i><sub><i>t</i></sub>(<i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α(<span class="pt"><i>R</i><sub><i>t</i></sub></span> − <span class="ovl"><i>R</i></span><sub><i>t</i></sub>)(1 − π<sub><i>t</i></sub>(<i>A</i><sub><i>t</i></sub>)),</span><br><i>H</i><sub><i>t</i>+1</sub>(<i>a</i>) <span class="nowrap">≐ <i>H</i><sub><i>t</i></sub>(<i>a</i>)</span> <span class="nowrap">− α(<span class="pt"><i>R</i><sub><i>t</i></sub></span> − <span class="ovl"><i>R</i></span><sub><i>t</i></sub>)π<sub><i>t</i></sub>(<i>a</i>)</span> <span class="nowrap">para todo <i>a</i> ≠ <i>A</i><sub><i>t</i></sub></span></div>
+    <p>Aquí <span class="ovl"><i>R</i></span><sub><i>t</i></sub>, el baseline, es el promedio de las pescas antes de la mañana <i>t</i>, con <span class="nowrap"><span class="ovl"><i>R</i></span><sub>1</sub> ≐ <i>R</i><sub>1</sub></span>. Una pesca sobre el baseline sube la preferencia del lugar donde se pescó y baja las de los otros; una pesca bajo él hace lo contrario. Los otros se mueven según sus probabilidades, que suman <span class="nowrap">1 − π<sub><i>t</i></sub>(<i>A</i><sub><i>t</i></sub>)</span>, exactamente lo que se mueve el lugar donde se pescó, así que la suma de las preferencias nunca cambia: si parte en 0, sigue en 0. Al repetir las seis mañanas de la sección 2, con los mismos lugares y pescas, y <span class="nowrap">α = 0.1</span>:</p>
+    <ul>
+      <li>La mañana 1 no cambia nada, ya que <span class="nowrap"><span class="ovl"><i>R</i></span><sub>1</sub> = <i>R</i><sub>1</sub></span>.</li>
+      <li>La mañana 5 es una pesca de 6 en las rocas contra un baseline de 2.75, el promedio de 2, 5, 3 y 1, y π(rocas) sube de 0.319 a 0.387.</li>
+      <li>La mañana 6 es una pesca de 2 contra un baseline de 3.4, y π(rocas) baja a 0.360. Si solo la mañana 6 no hubiera usado baseline, la misma pesca de 2 la habría subido a 0.426.</li>
+    </ul>
+  </div>
+  <figure class="diagram" id="fig-probs">
+    <svg viewBox="0 0 440 394" role="img" aria-label="Las probabilidades de los cuatro lugares en tres momentos de las seis mañanas repetidas con preferencias. Antes de la mañana 5: muelle 0.193, juncos 0.244, rocas 0.319, puente 0.244. Tras la mañana 5, una pesca de 6 contra un baseline de 2.75: 0.176, 0.219, 0.387, 0.219. Tras la mañana 6, una pesca de 2 contra un baseline de 3.4: 0.183, 0.229, 0.360, 0.229.">
+        <text class="pg-ax" x="14" y="20">antes de la mañana 5</text>
+        <text class="pg-lab ink" x="88" y="43" text-anchor="end">muelle</text>
+        <rect class="cp-bar" x="96" y="32" width="108.1" height="14"/>
+        <line class="cp-bar-top" x1="204.1" y1="32" x2="204.1" y2="46"/>
+        <text class="pg-val" x="212.1" y="43">0.193</text>
+        <text class="pg-lab ink" x="88" y="62" text-anchor="end">juncos</text>
+        <rect class="cp-bar" x="96" y="51" width="136.5" height="14"/>
+        <line class="cp-bar-top" x1="232.5" y1="51" x2="232.5" y2="65"/>
+        <text class="pg-val" x="240.5" y="62">0.244</text>
+        <text class="pg-lab ink" x="88" y="81" text-anchor="end">rocas</text>
+        <rect class="cp-bar" x="96" y="70" width="178.8" height="14"/>
+        <line class="cp-bar-top" x1="274.8" y1="70" x2="274.8" y2="84"/>
+        <text class="pg-val best" x="282.8" y="81">0.319</text>
+        <text class="pg-lab ink" x="88" y="100" text-anchor="end">puente</text>
+        <rect class="cp-bar" x="96" y="89" width="136.5" height="14"/>
+        <line class="cp-bar-top" x1="232.5" y1="89" x2="232.5" y2="103"/>
+        <text class="pg-val" x="240.5" y="100">0.244</text>
+        <text class="pg-ax" x="14" y="132">tras la mañana 5: pesca 6, baseline 2.75</text>
+        <text class="pg-lab ink" x="88" y="155" text-anchor="end">muelle</text>
+        <rect class="cp-bar" x="96" y="144" width="98.6" height="14"/>
+        <line class="cp-bar-top" x1="194.6" y1="144" x2="194.6" y2="158"/>
+        <text class="pg-val" x="202.6" y="155">0.176</text>
+        <text class="pg-lab ink" x="88" y="174" text-anchor="end">juncos</text>
+        <rect class="cp-bar" x="96" y="163" width="122.4" height="14"/>
+        <line class="cp-bar-top" x1="218.4" y1="163" x2="218.4" y2="177"/>
+        <text class="pg-val" x="226.4" y="174">0.219</text>
+        <text class="pg-lab ink" x="88" y="193" text-anchor="end">rocas</text>
+        <rect class="cp-bar" x="96" y="182" width="216.6" height="14"/>
+        <line class="cp-bar-top" x1="312.6" y1="182" x2="312.6" y2="196"/>
+        <text class="pg-val best" x="320.6" y="193">0.387</text>
+        <text class="pg-lab ink" x="88" y="212" text-anchor="end">puente</text>
+        <rect class="cp-bar" x="96" y="201" width="122.4" height="14"/>
+        <line class="cp-bar-top" x1="218.4" y1="201" x2="218.4" y2="215"/>
+        <text class="pg-val" x="226.4" y="212">0.219</text>
+        <text class="pg-ax" x="14" y="244">tras la mañana 6: pesca 2, baseline 3.4</text>
+        <text class="pg-lab ink" x="88" y="267" text-anchor="end">muelle</text>
+        <rect class="cp-bar" x="96" y="256" width="102.4" height="14"/>
+        <line class="cp-bar-top" x1="198.4" y1="256" x2="198.4" y2="270"/>
+        <text class="pg-val" x="206.4" y="267">0.183</text>
+        <text class="pg-lab ink" x="88" y="286" text-anchor="end">juncos</text>
+        <rect class="cp-bar" x="96" y="275" width="128" height="14"/>
+        <line class="cp-bar-top" x1="224" y1="275" x2="224" y2="289"/>
+        <text class="pg-val" x="232" y="286">0.229</text>
+        <text class="pg-lab ink" x="88" y="305" text-anchor="end">rocas</text>
+        <rect class="cp-bar" x="96" y="294" width="201.5" height="14"/>
+        <line class="cp-bar-top" x1="297.5" y1="294" x2="297.5" y2="308"/>
+        <text class="pg-val best" x="305.5" y="305">0.360</text>
+        <text class="pg-lab ink" x="88" y="324" text-anchor="end">puente</text>
+        <rect class="cp-bar" x="96" y="313" width="128" height="14"/>
+        <line class="cp-bar-top" x1="224" y1="313" x2="224" y2="327"/>
+        <text class="pg-val" x="232" y="324">0.229</text>
+        <g class="axes"><line x1="96" y1="340" x2="376" y2="340"/><line x1="96" y1="340" x2="96" y2="344"/><line x1="236" y1="340" x2="236" y2="344"/><line x1="376" y1="340" x2="376" y2="344"/><line x1="96" y1="28" x2="96" y2="107"/><line x1="96" y1="140" x2="96" y2="219"/><line x1="96" y1="252" x2="96" y2="340"/></g>
+        <text class="pg-lab" x="96" y="361" text-anchor="middle">0</text>
+        <text class="pg-lab" x="236" y="361" text-anchor="middle">0.25</text>
+        <text class="pg-lab" x="376" y="361" text-anchor="middle">0.5</text>
+        <text class="pg-ax" x="236" y="384" text-anchor="middle">probabilidad de pescar en el lugar, π</text>
+      </svg>
+    <figcaption>Las probabilidades de los cuatro lugares antes de la mañana 5 y tras las mañanas 5 y 6, marcadas en azul como lo que la pescadora ha aprendido. Una buena pesca en las rocas les quita probabilidad a los otros tres lugares; una mala les devuelve algo.</figcaption>
+  </figure>
+  <div class="prose">
+    <p><mark class="hl-key">El baseline hace que una pesca cuente como buena o mala en comparación con la pesca habitual.</mark> Sin él, toda pesca de un pez o más sube al lugar donde se pescó, incluidos los lugares malos, y la pescadora distingue los lugares más lentamente. En 1000 temporadas:</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th scope="col">Preferencias</th><th scope="col">En las rocas, mañanas <span class="nowrap">291–300</span></th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Con el baseline</th><td>98%</td></tr>
+          <tr><th scope="row">Sin baseline</th><td>86%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Por qué funciona la actualización</h3>
+    <p>La actualización es ascenso de gradiente estocástico sobre la pesca esperada. El ascenso de gradiente exacto movería cada preferencia según la pendiente de la recompensa esperada:</p>
+    <div class="disp"><i>H</i><sub><i>t</i>+1</sub>(<i>a</i>) <span class="nowrap">≐ <i>H</i><sub><i>t</i></sub>(<i>a</i>) + α<span class="frac"><span>∂E[<i>R</i><sub><i>t</i></sub>]</span><span>∂<i>H</i><sub><i>t</i></sub>(<i>a</i>)</span></span>,</span>&ensp;<span class="nowrap">E[<i>R</i><sub><i>t</i></sub>] = Σ<sub><i>x</i></sub> π<sub><i>t</i></sub>(<i>x</i>)<i>q</i><sub>*</sub>(<i>x</i>)</span></div>
+    <p>Los valores <i>q</i><sub>*</sub>(<i>x</i>) son desconocidos, así que esta pendiente no se puede calcular. Cuatro pasos muestran que la actualización de arriba la sigue en promedio:</p>
+    <ol class="steps">
+      <li><b>Un baseline no agrega nada.</b> Los valores <i>q</i><sub>*</sub>(<i>x</i>) no dependen de las preferencias, así que la pendiente solo alcanza a las probabilidades: <span class="nowrap">∂E[<i>R</i><sub><i>t</i></sub>]/∂<i>H</i><sub><i>t</i></sub>(<i>a</i>)</span> <span class="nowrap">= Σ<sub><i>x</i></sub> <i>q</i><sub>*</sub>(<i>x</i>) ∂π<sub><i>t</i></sub>(<i>x</i>)/∂<i>H</i><sub><i>t</i></sub>(<i>a</i>)</span>. Las probabilidades siempre suman 1, así que sus cambios suman 0: <span class="nowrap">Σ<sub><i>x</i></sub> ∂π<sub><i>t</i></sub>(<i>x</i>)/∂<i>H</i><sub><i>t</i></sub>(<i>a</i>) = 0</span>. Por eso se puede restar cualquier número <i>B</i><sub><i>t</i></sub> que no dependa de <i>x</i>:
+        <div class="disp"><span class="frac"><span>∂E[<i>R</i><sub><i>t</i></sub>]</span><span>∂<i>H</i><sub><i>t</i></sub>(<i>a</i>)</span></span> <span class="nowrap">= Σ<sub><i>x</i></sub> (<i>q</i><sub>*</sub>(<i>x</i>) − <i>B</i><sub><i>t</i></sub>) <span class="frac"><span>∂π<sub><i>t</i></sub>(<i>x</i>)</span><span>∂<i>H</i><sub><i>t</i></sub>(<i>a</i>)</span></span></span></div></li>
+      <li><b>La suma se vuelve una esperanza.</b> Multiplicar cada término por <span class="nowrap">π<sub><i>t</i></sub>(<i>x</i>)/π<sub><i>t</i></sub>(<i>x</i>)</span> lo pondera por la probabilidad de pescar en <i>x</i>, lo que convierte la suma en un valor esperado sobre el lugar elegido, <i>A</i><sub><i>t</i></sub>:
+        <div class="disp fit"><span class="nowrap">= E[(<i>q</i><sub>*</sub>(<i>A</i><sub><i>t</i></sub>) − <i>B</i><sub><i>t</i></sub>) <span class="frac"><span>∂π<sub><i>t</i></sub>(<i>A</i><sub><i>t</i></sub>)</span><span>∂<i>H</i><sub><i>t</i></sub>(<i>a</i>)</span></span> / π<sub><i>t</i></sub>(<i>A</i><sub><i>t</i></sub>)]</span></div></li>
+      <li><b>Lo observado reemplaza a lo desconocido.</b> Elige <span class="nowrap"><i>B</i><sub><i>t</i></sub> = <span class="ovl"><i>R</i></span><sub><i>t</i></sub></span>, que se construye con las pescas anteriores a <i>t</i> y por eso no depende del lugar elegido en <i>t</i>. Luego pon la pesca <i>R</i><sub><i>t</i></sub> en lugar de <i>q</i><sub>*</sub>(<i>A</i><sub><i>t</i></sub>). Por la ley de la esperanza total, el valor esperado puede tomarse primero sobre la pesca para un <i>A</i><sub><i>t</i></sub> dado; los otros factores dependen solo de <i>A</i><sub><i>t</i></sub>, y <span class="nowrap">E[<i>R</i><sub><i>t</i></sub> | <i>A</i><sub><i>t</i></sub>]</span> <span class="nowrap">= <i>q</i><sub>*</sub>(<i>A</i><sub><i>t</i></sub>)</span>, así que el resultado es el mismo.</li>
+      <li><b>La pendiente del softmax.</b> En <span class="nowrap">π<sub><i>t</i></sub>(<i>x</i>)</span> <span class="nowrap">= <i>e</i><sup><i>H</i><sub><i>t</i></sub>(<i>x</i>)</sup>/Σ<sub><i>b</i></sub> <i>e</i><sup><i>H</i><sub><i>t</i></sub>(<i>b</i>)</sup></span>, subir <i>H</i><sub><i>t</i></sub>(<i>a</i>) agranda la suma, y también el numerador cuando <span class="nowrap"><i>x</i> = <i>a</i></span>. Por la regla del cociente, la pendiente es <span class="nowrap">π<sub><i>t</i></sub>(<i>a</i>) − π<sub><i>t</i></sub>(<i>a</i>)<sup>2</sup></span> para <span class="nowrap"><i>x</i> = <i>a</i></span> y <span class="nowrap">−π<sub><i>t</i></sub>(<i>x</i>)π<sub><i>t</i></sub>(<i>a</i>)</span> para cualquier otro <i>x</i>; en una sola fórmula, <span class="nowrap">∂π<sub><i>t</i></sub>(<i>x</i>)/∂<i>H</i><sub><i>t</i></sub>(<i>a</i>)</span> <span class="nowrap">= π<sub><i>t</i></sub>(<i>x</i>)(𝟙<sub><i>a</i>=<i>x</i></sub> − π<sub><i>t</i></sub>(<i>a</i>))</span>, donde 𝟙<sub><i>a</i>=<i>x</i></sub> vale 1 si <span class="nowrap"><i>a</i> = <i>x</i></span> y 0 si no. El π<sub><i>t</i></sub>(<i>A</i><sub><i>t</i></sub>) se cancela:
+        <div class="disp"><span class="frac"><span>∂E[<i>R</i><sub><i>t</i></sub>]</span><span>∂<i>H</i><sub><i>t</i></sub>(<i>a</i>)</span></span> <span class="nowrap">= E[(<span class="pt"><i>R</i><sub><i>t</i></sub></span> − <span class="ovl"><i>R</i></span><sub><i>t</i></sub>)(𝟙<sub><i>a</i>=<i>A</i><sub><i>t</i></sub></sub> − π<sub><i>t</i></sub>(<i>a</i>))]</span></div></li>
+    </ol>
+    <p>Una muestra de esta esperanza en lugar de la pendiente da</p>
+    <div class="disp"><i>H</i><sub><i>t</i>+1</sub>(<i>a</i>) <span class="nowrap">= <i>H</i><sub><i>t</i></sub>(<i>a</i>)</span> <span class="nowrap">+ α(<span class="pt"><i>R</i><sub><i>t</i></sub></span> − <span class="ovl"><i>R</i></span><sub><i>t</i></sub>)(𝟙<sub><i>a</i>=<i>A</i><sub><i>t</i></sub></sub> − π<sub><i>t</i></sub>(<i>a</i>))</span> <span class="nowrap">para todo <i>a</i>,</span></div>
+    <p>la actualización de las preferencias en una línea. Con <span class="nowrap"><i>a</i> = <i>A</i><sub><i>t</i></sub></span> la indicadora vale 1, lo que da la primera línea de la actualización de arriba, y para cualquier otro <i>a</i> vale 0, lo que da la segunda. Usar una muestra, correcta solo en promedio, en lugar de la pendiente exacta es lo que hace estocástico el ascenso. El baseline no cambia la actualización esperada, sea cual sea su valor, siempre que no dependa del lugar elegido, pero sí cambia cuánto varían las actualizaciones individuales, y con ello cuán rápido se asientan las preferencias.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">6</span>Resumen</h2>
+    <p>Las ideas clave junto a sus equivalentes en NumPy. <code>r</code> guarda la pesca de esta mañana y <code>a</code> su lugar, <code>r_hist</code> y <code>a_hist</code> las anteriores, <code>r_a</code> las pescas del lugar <code>a</code> hasta ahora, de la más antigua a la más reciente y con la de esta mañana incluida, <code>q</code>, <code>n</code> y <code>h</code> las estimaciones, los conteos y las preferencias, <code>k</code> el número de lugares y <code>rng</code> un generador aleatorio de NumPy.</p>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Promedio muestral</div>
+      <div class="f"><i>Q</i><sub><i>t</i></sub>(<i>a</i>) = promedio de las recompensas cuando se tomó <i>a</i></div>
+      <div class="c"><code>q[a] = r_hist[a_hist == a].mean()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Elección greedy</div>
+      <div class="f"><i>A</i><sub><i>t</i></sub> = argmax<sub><i>a</i></sub> <i>Q</i><sub><i>t</i></sub>(<i>a</i>), empates al azar</div>
+      <div class="c"><code>best = np.where(q == q.max())[0]<br>a = rng.choice(best)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Elección ε-greedy</div>
+      <div class="f">ε/<i>k</i> cada una, más <span class="nowrap">1 − ε</span> para la acción greedy</div>
+      <div class="c"><code>if rng.random() &lt; eps:<br>&nbsp;&nbsp;&nbsp;&nbsp;a = rng.integers(k)<br>else:<br>&nbsp;&nbsp;&nbsp;&nbsp;a = rng.choice(best)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Promedio incremental</div>
+      <div class="f"><i>Q</i><sub><i>n</i>+1</sub> = <i>Q</i><sub><i>n</i></sub> + [<span class="pt"><i>R</i><sub><i>n</i></sub></span> − <i>Q</i><sub><i>n</i></sub>]/<i>n</i></div>
+      <div class="c"><code>n[a] += 1<br>q[a] += (r - q[a]) / n[a]</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Tamaño de paso constante</div>
+      <div class="f"><i>Q</i><sub><i>n</i>+1</sub> = <i>Q</i><sub><i>n</i></sub> + α[<span class="pt"><i>R</i><sub><i>n</i></sub></span> − <i>Q</i><sub><i>n</i></sub>]</div>
+      <div class="c"><code>q[a] += alpha * (r - q[a])</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Sus pesos</div>
+      <div class="f"><i>Q</i><sub><i>n</i>+1</sub> <span class="nowrap">= (1 − α)<sup><i>n</i></sup><i>Q</i><sub>1</sub></span> <span class="nowrap">+ Σ<sub><i>i</i></sub> α(1 − α)<sup><i>n</i>−<i>i</i></sup><span class="pt"><i>R</i><sub><i>i</i></sub></span></span></div>
+      <div class="c"><code>i = np.arange(1, n[a] + 1)<br>w = alpha * (1-alpha) ** (n[a]-i)<br>q_next = (1-alpha) ** n[a] * q1<br>q_next += w @ r_a</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Inicio optimista</div>
+      <div class="f"><i>Q</i><sub>1</sub>(<i>a</i>) sobre todos los valores, aquí 8</div>
+      <div class="c"><code>q = np.full(k, 8.0)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Softmax</div>
+      <div class="f">π<sub><i>t</i></sub>(<i>a</i>) = <i>e</i><sup><i>H</i><sub><i>t</i></sub>(<i>a</i>)</sup> / Σ<sub><i>b</i></sub> <i>e</i><sup><i>H</i><sub><i>t</i></sub>(<i>b</i>)</sup></div>
+      <div class="c"><code>pi = np.exp(h - h.max())<br>pi /= pi.sum()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Gradient bandit</div>
+      <div class="f"><i>H</i><sub><i>t</i>+1</sub>(<i>a</i>) <span class="nowrap">= <i>H</i><sub><i>t</i></sub>(<i>a</i>)</span> <span class="nowrap">+ α(<span class="pt"><i>R</i><sub><i>t</i></sub></span> − <span class="ovl"><i>R</i></span><sub><i>t</i></sub>)(𝟙<sub><i>a</i>=<i>A</i><sub><i>t</i></sub></sub> − π<sub><i>t</i></sub>(<i>a</i>))</span></div>
+      <div class="c"><code>onehot = np.arange(k) == a<br>step = alpha * (r - r_bar)<br>h += step * (onehot - pi)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Baseline</div>
+      <div class="f"><span class="nowrap"><span class="ovl"><i>R</i></span><sub><i>t</i></sub> = promedio</span> de <span class="nowrap"><i>R</i><sub>1</sub>, …, <i>R</i><sub><i>t</i>−1</sub>;</span> <span class="nowrap"><span class="ovl"><i>R</i></span><sub>1</sub> = <i>R</i><sub>1</sub></span></div>
+      <div class="c"><code>if r_hist.size:<br>&nbsp;&nbsp;&nbsp;&nbsp;r_bar = r_hist.mean()<br>else:<br>&nbsp;&nbsp;&nbsp;&nbsp;r_bar = r</code></div>
+    </div>
+  </div>
+</section>

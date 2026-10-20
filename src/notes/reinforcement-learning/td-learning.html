@@ -127,7 +127,7 @@ scripts:
       <li>when the task never ends;</li>
       <li>when some policies would make an episode last forever: Monte Carlo can learn nothing from an episode that never ends, while TD notices during the episode that things are going badly.</li>
     </ul>
-    <p>It is also sound. <mark class="hl-key">For a fixed policy π, TD(0) converges to <i>v</i><sub>π</sub>.</mark> It does so in the mean for a small enough constant α, and with probability 1 if α shrinks in the usual way, with a sum that grows without limit and a sum of squares that stays finite. Which method learns faster has not been proved in general, but in practice TD usually beats constant-α Monte Carlo on tasks with randomness.</p>
+    <p>It is also sound. <mark class="hl-key">For a fixed policy π, TD(0) converges to <i>v</i><sub>π</sub>.</mark> It does so in the mean for a small enough constant α, and with probability 1 if α shrinks in <a href="/notes/reinforcement-learning/multi-armed-bandits/#nonstationary">the usual way</a>, with a sum that grows without limit and a sum of squares that stays finite. Which method learns faster has not been proved in general, but in practice TD usually beats constant-α Monte Carlo on tasks with randomness.</p>
   </div>
 </section>
 
@@ -219,7 +219,7 @@ scripts:
     <div class="disp hero-f long"><i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>) <span class="nowrap">← <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)</span> <span class="nowrap">+ α[<span class="pt"><i>R</i><sub><i>t</i>+1</sub></span></span> <span class="nowrap pt">+ γ<i>Q</i>(<i>S</i><sub><i>t</i>+1</sub>, <i>A</i><sub><i>t</i>+1</sub>)</span> <span class="nowrap">− <i>Q</i>(<i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>)]</span></div>
     <aside class="hl-back">From the Monte Carlo note: <a href="/notes/reinforcement-learning/monte-carlo/#soft">on-policy methods</a> evaluate and improve the same policy that makes the decisions.</aside>
     <p>It is made after every transition from a nonterminal state, with <span class="nowrap"><i>Q</i>(terminal, ·) = 0</span>. It uses the five quantities <i>S</i><sub><i>t</i></sub>, <i>A</i><sub><i>t</i></sub>, <i>R</i><sub><i>t</i>+1</sub>, <i>S</i><sub><i>t</i>+1</sub> and <i>A</i><sub><i>t</i>+1</sub>, which give the method its name. Sarsa is on-policy: <i>A</i><sub><i>t</i>+1</sub> is the action the policy actually takes next, so Sarsa learns the values of the policy it follows, exploration included.</p>
-    <p>Sarsa converges with probability 1 to an optimal policy and its action values if every pair keeps being visited, the step sizes shrink in the usual way, and the policy becomes greedy in the limit, for example ε-greedy with ε = 1/<i>t</i>.</p>
+    <p>Sarsa converges with probability 1 to an optimal policy and its action values if every pair keeps being visited, the step sizes shrink in <a href="/notes/reinforcement-learning/multi-armed-bandits/#nonstationary">the usual way</a>, and the policy becomes greedy in the limit, for example ε-greedy with ε = 1/<i>t</i>.</p>
 
     <h3>The algorithm</h3>
     <p>For a step size α in (0, 1] and a small ε &gt; 0, with <i>Q</i>(<i>s</i>, <i>a</i>) arbitrary except <span class="nowrap"><i>Q</i>(terminal, ·) = 0</span>:</p>

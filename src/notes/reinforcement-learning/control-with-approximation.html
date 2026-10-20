@@ -87,7 +87,7 @@ scripts:
       <li>Set <i>S</i> ← <i>S</i>′ and <i>A</i> ← <i>A</i>′, and go back to step 3.</li>
     </ol>
     <aside class="hl-back">From the model-based note: <a href="/notes/reinforcement-learning/model-based/#r-max">R-Max</a> also explored by optimism.</aside>
-    <p>The figure's agent explores without random pushes, with <span class="nowrap">ε = 0</span>. Instead it starts every weight at 300 steps, more than any of its episodes will last. Whatever push it tries falls short of 300 sooner or later, so the push it has not tried looks better, and it tries that one: optimism.</p>
+    <p>The figure's agent explores without random pushes, with <span class="nowrap">ε = 0</span>. Instead it starts every weight at 300 steps, more than any of its episodes will last. Whatever push it tries falls short of 300 sooner or later, so the push it has not tried looks better, and it tries that one: optimism, the bandit note's <a href="/notes/reinforcement-learning/multi-armed-bandits/#optimistic">optimistic start</a>.</p>
     <p>α stays at 0.1 throughout. The prediction note shrank α from one episode to the next so that its weights would settle; here they must first come down from 300, and their targets keep changing as the policy improves. Over 100 runs of 500 episodes:</p>
     <div class="tbl">
       <table>
