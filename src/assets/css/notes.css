@@ -1348,15 +1348,8 @@ button.sl-w:hover { border-color: var(--rule); }
 .tbl.left td { text-align: left; }
 .tbl th.l, .tbl td.l { text-align: left; }
 .tbl td i, .tbl th i { font-family: var(--serif); }
-/* The DQN note's tables. Its settings, the paper against the figures, align their headers with their left-aligned
-   cells; its five columns of the paper's results fit a 320 px screen with less padding and smaller type there. */
+/* The DQN note's settings table, the paper against the figures, aligns its headers with its left-aligned cells. */
 .tbl.dqn-settings thead th { text-align: left; }
-@media (max-width: 380px) {
-  .tbl.dqn-results :is(th, td) { padding-left: 0.25rem; padding-right: 0.25rem; }
-  .tbl.dqn-results :is(th, td):first-child { padding-left: 0; }
-  .tbl.dqn-results td { font-size: 0.88rem; }
-  .tbl.dqn-results th { font-size: 0.8rem; }
-}
 
 /* Summary */
 .sum { max-width: 860px; margin: 2rem auto 1rem; background: var(--paper-2); border-radius: 18px; padding: clamp(16px, 3.2vw, 30px) clamp(16px, 3.6vw, 34px); }

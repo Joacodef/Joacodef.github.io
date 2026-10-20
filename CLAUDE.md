@@ -33,7 +33,7 @@ Custom domain `joaquindeferrari.com`: DNS lives on Cloudflare as DNS-only record
 ## Design system: "notebook"
 
 - Fonts: Newsreader for headings, formulas, ledes and body text, the body text light and at a small optical size (`--text-weight` and `--text-optical` in `site.css`), while headings and ledes keep their own weight and optical size, and so do display formulas and readout equations on screens up to 340 px, to fit; Public Sans for controls, menus, breadcrumbs, table headers and figure labels; JetBrains Mono only for code.
-- Colors come only from the tokens in `src/assets/css/site.css` (`--paper`, `--paper-2`, `--card`, `--ink`, `--ink-2`, `--ink-3`, `--rule`, `--blue`, `--red`, `--ok`, `--pick`, `--coral` and `--heat-max` (the move just chosen and the heatmap of the reinforcement learning figures, as `site.css` and that course's rules file describe), and `--img-lo`/`--img-hi` for gray values in figures). Never hardcode hex values in components. Any new token needs both a light and a dark value.
+- Colors come only from the tokens in `src/assets/css/site.css` (`--paper`, `--paper-2`, `--card`, `--ink`, `--ink-2`, `--ink-3`, `--rule`, `--blue`, `--red`, `--ok`, `--pick`, `--coral` and `--heat-max` (the move just chosen and the heatmap of the reinforcement learning figures, as `site.css` and that course's rules file describe), `--violet` (the notes' "after the paper" highlight, `hl-later`), and `--img-lo`/`--img-hi` for gray values in figures). Never hardcode hex values in components. Any new token needs both a light and a dark value.
 - Semantic ink, one fixed color per concept across the whole site:
   - Blue ink: lines, links, anatomy.
   - Carmine (`--red`): points, findings, segmentation masks, "what we look for".
