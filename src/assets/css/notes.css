@@ -129,6 +129,9 @@ sup.t { font-style: normal; font-size: 0.62em; margin-left: 0.06em; line-height:
 .modes button { font: inherit; font-family: var(--sans); font-weight: 400; font-variation-settings: normal; font-size: 0.9rem; color: var(--ink-2); background: transparent; border: 1px solid var(--rule); border-radius: 999px; padding: 0.3em 0.95em; cursor: pointer; }
 .modes button:hover { background: var(--card); }
 .modes button[aria-pressed="true"] { color: var(--ink); background: var(--card); border-color: var(--ink); }
+/* A name before a group of mode buttons ("Input:"), in the controls' type, quieter than the buttons. */
+.modes:has(> .modes-name) { align-items: center; }
+.modes-name { font-family: var(--sans); font-size: 0.9rem; color: var(--ink-2); }
 
 /* The kinds of transformation, two per row on wide screens. */
 .kinds { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem 2.2rem; margin-top: 1.6rem; margin-bottom: 1.6rem; }

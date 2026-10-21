@@ -32,7 +32,7 @@ import { el, tr, localNum, shade } from "../../plane.js";
 //              takes the moves whose values are equal to the largest at the shown precision (the tie rule). Their
 //              values are in bold, and the small blue arrow beside the paddle points to the best move when it is one;
 //   oneScreen  the earlier ball is drawn as a dashed outline, where it was, which a network that sees only the later
-//              screen cannot see (Figure 1's One screen mode);
+//              screen cannot see (Figure 1's One frame mode);
 //   nudge      in the frames of a skip, −1 or 1: the paddle pressed against the top or bottom wall, drawn pushed
 //              into it;
 //   memory     region M, the replay memory (createPongView): { size, capacity, cells, strip, counts }

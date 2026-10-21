@@ -54,10 +54,10 @@ const ALIAS = new Set(F1.alias.map(([x, y]) => x * 6 + y));
   warn(STATES.length === 100 && n("one") === 8 && n("steps") === 8 && n("far") === 82 && n("late") === 2, "Figure 1's states are not the 100 the readout describes (8 one step away, 8 two or three, 82 far, 2 too late)");
   // The lead-in: where the move decides a hit, the best move hits and is within 0.43 of its red line.
   const dec = STATES.filter((s) => s.kind === "one" || s.kind === "steps");
-  warn(dec.length === 16 && dec.every((s) => bestOf(s.two).every((a) => s.right.includes(a) && Math.abs(s.two[a] * 10 - s.star[a]) <= 435)), "on a screen where the move decides a hit, the network's best move does not hit, or its value is far from its red line");
+  warn(dec.length === 16 && dec.every((s) => bestOf(s.two).every((a) => s.right.includes(a) && Math.abs(s.two[a] * 10 - s.star[a]) <= 435)), "on a frame where the move decides a hit, the network's best move does not hit, or its value is far from its red line");
   const d = stateAt(5, 2, 1, -1);
-  warn(d && d.two.join() === "152,-2,-154" && d.one.join() === "-24,-9,-7", "Figure 1's default values are not 1.52, −0.02, −1.54 (one screen: −0.24, −0.09, −0.07)");
-  warn(STATES.filter((s) => s.kind === "late").every((s) => s.star.every((v) => v === -1000)), "a screen too late to hit has an exact value other than −1");
+  warn(d && d.two.join() === "152,-2,-154" && d.one.join() === "-24,-9,-7", "Figure 1's default values are not 1.52, −0.02, −1.54 (one frame: −0.24, −0.09, −0.07)");
+  warn(STATES.filter((s) => s.kind === "late").every((s) => s.star.every((v) => v === -1000)), "a frame too late to hit has an exact value other than −1");
 }
 // The readout's calculation and sentence for a state, in a mode ("two" or "one").
 function readout(s, mode) {
@@ -74,11 +74,11 @@ function readout(s, mode) {
     if (alias && okRise !== okFall) {
       const [good, bad] = okFall ? [tr("falling", "baja"), tr("rising", "sube")] : [tr("rising", "sube"), tr("falling", "baja")];
       say = s.bx === 5
-        ? tr(`With one screen, a rising and a falling ball are the same input, so the network gives them the same values, and here no move hits both: its best move, ${MOVES[one]}, hits the ${good} ball and misses the ${bad} one.`,
-          `Con una pantalla, una pelota que sube y una que baja son la misma entrada, así que la red les da los mismos valores, y aquí ningún movimiento devuelve las dos: su mejor movimiento, ${MOVES[one]}, devuelve la que ${good} y deja escapar la que ${bad}.`)
-        : tr(`With one screen, a rising and a falling ball are the same input, so the network gives them the same values, and here no move keeps a hit possible for both: its best move, ${MOVES[one]}, does for the ${good} ball, not for the ${bad} one.`,
-          `Con una pantalla, una pelota que sube y una que baja son la misma entrada, así que la red les da los mismos valores, y aquí ningún movimiento mantiene posible la devolución de las dos: su mejor movimiento, ${MOVES[one]}, la mantiene para la que ${good}, no para la que ${bad}.`);
-    } else say = tr("With one screen the network cannot tell which way the ball moves: dragging it the other way moves the red lines, not the bars.", "Con una pantalla la red no distingue hacia dónde se mueve la pelota: arrastrarla en la otra dirección mueve las líneas rojas, no las barras.");
+        ? tr(`With one frame, a rising and a falling ball are the same input, so the network gives them the same values, and here no move hits both: its best move, ${MOVES[one]}, hits the ${good} ball and misses the ${bad} one.`,
+          `Con un cuadro, una pelota que sube y una que baja son la misma entrada, así que la red les da los mismos valores, y aquí ningún movimiento devuelve las dos: su mejor movimiento, ${MOVES[one]}, devuelve la que ${good} y deja escapar la que ${bad}.`)
+        : tr(`With one frame, a rising and a falling ball are the same input, so the network gives them the same values, and here no move keeps a hit possible for both: its best move, ${MOVES[one]}, does for the ${good} ball, not for the ${bad} one.`,
+          `Con un cuadro, una pelota que sube y una que baja son la misma entrada, así que la red les da los mismos valores, y aquí ningún movimiento mantiene posible la devolución de las dos: su mejor movimiento, ${MOVES[one]}, la mantiene para la que ${good}, no para la que ${bad}.`);
+    } else say = tr("With one frame the network cannot tell which way the ball moves: dragging it the other way moves the red lines, not the bars.", "Con un cuadro la red no distingue hacia dónde se mueve la pelota: arrastrarla en la otra dirección mueve las líneas rojas, no las barras.");
   } else if (s.kind === "one") {
     const dir = s.by === 0 ? tr("after bouncing off the top wall", "tras rebotar en la pared de arriba") : s.by === 5 ? tr("after bouncing off the bottom wall", "tras rebotar en la pared de abajo") : s.dy < 0 ? tr("rising", "subiendo") : tr("falling", "bajando");
     const hits = s.right.length === 1 ? tr(`only ${DOING[s.right[0]]} hits it`, `solo ${DOING[s.right[0]]} la devuelve`) : tr(`${and(s.right.map((a) => DOING[a]))} hit it`, `${and(s.right.map((a) => DOING[a]))} la devuelven`);
@@ -93,7 +93,7 @@ function readout(s, mode) {
     say = tr(`Every move still leaves time to reach the ball, so their exact values are equal; ${tail}.`, `Todo movimiento deja todavía tiempo para alcanzar la pelota, así que sus valores exactos son iguales; ${tail}.`);
   } else {
     const above = [0, 1, 2].filter((a) => h[a] > 0);
-    warn(h.every((v) => v !== 0), "a value of a screen too late to hit shows as 0.00");
+    warn(h.every((v) => v !== 0), "a value of a frame too late to hit shows as 0.00");
     say = above.length === 0
       ? tr("Whatever the paddle does now, the ball arrives out of its reach: every exact value is −1, and the network's are all below 0.", "Haga lo que haga la paleta ahora, la pelota llega fuera de su alcance: cada valor exacto es −1, y los de la red están todos bajo 0.")
       : tr(`Whatever the paddle does now, the ball arrives out of its reach: every exact value is −1, but the network still values ${and(above.map((a) => DOING[a]))} above 0.`, `Haga lo que haga la paleta ahora, la pelota llega fuera de su alcance: cada valor exacto es −1, pero la red todavía le da un valor sobre 0 a ${and(above.map((a) => DOING[a]))}.`);
@@ -267,21 +267,21 @@ function readout(s, mode) {
         { code: [0], s: null, memory: cells(0), agent: 0, label: tr(`Before episode 1 · ${epsText(1)}`, `Antes del episodio 1 · ${epsText(1)}`),
           line: tr("The memory is empty and the weights are random.", "La memoria está vacía y los pesos son al azar.") },
         { code: [2], s: pair(x.s), q: qs(x.q), memory: cells(0), agent: 0, label: lab, eq: valuesEq(phi1, x.q),
-          line: tr(`Episode 1 starts with a serve from the top left corner; at the serve, ${phi1} holds this first screen twice. The random weights give the moves small values.`, `El episodio 1 parte con un saque desde la esquina superior izquierda; en el saque, ${phi1} tiene esta primera pantalla dos veces. Los pesos al azar dan valores pequeños a los movimientos.`) },
+          line: tr(`Episode 1 starts with a serve from the top left corner; at the serve, ${phi1} holds this first frame twice. The random weights give the moves small values.`, `El episodio 1 parte con un saque desde la esquina superior izquierda; en el saque, ${phi1} tiene este primer cuadro dos veces. Los pesos al azar dan valores pequeños a los movimientos.`) },
         { code: [4], s: pair(x.s), q: qs(x.q), pick: x.a, memory: cells(0), agent: 0, label: lab,
           line: tr(`With ε = 1 the move is random: ${MOVES[x.a]}.`, `Con ε = 1 el movimiento es al azar: ${MOVES[x.a]}.`) },
         { code: [5], s: alone(x), q: qs(x.q), taken: x.a, memory: cells(0), agent: 1, label: lab,
           line: tr(`The paddle stays, the ball bounces off the top wall to ${xy(x.s1)}, and the reward ${sub("<i>r</i>", 1)} is 0.`, `La paleta se queda, la pelota rebota en la pared de arriba hacia ${xy(x.s1)}, y la recompensa ${sub("<i>r</i>", 1)} es 0.`) },
         { code: [5], s: next(x), q: qs(x.qn), memory: cells(0), agent: 1, label: lab, eq: valuesEq(phi2, x.qn),
-          line: tr(`${phi2} holds the last two screens; the faint ball shows which way it moves. ${cap(and(tied.map((a) => DOING[a])))} are equal to three decimals, so there is no blue arrow.`, `${phi2} tiene las dos últimas pantallas; la pelota tenue muestra hacia dónde se mueve. ${cap(and(tied.map((a) => DOING[a])))} son iguales con tres decimales, así que no hay flecha azul.`) },
+          line: tr(`${phi2} holds the last two frames; the faint ball shows which way it moves. ${cap(and(tied.map((a) => DOING[a])))} are equal to three decimals, so there is no blue arrow.`, `${phi2} tiene los dos últimos cuadros; la pelota tenue muestra hacia dónde se mueve. ${cap(and(tied.map((a) => DOING[a])))} son iguales con tres decimales, así que no hay flecha azul.`) },
         { code: [6], s: next(x), q: qs(x.qn), memory: cells(1), agent: 1, label: lab,
           line: tr(`The transition (${phi1}, ${MOVES[x.a]}, 0, ${phi2}) is the memory's first.`, `La transición (${phi1}, ${MOVES[x.a]}, 0, ${phi2}) es la primera de la memoria.`) },
         { code: [7], s: next(x), q: qs(x.qn), memory: cells(1, x.draws), agent: 1, label: lab,
           line: tr(`The minibatch draws 32 times at random from the memory, with repeats: here, the only transition, ${kn(drawn(x, 1))} times.`, `El minibatch saca 32 veces al azar de la memoria, con repetición: aquí, la única transición, ${kn(drawn(x, 1))} veces.`) },
         { code: [8], s: next(x), q: qs(x.qn), tg: borrowed(x), memory: cells(1, x.draws), learn: learnOf(1, false), agent: 1, label: lab, eq: targetEq(x),
-          line: tr(`Its target is the reward plus γ times the largest value of the next screen, the one in view, which ${and(tied.map((a) => DOING[a]))} share.`, `Su objetivo es la recompensa más γ veces el mayor valor de la pantalla siguiente, la que se ve, que comparten ${and(tied.map((a) => DOING[a]))}.`) },
+          line: tr(`Its target is the reward plus γ times the largest value of the next pair of frames, the one in view, which ${and(tied.map((a) => DOING[a]))} share.`, `Su objetivo es la recompensa más γ veces el mayor valor del siguiente par de cuadros, el que se ve, que comparten ${and(tied.map((a) => DOING[a]))}.`) },
         { code: [9], s: next(x), q: qs(x.qa), tg: borrowed(x), memory: cells(1, x.draws), learn: learnOf(1), agent: 1, label: lab, eq: updEq(phi1, x),
-          line: tr(`One gradient step, the first of section 2's figure: the value of staying in ${phi1} rises from ${f3(x.v0)} to ${f3(x.v1)}, ${x.pct}% of the way. The same step raised staying in the screen in view, to ${f3(x.qa[1])}.`, `Un paso de gradiente, el primero de la figura de la sección 2: el valor de quedarse en ${phi1} sube de ${f3(x.v0)} a ${f3(x.v1)}, un ${x.pct}% del camino. El mismo paso subió quedarse en la pantalla que se ve, a ${f3(x.qa[1])}.`) },
+          line: tr(`One gradient step, the first of section 2's figure: the value of staying in ${phi1} rises from ${f3(x.v0)} to ${f3(x.v1)}, ${x.pct}% of the way. The same step raised the value of staying in ${phi2}, the pair in view, to ${f3(x.qa[1])}.`, `Un paso de gradiente, el primero de la figura de la sección 2: el valor de quedarse en ${phi1} sube de ${f3(x.v0)} a ${f3(x.v1)}, un ${x.pct}% del camino. El mismo paso subió el valor de quedarse en ${phi2}, el par que se ve, a ${f3(x.qa[1])}.`) },
       ] });
     }
     // Steps 2 to 5: choose, take and store in one press; draw, target and step in the next.
@@ -394,7 +394,7 @@ function readout(s, mode) {
           { code: [5], s: pair(e), q: e.slice(6, 9).map(q3), memory: strip(t, T6.size, T6.draws), agent: t, sound: "wall", label: label(L6.ep, t),
             line: tr(`Episode ${kn(L6.ep)} is the first rally to reach the cut of ten hits, at step ${kn(t)}, while about one move in four is still random.`, `El episodio ${kn(L6.ep)} es el primer peloteo que llega al corte de diez devoluciones, en el paso ${kn(t)}, cuando todavía cerca de un movimiento de cada cuatro es al azar.`) },
           { code: [7, 8], s: pair(e), q: e.slice(6, 9).map(q3), memory: strip(t, T6.size, T6.draws), agent: t, label: label(L6.ep, t),
-            line: tr(`Of the 32 transitions drawn at this step, made ${kn(T6.age)} steps ago on average, ${T6.differ} hold a move that the network would not choose now, and ${T6.random} a random move. Each target still uses the best move of its next screen.`, `De las 32 transiciones sacadas en este paso, hechas hace ${kn(T6.age)} pasos en promedio, ${T6.differ} tienen un movimiento que la red no elegiría ahora, y ${T6.random} un movimiento al azar. Cada objetivo usa igual el mejor movimiento de su pantalla siguiente.`) },
+            line: tr(`Of the 32 transitions drawn at this step, made ${kn(T6.age)} steps ago on average, ${T6.differ} hold a move that the network would not choose now, and ${T6.random} a random move. Each target still uses the best move of its next pair of frames.`, `De las 32 transiciones sacadas en este paso, hechas hace ${kn(T6.age)} pasos en promedio, ${T6.differ} tienen un movimiento que la red no elegiría ahora, y ${T6.random} un movimiento al azar. Cada objetivo usa igual el mejor movimiento de su siguiente par de cuadros.`) },
         ] });
     }
     // Slide 7: the end of the run.
@@ -415,8 +415,8 @@ function readout(s, mode) {
       const [b1, b2] = [slides[0].builds, slides[1].builds], b4 = slides[3].builds, x1 = st(1), x2 = st(2), tied = bestOf(x1.qn);
       const way = (t) => tr(`Transition ${kn(t)}, drawn ${times(drawn(st(t), t))}, moves ${st(t).pct}% of the way to its target.`, `La transición ${kn(t)}, sacada ${times(drawn(st(t), t))}, avanza un ${st(t).pct}% del camino hacia su objetivo.`);
       b1[6].short = tr(`The draws are with repeats, so the memory's only transition is drawn all ${kn(drawn(x1, 1))} times.`, `Los sorteos son con repetición, así que la única transición de la memoria sale las ${kn(drawn(x1, 1))} veces.`);
-      b1[7].short = tr(`The next screen of transition 1 is ${sub("φ", 2)}, the one in view, whose largest value ${and(tied.map((a) => DOING[a]))} share.`, `La pantalla siguiente de la transición 1 es ${sub("φ", 2)}, la que se ve, cuyo mayor valor comparten ${and(tied.map((a) => DOING[a]))}.`);
-      b1[8].short = tr(`The first step of section 2's figure: the value of staying in ${sub("φ", 1)} rises from ${f3(x1.v0)} to ${f3(x1.v1)}, ${x1.pct}% of the way. The same step raised staying in the screen in view, to ${f3(x1.qa[1])}.`, `El primer paso de la figura de la sección 2: el valor de quedarse en ${sub("φ", 1)} sube de ${f3(x1.v0)} a ${f3(x1.v1)}, un ${x1.pct}% del camino. El mismo paso subió quedarse en la pantalla que se ve, a ${f3(x1.qa[1])}.`);
+      b1[7].short = tr(`The next pair of frames of transition 1 is ${sub("φ", 2)}, the one in view, whose largest value ${and(tied.map((a) => DOING[a]))} share.`, `El siguiente par de cuadros de la transición 1 es ${sub("φ", 2)}, el que se ve, cuyo mayor valor comparten ${and(tied.map((a) => DOING[a]))}.`);
+      b1[8].short = tr(`The first step of section 2's figure: the value of staying in ${sub("φ", 1)} rises from ${f3(x1.v0)} to ${f3(x1.v1)}, ${x1.pct}% of the way. The same step raised the value of staying in ${sub("φ", 2)}, the pair in view, to ${f3(x1.qa[1])}.`, `El primer paso de la figura de la sección 2: el valor de quedarse en ${sub("φ", 1)} sube de ${f3(x1.v0)} a ${f3(x1.v1)}, un ${x1.pct}% del camino. El mismo paso subió el valor de quedarse en ${sub("φ", 2)}, el par que se ve, a ${f3(x1.qa[1])}.`);
       b2[0].short = tr(`Random: ${MOVES[x2.a]}. The paddle moves down and the ball to ${xy(x2.s1)}; reward 0. The memory holds two transitions.`, `Al azar: ${MOVES[x2.a]}. La paleta baja y la pelota va a ${xy(x2.s1)}; recompensa 0. La memoria tiene dos transiciones.`);
       b2[5].short = way(4);
       b2[7].short = way(5);

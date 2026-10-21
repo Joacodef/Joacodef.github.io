@@ -3,63 +3,79 @@ title: Playing Atari with deep reinforcement learning
 module: Papers
 kind: paper
 order: 101
-description: "How an agent learns to play video games from the screen alone: a network that turns the last few screens into a value for each move, trained with Q-learning on moments drawn at random from a memory of its own play."
+description: "How an agent learns to play video games from the frames alone: a network that turns the last few frames into a value for each move, trained with Q-learning on moments drawn at random from a memory of its own play."
 source: 'Based on Mnih et al., <a href="https://arxiv.org/abs/1312.5602"><i>Playing Atari with Deep Reinforcement Learning</i></a> (arXiv, 2013), read in Prof. Rodrigo Toro''s Reinforcement Learning course (IIC3675) at UC Chile, which follows Sutton and Barto, <a href="http://incompleteideas.net/book/the-book-2nd.html"><i>Reinforcement Learning: An Introduction</i></a> (2nd ed., 2020). The box on the target network, at the end of section 2, follows Mnih et al., <a href="https://doi.org/10.1038/nature14236"><i>Human-level control through deep reinforcement learning</i></a> (<i>Nature</i>, 2015).'
 scripts:
   - /assets/js/notes/reinforcement-learning/deep-q-networks.js
 ---
 <div class="prose">
-  <p>Every agent of the earlier notes was handed its state: a cell of a grid, or the cart-pole's angle and swing, features someone chose. The paper this note follows, by Mnih and six colleagues at DeepMind (2013), gives an agent only what a player has: the screen of an Atari 2600 game, the score, the signal that the game is over, and the controls. With one network and one way of learning for every game, it learned to play seven games.</p>
-  <p>The figures follow the paper on a game of this note's own, small enough to watch every step:</p>
-  <ul>
-    <li>on a screen of 8 by 6 pixels, a ball bounces off the top, bottom and left walls;</li>
-    <li>the agent moves a paddle on the right edge up or down, or keeps it still, to hit the ball back;</li>
-    <li>a hit is worth 1 point, and a miss costs 1 and ends the game.</li>
-  </ul>
-  <p>Networks with many layers, deep learning, had learned to recognize images from many examples, each labeled with its answer and independent of the others. A game offers neither, and the paper names three obstacles:</p>
+  <p>The agents of the earlier notes were handed their state, such as a grid cell or the cart-pole's angle. The paper this note follows, by Mnih and six colleagues at DeepMind (2013), gives an agent only what a player has: the frames of an Atari 2600 game, its score, the game-over signal and the controls. With one network design and one way of learning, it learned seven games.</p>
+  <p>The figures use a game of this note's own: in a frame of 8 by 6 pixels, a ball bounces off three walls, and the agent moves a paddle up and down the right edge to hit it back. A hit is worth 1 point; a miss costs 1 and ends the game.</p>
+  <p>Deep learning, networks with many layers, had learned from labeled images, each independent of the others; a game offers neither, and the paper names three obstacles:</p>
   <ul class="asks">
     <li>
-      <svg viewBox="0 0 160 120" role="img" aria-label="Three screens of one approach: the paddle moves into the ball's path on the first, and the point, +1, comes only on the third, when the ball arrives."><rect x="6" y="49" width="40" height="30" style="fill: var(--img-lo)"/><rect x="41" y="54" width="5" height="5" style="fill: color-mix(in srgb, var(--img-hi) 39.2%, var(--img-lo))"/><rect x="26" y="54" width="5" height="5" style="fill: var(--img-hi)"/><rect x="41" y="59" width="5" height="5" style="fill: var(--img-hi)"/><rect x="41" y="64" width="5" height="5" style="fill: var(--img-hi)"/><path d="M11 49V79M16 49V79M21 49V79M26 49V79M31 49V79M36 49V79M41 49V79M6 54H46M6 59H46M6 64H46M6 69H46M6 74H46" style="stroke: color-mix(in srgb, var(--img-hi) 14%, var(--img-lo)); stroke-width: 1; fill: none"/><rect class="px-frame" x="6" y="49" width="40" height="30"/><path class="pg-wall" d="M46 47.75H4.75V80.25H46" style="stroke-width: 1.5"/><rect x="60" y="49" width="40" height="30" style="fill: var(--img-lo)"/><rect x="85" y="59" width="5" height="5" style="fill: var(--img-hi)"/><rect x="95" y="59" width="5" height="5" style="fill: var(--img-hi)"/><rect x="95" y="64" width="5" height="5" style="fill: var(--img-hi)"/><path d="M65 49V79M70 49V79M75 49V79M80 49V79M85 49V79M90 49V79M95 49V79M60 54H100M60 59H100M60 64H100M60 69H100M60 74H100" style="stroke: color-mix(in srgb, var(--img-hi) 14%, var(--img-lo)); stroke-width: 1; fill: none"/><rect class="px-frame" x="60" y="49" width="40" height="30"/><path class="pg-wall" d="M100 47.75H58.75V80.25H100" style="stroke-width: 1.5"/><rect x="114" y="49" width="40" height="30" style="fill: var(--img-lo)"/><rect x="144" y="64" width="5" height="5" style="fill: var(--img-hi)"/><rect x="149" y="59" width="5" height="5" style="fill: var(--img-hi)"/><rect x="149" y="64" width="5" height="5" style="fill: var(--img-hi)"/><path d="M119 49V79M124 49V79M129 49V79M134 49V79M139 49V79M144 49V79M149 49V79M114 54H154M114 59H154M114 64H154M114 69H154M114 74H154" style="stroke: color-mix(in srgb, var(--img-hi) 14%, var(--img-lo)); stroke-width: 1; fill: none"/><rect class="px-frame" x="114" y="49" width="40" height="30"/><path class="pg-wall" d="M154 47.75H112.75V80.25H154" style="stroke-width: 1.5"/><text class="dg-lab" x="134" y="41" text-anchor="middle">+1</text></svg>
-      <p>The point comes screens later</p>
+      <svg viewBox="0 0 160 120" role="img" aria-label="Three frames of one approach: the paddle moves into the ball's path on the first, and the point, +1, comes only on the third, when the ball arrives."><rect x="6" y="49" width="40" height="30" style="fill: var(--img-lo)"/><rect x="41" y="54" width="5" height="5" style="fill: color-mix(in srgb, var(--img-hi) 39.2%, var(--img-lo))"/><rect x="26" y="54" width="5" height="5" style="fill: var(--img-hi)"/><rect x="41" y="59" width="5" height="5" style="fill: var(--img-hi)"/><rect x="41" y="64" width="5" height="5" style="fill: var(--img-hi)"/><path d="M11 49V79M16 49V79M21 49V79M26 49V79M31 49V79M36 49V79M41 49V79M6 54H46M6 59H46M6 64H46M6 69H46M6 74H46" style="stroke: color-mix(in srgb, var(--img-hi) 14%, var(--img-lo)); stroke-width: 1; fill: none"/><rect class="px-frame" x="6" y="49" width="40" height="30"/><path class="pg-wall" d="M46 47.75H4.75V80.25H46" style="stroke-width: 1.5"/><rect x="60" y="49" width="40" height="30" style="fill: var(--img-lo)"/><rect x="85" y="59" width="5" height="5" style="fill: var(--img-hi)"/><rect x="95" y="59" width="5" height="5" style="fill: var(--img-hi)"/><rect x="95" y="64" width="5" height="5" style="fill: var(--img-hi)"/><path d="M65 49V79M70 49V79M75 49V79M80 49V79M85 49V79M90 49V79M95 49V79M60 54H100M60 59H100M60 64H100M60 69H100M60 74H100" style="stroke: color-mix(in srgb, var(--img-hi) 14%, var(--img-lo)); stroke-width: 1; fill: none"/><rect class="px-frame" x="60" y="49" width="40" height="30"/><path class="pg-wall" d="M100 47.75H58.75V80.25H100" style="stroke-width: 1.5"/><rect x="114" y="49" width="40" height="30" style="fill: var(--img-lo)"/><rect x="144" y="64" width="5" height="5" style="fill: var(--img-hi)"/><rect x="149" y="59" width="5" height="5" style="fill: var(--img-hi)"/><rect x="149" y="64" width="5" height="5" style="fill: var(--img-hi)"/><path d="M119 49V79M124 49V79M129 49V79M134 49V79M139 49V79M144 49V79M149 49V79M114 54H154M114 59H154M114 64H154M114 69H154M114 74H154" style="stroke: color-mix(in srgb, var(--img-hi) 14%, var(--img-lo)); stroke-width: 1; fill: none"/><rect class="px-frame" x="114" y="49" width="40" height="30"/><path class="pg-wall" d="M154 47.75H112.75V80.25H154" style="stroke-width: 1.5"/><text class="dg-lab" x="134" y="41" text-anchor="middle">+1</text></svg>
+      <p>The point comes frames after its move, and no label says which move earned it</p>
     </li>
     <li>
-      <svg viewBox="0 0 160 120" role="img" aria-label="Two consecutive screens that differ only by the ball, one pixel apart."><rect x="4" y="36" width="64" height="48" style="fill: var(--img-lo)"/><rect x="20" y="60" width="8" height="8" style="fill: var(--img-hi)"/><rect x="60" y="52" width="8" height="8" style="fill: var(--img-hi)"/><rect x="60" y="60" width="8" height="8" style="fill: var(--img-hi)"/><path d="M12 36V84M20 36V84M28 36V84M36 36V84M44 36V84M52 36V84M60 36V84M4 44H68M4 52H68M4 60H68M4 68H68M4 76H68" style="stroke: color-mix(in srgb, var(--img-hi) 14%, var(--img-lo)); stroke-width: 1; fill: none"/><rect class="px-frame" x="4" y="36" width="64" height="48"/><path class="pg-wall" d="M68 34.75H2.75V85.25H68" style="stroke-width: 1.5"/><rect x="92" y="36" width="64" height="48" style="fill: var(--img-lo)"/><rect x="116" y="52" width="8" height="8" style="fill: var(--img-hi)"/><rect x="148" y="52" width="8" height="8" style="fill: var(--img-hi)"/><rect x="148" y="60" width="8" height="8" style="fill: var(--img-hi)"/><path d="M100 36V84M108 36V84M116 36V84M124 36V84M132 36V84M140 36V84M148 36V84M92 44H156M92 52H156M92 60H156M92 68H156M92 76H156" style="stroke: color-mix(in srgb, var(--img-hi) 14%, var(--img-lo)); stroke-width: 1; fill: none"/><rect class="px-frame" x="92" y="36" width="64" height="48"/><path class="pg-wall" d="M156 34.75H90.75V85.25H156" style="stroke-width: 1.5"/><text class="dg-lab m" x="80" y="65" text-anchor="middle"><tspan class="up">≈</tspan></text></svg>
-      <p>Each screen nearly repeats the last</p>
+      <svg viewBox="0 0 160 120" role="img" aria-label="Two consecutive frames that differ only by the ball, one pixel apart."><rect x="4" y="36" width="64" height="48" style="fill: var(--img-lo)"/><rect x="20" y="60" width="8" height="8" style="fill: var(--img-hi)"/><rect x="60" y="52" width="8" height="8" style="fill: var(--img-hi)"/><rect x="60" y="60" width="8" height="8" style="fill: var(--img-hi)"/><path d="M12 36V84M20 36V84M28 36V84M36 36V84M44 36V84M52 36V84M60 36V84M4 44H68M4 52H68M4 60H68M4 68H68M4 76H68" style="stroke: color-mix(in srgb, var(--img-hi) 14%, var(--img-lo)); stroke-width: 1; fill: none"/><rect class="px-frame" x="4" y="36" width="64" height="48"/><path class="pg-wall" d="M68 34.75H2.75V85.25H68" style="stroke-width: 1.5"/><rect x="92" y="36" width="64" height="48" style="fill: var(--img-lo)"/><rect x="116" y="52" width="8" height="8" style="fill: var(--img-hi)"/><rect x="148" y="52" width="8" height="8" style="fill: var(--img-hi)"/><rect x="148" y="60" width="8" height="8" style="fill: var(--img-hi)"/><path d="M100 36V84M108 36V84M116 36V84M124 36V84M132 36V84M140 36V84M148 36V84M92 44H156M92 52H156M92 60H156M92 68H156M92 76H156" style="stroke: color-mix(in srgb, var(--img-hi) 14%, var(--img-lo)); stroke-width: 1; fill: none"/><rect class="px-frame" x="92" y="36" width="64" height="48"/><path class="pg-wall" d="M156 34.75H90.75V85.25H156" style="stroke-width: 1.5"/><text class="dg-lab m" x="80" y="65" text-anchor="middle"><tspan class="up">≈</tspan></text></svg>
+      <p>Frames in order nearly repeat each other, so they are not independent</p>
     </li>
     <li>
-      <svg viewBox="0 0 160 120" role="img" aria-label="Three screens of an agent that keeps its paddle near the top: all of them show the paddle there."><rect x="6" y="49" width="40" height="30" style="fill: var(--img-lo)"/><rect x="11" y="69" width="5" height="5" style="fill: var(--img-hi)"/><rect x="41" y="49" width="5" height="5" style="fill: var(--img-hi)"/><rect x="41" y="54" width="5" height="5" style="fill: var(--img-hi)"/><path d="M11 49V79M16 49V79M21 49V79M26 49V79M31 49V79M36 49V79M41 49V79M6 54H46M6 59H46M6 64H46M6 69H46M6 74H46" style="stroke: color-mix(in srgb, var(--img-hi) 14%, var(--img-lo)); stroke-width: 1; fill: none"/><rect class="px-frame" x="6" y="49" width="40" height="30"/><path class="pg-wall" d="M46 47.75H4.75V80.25H46" style="stroke-width: 1.5"/><rect x="60" y="49" width="40" height="30" style="fill: var(--img-lo)"/><rect x="75" y="54" width="5" height="5" style="fill: var(--img-hi)"/><rect x="95" y="49" width="5" height="5" style="fill: var(--img-hi)"/><rect x="95" y="54" width="5" height="5" style="fill: var(--img-hi)"/><path d="M65 49V79M70 49V79M75 49V79M80 49V79M85 49V79M90 49V79M95 49V79M60 54H100M60 59H100M60 64H100M60 69H100M60 74H100" style="stroke: color-mix(in srgb, var(--img-hi) 14%, var(--img-lo)); stroke-width: 1; fill: none"/><rect class="px-frame" x="60" y="49" width="40" height="30"/><path class="pg-wall" d="M100 47.75H58.75V80.25H100" style="stroke-width: 1.5"/><rect x="114" y="49" width="40" height="30" style="fill: var(--img-lo)"/><rect x="139" y="69" width="5" height="5" style="fill: var(--img-hi)"/><rect x="149" y="49" width="5" height="5" style="fill: var(--img-hi)"/><rect x="149" y="54" width="5" height="5" style="fill: var(--img-hi)"/><path d="M119 49V79M124 49V79M129 49V79M134 49V79M139 49V79M144 49V79M149 49V79M114 54H154M114 59H154M114 64H154M114 69H154M114 74H154" style="stroke: color-mix(in srgb, var(--img-hi) 14%, var(--img-lo)); stroke-width: 1; fill: none"/><rect class="px-frame" x="114" y="49" width="40" height="30"/><path class="pg-wall" d="M154 47.75H112.75V80.25H154" style="stroke-width: 1.5"/></svg>
-      <p>How it plays decides what it sees</p>
+      <svg viewBox="0 0 160 120" role="img" aria-label="Three frames of an agent that keeps its paddle near the top: all of them show the paddle there."><rect x="6" y="49" width="40" height="30" style="fill: var(--img-lo)"/><rect x="11" y="69" width="5" height="5" style="fill: var(--img-hi)"/><rect x="41" y="49" width="5" height="5" style="fill: var(--img-hi)"/><rect x="41" y="54" width="5" height="5" style="fill: var(--img-hi)"/><path d="M11 49V79M16 49V79M21 49V79M26 49V79M31 49V79M36 49V79M41 49V79M6 54H46M6 59H46M6 64H46M6 69H46M6 74H46" style="stroke: color-mix(in srgb, var(--img-hi) 14%, var(--img-lo)); stroke-width: 1; fill: none"/><rect class="px-frame" x="6" y="49" width="40" height="30"/><path class="pg-wall" d="M46 47.75H4.75V80.25H46" style="stroke-width: 1.5"/><rect x="60" y="49" width="40" height="30" style="fill: var(--img-lo)"/><rect x="75" y="54" width="5" height="5" style="fill: var(--img-hi)"/><rect x="95" y="49" width="5" height="5" style="fill: var(--img-hi)"/><rect x="95" y="54" width="5" height="5" style="fill: var(--img-hi)"/><path d="M65 49V79M70 49V79M75 49V79M80 49V79M85 49V79M90 49V79M95 49V79M60 54H100M60 59H100M60 64H100M60 69H100M60 74H100" style="stroke: color-mix(in srgb, var(--img-hi) 14%, var(--img-lo)); stroke-width: 1; fill: none"/><rect class="px-frame" x="60" y="49" width="40" height="30"/><path class="pg-wall" d="M100 47.75H58.75V80.25H100" style="stroke-width: 1.5"/><rect x="114" y="49" width="40" height="30" style="fill: var(--img-lo)"/><rect x="139" y="69" width="5" height="5" style="fill: var(--img-hi)"/><rect x="149" y="49" width="5" height="5" style="fill: var(--img-hi)"/><rect x="149" y="54" width="5" height="5" style="fill: var(--img-hi)"/><path d="M119 49V79M124 49V79M129 49V79M134 49V79M139 49V79M144 49V79M149 49V79M114 54H154M114 59H154M114 64H154M114 69H154M114 74H154" style="stroke: color-mix(in srgb, var(--img-hi) 14%, var(--img-lo)); stroke-width: 1; fill: none"/><rect class="px-frame" x="114" y="49" width="40" height="30"/><path class="pg-wall" d="M154 47.75H112.75V80.25H154" style="stroke-width: 1.5"/></svg>
+      <p>A paddle kept near the top fills most frames, so what the agent learns from shifts with its play</p>
     </li>
   </ul>
-  <ol>
-    <li>The score changes only when the ball reaches the paddle, screens after the move that put the paddle there, and nothing says which move earned it.</li>
-    <li>One screen differs from the next by a pixel or two, so screens in order teach nearly the same thing many times.</li>
-    <li>What the agent sees depends on how it plays: a paddle kept near the top fills its experience with such screens, and the mix shifts whenever its play does.</li>
-  </ol>
-  <p><mark class="hl-key">The paper meets the first obstacle with Q-learning and the other two with a memory of its own play.</mark> Q-learning's targets carry each reward back to the moves before it, and the agent learns from the memory in random order.</p>
-  <p class="legend">Throughout this page, <span class="bar" aria-hidden="true"></span>the network's estimates are drawn in blue ink, and <span class="dot" aria-hidden="true"></span>what they aim for, the target of an update or the exact value of a move, in red ink. The move just chosen is yellow.</p>
+  <p><mark class="hl-key">The paper meets the first obstacle with Q-learning and the other two with a memory of its own play.</mark> Q-learning carries each point back to the moves that earned it, and drawing from the memory at random mixes old moments with new.</p>
+  <p class="legend">Throughout this page, <span class="bar" aria-hidden="true"></span>blue ink is the network's estimates, <span class="dot" aria-hidden="true"></span>red ink what they aim for (a target, or a move's exact value), and yellow the move just chosen.</p>
 </div>
 
 <section id="screen">
   <div class="prose">
-    <h2><span class="n">1</span>Values from the screen</h2>
-    <p>The paper's agent plays through an emulator of the console, ℰ. At each time step <i>t</i> it picks an action <i>a</i><sub><i>t</i></sub> from <span class="nowrap">𝒜 = {1, …, <i>K</i>}</span>, here <span class="nowrap"><i>K</i> = 3</span>: up, stay and down; it sees an image <span class="nowrap"><i>x</i><sub><i>t</i></sub> ∈ ℝ<sup><i>d</i></sup></span>, the pixels of the screen (here <span class="nowrap"><i>d</i> = 48</span>, each 0 or 1); and it receives a reward <i>r</i><sub><i>t</i></sub>, the change in the score. The rest of this note's game:</p>
+    <h2><span class="n">1</span>Values from the frames</h2>
+    <p>Besides the score, the agent sees only the game's frames, and the figures' agent looks at the last two. A network turns that pair into a value for each move: the points to expect from making it and playing well after, later points counting for less.</p>
+    <p>The figure shows the network that section 3's run trains. Drag the ball: where you drop it is where it is now, on the later frame, and the way you moved it sets where it was a step before, drawn faint.</p>
+    <ul>
+      <li>The bars are the network's values of the three moves, and the blue arrow beside the paddle points to the move worth most.</li>
+      <li>The short red line across each bar is that move's exact value under best play, computed from the game's rules, which the network never sees.</li>
+      <li>The One frame button shows the values of a network whose input is only the later frame.</li>
+    </ul>
+  </div>
+
+  <div class="fig">
+    <svg id="fig-screen" role="group" aria-label="The game's frame, 8 pixels wide and 6 tall, with the ball you can drag and the paddle on rows 2 and 3; the ball a step before is drawn faint. Beside it, the network's values of the three moves, up, stay and down, as bars, each crossed by a short red line at the move's exact value."></svg>
+    <div class="ro">
+      <div class="modes" id="fig-screen-modes" role="group" aria-label="The network's input">
+        <span class="modes-name">Input:</span>
+        <button type="button" data-mode="two" aria-pressed="true">Two frames</button>
+        <button type="button" data-mode="one" aria-pressed="false">One frame</button>
+      </div>
+      <div id="fig-screen-out" aria-live="polite"></div>
+    </div>
+    <div class="fig-foot">
+      <p>Drag the ball. With a keyboard, select it with Tab and use the arrow keys.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Where a move decides a hit, the network's best move hits; moves seldom made in a situation keep rough values. The rest of this section builds what the figure shows: the state the network sees, the values it aims at, and the network itself.</p>
+    <p>The paper's agent plays through an emulator of the console, ℰ. At each time step <i>t</i> it picks an action <i>a</i><sub><i>t</i></sub> from <span class="nowrap">𝒜 = {1, …, <i>K</i>}</span>, here <span class="nowrap"><i>K</i> = 3</span>: up, stay and down; it sees an image <span class="nowrap"><i>x</i><sub><i>t</i></sub> ∈ ℝ<sup><i>d</i></sup></span>, the pixels of the frame (here <span class="nowrap"><i>d</i> = 48</span>, each 0 or 1); and it receives a reward <i>r</i><sub><i>t</i></sub>, the change in the score. The rest of this note's game:</p>
     <ul>
       <li>There are 12 serves, from the left wall on any of the 6 rows, rising or falling, with the paddle on rows 2 and 3; within a step the paddle moves before the ball.</li>
       <li>A rally is cut at 10 hits: the cut is not an ending, and the agent learns as if play went on.</li>
     </ul>
-    <p>One screen does not show the whole situation: a ball beside the paddle may be rising or falling, and the move that hits it depends on which.</p>
-    <div class="hl-def"><p><dfn>Perceptually aliased</dfn> states, in the paper's words: different situations that one screen shows alike.</p></div>
-    <p>So the paper takes as the state the whole sequence of screens and actions so far,</p>
+    <p>With One frame, a ball beside the paddle gets the same values rising or falling, though the move that hits it depends on which: one frame does not show the whole situation.</p>
+    <div class="hl-def"><p><dfn>Perceptually aliased</dfn> states, in the paper's words: different situations that one frame shows alike.</p></div>
+    <p>So the paper takes as the state the whole sequence of frames and actions so far,</p>
     <div class="disp"><i>s</i><sub><i>t</i></sub> <span class="nowrap">= <i>x</i><sub>1</sub>, <i>a</i><sub>1</sub>, <i>x</i><sub>2</sub>, …,</span> <span class="nowrap"><i>a</i><sub><i>t</i>−1</sub>, <i>x</i><sub><i>t</i></sub></span></div>
     <p>The sequence holds everything that decides what comes next, and since every episode of the paper's games ends, there are finitely many sequences: a large but finite problem, to which the earlier notes' methods apply.</p>
-    <p>A network needs an input of fixed length, so the paper feeds it φ(<i>s</i><sub><i>t</i></sub>), the last four screens, each shrunk to 84 × 84 gray pixels. In this note's game the ball moves one pixel diagonally per step, in a straight line between bounces, so two screens show where it is going, except at the serve, where the first screen counts twice:</p>
+    <p>A network needs an input of fixed length, so the paper feeds it φ(<i>s</i><sub><i>t</i></sub>), the last four frames, each shrunk to 84 × 84 gray pixels. In this note's game the ball moves one pixel diagonally per step, in a straight line between bounces, so two frames show where it is going, except at the serve, where the first frame counts twice:</p>
     <div class="disp">φ(<i>s</i><sub><i>t</i></sub>) <span class="nowrap">= (<i>x</i><sub><i>t</i>−1</sub>, <i>x</i><sub><i>t</i></sub>)</span></div>
     <p>The agent aims at the return, the rewards from <i>t</i> on, each discounted by γ for every step it comes later (the paper gives no value; the figures use <span class="nowrap">γ = 0.9</span>):</p>
     <div class="disp"><i>R</i><sub><i>t</i></sub> <span class="nowrap">= Σ<span class="lims"><span><i>T</i></span><span><i>t</i>′=<i>t</i></span></span>γ<sup><i>t</i>′−<i>t</i></sup><i>r</i><sub><i>t</i>′</sub></span></div>
     <p>and the value of an action is the largest expected return after it, over all ways of playing on,</p>
     <div class="disp"><i>Q</i><sup>*</sup>(<i>s</i>, <i>a</i>) <span class="nowrap">= max<sub>π</sub> E[<i>R</i><sub><i>t</i></sub> | <i>s</i><sub><i>t</i></sub> = <i>s</i>,</span> <span class="nowrap"><i>a</i><sub><i>t</i></sub> = <i>a</i>, π]</span></div>
-    <p>For this game the page computes <i>Q</i><sup>*</sup> exactly, by the value iteration of the <a href="/notes/reinforcement-learning/model-based/#models">model-based note</a> over the game's 552 true situations, which the agent, knowing neither the rules nor the state, cannot do. Since the cut is not an ending, these are the values of a rally that never ends:</p>
+    <p>The figure's red lines are <i>Q</i><sup>*</sup>, which the page computes exactly for this game, by the value iteration of the <a href="/notes/reinforcement-learning/model-based/#models">model-based note</a> over the game's 552 true situations, which the agent, knowing neither the rules nor the state, cannot do. Since the cut is not an ending, these are the values of a rally that never ends:</p>
     <div class="tbl left">
       <table>
         <thead><tr><th scope="col">Where the rally is</th><th scope="col">Exact value</th></tr></thead>
@@ -70,18 +86,18 @@ scripts:
         </tbody>
       </table>
     </div>
-    <p>With a value for each sequence, or each pair of screens, the agent would learn nothing about a screen it had not seen, and while this game has only 1,336 pairs, an Atari game has far too many. So the paper estimates <i>Q</i><sup>*</sup> with weights θ, as the approximation notes did:</p>
+    <p>With a value for each sequence, or each pair of frames, the agent would learn nothing about a pair it had not seen, and while this game has only 1,336 pairs, an Atari game has far too many. So the paper estimates <i>Q</i><sup>*</sup> with weights θ, as the approximation notes did:</p>
     <div class="disp hero-f"><i>Q</i>(<i>s</i>, <i>a</i>; θ) <span class="nowrap">≈ <i>Q</i><sup>*</sup>(<i>s</i>, <i>a</i>)</span></div>
     <p>A linear estimate like those notes' fails on the pixels. <mark class="hl-key">Each lit pixel adds its own weight, so the estimate cannot say that moving up is good when the ball is above the paddle and bad when it is below, wherever the two are.</mark> A network learns such combinations from the pixels.</p>
     <p>A network is built in layers, each multiplying what it receives by a table of weights and passing the result through a fixed function (the network of the <a href="/notes/natural-language-processing/word2vec/#model">word2vec note</a>). The figures' network has two layers:</p>
     <ul>
-      <li>96 inputs, the pixels of the two screens;</li>
+      <li>96 inputs, the pixels of the two frames;</li>
       <li>32 hidden rectifier units, max(0, <i>z</i>), which keep a positive number and turn a negative one into 0;</li>
       <li>and 3 outputs, one value for each move:</li>
     </ul>
     <div class="disp hero-f"><i>Q</i>(φ, ·; θ) <span class="nowrap">= <i>W</i><sub>2</sub> max(0, <i>W</i><sub>1</sub>φ)</span></div>
     <p>with a 1 in front of φ and of the hidden layer, so that the first columns of <i>W</i><sub>1</sub> and <i>W</i><sub>2</sub> hold the biases, as in the <a href="/notes/natural-language-processing/word-vectors/#pooling">word vectors note</a>; θ is <i>W</i><sub>1</sub> (32 × 97) and <i>W</i><sub>2</sub> (3 × 33), 3,203 weights; the paper's <i>Q</i>(<i>s</i>, <i>a</i>; θ) is computed as <i>Q</i>(φ(<i>s</i>), <i>a</i>; θ).</p>
-    <div class="hl-vs"><div><p><span class="hl-run">The paper</span>Two convolutional layers come first, sliding one small set of weights over the image to find a pattern wherever it appears.</p></div><div class="ours"><p><span class="hl-run">In the rally</span>The screen is small enough for a layer that joins every pixel to every unit.</p></div></div>
+    <div class="hl-vs"><div><p><span class="hl-run">The paper</span>Two convolutional layers come first, sliding one small set of weights over the image to find a pattern wherever it appears.</p></div><div class="ours"><p><span class="hl-run">In the rally</span>The frames are small enough for a layer that joins every pixel to every unit.</p></div></div>
     <p>One output per move is the paper's choice: earlier networks took the action as an input and needed a pass for each action; this one gives every move's value in one pass. In the earlier notes' notation:</p>
     <div class="tbl left">
       <table>
@@ -94,27 +110,6 @@ scripts:
           <tr><th scope="row">the return <i>R</i><sub><i>t</i></sub></th><td><i>G</i><sub><i>t</i></sub></td></tr>
         </tbody>
       </table>
-    </div>
-    <p>The figure shows the network that section 3's run trains. Drag the ball: where you drop it is where it is now, on the later screen, and the way you moved it sets where it was a step before, drawn faint.</p>
-    <ul>
-      <li>The bars are the network's values of the three moves, and the blue arrow beside the paddle points to the move worth most.</li>
-      <li>The short red line across each bar is that move's exact value, which the network never sees.</li>
-      <li>The One screen button shows the values of a network that sees only the later screen.</li>
-    </ul>
-    <p>Where a move decides a hit, the network's best move hits; moves seldom made in a situation keep rough values.</p>
-  </div>
-
-  <div class="fig">
-    <svg id="fig-screen" role="group" aria-label="The game's screen, 8 pixels wide and 6 tall, with the ball you can drag and the paddle on rows 2 and 3; the ball a step before is drawn faint. Beside it, the network's values of the three moves, up, stay and down, as bars, each crossed by a short red line at the move's exact value."></svg>
-    <div class="ro">
-      <div class="modes" id="fig-screen-modes" role="group" aria-label="What the network sees">
-        <button type="button" data-mode="two" aria-pressed="true">Two screens</button>
-        <button type="button" data-mode="one" aria-pressed="false">One screen</button>
-      </div>
-      <div id="fig-screen-out" aria-live="polite"></div>
-    </div>
-    <div class="fig-foot">
-      <p>Drag the ball. With a keyboard, select it with Tab and use the arrow keys.</p>
     </div>
   </div>
 </section>
@@ -136,13 +131,13 @@ scripts:
       <li>θ<sub><i>i</i>−1</sub> is not a second network: it is the weights before a step, and θ<sub><i>i</i></sub> the weights the step changes.</li>
     </ul>
     <p>So the targets depend on the weights. In supervised learning each example's target, its label, is fixed before learning begins. <mark class="hl-key">Here every step that changes the weights can change the targets too.</mark></p>
-    <p>The figure takes the game's first step from a serve: the paddle stays, the reward is 0, and the next pair of screens is φ<sub>2</sub>. The network learns <span class="nowrap"><i>Q</i>(φ<sub>1</sub>, stay; θ)</span> from that transition alone, one gradient step on <i>L</i><sub><i>i</i></sub> per iteration, in two runs, the value in blue and its target in red:</p>
+    <p>The figure takes the game's first step from a serve: the paddle stays, the reward is 0, and the next pair of frames is φ<sub>2</sub>. The network learns <span class="nowrap"><i>Q</i>(φ<sub>1</sub>, stay; θ)</span> from that transition alone, one gradient step on <i>L</i><sub><i>i</i></sub> per iteration, in two runs, the value in blue and its target in red:</p>
     <ul>
       <li>the left one keeps the first target, as a label would be kept;</li>
       <li>the right one computes it again before every step, from the weights as they stand.</li>
     </ul>
     <figure class="diagram" id="fig-target">
-      <svg viewBox="0 0 440 352" role="img" aria-label="Above, the one transition the network learns from: the serve, the move stay with reward 0, and the next pair of screens, the ball one step down and to the right. Below, two charts of the value of staying at the serve, in blue, and its target, in red, over 30 iterations. Target held: the target stays at 0.167, and the value rises from 0.106 to reach it by iteration 4. Target from the network: the target rises with the value, and the two meet at 0.329.">
+      <svg viewBox="0 0 440 352" role="img" aria-label="Above, the one transition the network learns from: the serve, the move stay with reward 0, and the next pair of frames, the ball one step down and to the right. Below, two charts of the value of staying at the serve, in blue, and its target, in red, over 30 iterations. Target held: the target stays at 0.167, and the value rises from 0.106 to reach it by iteration 4. Target from the network: the target rises with the value, and the two meet at 0.329.">
       <path class="pg-wall sm" d="M162,9.25 H63.25 V86.75 H162"/><rect x="66" y="12" width="96" height="72" style="fill: color-mix(in srgb, var(--img-hi) 0%, var(--img-lo))"/><rect x="66" y="12" width="12" height="12" style="fill: color-mix(in srgb, var(--img-hi) 100%, var(--img-lo))"/><rect x="150" y="36" width="12" height="12" style="fill: color-mix(in srgb, var(--img-hi) 100%, var(--img-lo))"/><rect x="150" y="48" width="12" height="12" style="fill: color-mix(in srgb, var(--img-hi) 100%, var(--img-lo))"/><g class="pg-grid"><line x1="78" y1="12" x2="78" y2="84"/><line x1="90" y1="12" x2="90" y2="84"/><line x1="102" y1="12" x2="102" y2="84"/><line x1="114" y1="12" x2="114" y2="84"/><line x1="126" y1="12" x2="126" y2="84"/><line x1="138" y1="12" x2="138" y2="84"/><line x1="150" y1="12" x2="150" y2="84"/><line x1="66" y1="24" x2="162" y2="24"/><line x1="66" y1="36" x2="162" y2="36"/><line x1="66" y1="48" x2="162" y2="48"/><line x1="66" y1="60" x2="162" y2="60"/><line x1="66" y1="72" x2="162" y2="72"/></g><rect class="px-frame" x="66" y="12" width="96" height="72"/>
       <path class="pg-wall sm" d="M374,9.25 H275.25 V86.75 H374"/><rect x="278" y="12" width="96" height="72" style="fill: color-mix(in srgb, var(--img-hi) 0%, var(--img-lo))"/><rect x="278" y="12" width="12" height="12" style="fill: color-mix(in srgb, var(--img-hi) 39.2%, var(--img-lo))"/><rect x="290" y="24" width="12" height="12" style="fill: color-mix(in srgb, var(--img-hi) 100%, var(--img-lo))"/><rect x="362" y="36" width="12" height="12" style="fill: color-mix(in srgb, var(--img-hi) 100%, var(--img-lo))"/><rect x="362" y="48" width="12" height="12" style="fill: color-mix(in srgb, var(--img-hi) 100%, var(--img-lo))"/><g class="pg-grid"><line x1="290" y1="12" x2="290" y2="84"/><line x1="302" y1="12" x2="302" y2="84"/><line x1="314" y1="12" x2="314" y2="84"/><line x1="326" y1="12" x2="326" y2="84"/><line x1="338" y1="12" x2="338" y2="84"/><line x1="350" y1="12" x2="350" y2="84"/><line x1="362" y1="12" x2="362" y2="84"/><line x1="278" y1="24" x2="374" y2="24"/><line x1="278" y1="36" x2="374" y2="36"/><line x1="278" y1="48" x2="374" y2="48"/><line x1="278" y1="60" x2="374" y2="60"/><line x1="278" y1="72" x2="374" y2="72"/></g><rect class="px-frame" x="278" y="12" width="96" height="72"/>
       <line class="pg-step" x1="172" y1="48" x2="259" y2="48"/>
@@ -173,11 +168,11 @@ scripts:
     </figure>
     <p>The target moved because one network computes both values:</p>
     <ol>
-      <li>The step that raised staying in φ<sub>1</sub> changed staying's output weights, which every screen uses, and hidden units fed by pixels the two screens share; so it raised staying in φ<sub>2</sub> too, by about four fifths as much.</li>
+      <li>The step that raised staying in φ<sub>1</sub> changed staying's output weights, which every pair of frames uses, and hidden units fed by pixels the two frames share; so it raised staying in φ<sub>2</sub> too, by about four fifths as much.</li>
       <li>Moving down had been φ<sub>2</sub>'s largest value, just above staying; after the step, staying is, so the target borrows the very value the steps raise.</li>
       <li>Times <span class="nowrap">γ = 0.9</span>, the target gains about 0.73 of the value's gain, so the gap shrinks by about a fifth per step until the two meet at 0.329, a fixed point, as the TD fixed point of the <a href="/notes/reinforcement-learning/prediction-with-approximation/#linear">prediction note</a> was for a linear estimate.</li>
     </ol>
-    <p>Had a step raised the next screen's value by more than 1/0.9 times as much as the value it updates, the target would have run ahead, and both would have grown without bound: learning from its own estimates can diverge, as section 4 takes up again. Only a final transition's target, the reward −1, cannot move.</p>
+    <p>Had a step raised the value of the next pair of frames by more than 1/0.9 times as much as the value it updates, the target would have run ahead, and both would have grown without bound: learning from its own estimates can diverge, as section 4 takes up again. Only a final transition's target, the reward −1, cannot move.</p>
     <p>To make <i>L</i><sub><i>i</i></sub> small, the paper follows its gradient. With θ<sub><i>i</i>−1</sub> held fixed it is (the paper's equation 3, with a factor added):</p>
     <div class="disp hero-f long"><span class="nowrap">−½∇<sub>θ<sub><i>i</i></sub></sub><i>L</i><sub><i>i</i></sub>(θ<sub><i>i</i></sub>)</span> <span class="nowrap">= E<sub><i>s</i>,<i>a</i>∼ρ(·); <i>s</i>′∼ℰ</sub>[(<span class="pt"><i>r</i></span></span> <span class="nowrap pt">+ γ max<sub><i>a</i>′</sub> <i>Q</i>(<i>s</i>′, <i>a</i>′; θ<sub><i>i</i>−1</sub>)</span> <span class="nowrap">− <i>Q</i>(<i>s</i>, <i>a</i>; θ<sub><i>i</i></sub>))</span> <span class="nowrap">∇<sub>θ<sub><i>i</i></sub></sub><i>Q</i>(<i>s</i>, <i>a</i>; θ<sub><i>i</i></sub>)]</span></div>
     <div class="hl-slip"><p><span class="hl-run">A slip in the paper</span>It prints its equation 3 without the −½: its right side is then the direction a descent step takes, not the gradient itself, which points the other way and is twice as long.</p></div>
@@ -188,7 +183,7 @@ scripts:
     <p>Like the methods of the <a href="/notes/reinforcement-learning/td-learning/#td0">TD note</a>, it is model-free: it learns from samples of ℰ and builds no model of it. And it is off-policy, as in the <a href="/notes/reinforcement-learning/q-learning/#off-policy">Q-learning note</a>: it learns about the greedy policy, <span class="nowrap"><i>a</i> = argmax<sub><i>a</i></sub> <i>Q</i>(<i>s</i>, <i>a</i>; θ)</span>, while it plays ε-greedy. The paper writes max there, and in its algorithm, where it means argmax.</p>
     <div class="hl-later"><p><span class="hl-run">After the paper</span>The later version of DQN (Mnih et al., <i>Nature</i>, 2015) computes its targets with a second copy of the network, the <dfn>target network</dfn>, whose weights it writes θ<span class="ss"><span>−</span><span><i>i</i></span></span> and uses in place of θ<sub><i>i</i>−1</sub>:</p>
     <div class="disp"><i>y</i><sub><i>i</i></sub> <span class="nowrap">= <span class="pt">E<sub><i>s</i>′∼ℰ</sub>[<i>r</i></span></span> <span class="nowrap pt">+ γ max<sub><i>a</i>′</sub> <i>Q</i>(<i>s</i>′, <i>a</i>′; θ<span class="ss"><span>−</span><span><i>i</i></span></span>)</span> <span class="nowrap pt">| <i>s</i>, <i>a</i>]</span></div>
-    <p>Every <i>C</i> updates of θ, 10,000 for every game, it copies θ into θ<span class="ss"><span>−</span><span><i>i</i></span></span>, so the target stays still between copies, as in Target held, the left chart of <a href="#fig-target">this section's figure</a>. A step that raises the value of the next pair of screens then moves the target only at the next copy, which makes oscillation and divergence much less likely. The 2013 paper's θ<sub><i>i</i>−1</sub> is the case of a copy before every step.</p></div>
+    <p>Every <i>C</i> updates of θ, 10,000 for every game, it copies θ into θ<span class="ss"><span>−</span><span><i>i</i></span></span>, so the target stays still between copies, as in Target held, the left chart of <a href="#fig-target">this section's figure</a>. A step that raises the value of the next pair of frames then moves the target only at the next copy, which makes oscillation and divergence much less likely. The 2013 paper's θ<sub><i>i</i>−1</sub> is the case of a copy before every step.</p></div>
   </div>
 </section>
 
@@ -205,7 +200,7 @@ scripts:
     <p>Deep Q-learning with experience replay, for a network <i>Q</i> with weights θ, a memory of <i>N</i> transitions, minibatches of 32, a step size α and an ε that falls over time, as the <a href="/notes/reinforcement-learning/monte-carlo/#soft">Monte Carlo note</a> let it shrink, for <i>M</i> episodes:</p>
     <ol class="steps">
       <li>Start with 𝒟 empty, with room for <i>N</i> transitions, and θ at random.</li>
-      <li>At the start of each episode, observe the first screen <i>x</i><sub>1</sub>, and set <span class="nowrap"><i>s</i><sub>1</sub> = <i>x</i><sub>1</sub></span> and <span class="nowrap">φ<sub>1</sub> = φ(<i>s</i><sub>1</sub>)</span>.</li>
+      <li>At the start of each episode, observe the first frame <i>x</i><sub>1</sub>, and set <span class="nowrap"><i>s</i><sub>1</sub> = <i>x</i><sub>1</sub></span> and <span class="nowrap">φ<sub>1</sub> = φ(<i>s</i><sub>1</sub>)</span>.</li>
       <li>With probability ε choose a random action <i>a</i><sub><i>t</i></sub>; otherwise <span class="nowrap"><i>a</i><sub><i>t</i></sub> = argmax<sub><i>a</i></sub> <i>Q</i>(φ<sub><i>t</i></sub>, <i>a</i>; θ)</span>.</li>
       <li>Take <i>a</i><sub><i>t</i></sub>, observe <i>r</i><sub><i>t</i></sub> and <i>x</i><sub><i>t</i>+1</sub>, and set <span class="nowrap"><i>s</i><sub><i>t</i>+1</sub> = <i>s</i><sub><i>t</i></sub>, <i>a</i><sub><i>t</i></sub>, <i>x</i><sub><i>t</i>+1</sub></span> and <span class="nowrap">φ<sub><i>t</i>+1</sub> = φ(<i>s</i><sub><i>t</i>+1</sub>)</span>.</li>
       <li>Store <span class="nowrap">(φ<sub><i>t</i></sub>, <i>a</i><sub><i>t</i></sub>, <i>r</i><sub><i>t</i></sub>, φ<sub><i>t</i>+1</sub>)</span> in 𝒟, dropping the oldest transition once it holds <i>N</i>.</li>
@@ -216,13 +211,13 @@ scripts:
     </ol>
     <p>The targets of step 6 are</p>
     <div class="disp hero-f long"><i>y</i><sub><i>j</i></sub> <span class="nowrap">= <span class="pt"><i>r</i><sub><i>j</i></sub></span>,</span> <span class="nowrap">if φ<sub><i>j</i>+1</sub> is terminal;</span><br><i>y</i><sub><i>j</i></sub> <span class="nowrap">= <span class="pt"><i>r</i><sub><i>j</i></sub></span></span> <span class="nowrap"><span class="pt">+ γ max<sub><i>a</i>′</sub> <i>Q</i>(φ<sub><i>j</i>+1</sub>, <i>a</i>′; θ)</span>,</span> <span class="nowrap">otherwise.</span></div>
-    <p>Here <i>j</i> counts the transitions drawn, where section 2's <i>i</i> counted iterations; the targets use θ before the step, section 2's θ<sub><i>i</i>−1</sub>, and α absorbs the 2 of the squared error. A rally cut at 10 hits is not terminal, so its last target still adds γ times the next screen's value. The paper calls these networks deep Q-networks, DQN.</p>
+    <p>Here <i>j</i> counts the transitions drawn, where section 2's <i>i</i> counted iterations; the targets use θ before the step, section 2's θ<sub><i>i</i>−1</sub>, and α absorbs the 2 of the squared error. A rally cut at 10 hits is not terminal, so its last target still adds γ times the value of the next pair of frames. The paper calls these networks deep Q-networks, DQN.</p>
     <div class="hl-slip"><p><span class="hl-run">A slip in the paper</span>Its algorithm writes <i>Q</i><sup>*</sup> for the network's <i>Q</i>.</p></div>
     <div class="tbl left dqn-settings">
       <table>
         <thead><tr><th scope="col"></th><th scope="col">The paper</th><th scope="col">The figures</th></tr></thead>
         <tbody>
-          <tr><th scope="row">Screens in φ</th><td>4</td><td>2</td></tr>
+          <tr><th scope="row">Frames in φ</th><td>4</td><td>2</td></tr>
           <tr><th scope="row">Network</th><td>16 filters 8&nbsp;×&nbsp;8 (stride 4), 32 filters 4&nbsp;×&nbsp;4 (stride 2), 256 units, 4 to 18 outputs</td><td>32 units, 3 outputs, 3,203 weights</td></tr>
           <tr><th scope="row">Rewards</th><td>clipped to −1, 0, +1 in training, so one step size suits every game</td><td>already −1, 0, +1</td></tr>
           <tr><th scope="row">ε</th><td>1 to 0.1 over the first million frames, then 0.1</td><td>1 to 0.1 over the first 10,000 steps, then 0.1</td></tr>
@@ -235,13 +230,13 @@ scripts:
     <ul>
       <li>At the top, the game, with section 1's bars and arrow; the move just chosen fills its row yellow, and the bars a target borrows are outlined red.</li>
       <li>In the middle, the memory, as cells, then as a strip; green numbers or ticks mark each step's draws.</li>
-      <li>At the bottom, one drawn transition: its two pairs of screens and a gauge from its value (blue) to its target (red), with a green marker where the step takes it; one step moves a value too little to see on the bars.</li>
+      <li>At the bottom, one drawn transition: its two pairs of frames and a gauge from its value (blue) to its target (red), with a green marker where the step takes it; one step moves a value too little to see on the bars.</li>
     </ul>
     <p>Each press is one line of the steps above, as in the Sarsa figure of the <a href="/notes/reinforcement-learning/control-with-approximation/#control">control note</a>; episode 1 is played in full, episode 2 up to its first hit, and then the figure skips to moments where something new is learned.</p>
   </div>
 
   <div class="fig steps">
-    <svg id="fig-dqn" role="group" aria-label="Deep Q-learning on the game, press by press. At the top, the screen and the network's values of the three moves as bars; below it, the replay memory, as numbered cells and later as a strip, with the transitions drawn for each step in green; at the bottom, one drawn transition being learned from: its two pairs of screens and a gauge from its value to its target."></svg>
+    <svg id="fig-dqn" role="group" aria-label="Deep Q-learning on the game, press by press. At the top, the game and the network's values of the three moves as bars; below it, the replay memory, as numbered cells and later as a strip, with the transitions drawn for each step in green; at the bottom, one drawn transition being learned from: its two pairs of frames and a gauge from its value to its target."></svg>
     <div class="ctl"><button type="button" class="btn" id="fig-dqn-back">Back</button><button type="button" class="btn" id="fig-dqn-next">Next</button><span class="count" id="fig-dqn-count"></span><button type="button" class="btn" id="fig-dqn-reset" hidden>Reset</button></div>
     <div class="ro" id="fig-dqn-out"></div>
     <div class="fig-foot">
@@ -262,7 +257,7 @@ scripts:
     <ol>
       <li>Each step is used in many updates: transition 12 of section 3's figure was drawn 243 times while it stayed in the memory.</li>
       <li>Consecutive steps are strongly correlated, the opening's second obstacle, so learning from them in order chases the current rally; draws from the last 10,000 steps break the correlation and lower the variance of the updates.</li>
-      <li>When an agent learns from the data its current weights produce, the weights choose the next data, the opening's third obstacle: a network that prefers moving up trains mostly on screens with the paddle at the top. Such loops can trap the weights or make them diverge; replay averages ρ, the behavior distribution, over many past behaviors.</li>
+      <li>When an agent learns from the data its current weights produce, the weights choose the next data, the opening's third obstacle: a network that prefers moving up trains mostly on frames with the paddle at the top. Such loops can trap the weights or make them diverge; replay averages ρ, the behavior distribution, over many past behaviors.</li>
     </ol>
     <p>Replay makes learning off-policy, in section 2's sense, whether one wants it or not: a drawn transition holds a move that older weights chose, often at random. That decides the method:</p>
     <div class="tbl left">
@@ -270,11 +265,11 @@ scripts:
         <thead><tr><th scope="col"></th><th scope="col">Its target uses</th></tr></thead>
         <tbody>
           <tr><th scope="row">Sarsa</th><td>the move that came next, which older weights chose too, so with replay it would learn about old policies</td></tr>
-          <tr><th scope="row"><span class="nowrap">Q-learning</span></th><td>the best move of the next screen, under the weights as they stand, which is why the paper uses Q-learning</td></tr>
+          <tr><th scope="row"><span class="nowrap">Q-learning</span></th><td>the best move of the next pair of frames, under the weights as they stand, which is why the paper uses Q-learning</td></tr>
         </tbody>
       </table>
     </div>
-    <p>Q-learning's one-step target needs no correction for the other policy, as the Q-learning note showed: given the pair it updates, the reward and the next screen do not depend on who chose the move. The paper also names the limits of its memory: it keeps only the last <i>N</i> transitions, dropping the oldest whatever they hold, and draws every transition alike, though in this run only 3 or 4 of each 32 draws carry a nonzero reward; it suggests favoring the transitions there is most to learn from.</p>
+    <p>Q-learning's one-step target needs no correction for the other policy, as the Q-learning note showed: given the pair it updates, the reward and the next frame do not depend on who chose the move. The paper also names the limits of its memory: it keeps only the last <i>N</i> transitions, dropping the oldest whatever they hold, and draws every transition alike, though in this run only 3 or 4 of each 32 draws carry a nonzero reward; it suggests favoring the transitions there is most to learn from.</p>
     <p>The figure runs section 3's agent from 16 seeds for 30,000 steps, with three ways of choosing each step's minibatch:</p>
     <div class="tbl left">
       <table>
@@ -304,7 +299,7 @@ scripts:
       </svg>
       <figcaption>Replay's agents are first perfect sooner (a median of 9,000 steps, against Last 32's 11,000) and nearly always stay so: 8% of their later checks miss a serve, against Last 32's 30%. At step 30,000, only 6 of 16 Latest only agents play every serve.</figcaption>
     </figure>
-    <p>Replay's gain is that it stays stable at a step size large enough to learn fast: at three times the run's α, every replay agent still learns, while no agent without replay does, and on more than half of them the values blow up. The loop of advantage 3 is not the cause: with every move random, half the Last 32 agents blow up just the same. Without replay, each step learns from the last few transitions, nearly the same screens, and pushes the same weights again and again, toward targets those weights set. <mark class="hl-key">Drawn at random from 10,000 steps, the pushes average out.</mark></p>
+    <p>Replay's gain is that it stays stable at a step size large enough to learn fast: at three times the run's α, every replay agent still learns, while no agent without replay does, and on more than half of them the values blow up. The loop of advantage 3 is not the cause: with every move random, half the Last 32 agents blow up just the same. Without replay, each step learns from the last few transitions, nearly the same frames, and pushes the same weights again and again, toward targets those weights set. <mark class="hl-key">Drawn at random from 10,000 steps, the pushes average out.</mark></p>
     <p>The paper cites results showing that Q-learning can diverge:</p>
     <ul>
       <li>when its estimate is not linear, such as a network (Tsitsiklis and Van Roy, 1997);</li>
@@ -319,7 +314,7 @@ scripts:
     <h2><span class="n">5</span>Summary</h2>
     <p>The key ideas next to their NumPy equivalents, for the figures' network and settings. In the code:</p>
     <ul>
-      <li><code>x_prev</code> and <code>x</code> are the last two screens, <code>w1</code> and <code>w2</code> the weights (biases in the first column), <code>theta</code> both as one vector, and <code>q</code> the three values.</li>
+      <li><code>x_prev</code> and <code>x</code> are the last two frames, <code>w1</code> and <code>w2</code> the weights (biases in the first column), <code>theta</code> both as one vector, and <code>q</code> the three values.</li>
       <li><code>rs</code> holds the rewards of an episode from <i>t</i> on, and <code>g</code> is the return <i>R</i><sub><i>t</i></sub>.</li>
       <li>In the minibatch rows, <code>r</code>, <code>done</code> and <code>q_a</code> hold the 32 rewards, whether each next pair is terminal (1 or 0) and the values of the moves taken; <code>q_next</code> holds each next pair's values and <code>grad_q</code> the gradient of each <span class="nowrap"><i>Q</i>(φ<sub><i>j</i></sub>, <i>a</i><sub><i>j</i></sub>; θ)</span>, as rows, which backpropagation computes.</li>
     </ul>
@@ -332,7 +327,7 @@ scripts:
       <div class="c"><code>g = rs @ gamma ** np.arange(len(rs))</code></div>
     </div>
     <div class="sum-row">
-      <div class="k">Stacked screens</div>
+      <div class="k">Stacked frames</div>
       <div class="f">φ(<i>s</i><sub><i>t</i></sub>) <span class="nowrap">= (<i>x</i><sub><i>t</i>−1</sub>, <i>x</i><sub><i>t</i></sub>)</span>, where the paper stacks four</div>
       <div class="c"><code>phi = np.concatenate([x_prev, x])</code></div>
     </div>
