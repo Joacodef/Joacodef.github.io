@@ -1,0 +1,260 @@
+---
+title: Continuous control with deep reinforcement learning
+module: Papers
+kind: paper
+order: 102
+description: "How an agent learns to move a paddle at any speed."
+source: 'Based on Lillicrap et al., <a href="https://arxiv.org/abs/1509.02971"><i>Continuous control with deep reinforcement learning</i></a> (ICLR, 2016), read in Prof. Rodrigo Toro''s Reinforcement Learning course (IIC3675) at UC Chile, which follows Sutton and Barto, <a href="http://incompleteideas.net/book/the-book-2nd.html"><i>Reinforcement Learning: An Introduction</i></a> (2nd ed., 2020).'
+scripts:
+  - /assets/js/notes/reinforcement-learning/deep-deterministic-policy-gradient.js
+---
+<div class="prose">
+  <p>Robots are moved by amounts, not by picks from a list: how hard to turn a joint, how fast to spin a wheel. Their actions are real numbers. The methods of the earlier notes choose among a handful of moves, and they do not carry over when a move can be any number. In 2016, Lillicrap and seven colleagues at DeepMind published a method that does, DDPG, and trained it on more than 20 simulated physics tasks. This note runs it on a small game of its own: a paddle that can move at any speed. The game plays below and stops now and then to show what the agent is doing. Press Continue to go on.</p>
+</div>
+
+<div class="fig rl-player" id="fig-open">
+  <div class="rl-left">
+    <svg class="rl-frame" viewBox="0 0 440 330" role="img" tabindex="0" aria-label="The rally of this note playing: a ball bounces in a field 16 units wide and 12 tall, and the trained agent moves the paddle at the right edge at a speed of its choosing to hit it back. Beside it, a gauge shows the speed taken at each frame and a table the five numbers the agent reads."></svg>
+    <div class="ctl rl-ctl"></div>
+  </div>
+  <div class="rl-right">
+    <div class="rl-card" aria-live="polite"></div>
+  </div>
+</div>
+
+<div class="prose">
+  <p>This note covers the two networks DDPG trains, how each one learns, and the two things that keep their learning steady: a memory of past steps to learn from, and slow copies of both networks to set their targets.</p>
+  <p class="legend">Throughout this page, <span class="bar" aria-hidden="true"></span>blue ink is the critic’s estimates, <span class="dot" aria-hidden="true"></span>red ink what they aim for (a target, or a speed’s exact value), yellow the speed just chosen, and green a value being updated.</p>
+</div>
+
+<section id="actor-critic">
+  <div class="prose">
+    <h2><span class="n">1</span>The actor and the critic</h2>
+    <p>DDPG trains two networks: an actor, which picks a speed for each frame, and a critic, which judges how good that speed is.</p>
+  </div>
+
+  <div class="fig rl-player" id="fig-ac">
+    <div class="rl-left">
+      <svg class="rl-frame" viewBox="0 0 440 330" role="img" tabindex="0" aria-label="The rally playing; at one frame it stops so you can read the actor's speed and the critic's values."></svg>
+      <div class="ctl rl-ctl"></div>
+    </div>
+    <div class="rl-right">
+      <div class="rl-card" aria-live="polite"></div>
+      <div class="rl-chart-wrap off">
+        <svg class="rl-chart" viewBox="0 0 440 250" role="group" aria-label="The critic's value of each speed for this frame, from −1, up, to 1, down; the actor's speed is the yellow dot."></svg>
+        <p class="rl-chart-note" hidden>The curve of the frame where the play stopped</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="critic">
+  <div class="prose">
+    <h2><span class="n">2</span>Teaching the critic</h2>
+    <p>The critic learns from steps the agent has already played. For each one it builds a target, and the target asks the actor which speed would come next. Below, training plays ten times as fast, and the chart redraws the critic’s values for one remembered frame as it learns.</p>
+  </div>
+
+  <div class="fig rl-player rl-chart-first" id="fig-critic">
+    <div class="rl-left">
+      <p class="rl-status" aria-live="off"></p>
+      <svg class="rl-frame" viewBox="0 0 440 330" role="img" tabindex="0" aria-label="Training from step 1,000 to about step 2,100, played ten times as fast: the agent plays with noise while the critic learns from remembered steps; the play stops to show one of them."></svg>
+      <p class="rl-memory"></p>
+      <div class="ctl rl-ctl"></div>
+    </div>
+    <div class="rl-right">
+      <div class="rl-card" aria-live="polite"></div>
+      <div class="rl-chart-wrap off">
+        <svg class="rl-chart" viewBox="0 0 440 344" role="group" aria-label="In blue, the critic's value of each speed for one remembered frame, redrawn as training goes on; at the pauses, in red, the target or the game's own value of each speed, as the card says."></svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>The critic’s target is Algorithm 1’s</p>
+    <div class="disp"><i>y</i><sub><i>i</i></sub> <span class="nowrap">= <span class="pt"><i>r</i><sub><i>i</i></sub> + γ<i>Q</i>′(<i>s</i>′<sub><i>i</i></sub>,</span></span> <span class="nowrap pt">μ′(<i>s</i>′<sub><i>i</i></sub> | θ<sup>μ′</sup>) | θ<sup><i>Q</i>′</sup>)</span></div>
+    <p>where <i>s</i>′<sub><i>i</i></sub> is the frame that followed step <i>i</i>. <mark class="hl-key">Where <a href="/notes/reinforcement-learning/q-learning/">Q-learning</a> takes the largest value over the next moves, DDPG asks the actor for its next speed and values only that one, so no search over speeds is needed.</mark> The paper’s equation 5 writes the same target with the critic and the actor themselves; Algorithm 1 uses the slow copies of section 3.</p>
+    <p>The critic’s loss is the mean squared gap over a minibatch of <i>N</i> remembered steps,</p>
+    <div class="disp"><i>L</i> <span class="nowrap">= <span class="frac"><span>1</span><span><i>N</i></span></span> Σ<span class="lims"><span>&nbsp;</span><span><i>i</i></span></span>(<span class="pt"><i>y</i><sub><i>i</i></sub></span></span> <span class="nowrap">− <i>Q</i>(<i>s</i><sub><i>i</i></sub>, <i>a</i><sub><i>i</i></sub> | θ<sup><i>Q</i></sup>))<sup>2</sup></span></div>
+    <p>and its gradient moves the critic’s weights θ<sup><i>Q</i></sup>. The rally draws <i>N</i> = 64, as the paper does for low-dimensional inputs; its memory keeps up to 100,000 steps, the paper’s 10<sup>6</sup>.</p>
+    <p>Without the cost of moving, every speed that returns the ball would be worth the same, and only the critic’s smooth curve would give the actor a direction. Trained that way, 2 of 10 seeds learn to play every serve, against 8 of 10 with the cost.</p>
+    <div class="hl-slip"><p><span class="hl-run">A slip in the paper</span>Algorithm 1 sets <i>y</i><sub><i>i</i></sub> = <i>r</i><sub><i>i</i></sub> + γ<i>Q</i>′(…) for every step, with no case for the last step of an episode. In the rally a miss ends the episode, and the runs of this note give that step the reward alone as its target.</p></div>
+  </div>
+</section>
+
+<section id="targets">
+  <div class="prose">
+    <h2><span class="n">3</span>Targets that drift slowly</h2>
+    <p>The target of section 2 used <i>Q</i>′ and μ′, slow copies of the two networks. Without them, the critic would chase targets that it moves itself.</p>
+  </div>
+
+  <div class="fig rl-player" id="fig-targets">
+    <div class="modes" role="group" aria-label="Target networks">
+      <span class="modes-name">Target networks:</span>
+      <button type="button" data-mode="with" aria-pressed="true">With</button>
+      <button type="button" data-mode="without" aria-pressed="false">Without</button>
+    </div>
+    <div class="rl-left">
+      <p class="rl-status" aria-live="off"></p>
+      <svg class="rl-frame" viewBox="0 0 440 330" role="img" tabindex="0" aria-label="The trained agent of a run with a faster critic, with or without target networks, as the buttons above choose."></svg>
+      <div class="ctl rl-ctl"></div>
+    </div>
+    <div class="rl-right">
+      <div class="rl-card" aria-live="polite"></div>
+      <div class="rl-chart-wrap off">
+        <svg class="rl-chart" viewBox="0 0 440 250" role="group" aria-label="The critic's average value during training, one point per 1,000 steps: blue the run chosen above, gray the other; dashed, the highest and lowest value any frame can have."></svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p><mark class="hl-key">The slow copies make each target change only slowly, so the critic chases something that holds still long enough to be caught.</mark> The paper calls these soft updates: rather than copying the weights now and then, it moves the copies a little at every step, and it needs both copies, <i>Q</i>′ and μ′, to keep the critic from diverging. The cost is speed, since a value learned now reaches the targets only gradually. The paper uses τ = 0.001; the rally uses 0.005, a copy that follows five times faster.</p>
+    <p>On the rally the copies mattered only once the critic learned fast. That is what the ten seeds above show, and it is all this note claims about them.</p>
+  </div>
+</section>
+
+<section id="noise">
+  <div class="prose">
+    <h2><span class="n">4</span>Exploring with noise</h2>
+    <p>To find better speeds, the agent in training adds noise to the actor’s speed. DDPG’s noise drifts rather than jumps: each frame’s value stays close to the one before. Its spread, the standard deviation of its values, sets how far it strays.</p>
+  </div>
+
+  <div class="fig rl-player" id="fig-noise">
+    <div class="modes" role="group" aria-label="Noise spread">
+      <span class="modes-name">Noise spread:</span>
+      <button type="button" data-mode="0.38" aria-pressed="true">0.38</button>
+      <button type="button" data-mode="0.2" aria-pressed="false">0.2</button>
+    </div>
+    <div class="rl-left">
+      <p class="rl-status" aria-live="off"></p>
+      <svg class="rl-frame" viewBox="0 0 440 330" role="img" tabindex="0" aria-label="Training at step 2,000 with exploration noise of the spread chosen above; at the pauses an outline arrow shows the actor's speed and a yellow arrow the speed taken."></svg>
+      <div class="ctl rl-ctl"></div>
+    </div>
+    <div class="rl-right">
+      <div class="rl-card" aria-live="polite"></div>
+      <div class="rl-chart-wrap off">
+        <svg class="rl-chart" viewBox="0 0 440 250" role="group" aria-label="The noise added at each frame of this episode, drifting up and down around 0; dashed lines at plus and minus its spread."></svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>Because the critic’s targets use the actor’s own next speed, not the speed that was played, DDPG can explore with any noise it likes: how a step was chosen does not enter its targets. The paper picks noise that drifts, an Ornstein–Uhlenbeck process with θ = 0.15 and σ = 0.2, for bodies with inertia, where a push that lasts a few frames goes further than one that flips every frame. The rally tried both kinds at two spreads, counting the seeds of 10 that end playing every serve perfectly after 20,000 steps:</p>
+    <div class="tbl left">
+      <table>
+        <thead><tr><th scope="col">Spread</th><th scope="col">Drifting noise</th><th scope="col">Jumping noise</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">0.38</th><td>8 of 10</td><td>9 of 10</td></tr>
+          <tr><th scope="row">0.2</th><td>5 of 10</td><td>2 of 10</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><mark class="hl-key">In the rally the spread matters more than the kind of noise.</mark> At the wider spread, drifting and jumping noise do about equally well; at half of it both do worse, the jumping kind more so. Ten seeds are too few to say more.</p>
+    <p>The jumping noise is Gaussian, drawn fresh each frame. The drifting one follows 𝒩<sub><i>t</i></sub> = 0.85 𝒩<sub><i>t</i>−1</sub> + 0.2 <i>n</i><sub><i>t</i></sub>, with <i>n</i><sub><i>t</i></sub> a standard normal number. The paper gives θ and σ but no step, so this update is the rally’s; its spread is 0.2 / √(1 − 0.85²) ≈ 0.38.</p>
+    <p>The paper writes the noisy policy as μ′(<i>s</i><sub><i>t</i></sub>) = μ(<i>s</i><sub><i>t</i></sub> | θ<span class="ss"><span>μ</span><span><i>t</i></span></span>) + 𝒩, its equation 7.</p>
+    <div class="hl-slip"><p><span class="hl-run">A slip in the paper</span>Two symbols mean two things here: μ′ is both the target actor and the noisy policy, and θ is both the networks’ weights and the noise’s pull back to 0. This note writes the noisy speed <i>a</i><sub><i>t</i></sub> and gives the pull as a number.</p></div>
+  </div>
+</section>
+
+<section id="batch-norm">
+  <div class="prose">
+    <h2><span class="n">5</span>Batch normalization</h2>
+    <p>Batch normalization rescales each input of a layer by the mean and spread it has across the minibatch, so every layer sees numbers of a similar size.</p>
+  </div>
+
+  <div class="fig rl-player" id="fig-bn">
+    <div class="modes" role="group" aria-label="Batch normalization">
+      <span class="modes-name">Batch normalization:</span>
+      <button type="button" data-mode="with" aria-pressed="true">With</button>
+      <button type="button" data-mode="without" aria-pressed="false">Without</button>
+    </div>
+    <div class="rl-left">
+      <p class="rl-status" aria-live="off"></p>
+      <svg class="rl-frame" viewBox="0 0 440 330" role="img" tabindex="0" aria-label="The trained agent with or without batch normalization, as the buttons above choose."></svg>
+      <div class="ctl rl-ctl"></div>
+    </div>
+    <div class="rl-right">
+      <div class="rl-card" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>The paper applies it to the state input, to every layer of the actor, and to the critic’s layers before the action joins. Its reason is the inputs: a body’s position and its speed come in different units, with ranges that change from task to task, and normalizing saves rescaling each one by hand.</p>
+    <div class="hl-vs"><div><p><span class="hl-run">The paper</span>Normalizing replaces scaling the inputs by hand, which inputs in different units would otherwise need.</p></div><div class="ours"><p><span class="hl-run">In the rally</span>The inputs are pixels and ±1. Scaling them by hand to similar ranges, without batch normalization, did not help: none of 10 seeds was ever perfect at a check, against 2 of 10 with the raw inputs. Here it helps for another reason, which these runs do not pin down.</p></div></div>
+    <p>These runs without it keep the learning rates and settings chosen with it, which were not retuned.</p>
+  </div>
+</section>
+
+<section id="algorithm">
+  <div class="prose">
+    <h2><span class="n">6</span>The whole algorithm</h2>
+    <p>Algorithm 1 of the paper puts all of this together. Each frame the agent plays, it stores the step, teaches the critic, moves the actor uphill and moves the copies.</p>
+  </div>
+
+  <div class="fig rl-player" id="fig-algo">
+    <div class="modes" role="group" aria-label="Training stage">
+      <span class="modes-name">Training:</span>
+      <button type="button" data-mode="start" aria-pressed="true">Start</button>
+      <button type="button" data-mode="2000" aria-pressed="false">Step 2,000</button>
+      <button type="button" data-mode="5000" aria-pressed="false">Step 5,000</button>
+      <button type="button" data-mode="20000" aria-pressed="false">Step 20,000</button>
+    </div>
+    <div class="rl-left">
+      <p class="rl-status" aria-live="off"></p>
+      <svg class="rl-frame" viewBox="0 0 440 330" role="img" tabindex="0" aria-label="Training at the stage chosen above, with Algorithm 1 beside it; at the start the play stops at each part of the loop."></svg>
+      <p class="rl-memory"></p>
+      <div class="ctl rl-ctl"></div>
+    </div>
+    <div class="rl-right">
+      <div class="pcode"></div>
+      <div class="rl-card" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>The paper ran this loop with the same networks and settings on every task. Its settings for tasks with low-dimensional inputs: two hidden layers of 400 and 300 units, learning rates of 10<sup>−4</sup> for the actor and 10<sup>−3</sup> for the critic, γ = 0.99, τ = 0.001, minibatches of 64 and a memory of 10<sup>6</sup> steps. The rally’s networks are smaller, 32 and 32 units, for a game of five numbers.</p>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="prose">
+    <h2><span class="n">7</span>Summary</h2>
+    <p>DDPG in six lines: the noisy speed, the noise, the critic’s target and loss, the actor’s gradient, and the slow copies. In the code:</p>
+    <ul>
+      <li><code>mu</code> and <code>q</code> are the actor and the critic, and <code>mu_target</code> and <code>q_target</code> their slow copies.</li>
+      <li><code>s</code>, <code>a</code>, <code>r</code>, <code>s_next</code> and <code>done</code> hold the <i>N</i> steps drawn from the memory; <code>done</code> is 1 when the ball got past the paddle (a miss), a case the paper does not have.</li>
+      <li><code>dq_da</code> holds each step’s slope of the critic at the actor’s speed, and <code>dmu_dtheta</code> how the actor’s weights move its speed, as rows, which backpropagation computes.</li>
+    </ul>
+  </div>
+  <div class="sum">
+    <div class="sum-row">
+      <div class="k">Noisy speed</div>
+      <div class="f"><i>a</i><sub><i>t</i></sub> <span class="nowrap">= μ(<i>s</i><sub><i>t</i></sub> | θ<sup>μ</sup>) + 𝒩<sub><i>t</i></sub></span>, clipped to the speeds the paddle has</div>
+      <div class="c"><code>a = np.clip(mu(s) + noise, -1, 1)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">The rally’s noise</div>
+      <div class="f">𝒩<sub><i>t</i></sub> <span class="nowrap">= 0.85 𝒩<sub><i>t</i>−1</sub> + 0.2 <i>n</i><sub><i>t</i></sub></span></div>
+      <div class="c"><code>noise = 0.85 * noise + 0.2 * rng.standard_normal()</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Critic’s target</div>
+      <div class="f"><i>y</i><sub><i>i</i></sub> <span class="nowrap">= <span class="pt"><i>r</i><sub><i>i</i></sub> + γ<i>Q</i>′(<i>s</i>′<sub><i>i</i></sub>,</span></span> <span class="nowrap pt">μ′(<i>s</i>′<sub><i>i</i></sub> | θ<sup>μ′</sup>) | θ<sup><i>Q</i>′</sup>)</span></div>
+      <div class="c"><code>y = r + gamma * q_target(s_next, mu_target(s_next)) * (1 - done)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Critic’s loss</div>
+      <div class="f"><i>L</i> <span class="nowrap">= <span class="frac"><span>1</span><span><i>N</i></span></span> Σ<span class="lims"><span>&nbsp;</span><span><i>i</i></span></span>(<span class="pt"><i>y</i><sub><i>i</i></sub></span></span> <span class="nowrap">− <i>Q</i>(<i>s</i><sub><i>i</i></sub>, <i>a</i><sub><i>i</i></sub> | θ<sup><i>Q</i></sup>))<sup>2</sup></span></div>
+      <div class="c"><code>loss = np.mean((y - q(s, a)) ** 2)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Actor’s gradient</div>
+      <div class="f"><span class="nowrap">∇<sub>θ<sup>μ</sup></sub><i>J</i> ≈ <span class="frac"><span>1</span><span><i>N</i></span></span> Σ<span class="lims"><span>&nbsp;</span><span><i>i</i></span></span></span> <span class="nowrap">∇<sub><i>a</i></sub><i>Q</i>(<i>s</i>, <i>a</i> | θ<sup><i>Q</i></sup>)|<sub><i>s</i> = <i>s</i><sub><i>i</i></sub>, <i>a</i> = μ(<i>s</i><sub><i>i</i></sub>)</sub></span> <span class="nowrap">∇<sub>θ<sup>μ</sup></sub>μ(<i>s</i> | θ<sup>μ</sup>)|<sub><i>s</i><sub><i>i</i></sub></sub></span></div>
+      <div class="c"><code>grad = (dq_da[:, None] * dmu_dtheta).mean(axis=0)</code></div>
+    </div>
+    <div class="sum-row">
+      <div class="k">Slow copies</div>
+      <div class="f">θ′ <span class="nowrap">← τθ + (1 − τ)θ′</span>, for the critic and for the actor</div>
+      <div class="c"><code>theta_target = tau * theta + (1 - tau) * theta_target</code></div>
+    </div>
+  </div>
+</section>

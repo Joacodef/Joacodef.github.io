@@ -1453,3 +1453,141 @@ ol.pc li.k-target { --k: var(--red); }
 @media (max-width: 480px) { .tbl.tight th, .tbl.tight td { padding: 0.35rem 0.3rem; font-size: 0.88rem; } .tbl.tight th:first-child, .tbl.tight td:first-child { padding-left: 0; } }
 /* On the narrowest phones (320 px), every table takes the tight padding and type, so that few need to scroll. */
 @media (max-width: 360px) { .tbl th, .tbl td { padding: 0.35rem 0.3rem; font-size: 0.88rem; hyphens: auto; -webkit-hyphens: auto; } .tbl th:first-child, .tbl td:first-child { padding-left: 0; } }
+
+/* The DDPG note's rally player (rally-player.js): the frame and its controls at the left, the card (and a chart, or
+   Algorithm 1) at the right; one column below 840 px (frame, controls, chart or pseudocode, card). Mode buttons sit
+   above both, across the figure. Its classes start with rl-. */
+.rl-player { align-items: start; }
+.rl-player > .modes { grid-column: 1 / -1; margin: 0; }
+.rl-left, .rl-right { min-width: 0; }
+.rl-ctl { margin-top: 10px; }
+.rl-play { min-width: 6.2rem; }
+.rl-replay { font: inherit; font-family: var(--sans); font-weight: 400; font-variation-settings: normal; font-size: 0.9rem; color: var(--blue); background: none; border: 0; padding: 0.35em 0.2em; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.rl-replay:hover { color: var(--ink); }
+.rl-replay[hidden] { display: none; }
+.rl-player :is(.btn, .rl-replay, svg[tabindex]):focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+/* The lines above and under the frame: the training step, or how long the agent trained; the memory's size. */
+.rl-status, .rl-memory { margin: 0 0 6px; font-family: var(--sans); font-weight: 400; font-variation-settings: normal; font-size: 0.85rem; line-height: 1.4; color: var(--ink-2); min-height: 1.4em; }
+.rl-memory { margin: 6px 0 0; }
+.rl-memory[hidden] { display: none; }
+
+/* The card: the page's text in the card color; its title in Public Sans; Continue under the text. With no card open
+   it keeps its place (and, at desktop width, its tallest card's height) but shows nothing. */
+.rl-card { background: var(--card); border-radius: 12px; padding: 16px 18px; font-size: 1rem; line-height: 1.55; }
+.rl-card.empty { visibility: hidden; }
+.rl-card p { margin: 0 0 0.6rem; }
+.rl-card-title { font-family: var(--sans); font-weight: 500; font-variation-settings: normal; font-size: 0.95rem; color: var(--ink); }
+.rl-card-title[hidden], .rl-card-extra[hidden], .rl-continue[hidden] { display: none; }
+.rl-card .rl-eq { font-family: var(--serif); font-size: 1.15rem; }
+.rl-card .disp { margin: 0.4rem 0 0.8rem; font-size: 1.15rem; }
+.rl-card .disp.rl-small { font-size: 0.95rem; margin-top: -0.4rem; }
+.rl-card-extra { font-family: var(--sans); font-weight: 400; font-variation-settings: normal; font-size: 0.9rem; color: var(--ink-2); border-top: 1px solid var(--rule); padding-top: 0.5rem; }
+/* Continue is the one obvious next step: filled in ink, the neutral token. */
+.rl-continue { margin-top: 0.2rem; background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.rl-continue:hover { background: var(--ink-2); border-color: var(--ink-2); }
+.rl-player .rl-continue:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+/* A small table in a card (section 5's inputs). */
+.rl-card .rl-tbl { margin: 0.2rem 0 0.8rem; }
+.rl-card .rl-tbl table { font-size: 0.92rem; }
+@media (min-width: 840px) { .rl-card .disp { font-size: 1rem; padding-left: 0.7rem; } .rl-card .disp.rl-small { font-size: 0.9rem; } }
+/* One column (below 840 px, the .fig grid's break): the chart or the pseudocode goes above the card, so it sits under
+   the frame it explains and the card under both; an unused chart takes no space. */
+@media (max-width: 839px) {
+  .rl-right { display: flex; flex-direction: column; }
+  .rl-chart-wrap, .rl-right > .pcode { order: -1; margin: 0 0 14px; }
+  .rl-chart-wrap.off { display: none; }
+}
+.rl-right > .pcode { margin-bottom: 14px; }
+
+/* The game, drawn continuous (the agent reads numbers, not pixels): a plain field in --img-lo, the ball and the paddle
+   in --img-hi, a faint next ball at 35%. */
+.rl-field { fill: var(--img-lo); }
+.rl-ball, .rl-paddle { fill: var(--img-hi); }
+.rl-ball.faint { fill: color-mix(in srgb, var(--img-hi) 35%, var(--img-lo)); }
+
+/* The frame's marks: the speed taken in the chosen speed's yellow (edged in ink so it holds on the paper), the actor's
+   own speed as a dashed outline beside it, the outcome over the paddle's column. */
+.rl-speed { fill: var(--pick); stroke: color-mix(in srgb, var(--ink) 55%, var(--pick)); stroke-width: 1; stroke-linejoin: round; }
+
+/* The live panel at the top of the player's right column: the speed taken as a vertical gauge (−1 up at the top, 1
+   down at the bottom, a yellow bar from 0) and the five numbers the agent reads, both changing every frame. */
+.rl-live { display: grid; grid-template-columns: 6.6rem 1fr; gap: 4px 16px; align-items: start; background: var(--card); border-radius: 12px; padding: 10px 14px 8px; margin: 0 0 12px; font-family: var(--sans); font-weight: 400; font-variation-settings: normal; font-size: 0.85rem; line-height: 1.35; color: var(--ink-2); }
+.rl-live p { margin: 0; }
+.rl-live-h { color: var(--ink); font-weight: 500; margin-bottom: 4px !important; }
+.rl-lgauge { display: block; width: 5.4rem; height: auto; }
+.rl-lg-track { fill: color-mix(in srgb, var(--ink-3) 22%, var(--card)); }
+.rl-lg-tick { stroke: var(--ink-3); stroke-width: 1; }
+.rl-lg-bar { fill: var(--pick); }
+.rl-lg-mark { stroke: var(--ink); stroke-width: 2; }
+.rl-lg-lab { fill: var(--ink-2); font-family: var(--sans); font-size: 12px; }
+.rl-live-v { font-variant-numeric: tabular-nums; color: var(--ink); min-height: 2.7em; }
+.rl-inputs { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.rl-inputs th { text-align: left; font-weight: 400; color: var(--ink-2); padding: 2px 10px 2px 0; }
+.rl-inputs td { text-align: right; color: var(--ink); padding: 2px 0; white-space: nowrap; min-width: 5.6em; }
+.rl-inputs tr + tr :is(th, td) { border-top: 1px solid color-mix(in srgb, var(--rule) 60%, transparent); }
+@media (max-width: 839px) { .rl-right > .rl-live { order: -2; margin-top: 12px; } }
+/* A player whose chart is always on (section 2): the chart right under the live panel at every width, the card below
+   it, so the chart never moves when a card opens. */
+.rl-chart-first .rl-right { display: flex; flex-direction: column; }
+.rl-chart-first .rl-right > .rl-live { order: -2; }
+.rl-chart-first .rl-right > .rl-chart-wrap { order: -1; margin: 0 0 14px; }
+@media (max-width: 360px) { .rl-live { grid-template-columns: 5.6rem 1fr; gap: 4px 10px; padding: 8px 10px; font-size: 0.8rem; } .rl-lgauge { width: 4.8rem; } .rl-inputs td { min-width: 4.8em; } }
+.rl-speed-mu { fill: none; stroke: var(--ink-3); stroke-width: 1.6; stroke-dasharray: 4 3; }
+.rl-outcome { fill: var(--ink-2); font-family: var(--sans); font-size: 15px; font-weight: 500; }
+
+/* The charts: the critic's estimates in blue, targets and the game's own values in red, the speed taken yellow, the
+   value being updated green; the rest ink. Labels at 13 units, 17 on phones. */
+.rl-chart-wrap { margin-top: 16px; }
+.rl-chart-wrap.off { visibility: hidden; }
+.rl-axis { stroke: var(--ink-3); stroke-width: 1.2; }
+.rl-zero { stroke: var(--rule); stroke-width: 1; stroke-dasharray: 3 3; }
+.rl-tick, .rl-axname { fill: var(--ink-2); font-family: var(--sans); font-size: 13px; }
+.rl-sym { font-family: var(--serif); font-style: italic; font-size: 1.12em; }
+.rl-sym.up { font-style: normal; }
+.rl-sym.rl-sup { font-size: 0.8em; }
+.rl-curve { fill: none; stroke: var(--blue); stroke-width: 2.5; stroke-linejoin: round; }
+.rl-old { fill: none; stroke: var(--ink-3); stroke-width: 1.6; stroke-dasharray: 5 4; }
+.rl-true { fill: none; stroke: var(--red); stroke-width: 2.2; stroke-linejoin: round; }
+.rl-dot { fill: var(--pick); stroke: var(--ink-2); stroke-width: 1.4; }
+.rl-est { fill: var(--blue); }
+.rl-target { fill: var(--red); }
+.rl-upd { fill: var(--ok); stroke: var(--ink-2); stroke-width: 1.2; }
+.rl-gauge { fill: color-mix(in srgb, var(--ink-3) 25%, var(--card)); }
+.rl-gauge-done { fill: var(--ok); }
+.rl-gauge-est { fill: var(--blue); }
+.rl-gauge-tg { fill: var(--red); }
+.rl-bound { stroke: var(--ink-3); stroke-width: 1.2; stroke-dasharray: 5 4; }
+.rl-run { fill: none; stroke: var(--ink-3); stroke-width: 1.8; stroke-linejoin: round; }
+.rl-run.on { stroke: var(--blue); stroke-width: 2.5; }
+.rl-runpts { fill: var(--ink-3); }
+.rl-runpts.on { fill: var(--blue); }
+.rl-off { font-weight: 500; }
+.rl-noise { fill: none; stroke: var(--ink-2); stroke-width: 2; stroke-linejoin: round; }
+.rl-uphill path { stroke: var(--pick); stroke-width: 3.5; stroke-linecap: round; }
+.rl-uphill polygon { fill: var(--pick); }
+.rl-hit { fill: transparent; cursor: pointer; }
+.rl-handle { cursor: pointer; }
+.rl-handle-hit { fill: transparent; }
+.rl-handle-ring { fill: none; stroke: var(--blue); stroke-width: 2.5; }
+.rl-handle:focus { outline: none; }
+.rl-handle:focus-visible .rl-handle-ring { stroke-width: 4; }
+.rl-hover { pointer-events: none; }
+.rl-hover circle { fill: none; stroke: var(--blue); stroke-width: 2; opacity: 0.5; }
+.rl-hover text { fill: var(--ink-2); font-family: var(--sans); font-size: 13px; }
+/* A try's mark under the curve: a dot for a hit, a ring for a miss (neutral ink: an outcome, not an estimate). */
+.rl-mark.hit { fill: var(--ink-2); }
+.rl-mark.miss { fill: var(--card); stroke: var(--ink-2); stroke-width: 1.6; }
+.rl-chart-note { margin: 0.4rem 0 0; font-family: var(--sans); font-weight: 400; font-variation-settings: normal; font-size: 0.85rem; color: var(--ink-3); }
+@media (max-width: 560px) { .rl-tick, .rl-axname, .rl-hover text { font-size: 17px; } .rl-outcome { font-size: 19px; } }
+
+/* Algorithm 1 beside the run (section 6): the loop's lines lit faintly while it plays frame after frame; the learning
+   lines dimmed, and marked, until the memory holds a minibatch. */
+ol.pc li.run { background: color-mix(in srgb, var(--k) 8%, var(--card)); border-left-color: color-mix(in srgb, var(--k) 45%, var(--card)); }
+ol.pc li.waits { opacity: 0.55; }
+.rl-wait { display: none; font-family: var(--sans); font-size: 0.8rem; color: var(--ink-3); }
+ol.pc li.waits .rl-wait { display: inline; }
+
+/* Card formulas on phones: smaller, with less indent, so their parts each fit a line of the card. */
+@media (max-width: 560px) { .rl-card { padding: 14px 12px; } .rl-card .disp { padding-left: 0.6rem; } }
+@media (max-width: 420px) { .rl-card .disp { font-size: 1rem; } }
+@media (max-width: 340px) { .rl-card .disp { font-size: 0.84rem; } }
